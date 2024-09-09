@@ -5,11 +5,11 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import VideoTile from '$lib/call/VideoTile.svelte';
-	import WaitingForOthersTile from '../../lib/call/WaitingForOthersTile.svelte';
-	import Chat from '../../lib/call/Chat.svelte';
-	import Loading from '../../lib/call/Loading.svelte';
-	import PermissionErrorMessage from '../../lib/call/PermissionErrorMessage.svelte';
-	import { chatMessages, dailyErrorMessage, username } from '../../store';
+	import WaitingForOthersTile from '$lib/call/WaitingForOthersTile.svelte';
+	import Chat from '$lib/call/Chat.svelte';
+	import Loading from '$lib/call/Loading.svelte';
+	import PermissionErrorMessage from '$lib/call/PermissionErrorMessage.svelte';
+	import { chatMessages, dailyErrorMessage, username } from '../../../store';
 
 	let callObject;
 	let participants = [];

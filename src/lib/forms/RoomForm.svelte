@@ -2,6 +2,7 @@
 	import { dailyErrorMessage, username } from '../../store.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+import { PUBLIC_DAILY_DOMAIN } from '$env/static/public';
 	let dailyUrl = '';
 	let dailyName = '';
 
@@ -44,7 +45,7 @@
 			method: 'POST'
 		});
 		const data = await submit.json();
-		const DOMAIN = import.meta.env.VITE_DAILY_DOMAIN;
+		const DOMAIN = PUBLIC_DAILY_DOMAIN;
 
 		if (data.success && data?.room?.name) {
 			localStorage?.setItem('DAILY_SVELTE_URL', `https://${DOMAIN}.daily.co/${data.room.name}`);

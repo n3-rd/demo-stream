@@ -1,4 +1,5 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
 
 export const POST: RequestHandler = async () => {
     /**
@@ -6,7 +7,7 @@ export const POST: RequestHandler = async () => {
      * for this request to work. Refer to the README for
      * further instructions. :)
      */
-    const DAILY_API_KEY = import.meta.env.VITE_DAILY_API_KEY as string;
+    const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
 
     // add 30min room expiration
     const exp = Math.round(Date.now() / 1000) + 60 * 30;

@@ -3,6 +3,7 @@
 	import micOnIcon from './assets/mic_on.svg';
 	import micOffIcon from './assets/mic_off.svg';
 	import NoVideoPlaceholder from './NoVideoPlaceholder.svelte';
+	import VideoStreamerTile from './VideoStreamerTile.svelte';
 
 	export let participant;
 	export let callObject;
@@ -90,10 +91,14 @@
 		</span>
 	{/if}
 
+	
+
 	<!-- Display device controls for the local user -->
 	{#if participant?.local}
-		<Controls {callObject} {screensList} />
-	{/if}
+    <Controls {callObject} {screensList} />
+    <VideoStreamerTile {callObject} />
+{/if}
+
 </div>
 
 <style>

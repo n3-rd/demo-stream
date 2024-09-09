@@ -1,5 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
+import { Actions } from '@sveltejs/kit';
 
 
 export const POST: RequestHandler = async () => {
@@ -46,3 +47,35 @@ export const POST: RequestHandler = async () => {
         }, { status: 500 });
     }
 };
+
+export const actions: Actions = {
+    'request-quote': async ({ request, locals }) => {
+        const formData = await request.formData();
+        const first_name = formData.get('first_name');
+        const last_name = formData.get('last_name');
+        const phone = formData.get('phone');
+        const email = formData.get('email');
+        const description = formData.get('description');
+
+        const data = {
+            first_name,
+            last_name,
+            phone,
+            email,
+            description
+        };
+         await locals.pb.collection('quotes').create(data).then((result) => {
+            console.log('Quote request created:', result);
+            return {
+                status: 200,
+                body: { message: 'Quote request created successfully' }
+            };
+        }).catch((err) => {
+            console.error('Failed to create quote request:', err);
+            return {
+                status: 500,
+                body: { error: 'Failed to create quote request' }
+            };
+        });
+    }
+}

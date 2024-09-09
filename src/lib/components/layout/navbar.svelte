@@ -56,7 +56,7 @@
         {#if loggedIn}
             <a href="/profile">Profile</a>
         {/if}
-        <Button class="bg-[#ECEFF3] text-primary hover:text-white" href="/demo">
+        <Button class="bg-[#ECEFF3] text-primary hover:text-white" href="/room">
             Create a Demo
         </Button>
     </div>

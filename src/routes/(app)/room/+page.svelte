@@ -4,15 +4,16 @@
 
 <script>
 	import RoomForm from '$lib/forms/RoomForm.svelte';
+	export let data;
+	console.log(data);
+	let user = data.user;
 </script>
 
 <sveltekit:head>
 	<title>Daily Svelte demo</title>
 </sveltekit:head>
 
-<section>
-	<h1>Call object Svelte demo</h1>
-	<p>Demo a custom call interface built using Daily call object for Svelte.</p>
+<section class="min-h-[90vh] flex justify-center items-center">
 
 	<!-- Provide a form to enter name and optional Daily URL -->
 	<RoomForm />

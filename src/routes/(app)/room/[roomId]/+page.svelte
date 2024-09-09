@@ -9,8 +9,12 @@
     import Chat from '$lib/call/Chat.svelte';
     import Loading from '$lib/call/Loading.svelte';
     import PermissionErrorMessage from '$lib/call/PermissionErrorMessage.svelte';
-    import { chatMessages, dailyErrorMessage, username } from '../../../store';
+    import { chatMessages, dailyErrorMessage, username } from '../../../../store';
 	import { PUBLIC_DAILY_DOMAIN } from '$env/static/public';
+    import * as Dialog from "$lib/components/ui/dialog";
+    import { Button } from '$lib/components/ui/button';
+	import { Quote } from 'lucide-svelte';
+	import CreateQuote from '$lib/components/room/create-quote.svelte';
 
 
     let callObject;
@@ -179,6 +183,19 @@ there are any errors loading the call -->
         {/if}
 
         <!-- Chat is displayed as soon as you're in the call  -->
-        <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
+        <div class="absolute bottom-4 right-4 flex flex-col gap-4">
+
+            <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
+            <Dialog.Root>
+                <Dialog.Trigger>
+                    <Button variant="ghost" size="icon" class="w-full">
+                        <Quote scale={1.3} />
+                    </Button>
+                </Dialog.Trigger>
+                <Dialog.Content class="rounded-lg bg-transparent">
+                    <CreateQuote />
+                </Dialog.Content>
+            </Dialog.Root>
+        </div>
     </div>
 {/if}

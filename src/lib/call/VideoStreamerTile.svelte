@@ -1,4 +1,4 @@
-<script>
+<script lag="ts">
     import { onMount } from 'svelte';
     export let callObject;
 
@@ -37,7 +37,7 @@
     });
 </script>
 
-<div>
+<div class="absolute bottom-0 right-0">
     <input id="vid-file-picker" type="file" accept="video/*" />
     <video id="local-vid" controls></video>
     <button on:click={shareVideo}>Share video through screenshare stream</button>

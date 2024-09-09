@@ -1,12 +1,12 @@
-import { json } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 
-export async function POST() {
+export const POST: RequestHandler = async () => {
     /**
      * Note: You must add your Daily API key to an .env file
      * for this request to work. Refer to the README for
      * further instructions. :)
      */
-    const DAILY_API_KEY = import.meta.env.VITE_DAILY_API_KEY;
+    const DAILY_API_KEY = import.meta.env.VITE_DAILY_API_KEY as string;
 
     // add 30min room expiration
     const exp = Math.round(Date.now() / 1000) + 60 * 30;
@@ -28,19 +28,19 @@ export async function POST() {
 
         if (res.ok) {
             const room = await res.json();
-            return json({
+            return new Response(JSON.stringify({
                 success: true,
                 room
-            }, { status: 200 });
+            }), { status: 200 });
         } else {
-            return json({
+            return new Response(JSON.stringify({
                 success: false
-            }, { status: res.status });
+            }), { status: res.status });
         }
     } catch (error) {
-        return json({
+        return new Response(JSON.stringify({
             success: false,
             message: 'something went wrong with the room submit!'
-        }, { status: 500 });
+        }), { status: 500 });
     }
-}
+};

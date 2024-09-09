@@ -27,7 +27,7 @@
 			class="gap-3 rounded-3xl bg-primary px-4 py-6 text-xl font-semibold hover:text-white"
 			on:click={() => {
 				if (isLoggedIn) {
-					goto('/demo');
+					goto('/room');
 				} else {
 					goto('/login');
 				}

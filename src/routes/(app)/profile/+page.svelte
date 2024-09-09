@@ -1,0 +1,139 @@
+<script lang="ts">
+    import { goto } from '$app/navigation';
+    import { Button } from '$lib/components/ui/button/index.js';
+    import * as Table from "$lib/components/ui/table";
+    import * as dayjs from 'dayjs'
+    
+
+    export let data;
+    console.log(data);
+    let rooms = data.scheduled_rooms;
+    let user = data.user;
+    let quotes = data.quotes; // Assuming quotes data is passed in the same data object
+    const currentDate = new Date();
+
+    // Function to check if a meeting is out of time
+    function isOutOfTime(schedule_date: string): boolean {
+        const now = new Date();
+        const meetingDate = new Date(schedule_date);
+        return meetingDate < now;
+    }
+
+    // Function to check if a meeting is on time
+    function isOnTime(schedule_date: string): boolean {
+        const now = new Date();
+        const meetingDate = new Date(schedule_date);
+        return meetingDate <= now && meetingDate >= now;
+    }
+</script>
+
+<style>
+    .status-out-of-time {
+        color: #f87171; /* red-500 */
+    }
+    .status-scheduled {
+        color: #34d399; /* green-500 */
+    }
+    .status-upcoming {
+        color: #fbbf24; /* yellow-500 */
+    }
+</style>
+
+<div class="container mx-auto p-4 min-h-screen">
+
+    <div class="profile-info flex flex-col items-center p-4 bg-gray-100 rounded-lg shadow-md my-8">
+        <img src={`https://ui-avatars.com/api/?name=${user.name}?background=random`} alt="User Avatar" class="w-24 h-24 rounded-full mb-4">
+        <h2 class="text-xl font-semibold mb-2">{user.name}</h2>
+        <p class="text-gray-700 mb-1">Email: {user.email}</p>
+        <p class="text-gray-700">Username: {user.username}</p>
+    </div>
+
+    <h1 class="text-2xl font-bold mb-4">My Scheduled Meetings</h1>
+    {#if rooms}
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+                <thead class="bg-gray-800 text-white">
+                    <tr>
+                        <th class="py-2 px-4">Meeting Name</th>
+                        <th class="py-2 px-4">ID</th>
+                        <th class="py-2 px-4">Date</th>
+                        <th class="py-2 px-4">Time</th>
+                        <th class="py-2 px-4">Status</th>
+                        <th class="py-2 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each rooms as room}
+                        <tr class="border-b">
+                            <td class="py-2 px-4 font-medium">{room.room_name}</td>
+                            <td class="py-2 px-4">{room.id}</td>
+                            <td class="py-2 px-4">{new Date(room.schedule_date).toLocaleDateString()}</td>
+                            <td class="py-2 px-4">{new Date(room.schedule_date).toLocaleTimeString()}</td>
+                            <td class="py-2 px-4">
+                                {#if isOutOfTime(room.schedule_date)}
+                                    <span class="status-out-of-time">Out of Time</span>
+                                {:else if isOnTime(room.schedule_date)}
+                                    <span class="status-scheduled">Scheduled</span>
+                                {:else}
+                                    <span class="status-upcoming">Upcoming</span>
+                                {/if}
+                            </td>
+                            <td class="py-2 px-4 text-right">
+                                <Button class="bg-primary text-white py-2 px-4 rounded disabled:opacity-50"
+                                disabled={!isOnTime(room.schedule_date)}
+                                on:click={() => {
+                                    window.open(`/demo/scheduled/${room.id}/`, "_blank");
+                                }}
+                                >View</Button>
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
+    {:else}
+        <p class="text-gray-500">No scheduled meetings</p>
+    {/if}
+
+    {#if quotes}
+    <h1 class="text-2xl font-bold mt-8 mb-4">Quotes</h1>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+                <thead class="bg-gray-800 text-white">
+                    <tr>
+                        <th class="py-2 px-4">First Name</th>
+                        <th class="py-2 px-4">Last Name</th>
+                        <th class="py-2 px-4">Email</th>
+                        <th class="py-2 px-4">Phone</th>
+                        <th class="py-2 px-4">Description</th>
+                        <th class="py-2 px-4">Created</th>
+                        <th class="py-2 px-4">Updated</th>
+                        <th class="py-2 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#each quotes as quote}
+                        <tr class="border-b">
+                            <td class="py-2 px-4 font-medium">{quote.first_name}</td>
+                            <td class="py-2 px-4">{quote.last_name}</td>
+                            <td class="py-2 px-4">{quote.email}</td>
+                            <td class="py-2 px-4">{quote.phone}</td>
+                            <td class="py-2 px-4">{quote.description}</td>
+                            <td class="py-2 px-4">{new Date(quote.created).toLocaleString()}</td>
+                            <td class="py-2 px-4">{new Date(quote.updated).toLocaleString()}</td>
+                            <td class="py-2 px-4 text-right">
+                                <Button class="bg-green-500 text-white py-2 px-4 rounded"
+                                on:click={() => {
+                                    window.open(`mailto:${quote.email}?subject=Reply to your quote&body=Hello ${quote.first_name},`, "_blank");
+                                }}
+                                >Reply</Button>
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        </div>
+    {:else if quotes != null}
+        <p class="text-gray-500">No quotes available</p>
+    {/if}
+</div>

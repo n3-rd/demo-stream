@@ -62,7 +62,7 @@
 		<!-- Render each message in the existing chat history -->
 		<div class="messages">
 			{#each $chatMessages as message}
-				<p transition:slide|local={{ easing: quintOut }} class="message">
+				<p transition:slide={{ easing: quintOut }} class="message">
 					<span class="message-name">{message.name}</span>: {message.text}
 				</p>
 			{/each}

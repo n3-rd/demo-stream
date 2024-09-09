@@ -40,7 +40,7 @@
 		 * If there isn't a Daily URL, we can create a new
 		 * room with a random name
 		 */
-		const submit = await fetch('/room.json', {
+		const submit = await fetch('/api/room', {
 			method: 'POST'
 		});
 		const data = await submit.json();

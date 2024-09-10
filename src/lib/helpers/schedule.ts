@@ -1,6 +1,6 @@
 import { toast } from "svelte-sonner";
 
-export async function createOrGetPermanentRoom(userId:string, month?: number, day?: number, year?: number, time?: string ) {
+export async function createOrGetPermanentRoom(userId:string, month?: number, day?: number, year?: number, time?: string, name?:string ) {
     function padZero(num: number): string {
         return num < 10 ? `0${num}` : `${num}`;
     }
@@ -17,7 +17,7 @@ export async function createOrGetPermanentRoom(userId:string, month?: number, da
             },
             body: JSON.stringify({
                 userId: userId,
-                roomName: "Blown Insulation",
+                roomName: name,
                 month: month,
                 day: day,
                 year: year,

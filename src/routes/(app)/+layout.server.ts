@@ -2,7 +2,9 @@
 
 export const load = async ({ locals }) => {
 	const isLoggedIn = locals.pb.authStore.isValid;
+	const user = locals.pb.authStore.model;
 	return {
-		isLoggedIn
+		isLoggedIn,
+		user
 	};
 };

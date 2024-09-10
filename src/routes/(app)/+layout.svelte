@@ -8,6 +8,7 @@
 	export let data;
 	console.log(data)
 	const loggedIn = data.isLoggedIn;
+	let user = data.user;
 	if (!loggedIn && browser) {
 		toast.error('You must be logged in to access this page.');
 		console.log('You must be logged in to access this page.');
@@ -17,6 +18,6 @@
 <Toaster />
 
 <div class="div bg-bgfill">
-	<Navbar {loggedIn} />
+	<Navbar {loggedIn} {user} />
 	<slot></slot>
 </div>

@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import * as ics from 'ics';
-import {PUBLIC_DAILY_API_KEY} from '$env/static/public';
+import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
 
 export const POST: RequestHandler = async ({ request, locals, url }) => {
     try {
@@ -25,6 +25,9 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
             throw error(400, 'The room cannot be started before the scheduled date.');
         }
 
+        // Convert room name to lowercase
+        const lowerCaseRoomName = roomName.toLowerCase();
+
         // Create a new scheduled room
         const newHostId = crypto.randomUUID();
         
@@ -45,7 +48,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
                 'Authorization': `Bearer ${PUBLIC_DAILY_API_KEY}`
             },
             body: JSON.stringify({
-                name: roomName,
+                name: lowerCaseRoomName,
                 privacy: 'private',
                 properties: {
                     nbf: Math.floor(scheduledDate.getTime() / 1000),
@@ -68,7 +71,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
         const room = await locals.pb.collection('scheduled_rooms').create({
             host_id: newHostId,
             user: userId,
-            room_name: roomName,
+            room_name: lowerCaseRoomName,
             day,
             year,
             month,
@@ -83,11 +86,11 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
         // Create an iCalendar event
         const event = {
             start: [year, month, day, scheduledDate.getHours(), scheduledDate.getMinutes()],
-            title: roomName,
+            title: lowerCaseRoomName,
             description: `Scheduled room by User: ${userName}`,
             status: 'CONFIRMED',
             organizer: { name: userName, email: userEmail },
-            url: `${origin}/demo/scheduled/${newlyCreatedRoom.id}`,
+            url: `${origin}/room/${newlyCreatedRoom.name}`,
         };
 
         const { error: icsError, value } = ics.createEvent(event);

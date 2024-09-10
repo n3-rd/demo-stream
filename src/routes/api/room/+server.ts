@@ -1,19 +1,19 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
 
-export const POST: RequestHandler = async () => {
-    /**
-     * Note: You must add your Daily API key to an .env file
-     * for this request to work. Refer to the README for
-     * further instructions. :)
-     */
-    const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
 
-    // add 30min room expiration
-    const exp = Math.round(Date.now() / 1000) + 60 * 30;
+export const POST: RequestHandler = async ({ request, locals }) => {
+    // const { userName } = await request.json();
+    const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
+    const user = locals.pb.authStore.model;
+    const username = user.name;
+
+    // add 1 day room expiration
+    const exp = Math.round(Date.now() / 1000) + 60 * 60 * 24;
     const options = {
         properties: {
-            exp
+            exp,
+            userName: username
         }
     };
 

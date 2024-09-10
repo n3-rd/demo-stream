@@ -82,7 +82,7 @@
                                 <Button class="bg-primary text-white py-2 px-4 rounded disabled:opacity-50"
                                 disabled={!isOnTime(room.schedule_date)}
                                 on:click={() => {
-                                    window.open(`/demo/scheduled/${room.id}/`, "_blank");
+                                    window.open(`/room/${room.room_name}/`, "_blank");
                                 }}
                                 >View</Button>
                             </td>

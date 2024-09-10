@@ -29,6 +29,7 @@
   let selectedMonth = value.month;
   let selectedYear = value.year;
   let time: any;
+  let roomName:string;
 
   const form = useForm();
 
@@ -40,7 +41,7 @@
   }
 
   // Reactive statement to check if all required fields are filled
-  $: isFormValid = firstName && lastName && phoneNumber && email && address.street && address.city && address.state && address.zip && address.country && time;
+  $: isFormValid = firstName && lastName && phoneNumber && email && address.street && address.city && address.state && address.zip && address.country && time && roomName;
 
   async function handleSubmit() {
       // Handle form submission
@@ -53,11 +54,12 @@
           selectedDay,
           selectedMonth,
           selectedYear,
-          time
+          time,
+          roomName
       });
 
       // Call createOrGetPermanentRoom with the form data
-      const result = await createOrGetPermanentRoom(userId, selectedMonth, selectedDay, selectedYear, time);
+      const result = await createOrGetPermanentRoom(userId, selectedMonth, selectedDay, selectedYear, time, roomName);
 
       if (result) {
           dispatch('close'); // Dispatch close event to close the dialog
@@ -176,6 +178,23 @@
                 <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
                   <Hint on="required"><HintValidate>Email is required</HintValidate></Hint>
                   <Hint on="email" hideWhenRequired><HintValidate>Email is not valid</HintValidate></Hint>
+                </div>
+              </HintGroup>
+            </div>
+            <div class="grid gap-2">
+              <label for="romName">Room name</label>
+              <input
+                id="roomName"
+                name="roomName"
+                type="roomName"
+                placeholder="Room Name"
+                bind:value={roomName}
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                use:validators={[required]}
+              />
+              <HintGroup for="email">
+                <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+                  <Hint on="required"><HintValidate>Room name is required</HintValidate></Hint>
                 </div>
               </HintGroup>
             </div>

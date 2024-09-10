@@ -8,11 +8,15 @@ const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
 export const load = async ({ locals }) => {
     const isLoggedIn = locals.pb.authStore.isValid;
     const user = locals.pb.authStore.model;
+    const representatives = await locals.pb.collection('users').getFullList({
+        filter: 'representative = true',
+    });
     console.log('Load function called:', { isLoggedIn, user });
 
     return {
         isLoggedIn,
         user,
+        representatives
     };
 };
 

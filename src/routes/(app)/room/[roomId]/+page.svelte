@@ -14,13 +14,15 @@
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-    import { Calendar, Quote } from 'lucide-svelte';
+    import { Calendar, CircleUser, Quote } from 'lucide-svelte';
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
+	import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
 
     export let data;
     let user = data.user;
+    let representatives = data.representatives;
 
     let callObject;
     let participants = [];
@@ -198,6 +200,16 @@
         {/if}
         <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-30">
             <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
+            <Dialog.Root>
+                <Dialog.Trigger>
+                    <Button variant="ghost" size="icon" class="w-full">
+                        <CircleUser scale={1.3} />
+                    </Button>
+                </Dialog.Trigger>
+                <Dialog.Content class="p-4 bg-gray-800 rounded-lg shadow-lg">
+                    <InviteRepresentative {representatives} />
+                </Dialog.Content>
+            </Dialog.Root>
             <Dialog.Root >
                 <Dialog.Trigger>
                     <Button variant="ghost" size="icon" class="w-full">

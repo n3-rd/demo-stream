@@ -14,7 +14,7 @@
   import { slide } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
   import { createOrGetPermanentRoom } from "$lib/helpers/schedule";
-  export let userId;
+  export let userId = null;
 
   let value = today(getLocalTimeZone());
   const dispatch = createEventDispatcher();
@@ -46,6 +46,19 @@
   async function handleSubmit() {
       // Handle form submission
       console.log({
+          firstName,
+          lastName,
+          phoneNumber,
+          email,
+          address,
+          selectedDay,
+          selectedMonth,
+          selectedYear,
+          time,
+          roomName
+      });
+
+      dispatch('scheduleMeeting', {
           firstName,
           lastName,
           phoneNumber,

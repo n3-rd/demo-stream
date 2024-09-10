@@ -61,8 +61,13 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 
         if (!dailyResponse.ok) {
             const errorData = await dailyResponse.json();
-            console.error('Failed to create Daily room:', errorData);
-            throw error(500, 'Failed to create Daily room');
+            if (errorData.error === 'invalid-request-error' && errorData.info.includes('already exists')) {
+                console.error('Room already exists:', lowerCaseRoomName);
+                throw error(409, 'Room already exists');
+            } else {
+                console.error('Failed to create Daily room:', errorData);
+                throw error(500, 'Failed to create Daily room');
+            }
         }
 
         const dailyRoom = await dailyResponse.json();
@@ -108,6 +113,6 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
         });
     } catch (err) {
         console.error('Failed to create room:', err);
-        throw error(500, err.message || 'Failed to create room');
+        throw error(err.status || 500, err.message || 'Failed to create room');
     }
 };

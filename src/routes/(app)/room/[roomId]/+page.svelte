@@ -15,6 +15,7 @@
     import { Button } from '$lib/components/ui/button';
 	import { Quote } from 'lucide-svelte';
 	import CreateQuote from '$lib/components/room/create-quote.svelte';
+	import Notes from '$lib/components/room/notes.svelte';
 
 
     let callObject;
@@ -183,9 +184,10 @@ there are any errors loading the call -->
         {/if}
 
         <!-- Chat is displayed as soon as you're in the call  -->
-        <div class="absolute bottom-4 right-4 flex flex-col gap-4">
+        <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-30">
 
             <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
+            <Notes />
             <Dialog.Root>
                 <Dialog.Trigger>
                     <Button variant="ghost" size="icon" class="w-full">

@@ -9,19 +9,36 @@
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { goto } from '$app/navigation';
-	import ScheduleMeeting from '../room/schedule-meeting.svelte';
-	import InviteRepresentative from '../room/invite-representative.svelte';
+    import ScheduleMeeting from '../room/schedule-meeting.svelte';
+    import InviteRepresentative from '../room/invite-representative.svelte';
 
     export let loggedIn = false;
     export let user;
-    export let representatives;
     let isMenuOpen = false;
     let pageData = $page.url;
     let isInMeeting: boolean;
-    $:{
+    let representatives = [];
+
+    $: {
         console.log(pageData);
         isInMeeting = pageData.pathname.includes('demo');
     }
+
+    async function fetchRepresentatives() {
+        try {
+            const response = await fetch('/api/representatives');
+            if (response.ok) {
+                const data = await response.json();
+                representatives = data.representatives;
+            } else {
+                console.error('Failed to fetch representatives');
+            }
+        } catch (error) {
+            console.error('Error fetching representatives:', error);
+        }
+    }
+
+    fetchRepresentatives();
 
     function toggleMenu() {
         isMenuOpen = !isMenuOpen;

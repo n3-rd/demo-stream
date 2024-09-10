@@ -2,7 +2,7 @@
 	import ArrowLeft from "lucide-svelte/icons/arrow-left";
 	import type { VariantProps } from "tailwind-variants";
 	import { getEmblaContext } from "./context.js";
-	import { cn } from "$lib/utils.js";
+	import { cn } from "$lib/utils";
 	import {
 		Button,
 		type Props,

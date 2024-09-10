@@ -10,16 +10,21 @@
     import Loading from '$lib/call/Loading.svelte';
     import PermissionErrorMessage from '$lib/call/PermissionErrorMessage.svelte';
     import { chatMessages, dailyErrorMessage, username } from '../../../../store';
-	import { PUBLIC_DAILY_DOMAIN } from '$env/static/public';
+    import { PUBLIC_DAILY_DOMAIN, PUBLIC_DAILY_API_KEY } from '$env/static/public';
+    import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-	import { Calendar, Quote } from 'lucide-svelte';
-	import CreateQuote from '$lib/components/room/create-quote.svelte';
-	import Notes from '$lib/components/room/notes.svelte';
-	import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
+    import { Calendar, CircleUser, Quote, ShareIcon } from 'lucide-svelte';
+    import CreateQuote from '$lib/components/room/create-quote.svelte';
+    import Notes from '$lib/components/room/notes.svelte';
+    import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
+	import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
+	import Share from '$lib/components/room/share.svelte';
+
     export let data;
     let user = data.user;
-
+    let name = user.name;
+    let representatives = data.representatives;
 
     let callObject;
     let participants = [];
@@ -29,6 +34,7 @@
     $: screensList = participants?.filter((p) => p?.screen);
 
     const clearNotification = () => (hasNewNotification = false);
+    const joinURL = $page.url.href;
 
     const destroyCall = async () => {
         if (!callObject) return;
@@ -47,91 +53,115 @@
         deviceError = false;
     };
 
-    /**
-     * DAILY EVENT CALLBACKS
-     */
     const handleJoinedMeeting = (e) => {
         console.log('[joined-meeting]', e);
         loading = false;
         updateParticpants(e);
     };
+
     const updateParticpants = (e) => {
         console.log('[update participants]', e);
         if (!callObject) return;
-
-        // Use call object as source of truth for current participant list
         participants = Object.values(callObject.participants());
     };
+
     const handleError = async () => {
         console.error('Error: ending call and returning to home page');
         await goHome();
     };
+
     const handleDeviceError = () => {
         deviceError = true;
     };
+
     const handleAppMessage = (e) => {
-        /*
-         * app-message can be used for data exchange other
-         than just chat messages.
-        Don't update chat unless it's in the message format 
-        we're expecting.
-         */
         if (!e?.data?.name && !e?.data?.text) return;
-        // add chat message to message history
         $chatMessages = [...$chatMessages, e?.data];
         hasNewNotification = true;
     };
-    /**
-     * END - DAILY EVENT CALLBACKS
-     */
+
+    const fetchRooms = async () => {
+        try {
+            const response = await fetch('https://api.daily.co/v1/rooms?limit=100', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${PUBLIC_DAILY_API_KEY}` // Replace with your actual token
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch rooms');
+            }
+            const data = await response.json();
+            return data.data || []; // Ensure it returns an array
+        } catch (error) {
+            console.error('Error fetching rooms:', error);
+            toast('Error fetching rooms');
+            return [];
+        }
+    };
 
     const createAndJoinCall = async () => {
-        const roomName = $page.params.roomId;
+        const roomName = $page.url.pathname.split('/').pop();
+        console.log('page',roomName)
         const domain = PUBLIC_DAILY_DOMAIN;
         if (!roomName || !domain) {
-            // TODO: eep no valid url to use. show error
+            toast('Invalid room or domain');
+            goto('/');
+            return;
+        }
+
+        const rooms = await fetchRooms();
+        if (!Array.isArray(rooms)) {
+            toast('Error fetching rooms');
+            goto('/');
+            return;
+        }
+        console.log('fetched rooms', rooms)
+        const room = rooms.find(room => room.name === roomName);
+        console.log(room)
+        if (!room) {
+            toast('Room not found or not available yet');
+            goto('/');
+            return;
+        }
+
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (room.config && room.config.nbf && currentTime < room.config.nbf) {
+            toast('Room has not yet started');
+            goto('/');
             return;
         }
 
         const url = `https://${domain}.daily.co/${roomName}`;
-        // Create instance of Daily call object
-        callObject = daily.createCallObject({ url, userName: $username });
-        // Add call and participant event handler
-        // Visit https://docs.daily.co/reference/daily-js/events for more event info
+        callObject = daily.createCallObject({ url, userName: name });
         callObject
             .on('joining-meeting', updateParticpants)
             .on('joined-meeting', handleJoinedMeeting)
             .on('participant-joined', updateParticpants)
             .on('participant-left', updateParticpants)
-            .on('participant-left', updateParticpants)
             .on('participant-updated', updateParticpants)
             .on('error', handleError)
-            // camera-error = device error, like device in use or permissions issues
             .on('camera-error', handleDeviceError)
             .on('app-message', handleAppMessage);
 
-        // Join the call with the name set in the Home.vue form
         try {
             await callObject.join();
-            // reset possible existing error message
             dailyErrorMessage.set('');
         } catch (e) {
             dailyErrorMessage.set(e);
+            toast('Error joining the call');
         }
     };
 
     onMount(() => {
         if (!browser) return;
         createAndJoinCall();
-
-        // updates background colour
         if (!document) return;
         document.body.classList.add('in-call');
     });
 
     onDestroy(() => {
         if (!callObject) return;
-        // Remove Daily event handling when call ends
         callObject
             .off('joining-meeting', updateParticpants)
             .off('joined-meeting', handleJoinedMeeting)
@@ -150,13 +180,10 @@
     <title>Daily call</title>
 </sveltekit:head>
 
-<!-- Include a button to return to the home screen in case 
-there are any errors loading the call -->
-<div class="flex flex-start mb-4">
+<!-- <div class="flex flex-start mb-4 min-h-screen">
     <button class="border border-gray-300 rounded-lg ml-4 mb-4 px-2 py-1 bg-white cursor-pointer text-xs uppercase font-bold" on:click={goHome}>Home</button>
-
     <p class="text-turquoise ml-4 text-sm">{$page.url.href}</p>
-</div>
+</div> -->
 {#if loading}
     <div class="m-auto">
         <Loading />
@@ -164,32 +191,38 @@ there are any errors loading the call -->
 {:else if deviceError}
     <PermissionErrorMessage on:clear-device-error={clearDeviceError} />
 {:else}
-    <!-- Render an optional screen share above the participant tiles -->
     {#if screensList?.length > 0}
-        <!-- Note: We'll only allow one screen share to be displayed
-        for this demo. Take the first one available -->
         <VideoTile {callObject} screen={screensList[0]} />
     {/if}
-    <!-- This in-call view is _not_ optimized for large meetings.
-    Please see our large meetings series to learn more about 
-    pagination, manual track subscription, and updating 
-    video track receive settings. 
-    https://www.daily.co/blog/tag/large-meeting-series/ -->
     <div class="flex flex-wrap">
-        <!-- Render a video tile for each participant -->
         {#each participants as participant}
             <VideoTile {callObject} {participant} {screensList} />
         {/each}
-
-        <!-- Show a waiting message if the local user is alone in the call -->
         {#if participants?.length === 1}
             <WaitingForOthersTile />
         {/if}
-
-        <!-- Chat is displayed as soon as you're in the call  -->
         <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-30">
-
+            <Dialog.Root>
+                <Dialog.Trigger>
+                    <Button variant="ghost" size="icon" class="w-full">
+                        <ShareIcon scale={1.3} />
+                    </Button>
+                </Dialog.Trigger>
+                <Dialog.Content class="p-4  rounded-lg shadow-lg">
+                  <Share {joinURL} />
+                </Dialog.Content>
+            </Dialog.Root>
             <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
+            <Dialog.Root>
+                <Dialog.Trigger>
+                    <Button variant="ghost" size="icon" class="w-full">
+                        <CircleUser scale={1.3} />
+                    </Button>
+                </Dialog.Trigger>
+                <Dialog.Content class="p-4  rounded-lg shadow-lg">
+                    <InviteRepresentative {representatives} />
+                </Dialog.Content>
+            </Dialog.Root>
             <Dialog.Root >
                 <Dialog.Trigger>
                     <Button variant="ghost" size="icon" class="w-full">

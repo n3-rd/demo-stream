@@ -7,7 +7,7 @@
     import close from './assets/x.svg';
     import send from './assets/send.svg';
     import * as Sheet from "$lib/components/ui/sheet";
-	import { MessageSquareDashed } from 'lucide-svelte';
+    import { MessageSquareDashed } from 'lucide-svelte';
 
     const dispatch = createEventDispatcher();
 
@@ -30,9 +30,10 @@
             text: newText
         };
         callObject.sendAppMessage(newMessage);
-        $chatMessages = [...$chatMessages, newMessage];
+        chatMessages.update(messages => [...messages, newMessage]);
         newText = '';
     };
+
     const toggleChat = () => (chatIsOpen = !chatIsOpen);
 </script>
 

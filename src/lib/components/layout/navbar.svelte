@@ -9,8 +9,12 @@
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { goto } from '$app/navigation';
+	import ScheduleMeeting from '../room/schedule-meeting.svelte';
+	import InviteRepresentative from '../room/invite-representative.svelte';
 
     export let loggedIn = false;
+    export let user;
+    export let representatives;
     let isMenuOpen = false;
     let pageData = $page.url;
     let isInMeeting: boolean;
@@ -33,8 +37,29 @@
     </a>
 
     <div class="hidden md:flex items-center gap-5 leading-5 [&>*]:font-semibold">
-        <a href="/">Speak to Representative</a>
-        <a href="/">Book an Appointment</a>
+        <Dialog.Root>
+            <Dialog.Trigger>
+                <Button variant="ghost" size="icon" class="w-full">
+                    <a href="/">Speak to Representative</a>
+                </Button>
+            </Dialog.Trigger>
+            <Dialog.Content class="p-4 bg-gray-800 rounded-lg shadow-lg">
+                <InviteRepresentative {representatives} />
+            </Dialog.Content>
+        </Dialog.Root>
+        <Dialog.Root >
+            <Dialog.Trigger>
+                <Button variant="ghost" size="icon" class="w-full">
+                    <a href="/">Book an Appointment</a>
+
+                </Button>
+            </Dialog.Trigger>
+            <Dialog.Content class="p-4 rounded-lg w-auto bg-transparent">
+                <div class="w-full bg-transparent">
+                    <ScheduleMeeting userId={user.id} />
+                </div>
+            </Dialog.Content>
+        </Dialog.Root>
         <a href="/">Request A Quote</a>
         <a href="/">Ask a Question</a>
         <a href="/">Notes</a>

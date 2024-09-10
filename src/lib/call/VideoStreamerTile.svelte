@@ -1,9 +1,10 @@
-<script lag="ts">
+<script lang="ts">
     import { onMount } from 'svelte';
     export let callObject;
 
     let videoInput;
     let localVideoStream;
+    let showVideoPicker = false;
 
     function playLocalVideoFile(evt) {
         let videoEl = document.getElementById('local-vid');
@@ -31,22 +32,57 @@
         }
     }
 
+    function toggleVideoPicker() {
+        showVideoPicker = !showVideoPicker;
+    }
+
     onMount(() => {
-        videoInput = document.getElementById('vid-file-picker');
-        videoInput.addEventListener('change', playLocalVideoFile, false);
+        if (videoInput) {
+            videoInput.addEventListener('change', playLocalVideoFile, false);
+        }
     });
 </script>
 
-<div class="absolute bottom-0 right-0">
-    <input id="vid-file-picker" type="file" accept="video/*" />
-    <video id="local-vid" controls></video>
-    <button on:click={shareVideo}>Share video through screenshare stream</button>
+<div class="video-picker-container z-[999]">
+    <button class="toggle-button" on:click={toggleVideoPicker}>
+        {showVideoPicker ? 'Hide Video Picker' : 'Show Video Picker'}
+    </button>
+    <div class="video-picker-popup" class:hide={!showVideoPicker}>
+        <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" on:change={playLocalVideoFile} />
+        <video id="local-vid" controls></video>
+        <button on:click={shareVideo}>Share video through screenshare stream</button>
+    </div>
 </div>
 
 <style>
+    .video-picker-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        margin: 10px;
+    }
+    .toggle-button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .video-picker-popup {
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 10px;
+    }
+    .video-picker-popup.hide {
+        display: none;
+    }
     video {
         width: 100%;
-        max-width: 600px;
+        max-width: 300px;
         margin-top: 10px;
     }
     button {

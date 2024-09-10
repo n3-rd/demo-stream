@@ -21,12 +21,14 @@ export const load = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-    'create-room': async () => {
-        // add 30min room expiration
-        const exp = Math.round(Date.now() / 1000) + 60 * 30;
+    'create-room': async ({locals, fetch}) => {
+        const user = locals.pb.authStore.model;
+        const username = user.name;
+        const exp = Math.round(Date.now() / 1000) + 60 * 60 * 24;
         const options = {
             properties: {
-                exp
+                exp,
+                userName: username
             }
         };
 
@@ -56,6 +58,43 @@ export const actions: Actions = {
                 success: false,
                 message: 'something went wrong with the room submit!'
             }, { status: 500 });
+        }
+    },
+    'send-email': async ({ request, fetch }) => {
+        try {
+            const formData = await request.formData();
+            const url = formData.get('url');
+            const name = formData.get('name');
+            const receipient = formData.get('receipient');
+
+            const response = await fetch('/api/send-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ url, name, receipient })
+            });
+
+            if (response.ok) {
+				console.log('Email sent successfully', response);
+                return {
+                    status: 200,
+                    body: { message: 'Email sent successfully' }
+                };
+            } else {
+                const errorData = await response.json();
+				console.error('Failed to send email', errorData);
+                return {
+                    status: response.status,
+                    body: { error: errorData.error || 'Failed to send email' }
+                };
+            }
+        } catch (error) {
+			console.error('Failed to send email', error);
+            return {
+                status: 500,
+                body: { error: 'Failed to send email' }
+            };
         }
     },
     'request-quote': async ({ request, locals }) => {

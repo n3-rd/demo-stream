@@ -14,14 +14,16 @@
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-    import { Calendar, CircleUser, Quote } from 'lucide-svelte';
+    import { Calendar, CircleUser, Quote, ShareIcon } from 'lucide-svelte';
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
 	import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
+	import Share from '$lib/components/room/share.svelte';
 
     export let data;
     let user = data.user;
+    let name = user.name;
     let representatives = data.representatives;
 
     let callObject;
@@ -32,6 +34,7 @@
     $: screensList = participants?.filter((p) => p?.screen);
 
     const clearNotification = () => (hasNewNotification = false);
+    const joinURL = $page.url.href;
 
     const destroyCall = async () => {
         if (!callObject) return;
@@ -130,7 +133,7 @@
         }
 
         const url = `https://${domain}.daily.co/${roomName}`;
-        callObject = daily.createCallObject({ url, userName: $username });
+        callObject = daily.createCallObject({ url, userName: name });
         callObject
             .on('joining-meeting', updateParticpants)
             .on('joined-meeting', handleJoinedMeeting)
@@ -177,10 +180,10 @@
     <title>Daily call</title>
 </sveltekit:head>
 
-<div class="flex flex-start mb-4">
+<!-- <div class="flex flex-start mb-4 min-h-screen">
     <button class="border border-gray-300 rounded-lg ml-4 mb-4 px-2 py-1 bg-white cursor-pointer text-xs uppercase font-bold" on:click={goHome}>Home</button>
     <p class="text-turquoise ml-4 text-sm">{$page.url.href}</p>
-</div>
+</div> -->
 {#if loading}
     <div class="m-auto">
         <Loading />
@@ -199,6 +202,16 @@
             <WaitingForOthersTile />
         {/if}
         <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-30">
+            <Dialog.Root>
+                <Dialog.Trigger>
+                    <Button variant="ghost" size="icon" class="w-full">
+                        <ShareIcon scale={1.3} />
+                    </Button>
+                </Dialog.Trigger>
+                <Dialog.Content class="p-4  rounded-lg shadow-lg">
+                  <Share {joinURL} />
+                </Dialog.Content>
+            </Dialog.Root>
             <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
             <Dialog.Root>
                 <Dialog.Trigger>
@@ -206,7 +219,7 @@
                         <CircleUser scale={1.3} />
                     </Button>
                 </Dialog.Trigger>
-                <Dialog.Content class="p-4 bg-gray-800 rounded-lg shadow-lg">
+                <Dialog.Content class="p-4  rounded-lg shadow-lg">
                     <InviteRepresentative {representatives} />
                 </Dialog.Content>
             </Dialog.Root>

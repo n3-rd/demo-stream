@@ -1,6 +1,6 @@
 import { toast } from "svelte-sonner";
 
-export async function createOrGetPermanentRoom(userId:string, month?: number, day?: number, year?: number, time?: string, name?:string ) {
+export async function createOrGetPermanentRoom(userId: string, month?: number, day?: number, year?: number, time?: string, name?: string) {
     function padZero(num: number): string {
         return num < 10 ? `0${num}` : `${num}`;
     }
@@ -28,6 +28,10 @@ export async function createOrGetPermanentRoom(userId:string, month?: number, da
 
         if (!response.ok) {
             const error = await response.json();
+            if (response.status === 409 ) {
+                toast.error('Room with name already exists');
+                return { exists: true };
+            }
             throw new Error(error.message || 'Failed to create/get room');
         }
 
@@ -44,10 +48,10 @@ export async function createOrGetPermanentRoom(userId:string, month?: number, da
         toast.success('Room scheduled successfully');
         
         // Return the roomId for further use
-        return true;
+        return { success: true };
     } catch (error) {
         console.error('Error creating/getting room:', error);
         toast.error(error.message || 'Failed to create/get room');
-        return null;
+        return { success: false };
     }
 }

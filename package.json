@@ -30,6 +30,7 @@
 	"dependencies": {
 		"@daily-co/daily-js": "^0.27.0",
 		"@fontsource/fira-mono": "^4.5.10",
+		"@internationalized/date": "^3.5.5",
 		"@lukeed/uuid": "^2.0.1",
 		"@sveltejs/adapter-vercel": "^5.4.3",
 		"bits-ui": "^0.21.13",
@@ -37,12 +38,14 @@
 		"cookie": "^0.5.0",
 		"dayjs": "^1.11.13",
 		"dotenv": "^16.4.5",
+		"ics": "^3.7.6",
 		"lucide-svelte": "^0.439.0",
 		"nodemailer": "^6.9.15",
 		"pocketbase": "^0.21.5",
 		"svelte-email": "^0.0.4",
 		"svelte-sonner": "^0.3.27",
 		"svelte-use-form": "^2.10.0",
+		"svelty-picker": "^5.2.9",
 		"tailwind-merge": "^2.5.2",
 		"tailwind-variants": "^0.2.1",
 		"uid": "^2.0.2"

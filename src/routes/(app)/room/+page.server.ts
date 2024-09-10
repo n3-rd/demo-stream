@@ -6,12 +6,12 @@ export const load = async ({ locals }) => {
     const isLoggedIn = locals.pb.authStore.isValid;
     const user = locals.pb.authStore.model;
     console.log('Load function called:', { isLoggedIn, user });
-    if (!isLoggedIn){
-    return redirect(301,'/login');
-    }
-    else{
-        return redirect(301,'/');
-    }
+    // if (!isLoggedIn){
+    // return redirect(301,'/login');
+    // }
+    // else{
+    //     return redirect(301,'/');
+    // }
     return {
         isLoggedIn,
         user,

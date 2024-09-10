@@ -8,8 +8,8 @@
 		type Side,
 		sheetTransitions,
 		sheetVariants,
-	} from "./index.js";
-	import { cn } from "$lib/utils.js";
+	} from "./index";
+	import { cn } from "$lib/utils";
 
 	type $$Props = SheetPrimitive.ContentProps & {
 		side?: Side;

@@ -13,9 +13,12 @@
 	import { PUBLIC_DAILY_DOMAIN } from '$env/static/public';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-	import { Quote } from 'lucide-svelte';
+	import { Calendar, Quote } from 'lucide-svelte';
 	import CreateQuote from '$lib/components/room/create-quote.svelte';
 	import Notes from '$lib/components/room/notes.svelte';
+	import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
+    export let data;
+    let user = data.user;
 
 
     let callObject;
@@ -187,6 +190,18 @@ there are any errors loading the call -->
         <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-30">
 
             <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
+            <Dialog.Root >
+                <Dialog.Trigger>
+                    <Button variant="ghost" size="icon" class="w-full">
+                        <Calendar scale={1.3} />
+                    </Button>
+                </Dialog.Trigger>
+                <Dialog.Content class="p-4 rounded-lg w-auto bg-transparent">
+                    <div class="w-full bg-transparent">
+                        <ScheduleMeeting userId={user.id} />
+                    </div>
+                </Dialog.Content>
+            </Dialog.Root>
             <Notes />
             <Dialog.Root>
                 <Dialog.Trigger>

@@ -1,16 +1,24 @@
 <script lang="ts">
-    import { goto } from '$app/navigation';
+    import { goto, invalidateAll } from '$app/navigation';
     import { Button } from '$lib/components/ui/button/index.js';
     import * as Table from "$lib/components/ui/table";
-    import * as dayjs from 'dayjs'
-    
+    import * as dayjs from 'dayjs';
+    import { EllipsisVertical } from 'lucide-svelte';
+    import * as Popover from "$lib/components/ui/popover";
+	import { enhance } from '$app/forms';
+	import { toast } from 'svelte-sonner';
 
     export let data;
     console.log(data);
-    let rooms = data.scheduled_rooms;
+    let rooms;
     let user = data.user;
-    let quotes = data.quotes; // Assuming quotes data is passed in the same data object
+    let quotes; // Assuming quotes data is passed in the same data object
     const currentDate = new Date();
+$:{
+    rooms = data.scheduled_rooms
+    quotes = data.quotes;
+}
+
 
     // Function to check if a meeting is out of time
     function isOutOfTime(schedule_date: string): boolean {
@@ -60,6 +68,7 @@
                         <th class="py-2 px-4">Time</th>
                         <th class="py-2 px-4">Status</th>
                         <th class="py-2 px-4 text-right">Actions</th>
+                        <th class="py-2 px-4 text-right"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -85,6 +94,32 @@
                                     window.open(`/room/${room.room_name}/`, "_blank");
                                 }}
                                 >View</Button>
+                            </td>
+                            <td class="py-2 px-4 text-right">
+                                <Popover.Root>
+                                    <Popover.Trigger>
+                                        <EllipsisVertical class="w-6 h-6" />
+                                    </Popover.Trigger>
+                                    <Popover.Content>
+                                        <form method="POST" action="?/delete-meeting" class="w-full"
+                                        use:enhance={() => {
+                                            return async ({ result }) => {
+                                                console.log('login results', result.data.success);
+                                                if ((result.data.success)) {
+                                                    toast.success('successfully deleted meeting');
+                                                    invalidateAll()
+                                                } else {
+                                                    toast.error('error occoured while deleting meeting');
+                                                }
+                                            };
+                                        }}
+                                        >
+                                            <input type="hidden" name="meetingId" value={room.id} />
+                                            <input type="hidden" name="dailyRoomName" value={room.room_name} />
+                                            <Button type="submit" class="bg-red-500 text-white py-2 px-4 rounded w-full">Delete</Button>
+                                        </form>
+                                    </Popover.Content>
+                                </Popover.Root>
                             </td>
                         </tr>
                     {/each}

@@ -39,6 +39,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
         const userName = userInfo?.name || 'Unknown User name';
         const userEmail = userInfo?.email || 'Unknown User email';
         console.log('User info:', { userName, userEmail });
+        const newRoomName = `meet-${Math.random().toString(36).substring(2, 7)}-${lowerCaseRoomName}-${userId}`;
 
         // Create room with Daily API
         const dailyResponse = await fetch('https://api.daily.co/v1/rooms', {
@@ -48,13 +49,10 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
                 'Authorization': `Bearer ${PUBLIC_DAILY_API_KEY}`
             },
             body: JSON.stringify({
-                name: lowerCaseRoomName,
-                privacy: 'private',
+                name: newRoomName,
                 properties: {
                     nbf: Math.floor(scheduledDate.getTime() / 1000),
                     exp: Math.floor(scheduledDate.getTime() / 1000) + 86400, // 24 hours duration
-                    start_audio_off: true,
-                    start_video_off: true
                 }
             })
         });
@@ -76,7 +74,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
         const room = await locals.pb.collection('scheduled_rooms').create({
             host_id: newHostId,
             user: userId,
-            room_name: lowerCaseRoomName,
+            room_name: newRoomName,
             day,
             year,
             month,

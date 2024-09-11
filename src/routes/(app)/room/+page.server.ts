@@ -21,12 +21,14 @@ export const load = async ({ locals }) => {
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
 
 export const actions = {
-    'create-room': async ({ fetch }) => {
+    'create-room': async ({ fetch, locals }) => {
         console.log('Create room action called');
+        const userId = locals.pb.authStore.model.id;
         const exp = Math.round(Date.now() / 1000) + 60 * 30;
         const options = {
             properties: {
-                exp
+                exp,
+                user_id: userId
             }
         };
 

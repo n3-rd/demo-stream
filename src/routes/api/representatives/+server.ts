@@ -6,15 +6,19 @@ export const GET: RequestHandler = async ({ locals }) => {
         const representatives = await locals.pb.collection('users').getFullList({
             filter: 'representative = true',
         });
-        return {
+        return new Response(JSON.stringify({ representatives }), {
             status: 200,
-            body: { representatives }
-        };
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
     } catch (error) {
         console.error('Failed to fetch representatives:', error);
-        return {
+        return new Response(JSON.stringify({ error: 'Failed to fetch representatives' }), {
             status: 500,
-            body: { error: 'Failed to fetch representatives' }
-        };
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
     }
 };

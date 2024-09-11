@@ -16,21 +16,10 @@ export const load = async ({ locals }) => {
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
 
 export const actions: Actions = {
-    'create-room': async ({ fetch,locals, request }) => {
+    'create-room': async ({ fetch,locals }) => {
         console.log('Create room action called');
         const userId = locals.pb.authStore.model.id;
-           const getExpirationTime = (hostname: string): number => {
-            const currentTimeInSeconds = Math.round(Date.now() / 1000);
-            if (hostname === 'localhost') {
-                return currentTimeInSeconds + 60 * 30; // 30 minutes
-            } else {
-                return currentTimeInSeconds + 60 * 60 * 24; // 24 hours
-            }
-        };
-        
-        // Assuming you have access to the request object to get the hostname
-        const hostname = request.headers.host.split(':')[0]; // Extract hostname without port
-        const exp = getExpirationTime(hostname);
+        const exp = Math.round(Date.now() / 1000) + 60 * 60;
         const options = {
             name: `meet-${Math.random().toString(36).substring(2, 7)}-${userId}`,properties: {
                 exp

@@ -20,13 +20,13 @@
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
     import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
     import Share from '$lib/components/room/share.svelte';
-    
+
     export let data;
-    
+
     if (data.isLoggedIn == false && browser) {
         goto('/login');
     }
-    
+
     let user = data.user;
     let name = user ? user.name : '';
     let representatives = data.representatives;

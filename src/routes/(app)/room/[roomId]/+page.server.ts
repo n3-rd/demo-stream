@@ -5,21 +5,18 @@ import type { PageServerLoad } from "./$types";
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
 
-
 export const load: PageServerLoad = async ({ locals }) => {
-    const isLoggedIn = locals.pb.authStore.isValid;
+    if (!locals.pb.authStore.isValid) {
+        throw redirect(302, '/login');
+    }
+
     const user = locals.pb.authStore.model;
-
-    // if (!isLoggedIn) {
-    //  redirect(302, '/login');
-    // }
-
     const representatives = await locals.pb.collection('users').getFullList({
         filter: 'representative = true',
     });
 
     return {
-        isLoggedIn,
+        isLoggedIn: true,
         user,
         representatives
     };
@@ -81,21 +78,21 @@ export const actions: Actions = {
             });
 
             if (response.ok) {
-				console.log('Email sent successfully', response);
+                console.log('Email sent successfully', response);
                 return {
                     status: 200,
                     body: { message: 'Email sent successfully' }
                 };
             } else {
                 const errorData = await response.json();
-				console.error('Failed to send email', errorData);
+                console.error('Failed to send email', errorData);
                 return {
                     status: response.status,
                     body: { error: errorData.error || 'Failed to send email' }
                 };
             }
         } catch (error) {
-			console.error('Failed to send email', error);
+            console.error('Failed to send email', error);
             return {
                 status: 500,
                 body: { error: 'Failed to send email' }

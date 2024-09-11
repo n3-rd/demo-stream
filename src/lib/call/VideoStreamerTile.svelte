@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { Button } from '$lib/components/ui/button';
+	import { toast } from 'svelte-sonner';
     export let callObject;
 
     let videoInput;
@@ -12,7 +13,7 @@
         let file = evt.target.files[0];
         let type = file.type;
         if (!videoEl.canPlayType(type)) {
-            alert('cannot play that file');
+            toast('cannot play that file');
             return;
         }
         videoEl.src = URL.createObjectURL(file);
@@ -40,7 +41,7 @@
                 }
             });
         } else {
-            alert('No video stream available to share.');
+            toast('No video stream available to share.');
         }
     }
 
@@ -53,6 +54,13 @@
                 localVideoStream.getTracks().forEach(track => track.stop());
                 localVideoStream = null;
             }
+        }
+        // Stop screen share
+        callObject.stopScreenShare();
+
+        // Reset the video input element to allow re-uploading the same file
+        if (videoInput) {
+            videoInput.value = '';
         }
     }
 

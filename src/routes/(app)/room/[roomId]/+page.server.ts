@@ -1,4 +1,4 @@
-import { json, type RequestHandler } from '@sveltejs/kit';
+import { json, redirect, type RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
 import { Actions } from '@sveltejs/kit';
 
@@ -12,6 +12,11 @@ export const load = async ({ locals }) => {
         filter: 'representative = true',
     });
     console.log('Load function called:', { isLoggedIn, user });
+
+    if (!isLoggedIn) {
+    //redirect to login page
+    redirect(302, '/login');  
+    }
 
     return {
         isLoggedIn,

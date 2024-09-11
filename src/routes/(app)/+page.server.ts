@@ -22,7 +22,8 @@ export const actions: Actions = {
         const exp = Math.round(Date.now() / 1000) + 60 * 60;
         const options = {
             name: `meet-${Math.random().toString(36).substring(2, 7)}-${userId}`,properties: {
-                exp
+                exp,
+                enable_chat: true,
             }
         };
 

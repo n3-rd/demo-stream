@@ -26,6 +26,12 @@
     let name = user.name;
     let representatives = data.representatives;
 
+    const host = $page.url.pathname.split('/').pop().split('-').pop();
+    console.log('host', host)
+
+    const isHost = host === user.id;
+
+
     let callObject;
     let participants = [];
     let loading = true;
@@ -196,7 +202,7 @@
     {/if}
     <div class="flex flex-wrap">
         {#each participants as participant}
-            <VideoTile {callObject} {participant} {screensList} />
+            <VideoTile {callObject} {participant} {screensList} host={isHost} {name} />
         {/each}
         {#if participants?.length === 1}
             <WaitingForOthersTile />

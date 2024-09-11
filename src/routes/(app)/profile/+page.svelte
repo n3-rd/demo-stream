@@ -20,6 +20,11 @@ $:{
 }
 
 
+function extractSecondSegment(meetingString: string): string {
+    const segments = meetingString.split('-');
+    return segments[2];
+}
+
     // Function to check if a meeting is out of time
     function isOutOfTime(schedule_date: string): boolean {
         const now = new Date();
@@ -74,7 +79,7 @@ $:{
                 <tbody>
                     {#each rooms as room}
                         <tr class="border-b">
-                            <td class="py-2 px-4 font-medium">{room.room_name}</td>
+                            <td class="py-2 px-4 font-medium">{extractSecondSegment(room.room_name)}</td>
                             <td class="py-2 px-4">{room.id}</td>
                             <td class="py-2 px-4">{new Date(room.schedule_date).toLocaleDateString()}</td>
                             <td class="py-2 px-4">{new Date(room.schedule_date).toLocaleTimeString()}</td>

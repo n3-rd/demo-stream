@@ -37,20 +37,32 @@
         });
     }
 
-    async function shareVideo() {
-        if (localVideoStream) {
-            await callObject.startScreenShare({
-                mediaStream: localVideoStream,
-                displayMediaOptions: {
-                    audio: localAudioStream ? true : false,
-                    video: true
-                }
-            });
-        } else {
-            toast('No video stream available to share.');
-        }
-    }
+        async function shareVideo() {
+            console.log('shareVideo() called');
+            if (localVideoStream) {
+                try {
+                    console.log('Combining video and audio streams');
+                    // Combine video and audio streams
+                    const combinedStream = new MediaStream([
+                        ...localVideoStream.getVideoTracks(),
+                        ...(localAudioStream ? localAudioStream.getAudioTracks() : [])
+                    ]);
 
+                    console.log('Starting screen share');
+                    await callObject.startScreenShare({
+                        mediaStream: combinedStream,
+                        videoSource: 'mediaStream',
+                        audioSource: localAudioStream ? 'mediaStream' : false
+                    });
+                } catch (error) {
+                    console.error('Error starting screen share:', error);
+                    toast('Failed to start screen share: ' + error.message);
+                }
+            } else {
+                console.log('No video stream available to share');
+                toast('No video stream available to share.');
+            }
+        }
     function stopVideo() {
         let videoEl = document.getElementById('local-vid');
         if (videoEl) {

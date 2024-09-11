@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { Button } from '$lib/components/ui/button';
     export let callObject;
 
     let videoInput;
@@ -31,9 +32,27 @@
 
     async function shareVideo() {
         if (localVideoStream) {
-            await callObject.startScreenShare({ mediaStream: localVideoStream });
+            await callObject.startScreenShare({
+                mediaStream: localVideoStream,
+                displayMediaOptions: {
+                    audio: true,
+                    video: true
+                }
+            });
         } else {
             alert('No video stream available to share.');
+        }
+    }
+
+    function stopVideo() {
+        let videoEl = document.getElementById('local-vid');
+        if (videoEl) {
+            videoEl.pause();
+            videoEl.src = '';
+            if (localVideoStream) {
+                localVideoStream.getTracks().forEach(track => track.stop());
+                localVideoStream = null;
+            }
         }
     }
 
@@ -54,8 +73,9 @@
     </button>
     <div class="video-picker-popup" class:hide={!showVideoPicker}>
         <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" on:change={playLocalVideoFile} />
-        <video id="local-vid" controls></video>
-        <button on:click={shareVideo}>Share video through screenshare stream</button>
+        <video id="local-vid" controls loop></video>
+        <Button on:click={shareVideo}>Share video</Button>
+        <Button on:click={stopVideo}>Stop video</Button>
     </div>
 </div>
 

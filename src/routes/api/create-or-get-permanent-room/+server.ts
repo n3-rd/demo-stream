@@ -57,6 +57,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
                 properties: {
                     nbf: Math.floor(scheduledDate.getTime() / 1000),
                     exp: Math.floor(scheduledDate.getTime() / 1000) + 86400, // 24 hours duration
+                enable_chat: true,
                 }
             })
         });

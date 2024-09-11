@@ -10,9 +10,9 @@ export const load: PageServerLoad = async ({ locals }) => {
     const isLoggedIn = locals.pb.authStore.isValid;
     const user = locals.pb.authStore.model;
 
-    if (!isLoggedIn) {
-     redirect(302, '/login');
-    }
+    // if (!isLoggedIn) {
+    //  redirect(302, '/login');
+    // }
 
     const representatives = await locals.pb.collection('users').getFullList({
         filter: 'representative = true',

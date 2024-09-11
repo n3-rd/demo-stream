@@ -1,11 +1,12 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { Button } from '$lib/components/ui/button';
-	import { toast } from 'svelte-sonner';
+    import { toast } from 'svelte-sonner';
     export let callObject;
 
     let videoInput;
     let localVideoStream;
+    let localAudioStream;
     let showVideoPicker = false;
 
     function playLocalVideoFile(evt) {
@@ -23,10 +24,15 @@
             } else if (typeof videoEl.captureStream == 'function') {
                 localVideoStream = videoEl.captureStream();
             }
-            // Ensure the localVideoStream contains both video and audio tracks
+            // Ensure the localVideoStream contains only video tracks
             if (localVideoStream) {
-                const audioTracks = videoEl.captureStream().getAudioTracks();
-                audioTracks.forEach(track => localVideoStream.addTrack(track));
+                const videoTracks = localVideoStream.getVideoTracks();
+                localVideoStream = new MediaStream(videoTracks);
+            }
+            // Extract audio tracks separately
+            const audioTracks = videoEl.captureStream().getAudioTracks();
+            if (audioTracks.length > 0) {
+                localAudioStream = new MediaStream(audioTracks);
             }
         });
     }
@@ -36,7 +42,7 @@
             await callObject.startScreenShare({
                 mediaStream: localVideoStream,
                 displayMediaOptions: {
-                    audio: true,
+                    audio: localAudioStream ? true : false,
                     video: true
                 }
             });
@@ -53,6 +59,10 @@
             if (localVideoStream) {
                 localVideoStream.getTracks().forEach(track => track.stop());
                 localVideoStream = null;
+            }
+            if (localAudioStream) {
+                localAudioStream.getTracks().forEach(track => track.stop());
+                localAudioStream = null;
             }
         }
         // Stop screen share

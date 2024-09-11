@@ -4,6 +4,10 @@ import * as ics from 'ics';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
 
 export const POST: RequestHandler = async ({ request, locals, url }) => {
+    if (!locals.pb.authStore.isValid) {
+        throw error(401, 'Unauthorized');
+    }
+
     try {
         const { userId, roomName, scheduled_date, day, year, month } = await request.json();
         console.log('Received payload:', { userId, roomName, scheduled_date, day, year, month });
@@ -109,8 +113,8 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
                 'Content-Disposition': 'attachment; filename="event.ics"'
             }
         });
-    } catch (err) {
-        console.error('Failed to create room:', err);
-        throw error(err.status || 500, err.message || 'Failed to create room');
+    } catch (error) {
+        console.error('Failed to create room:', error);
+        throw error(error.status || 500, error.message || 'Failed to create room');
     }
 };

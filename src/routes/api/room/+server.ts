@@ -1,13 +1,16 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
 
-
 export const POST: RequestHandler = async ({ request, locals }) => {
-    // const { userName } = await request.json();
-    const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
+    if (!locals.pb.authStore.isValid) {
+        return new Response(JSON.stringify({
+            success: false,
+            message: 'Unauthorized'
+        }), { status: 401 });
+    }
+
     const user = locals.pb.authStore.model;
     const username = user.name;
-
     // add 1 day room expiration
     const exp = Math.round(Date.now() / 1000) + 60 * 60 * 24;
     const options = {
@@ -21,7 +24,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const res = await fetch('https://api.daily.co/v1/rooms', {
             method: 'POST',
             headers: {
-                Authorization: `Bearer ${DAILY_API_KEY}`,
+                Authorization: `Bearer ${PUBLIC_DAILY_API_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(options)

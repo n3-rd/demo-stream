@@ -18,27 +18,31 @@
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
-	import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
-	import Share from '$lib/components/room/share.svelte';
-
+    import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
+    import Share from '$lib/components/room/share.svelte';
+    
     export let data;
+    
+    if (data.isLoggedIn == false && browser) {
+        goto('/login');
+    }
+    
     let user = data.user;
-    let name = user.name;
+    let name = user ? user.name : '';
     let representatives = data.representatives;
-
+    
     const host = $page.url.pathname.split('/').pop().split('-').pop();
-    console.log('host', host)
-
-    const isHost = host === user.id;
-
-
+    console.log('host', host);
+    
+    const isHost = host === (user ? user.id : '');
+    
     let callObject;
     let participants = [];
     let loading = true;
     let deviceError = false;
     let hasNewNotification = false;
     $: screensList = participants?.filter((p) => p?.screen);
-
+    
     const clearNotification = () => (hasNewNotification = false);
     const joinURL = $page.url.href;
 

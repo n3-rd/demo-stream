@@ -21,6 +21,11 @@
             } else if (typeof videoEl.captureStream == 'function') {
                 localVideoStream = videoEl.captureStream();
             }
+            // Ensure the localVideoStream contains both video and audio tracks
+            if (localVideoStream) {
+                const audioTracks = videoEl.captureStream().getAudioTracks();
+                audioTracks.forEach(track => localVideoStream.addTrack(track));
+            }
         });
     }
 

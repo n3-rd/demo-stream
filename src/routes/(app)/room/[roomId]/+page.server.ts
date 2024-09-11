@@ -1,22 +1,22 @@
 import { json, redirect, type RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
 import { Actions } from '@sveltejs/kit';
+import type { PageServerLoad } from "./$types";
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
 
 
-export const load = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals }) => {
     const isLoggedIn = locals.pb.authStore.isValid;
     const user = locals.pb.authStore.model;
+
+    if (!isLoggedIn) {
+     redirect(302, '/login');
+    }
+
     const representatives = await locals.pb.collection('users').getFullList({
         filter: 'representative = true',
     });
-    console.log('Load function called:', { isLoggedIn, user });
-
-    if (!isLoggedIn) {
-    //redirect to login page
-    redirect(302, '/login');  
-    }
 
     return {
         isLoggedIn,

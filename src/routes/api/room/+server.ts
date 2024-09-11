@@ -16,7 +16,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const options = {
         properties: {
             exp,
-            userName: username
+            userName: username,
+            enable_chat: true,
         }
     };
 

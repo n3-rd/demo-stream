@@ -54,6 +54,13 @@
                 localVideoStream = null;
             }
         }
+        // Stop screen share
+        callObject.stopScreenShare();
+
+        // Reset the video input element to allow re-uploading the same file
+        if (videoInput) {
+            videoInput.value = '';
+        }
     }
 
     function toggleVideoPicker() {

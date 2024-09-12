@@ -25,7 +25,7 @@
     }
     $: {
         if (!screen && videoTrack?.state === 'playable' && !videoTrackSet) {
-            videoSrc = new MediaStream([videoTrack.persistentTrack]);
+            videoSrc = new MediaStream([videoTrack.persistentTrack, participant?.tracks?.audio?.persistentTrack]);
             videoTrackSet = true;
         } else if (screen && screenTrack?.state === 'playable' && !videoTrackSet) {
             videoSrc = new MediaStream([screenTrack.track, screenAudioTrack.track]);

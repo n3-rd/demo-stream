@@ -33,11 +33,11 @@
         }
     }
 
-    let audioTrackSet = false;
+    // let audioTrackSet = false;
     let audioSrc;
-    $: audioTrack = participant?.tracks?.audio;
+    $: audioTrack = screen?.tracks?.screenAudio;
     $: {
-        if (audioTrack?.state === 'playable' && !audioTrackSet) {
+        if (audioTrack?.state === 'playable') {
             audioSrc = new MediaStream([audioTrack.persistentTrack]);
             audioTrackSet = true;
         }

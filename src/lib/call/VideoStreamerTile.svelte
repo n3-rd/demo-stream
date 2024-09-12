@@ -52,7 +52,8 @@
                     await callObject.startScreenShare({
                         mediaStream: combinedStream,
                         videoSource: 'mediaStream',
-                        audioSource: localAudioStream ? 'mediaStream' : false
+                        audioSource: localAudioStream ? 'mediaStream' : false,
+                        systemAudio: 'include'
                     });
                 } catch (error) {
                     console.error('Error starting screen share:', error);

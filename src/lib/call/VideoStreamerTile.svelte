@@ -2,12 +2,13 @@
     import { onMount } from 'svelte';
     import { Button } from '$lib/components/ui/button';
     import { toast } from 'svelte-sonner';
+    import * as Popover from "$lib/components/ui/popover";
+
     export let callObject;
 
     let videoInput;
     let localVideoStream;
     let localAudioStream;
-    let showVideoPicker = false;
 
     function playLocalVideoFile(evt) {
         let videoEl = document.getElementById('local-vid');
@@ -37,33 +38,34 @@
         });
     }
 
-        async function shareVideo() {
-            console.log('shareVideo() called');
-            if (localVideoStream) {
-                try {
-                    console.log('Combining video and audio streams');
-                    // Combine video and audio streams
-                    const combinedStream = new MediaStream([
-                        ...localVideoStream.getVideoTracks(),
-                        ...(localAudioStream ? localAudioStream.getAudioTracks() : [])
-                    ]);
+    async function shareVideo() {
+        console.log('shareVideo() called');
+        if (localVideoStream) {
+            try {
+                console.log('Combining video and audio streams');
+                // Combine video and audio streams
+                const combinedStream = new MediaStream([
+                    ...localVideoStream.getVideoTracks(),
+                    ...(localAudioStream ? localAudioStream.getAudioTracks() : [])
+                ]);
 
-                    console.log('Starting screen share');
-                    await callObject.startScreenShare({
-                        mediaStream: combinedStream,
-                        videoSource: 'mediaStream',
-                        audioSource: localAudioStream ? 'mediaStream' : false,
-                        systemAudio: 'include'
-                    });
-                } catch (error) {
-                    console.error('Error starting screen share:', error);
-                    toast('Failed to start screen share: ' + error.message);
-                }
-            } else {
-                console.log('No video stream available to share');
-                toast('No video stream available to share.');
+                console.log('Starting screen share');
+                await callObject.startScreenShare({
+                    mediaStream: combinedStream,
+                    videoSource: 'mediaStream',
+                    audioSource: localAudioStream ? 'mediaStream' : false,
+                    systemAudio: 'include'
+                });
+            } catch (error) {
+                console.error('Error starting screen share:', error);
+                toast('Failed to start screen share: ' + error.message);
             }
+        } else {
+            console.log('No video stream available to share');
+            toast('No video stream available to share.');
         }
+    }
+
     function stopVideo() {
         let videoEl = document.getElementById('local-vid');
         if (videoEl) {
@@ -87,10 +89,6 @@
         }
     }
 
-    function toggleVideoPicker() {
-        showVideoPicker = !showVideoPicker;
-    }
-
     onMount(() => {
         if (videoInput) {
             videoInput.addEventListener('change', playLocalVideoFile, false);
@@ -98,33 +96,27 @@
     });
 </script>
 
-<div class="video-picker-container z-[999]">
-    <button class="toggle-button" on:click={toggleVideoPicker}>
-        {showVideoPicker ? 'Hide Video Picker' : 'Show Video Picker'}
-    </button>
-    <div class="video-picker-popup" class:hide={!showVideoPicker}>
-        <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" on:change={playLocalVideoFile} />
-        <video id="local-vid" controls loop></video>
-        <Button on:click={shareVideo}>Share video</Button>
-        <Button on:click={stopVideo}>Stop video</Button>
-    </div>
-</div>
+<Popover.Root>
+    <Popover.Trigger>
+        <div class="w-full absolute left-0 flex">
+            <Button variant="outline" class="bg-white text-black hover:bg-gray-100 mb-2 z-[999]">
+                Show Video Picker
+            </Button>
+        </div>
+    </Popover.Trigger>
+    <Popover.Content class="w-full bg-transparent shadow-none mt-4 border-none">
+        <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit">
+            <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
+            <video id="local-vid" controls loop class="w-full max-w-xs mb-2"></video>
+            <div class="flex space-x-2">
+                <Button on:click={shareVideo}>Share video</Button>
+                <Button on:click={stopVideo}>Stop video</Button>
+            </div>
+        </div>
+    </Popover.Content>
+</Popover.Root>
 
 <style>
-    .video-picker-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        margin: 10px;
-    }
-    .toggle-button {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 10px;
-        border-radius: 5px;
-        cursor: pointer;
-    }
     .video-picker-popup {
         background-color: white;
         border: 1px solid #ccc;
@@ -132,9 +124,6 @@
         padding: 10px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         margin-top: 10px;
-    }
-    .video-picker-popup.hide {
-        display: none;
     }
     video {
         width: 100%;

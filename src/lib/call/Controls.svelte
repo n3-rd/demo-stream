@@ -9,6 +9,8 @@
 	import micOffIcon from './assets/mic_off.svg';
 	import screenIcon from './assets/screen.svg';
 	import leaveIcon from './assets/leave_call.svg';
+    import { Button } from '$lib/components/ui/button';
+
 
 	export let callObject;
 	export let screensList;
@@ -80,9 +82,9 @@
 		{/if}
 	</div>
 	<!-- End call locally and return to home screen -->
-	<button class="leave" on:click={leaveCall}>
+	<Button class="leave" on:click={leaveCall} variant="destructive" >
 		<img src={leaveIcon} alt="Leave call" />
-	</button>
+	</Button>
 </div>
 
 <style>
@@ -91,7 +93,7 @@
 	}
 	.controls-container {
 		position: absolute;
-		bottom: 12px;
+		bottom: 40px;
 		left: 8px;
 		justify-content: space-between;
 		display: flex;

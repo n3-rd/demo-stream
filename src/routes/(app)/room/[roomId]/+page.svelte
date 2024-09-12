@@ -43,6 +43,7 @@
     let hasNewNotification = false;
     $: screensList = participants?.filter((p) => p?.screen);
     
+    
     const clearNotification = () => (hasNewNotification = false);
     const joinURL = $page.url.href;
 
@@ -85,9 +86,11 @@
     };
 
     const handleAppMessage = (e) => {
+        console.log('new app message', e?.data);
         if (!e?.data?.name && !e?.data?.text) return;
         // $chatMessages = [...$chatMessages, e?.data];
         chatMessages.update((messages) => [...messages, e?.data]);
+        console.log('chatMessages', $chatMessages);
         hasNewNotification = true;
     };
 
@@ -144,7 +147,22 @@
         }
 
         const url = `https://${domain}.daily.co/${roomName}`;
-        callObject = daily.createCallObject({ url, userName: name });
+        callObject = daily.createCallObject({
+            url,
+            userName: name,
+            dailyConfig: {
+                videoSource: {
+                    facingMode: 'user',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 60 }
+                },
+                audioSource: true,
+                bandwidth: {
+                    kbs: 4000 // Adjust this value based on your requirements
+                }
+            }
+        });
         callObject
             .on('joining-meeting', updateParticpants)
             .on('joined-meeting', handleJoinedMeeting)
@@ -212,7 +230,7 @@
         {#if participants?.length === 1}
             <WaitingForOthersTile />
         {/if}
-        <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-30">
+        <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-[999] bg-white py-4 px-2">
             <Dialog.Root>
                 <Dialog.Trigger>
                     <Button variant="ghost" size="icon" class="w-full">

@@ -60,17 +60,20 @@
             playsInline
             use:srcObject={videoSrc}
         />
+        <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
+            <track kind="captions" />
+        </audio>
     {/if}
 
     {#if !participant?.video && (!screen || screen?.length === 0)}
         <NoVideoPlaceholder {participant} />
     {/if}
-
+<!-- 
     {#if !participant?.local && audioSrc}
         <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
             <track kind="captions" />
         </audio>
-    {/if}
+    {/if} -->
 
     {#if participant?.video && !participant?.local}
         <span class="audio-icon">

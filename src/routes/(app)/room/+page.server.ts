@@ -28,7 +28,8 @@ export const actions = {
         const options = {
             properties: {
                 exp,
-                user_id: userId
+                user_id: userId,
+                enable_adaptive_simulcast: false,
             }
         };
 

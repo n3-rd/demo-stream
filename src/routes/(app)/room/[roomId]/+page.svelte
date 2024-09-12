@@ -147,7 +147,22 @@
         }
 
         const url = `https://${domain}.daily.co/${roomName}`;
-        callObject = daily.createCallObject({ url, userName: name });
+        callObject = daily.createCallObject({
+            url,
+            userName: name,
+            dailyConfig: {
+                videoSource: {
+                    facingMode: 'user',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 60 }
+                },
+                audioSource: true,
+                bandwidth: {
+                    kbs: 4000 // Adjust this value based on your requirements
+                }
+            }
+        });
         callObject
             .on('joining-meeting', updateParticpants)
             .on('joined-meeting', handleJoinedMeeting)

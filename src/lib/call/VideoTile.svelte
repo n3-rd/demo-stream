@@ -17,27 +17,21 @@
     $: videoTrack = participant?.tracks?.video;
     $: screenTrack = screen?.tracks?.screenVideo;
     $: screenAudioTrack = screen?.tracks?.screenAudio;
-    $:{
-        console.log('videoTrack', videoTrack);
-        console.log('screenTrack', screenTrack);
-        console.log('screenAudioTrack', screenAudioTrack);
-
-    }
     $: {
         if (!screen && videoTrack?.state === 'playable' && !videoTrackSet) {
-            videoSrc = new MediaStream([videoTrack.persistentTrack, participant?.tracks?.audio?.persistentTrack]);
+            videoSrc = new MediaStream([videoTrack.persistentTrack]);
             videoTrackSet = true;
-        } else if (screen && screenTrack?.state === 'playable' && !videoTrackSet) {
+        } else if (screen && screenTrack?.state === 'playable' && screenAudioTrack?.state === 'playable' && !videoTrackSet) {
             videoSrc = new MediaStream([screenTrack.track, screenAudioTrack.track]);
             videoTrackSet = true;
         }
     }
 
-    // let audioTrackSet = false;
+    let audioTrackSet = false;
     let audioSrc;
-    $: audioTrack = screen?.tracks?.screenAudio;
+    $: audioTrack = participant?.tracks?.audio;
     $: {
-        if (audioTrack?.state === 'playable') {
+        if (audioTrack?.state === 'playable' && !audioTrackSet) {
             audioSrc = new MediaStream([audioTrack.persistentTrack]);
             audioTrackSet = true;
         }
@@ -66,20 +60,17 @@
             playsInline
             use:srcObject={videoSrc}
         />
-        <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
-            <track kind="captions" />
-        </audio>
     {/if}
 
     {#if !participant?.video && (!screen || screen?.length === 0)}
         <NoVideoPlaceholder {participant} />
     {/if}
 
-    <!-- {#if !participant?.local && audioSrc}
+    {#if !participant?.local && audioSrc}
         <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
             <track kind="captions" />
         </audio>
-    {/if} -->
+    {/if}
 
     {#if participant?.video && !participant?.local}
         <span class="audio-icon">
@@ -94,7 +85,7 @@
         {/if}
     {/if}
 
-    <div class="participant-name">{name}</div>
+    <div class="participant-name">{participant.user_name}</div>
 </div>
 
 <style>

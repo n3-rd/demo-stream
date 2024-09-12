@@ -85,7 +85,9 @@
         {/if}
     {/if}
 
-    <div class="participant-name">{participant.user_name}</div>
+    {#if participant?.user_name}
+        <div class="participant-name">{participant.user_name}</div>
+    {/if}
 </div>
 
 <style>
@@ -95,6 +97,9 @@
         margin: 10px 20px;
         min-height: 100px;
         display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
     .video-tile.screen {
         flex: 0;

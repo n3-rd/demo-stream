@@ -17,12 +17,18 @@
     $: videoTrack = participant?.tracks?.video;
     $: screenTrack = screen?.tracks?.screenVideo;
     $: screenAudioTrack = screen?.tracks?.screenAudio;
+    $:{
+        console.log('videoTrack', videoTrack);
+        console.log('screenTrack', screenTrack);
+        console.log('screenAudioTrack', screenAudioTrack);
+
+    }
     $: {
         if (!screen && videoTrack?.state === 'playable' && !videoTrackSet) {
             videoSrc = new MediaStream([videoTrack.persistentTrack]);
             videoTrackSet = true;
         } else if (screen && screenTrack?.state === 'playable' && !videoTrackSet) {
-            videoSrc = new MediaStream([screenTrack.track, audioTrack.track]);
+            videoSrc = new MediaStream([screenTrack.track, screenAudioTrack.track]);
             videoTrackSet = true;
         }
     }

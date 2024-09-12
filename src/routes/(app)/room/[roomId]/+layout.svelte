@@ -1,15 +1,9 @@
 <script lang="ts">
-	import '../../../../app.css';
-  
+    import '../../../../app.css';
 </script>
-<main
-class="min-h-[90vh] overflow-hidden w-full flex"
->
-<!-- <div class="w-[15%]  bg-green-300">
 
-</div> -->
-<div class="w-full h-full overflow-y-scroll">
-    <slot/>
-</div>
-
+<main class="min-h-screen overflow-hidden w-full flex flex-col h-screen">
+    <div class="w-full flex-grow overflow-y-auto h-full">
+        <slot />
+    </div>
 </main>

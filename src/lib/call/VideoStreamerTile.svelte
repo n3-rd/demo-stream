@@ -33,44 +33,36 @@
             const audioTracks = videoEl.captureStream().getAudioTracks();
             if (audioTracks.length > 0) {
                 localAudioStream = new MediaStream(audioTracks);
-                console.log('Audio tracks captured:', audioTracks);
-                // Attach the audio stream to the video element
-                videoEl.srcObject = new MediaStream([...videoEl.srcObject.getVideoTracks(), ...audioTracks]);
-            } else {
-                console.log('No audio tracks found');
             }
-        }).catch(error => {
-            console.error('Error playing video file:', error);
         });
     }
 
-    async function shareVideo() {
-        console.log('shareVideo() called');
-        if (localVideoStream) {
-            try {
-                console.log('Combining video and audio streams');
-                // Combine video and audio streams
-                const combinedStream = new MediaStream([
-                    ...localVideoStream.getVideoTracks(),
-                    ...(localAudioStream ? localAudioStream.getAudioTracks() : [])
-                ]);
+        async function shareVideo() {
+            console.log('shareVideo() called');
+            if (localVideoStream) {
+                try {
+                    console.log('Combining video and audio streams');
+                    // Combine video and audio streams
+                    const combinedStream = new MediaStream([
+                        ...localVideoStream.getVideoTracks(),
+                        ...(localAudioStream ? localAudioStream.getAudioTracks() : [])
+                    ]);
 
-                console.log('Starting screen share');
-                await callObject.startScreenShare({
-                    mediaStream: combinedStream,
-                    videoSource: 'mediaStream',
-                    audioSource: localAudioStream ? 'mediaStream' : false
-                });
-            } catch (error) {
-                console.error('Error starting screen share:', error);
-                toast('Failed to start screen share: ' + error.message);
+                    console.log('Starting screen share');
+                    await callObject.startScreenShare({
+                        mediaStream: combinedStream,
+                        videoSource: 'mediaStream',
+                        audioSource: localAudioStream ? 'mediaStream' : false
+                    });
+                } catch (error) {
+                    console.error('Error starting screen share:', error);
+                    toast('Failed to start screen share: ' + error.message);
+                }
+            } else {
+                console.log('No video stream available to share');
+                toast('No video stream available to share.');
             }
-        } else {
-            console.log('No video stream available to share');
-            toast('No video stream available to share.');
         }
-    }
-
     function stopVideo() {
         let videoEl = document.getElementById('local-vid');
         if (videoEl) {

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
     import { chatMessages } from '../../store';
@@ -15,6 +15,19 @@
     export let hasNewNotification;
     let newText = '';
     let chatIsOpen = false;
+    let messages = [];
+
+    // Poll chatMessages store every second
+    let interval;
+    onMount(() => {
+        interval = setInterval(() => {
+            messages = $chatMessages;
+        }, 1000);
+    });
+
+    onDestroy(() => {
+        clearInterval(interval);
+    });
 
     $: {
         if (hasNewNotification && chatIsOpen) {
@@ -54,7 +67,7 @@
         </Sheet.Header>
         <div class="flex flex-col w-full h-full">
             <div class="flex-grow flex flex-col p-4 overflow-y-scroll">
-                {#each $chatMessages as message}
+                {#each messages as message}
                     <p transition:slide={{ easing: quintOut }} class="message">
                         <span class="text-gray-700 font-semibold">{message.name}</span>: {message.text}
                     </p>

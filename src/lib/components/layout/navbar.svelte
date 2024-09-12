@@ -18,6 +18,7 @@
     let pageData = $page.url;
     let isInMeeting: boolean;
     let representatives = [];
+    let isJoinDialogOpen = false;
 
     $: {
         console.log(pageData);
@@ -110,9 +111,9 @@
         </Button>
     </form>
 
-    <Dialog.Root>
+    <Dialog.Root open={isJoinDialogOpen} on:close={() => isJoinDialogOpen = false}>
         <Dialog.Trigger>
-            <Button class="bg-[#ECEFF3] text-primary hover:text-white">
+            <Button class="bg-[#ECEFF3] text-primary hover:text-white" on:click={() => isJoinDialogOpen = true}>
                 Join a Demo Room
             </Button>
         </Dialog.Trigger>
@@ -120,7 +121,7 @@
             <Dialog.Header>
                 <Dialog.Title>Enter URL</Dialog.Title>
             </Dialog.Header>
-                      <form use:form
+            <form use:form
                 action='/?/join-room'
                 method='POST'
                 use:enhance={() => {
@@ -128,10 +129,9 @@
                         console.log('join results', result);
                         if (result.data.url) {
                             toast.success('Successfully joined');
-      const roomName = result.data.url.split('/').at(-1);
-
-      goto(`/room/${roomName}`);
-
+                            const roomName = result.data.url.split('/').at(-1);
+                            goto(`/room/${roomName}`);
+                            isJoinDialogOpen = false;
                         } else if (result.status === 400) {
                             toast('Bad request');
                         } else if (result.status === 500) {
@@ -217,9 +217,9 @@
             </Dialog.Content>
         </Dialog.Root>
 
-        <Dialog.Root>
+        <Dialog.Root open={isJoinDialogOpen} on:close={() => isJoinDialogOpen = false}>
             <Dialog.Trigger>
-                <Button class="bg-[#ECEFF3] text-primary hover:text-white">
+                <Button class="bg-[#ECEFF3] text-primary hover:text-white" on:click={() => isJoinDialogOpen = true}>
                     Join a Demo Room
                 </Button>
             </Dialog.Trigger>
@@ -236,6 +236,7 @@
                             if (result.success && result.url) {
                                 toast.success('Successfully joined');
                                 goto(result.url);
+                                isJoinDialogOpen = false;
                             } else if (result.status === 400) {
                                 toast('Bad request');
                             } else if (result.status === 500) {

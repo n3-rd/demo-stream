@@ -85,7 +85,7 @@
         {/if}
     {/if}
 
-    <div class="participant-name">{name}</div>
+    <div class="participant-name">{participant.user_name}</div>
 </div>
 
 <style>

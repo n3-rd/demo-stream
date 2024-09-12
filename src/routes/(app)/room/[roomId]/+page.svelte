@@ -86,7 +86,8 @@
 
     const handleAppMessage = (e) => {
         if (!e?.data?.name && !e?.data?.text) return;
-        $chatMessages = [...$chatMessages, e?.data];
+        // $chatMessages = [...$chatMessages, e?.data];
+        chatMessages.update((messages) => [...messages, e?.data]);
         hasNewNotification = true;
     };
 

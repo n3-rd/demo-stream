@@ -4,26 +4,37 @@
     import micOffIcon from './assets/mic_off.svg';
     import NoVideoPlaceholder from './NoVideoPlaceholder.svelte';
     import VideoStreamerTile from './VideoStreamerTile.svelte';
+    import { Button } from '$lib/components/ui/button';
 
     export let participant;
     export let callObject;
-    export let screen;
-    export let screensList;
     export let host = false;
     export let name;
 
     let videoTrackSet = false;
     let videoSrc;
+    let isScreenSharing = false;
+
     $: videoTrack = participant?.tracks?.video;
-    $: screenTrack = screen?.tracks?.screenVideo;
-    $: screenAudioTrack = screen?.tracks?.screenAudio;
+    $: screenVideoTrack = participant?.tracks?.screenVideo;
+    $: screenAudioTrack = participant?.tracks?.screenAudio;
+
     $: {
-        if (!screen && videoTrack?.state === 'playable' && !videoTrackSet) {
+        if (screenVideoTrack?.state === 'playable') {
+            isScreenSharing = true;
+            videoSrc = new MediaStream([screenVideoTrack.persistentTrack]);
+            if (screenAudioTrack?.state === 'playable') {
+                videoSrc.addTrack(screenAudioTrack.persistentTrack);
+            }
+            videoTrackSet = true;
+        } else if (videoTrack?.state === 'playable') {
+            isScreenSharing = false;
             videoSrc = new MediaStream([videoTrack.persistentTrack]);
             videoTrackSet = true;
-        } else if (screen && screenTrack?.state === 'playable' && screenAudioTrack?.state === 'playable' && !videoTrackSet) {
-            videoSrc = new MediaStream([screenTrack.track, screenAudioTrack.track]);
-            videoTrackSet = true;
+        } else {
+            isScreenSharing = false;
+            videoSrc = null;
+            videoTrackSet = false;
         }
     }
 
@@ -47,47 +58,88 @@
             }
         };
     }
+
+    // Function to toggle screen sharing
+    async function toggleScreenShare() {
+        if (callObject) {
+            try {
+                if (isScreenSharing) {
+                    console.log('Screen sharing active, stopping screen share');
+                    await callObject.stopScreenShare();
+                    
+                    console.log('Restoring camera video');
+                    // Use the Daily.co API to switch back to the camera
+                    await callObject.setLocalVideo(true);
+                } else {
+                    console.log('Starting screen share');
+                    await callObject.startScreenShare();
+                }
+                
+                // Wait for a moment to allow the changes to propagate
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Update local state based on the new call state
+                const participants = callObject.participants();
+                const localParticipant = participants.local;
+                
+                isScreenSharing = !!localParticipant.screens[0];
+                videoTrack = localParticipant.tracks.video;
+                screenVideoTrack = localParticipant.tracks.screenVideo;
+                
+                // Force a re-evaluation of the reactive statement
+                videoTrack = videoTrack;
+                screenVideoTrack = screenVideoTrack;
+            } catch (error) {
+                console.error('Error toggling screen share:', error);
+            }
+        }
+    }
 </script>
 
-<div class={screen ? 'video-tile screen' : 'video-tile'}>
+
+<div class="video-tile">
     {#if !videoSrc}
         <NoVideoPlaceholder {participant} />
     {:else}
         <video
-            id={`video-${participant?.session_id || screen?.session_id}`}
+            id={`video-${participant?.session_id}`}
+            class={isScreenSharing ? 'screen-share' : ''}
             autoPlay
-            muted
+            muted={participant?.local}
             playsInline
             use:srcObject={videoSrc}
         />
     {/if}
 
-    {#if !participant?.video && (!screen || screen?.length === 0)}
+    {#if !participant?.video && !isScreenSharing}
         <NoVideoPlaceholder {participant} />
     {/if}
 
-    {#if !participant?.local && audioSrc}
+    {#if !participant?.local && audioSrc && !isScreenSharing}
         <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
             <track kind="captions" />
         </audio>
     {/if}
 
-    {#if participant?.video && !participant?.local}
+    {#if participant?.video && !participant?.local && !isScreenSharing}
         <span class="audio-icon">
             <img src={participant?.audio ? micOnIcon : micOffIcon} alt="Toggle local audio" />
         </span>
     {/if}
 
     {#if participant?.local}
-        <Controls {callObject} {screensList} />
+        <Controls {callObject} {isScreenSharing} {toggleScreenShare} />
         {#if host}
             <VideoStreamerTile {callObject} />
         {/if}
     {/if}
 
-    {#if participant?.user_name}
-        <div class="participant-name">{participant.user_name}</div>
-    {/if}
+    <div class="participant-name">
+        {participant?.user_name}
+        {#if isScreenSharing}
+            (Screen)
+        {/if}
+    </div>
 </div>
 
 <style>
@@ -96,21 +148,21 @@
         flex: 1 1 350px;
         margin: 10px 20px;
         min-height: 100px;
+        max-height: 350px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-    }
-    .video-tile.screen {
-        flex: 0;
-        max-height: 50vh;
+        overflow: hidden;
     }
     video {
         width: 100%;
+        height: 100%;
+        object-fit: cover;
         border-radius: 8px;
     }
-    .screen video {
-        max-height: inherit;
+    video.screen-share {
+        object-fit: contain;
     }
     .audio-icon {
         position: absolute;

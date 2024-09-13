@@ -4,6 +4,7 @@
     import micOffIcon from './assets/mic_off.svg';
     import NoVideoPlaceholder from './NoVideoPlaceholder.svelte';
     import VideoStreamerTile from './VideoStreamerTile.svelte';
+    import { Button } from '$lib/components/ui/button';
 
     export let participant;
     export let callObject;
@@ -26,11 +27,11 @@
                 videoSrc.addTrack(screenAudioTrack.persistentTrack);
             }
             videoTrackSet = true;
-        } else if (videoTrack?.state === 'playable' && !videoTrackSet) {
+        } else if (videoTrack?.state === 'playable') {
             isScreenSharing = false;
             videoSrc = new MediaStream([videoTrack.persistentTrack]);
             videoTrackSet = true;
-        } else if (!videoTrack && !screenVideoTrack) {
+        } else {
             isScreenSharing = false;
             videoSrc = null;
             videoTrackSet = false;
@@ -57,7 +58,44 @@
             }
         };
     }
+
+    // Function to toggle screen sharing
+    async function toggleScreenShare() {
+        if (callObject) {
+            try {
+                if (isScreenSharing) {
+                    console.log('Screen sharing active, stopping screen share');
+                    await callObject.stopScreenShare();
+                    
+                    console.log('Restoring camera video');
+                    // Use the Daily.co API to switch back to the camera
+                    await callObject.setLocalVideo(true);
+                } else {
+                    console.log('Starting screen share');
+                    await callObject.startScreenShare();
+                }
+                
+                // Wait for a moment to allow the changes to propagate
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Update local state based on the new call state
+                const participants = callObject.participants();
+                const localParticipant = participants.local;
+                
+                isScreenSharing = !!localParticipant.screens[0];
+                videoTrack = localParticipant.tracks.video;
+                screenVideoTrack = localParticipant.tracks.screenVideo;
+                
+                // Force a re-evaluation of the reactive statement
+                videoTrack = videoTrack;
+                screenVideoTrack = screenVideoTrack;
+            } catch (error) {
+                console.error('Error toggling screen share:', error);
+            }
+        }
+    }
 </script>
+
 
 <div class="video-tile">
     {#if !videoSrc}
@@ -90,7 +128,7 @@
     {/if}
 
     {#if participant?.local}
-        <Controls {callObject} />
+        <Controls {callObject} {isScreenSharing} {toggleScreenShare} />
         {#if host}
             <VideoStreamerTile {callObject} />
         {/if}

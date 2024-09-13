@@ -2,8 +2,28 @@
 	import Navbar from '$lib/components/layout/navbar.svelte';
 	import { Toaster, toast } from 'svelte-sonner';
 	import '../../app.css';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
 	import { browser } from '$app/environment';
+	import { page } from '$app/stores';
+	let pageRoute = $page;
+	let inRoom = false;
+
+	afterNavigate((res)=>{
+		// console.log('before navigate', res);
+		pageRoute = $page;
+		console.log('after navigate', pageRoute);
+	})
+
+
+$:{
+	console.log('layout route', pageRoute);
+	if(pageRoute.route.id === "/(app)/room/[roomId]"){
+		inRoom = true;
+	}
+	else{
+		inRoom = false;
+	}
+}
 	export let data;
 
 	const loggedIn = data.isLoggedIn;
@@ -18,6 +38,6 @@
 <Toaster />
 
 <div class="div bg-bgfill">
-	<Navbar {loggedIn} {user} {representatives} />
+	<Navbar {loggedIn} {user} {representatives} {inRoom} />
 	<slot></slot>
 </div>

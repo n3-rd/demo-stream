@@ -146,17 +146,29 @@
             return;
         }
 
+        // Check for webcam availability
+        let videoSource = false;
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const hasWebcam = devices.some(device => device.kind === 'videoinput');
+            if (hasWebcam) {
+                videoSource = {
+                    facingMode: 'user',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 60 }
+                };
+            }
+        } catch (error) {
+            console.error('Error checking for webcam:', error);
+        }
+
         const url = `https://${domain}.daily.co/${roomName}`;
         callObject = daily.createCallObject({
             url,
             userName: name,
             dailyConfig: {
-                videoSource: {
-                    facingMode: 'user',
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                    frameRate: { ideal: 60 }
-                },
+                videoSource,
                 audioSource: true,
                 bandwidth: {
                     kbs: 4000 // Adjust this value based on your requirements
@@ -170,7 +182,7 @@
             .on('participant-left', updateParticpants)
             .on('participant-updated', updateParticpants)
             .on('error', handleError)
-            .on('camera-error', handleDeviceError)
+            // .on('camera-error', handleDeviceError)
             .on('app-message', handleAppMessage);
 
         try {
@@ -200,7 +212,7 @@
             .off('track-stopped', updateParticpants)
             .off('participant-left', updateParticpants)
             .off('error', handleError)
-            .off('camera-error', handleDeviceError)
+            // .off('camera-error', handleDeviceError)
             .off('app-message', handleAppMessage);
     });
 </script>

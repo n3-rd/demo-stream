@@ -104,7 +104,7 @@
             </Button>
         </div>
     </Popover.Trigger>
-    <Popover.Content class="w-full bg-transparent shadow-none mt-4 border-none">
+    <Popover.Content class="w-full bg-transparent shadow-none mt-4 border-none" side="right" avoidCollisions={true}>
         <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit">
             <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
             <video id="local-vid" controls loop class="w-full max-w-xs mb-2"></video>

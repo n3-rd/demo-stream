@@ -1,5 +1,6 @@
 <script lang="ts">
     import '../../../../app.css';
+    
 </script>
 
 <main class="min-h-screen overflow-hidden w-full flex flex-col h-screen">

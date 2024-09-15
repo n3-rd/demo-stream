@@ -3,6 +3,7 @@
     import { Button } from '$lib/components/ui/button';
     import { toast } from 'svelte-sonner';
     import * as Popover from "$lib/components/ui/popover";
+	import { pickerOpen } from '../../store.js';
 
     export let callObject;
 
@@ -94,18 +95,27 @@
             videoInput.addEventListener('change', playLocalVideoFile, false);
         }
     });
+
+    $:{
+        console.log('pickerOpen', $pickerOpen);
+    }
 </script>
 
-<Popover.Root>
+
+
+<Popover.Root
+open={$pickerOpen}
+onOpenChange={(isOpen) => pickerOpen.set(isOpen)}
+>
     <Popover.Trigger>
-        <div class="w-full absolute left-0 flex">
+        <!-- <div class="w-full absolute left-0 flex">
             <Button variant="outline" class="bg-white text-black hover:bg-gray-100 mb-2 z-[999]">
                 Show Video Picker
             </Button>
-        </div>
+        </div> -->
     </Popover.Trigger>
-    <Popover.Content class="w-full bg-transparent shadow-none mt-4 border-none" side="right" avoidCollisions={true}>
-        <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit">
+    <Popover.Content class="bg-transparent shadow-none border-none" side="right" avoidCollisions={true}>
+        <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-4 right-40">
             <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
             <video id="local-vid" controls loop class="w-full max-w-xs mb-2"></video>
             <div class="flex space-x-2">
@@ -123,7 +133,7 @@
         border-radius: 5px;
         padding: 10px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        margin-top: 10px;
+        /* margin-top: 10px; */
     }
     video {
         width: 100%;

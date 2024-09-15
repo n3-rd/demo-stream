@@ -7,12 +7,11 @@
 	import { invalidateAll } from '$app/navigation';
     export let joinURL: string;
 </script>
-<div class="w-[400px] rounded-lg bg-white p-6 shadow-lg">
+<div class="w-full rounded-lg  p-6 ">
     <!-- Dialog content styled to match the provided image -->
 
     <div class="mb-4 flex items-center justify-between">
         <h2 class="text-lg font-semibold">Invite People</h2>
-        <button class="text-gray-400 hover:text-gray-600">✕</button>
     </div>
 
     <!-- Link Input -->
@@ -42,7 +41,7 @@
 
     <!-- Email/SMS Tabs -->
     <div class="mb-4 flex border-b">
-        <button class="flex-1 border-b-2 border-blue-500 py-2 text-center text-gray-700"
+        <button class="flex-1 border-b-2 border-primary py-2 text-center text-gray-700"
             >Email</button
         >
     </div>
@@ -88,7 +87,7 @@
             />
     </div>
 
-    <Button class="w-full rounded-lg bg-blue-500 py-2 text-white"
+    <Button class="w-full rounded-lg bg-primary py-2 text-white"
     type="submit"
     >Invite</Button>
 </form>

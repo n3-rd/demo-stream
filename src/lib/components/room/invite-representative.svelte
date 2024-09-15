@@ -6,9 +6,14 @@
 
     export let representatives;
     let showRepresentativeList = false;
+    let dialogOpen = false;
 
     function showNextModal() {
         showRepresentativeList = true;
+    }
+
+    function handleClose() {
+        dialogOpen = false;
     }
 </script>
 
@@ -29,12 +34,14 @@
 {:else}
     <!-- Second Modal -->
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white p-6 w-full">
+        <div class="bg-white lg:p-6 w-full">
             <h2 class="text-lg font-semibold mb-4 text-center">Innovated Building Group Representative</h2>
-            <div class="flex space-x-4 mb-6 justify-center">
+            <div class="flex space-x-4 mb-6 justify-center flex-wrap">
                 <!-- Representatives (Add more as needed) -->
                 {#each representatives as representative}
-                <Dialog.Root>
+                <Dialog.Root
+                    bind:open={dialogOpen}
+                >
                     <Dialog.Trigger>
                         <div class="flex flex-col items-center">
                             <div class="w-20 h-20 rounded-full border-2 border-green-500"></div>
@@ -47,7 +54,7 @@
                             <Dialog.Description>
                                 <ScheduleMeeting
                                 userId={representative.id}
-                                    
+                                on:close={handleClose}
                                 />
                             </Dialog.Description>
                         </Dialog.Header>

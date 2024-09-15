@@ -75,8 +75,8 @@
                     </p>
                 {/each}
             </div>
-            <form on:submit|preventDefault={sendMessage} class="flex justify-between w-full border-t border-gray-300 p-4 space-x-3">
-                <input type="text" placeholder="Type a message..." bind:value={newText} class="flex-grow border-none py-2 px-4" />
+            <form on:submit|preventDefault={sendMessage} class="flex justify-between border-t border-gray-300 lg:p-4 py-4 space-x-3 w-full">
+                <input type="text" placeholder="Type a message..." bind:value={newText} class="flex-grow border-none py-2 px-1 lg:px-4" />
                 <Button type="submit" class="bg-primary border-none cursor-pointer ">
                     <SendHorizontal class="w-6 h-6" />
                 </Button>

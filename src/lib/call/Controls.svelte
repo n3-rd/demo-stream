@@ -64,6 +64,7 @@
 		await callObject.leave();
 		await callObject.destroy();
 		document?.body?.classList?.remove('in-call');
+		
 		goto(`/`);
 	};
 </script>

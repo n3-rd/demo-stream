@@ -35,6 +35,12 @@
             audioSrc = new MediaStream([audioTrack.persistentTrack]);
             audioTrackSet = true;
         }
+        else if (screen && screenTrack?.state === 'playable' && screenAudioTrack?.state === 'playable' && !audioTrackSet) {
+            audioSrc = new MediaStream([screenTrack.track, screenAudioTrack.track]);
+            audioTrackSet = true;
+        }
+
+        console.log('screen', screen);
     }
 
     function srcObject(node, stream) {
@@ -61,6 +67,9 @@
             playsInline
             use:srcObject={videoSrc}
         />
+        <audio id={`audio-${participant?.session_id || screen?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
+            <track kind="captions" />
+        </audio>
     {/if}
 
     {#if !participant?.video && (!screen || screen?.length === 0)}

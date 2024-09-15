@@ -110,7 +110,7 @@
 </script>
 
 <div class="container mx-auto p-4">
-  <div class="bg-white shadow-md rounded-lg p-6">
+  <div class="bg-white rounded-lg p-6">
     <h2 class="text-2xl font-semibold mb-4">Book an Appointment</h2>
     <p class="text-gray-400 mb-6">Please fill out this form to make an appointment</p>
 

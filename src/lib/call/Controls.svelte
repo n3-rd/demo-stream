@@ -10,8 +10,8 @@
 	import screenIcon from './assets/screen.svg';
 	import leaveIcon from './assets/leave_call.svg';
     import { Button } from '$lib/components/ui/button';
-	import { Clapperboard } from 'lucide-svelte';
 	import { pickerOpen } from '../../store.js';
+	import { Clapperboard, Video, VideoOff, Mic, MicOff, Monitor } from 'lucide-svelte';
 
 
 	export let callObject;
@@ -68,37 +68,41 @@
 	};
 </script>
 
-<div class="controls-container">
-	<div class="devices flex gap-3 items-center">
-		<button on:click={toggleVideo}>
-			<img src={camOn ? camOnIcon : camOffIcon} alt="Toggle local video" />
-		</button>
-		<button on:click={toggleAudio}>
-			<img src={micOn ? micOnIcon : micOffIcon} alt="Toggle local audio" />
-		</button>
-		<!-- Only show the screen share button if the browser actually supports it -->
-		{#if browserSupport?.supportsScreenShare}
-			<button on:click={toggleScreenShare} disabled={disableScreenShare}>
-				<img src={screenIcon} alt="Toggle screen share" />
-			</button>
-
-		{/if}
-
-		<button
-		on:click={() => {
-			pickerOpen.set(true);
-		}}
-		>
-		<Clapperboard color="#fff" stroke-width="0.4" />
-		</button>
-
-
-	</div>
-	<!-- End call locally and return to home screen -->
-	<Button class="leave" on:click={leaveCall} variant="destructive" >
-		<img src={leaveIcon} alt="Leave call" />
-	</Button>
+<div class="controls-container w-full">
+    <div class="devices flex gap-3 items-center">
+        <button on:click={toggleVideo}>
+            <!-- <img src={camOn ? camOnIcon : camOffIcon} alt="Toggle local video" /> -->
+			 {#if camOn}
+			 <Video	color="#fff"/>
+			 {:else}
+			 <VideoOff color="#fff"/>
+			 {/if}
+        </button>
+        <button on:click={toggleAudio}>
+            <!-- <img src={micOn ? micOnIcon : micOffIcon} alt="Toggle local audio" color="#fff"/> -->
+			 {#if micOn}
+			 <Mic color="#fff"/>
+			 {:else}
+			 <MicOff color="#fff"/>
+			 {/if}
+        </button>
+        {#if browserSupport?.supportsScreenShare}
+            <button on:click={toggleScreenShare} disabled={disableScreenShare}>
+                <!-- <img src={screenIcon} alt="Toggle screen share" color="#fff"/> -->
+				<Monitor color="#fff"/>
+            </button>
+        {/if}
+        <button
+            on:click={() => {
+                pickerOpen.set(true);
+            }}
+        >
+            <Clapperboard color="#fff" stroke-width="0.4" />
+        </button>
+    </div>
+    <Button class="leave" on:click={leaveCall} variant="destructive">Leave Call</Button>
 </div>
+
 
 <style>
 	img {

@@ -64,6 +64,17 @@
 		await callObject.leave();
 		await callObject.destroy();
 		document?.body?.classList?.remove('in-call');
+        await callObject
+            .off('joining-meeting', updateParticpants)
+            .off('joined-meeting', handleJoinedMeeting)
+            .off('participant-joined', updateParticpants)
+            .off('participant-left', updateParticpants)
+            .off('track-started', updateParticpants)
+            .off('track-stopped', updateParticpants)
+            .off('participant-left', updateParticpants)
+            .off('error', handleError)
+            // .off('camera-error', handleDeviceError)
+            .off('app-message', handleAppMessage);
 		goto(`/`);
 	};
 </script>

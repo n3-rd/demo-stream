@@ -204,6 +204,8 @@
 
     onDestroy(() => {
         if (!callObject) return;
+         callObject.leave();
+		 callObject.destroy();
         callObject
             .off('joining-meeting', updateParticpants)
             .off('joined-meeting', handleJoinedMeeting)

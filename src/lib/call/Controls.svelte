@@ -10,6 +10,8 @@
 	import screenIcon from './assets/screen.svg';
 	import leaveIcon from './assets/leave_call.svg';
     import { Button } from '$lib/components/ui/button';
+	import { Clapperboard } from 'lucide-svelte';
+	import { pickerOpen } from '../../store.js';
 
 
 	export let callObject;
@@ -67,7 +69,7 @@
 </script>
 
 <div class="controls-container">
-	<div class="devices">
+	<div class="devices flex gap-3 items-center">
 		<button on:click={toggleVideo}>
 			<img src={camOn ? camOnIcon : camOffIcon} alt="Toggle local video" />
 		</button>
@@ -79,7 +81,18 @@
 			<button on:click={toggleScreenShare} disabled={disableScreenShare}>
 				<img src={screenIcon} alt="Toggle screen share" />
 			</button>
+
 		{/if}
+
+		<button
+		on:click={() => {
+			pickerOpen.set(true);
+		}}
+		>
+		<Clapperboard color="#fff" stroke-width="0.4" />
+		</button>
+
+
 	</div>
 	<!-- End call locally and return to home screen -->
 	<Button class="leave" on:click={leaveCall} variant="destructive" >
@@ -93,7 +106,7 @@
 	}
 	.controls-container {
 		position: absolute;
-		bottom: 40px;
+		bottom: 5px;
 		left: 8px;
 		justify-content: space-between;
 		display: flex;

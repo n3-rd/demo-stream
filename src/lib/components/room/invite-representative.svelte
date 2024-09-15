@@ -15,7 +15,7 @@
 {#if !showRepresentativeList}
     <!-- First Modal -->
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white p-6 rounded-lg shadow-lg w-full">
+        <div class="bg-white p-6  w-full">
             <h2 class="text-lg font-semibold mb-4">Speak to Representative</h2>
             <p class="text-sm mb-6">
                 Speak to a representative, you're gaining direct access to an expert who specializes in our services. They're here to guide you, answer your questions, and provide personalized assistance. Whether you're seeking advice, information, or a step-by-step walkthrough, our representatives are ready to help you. Click the 'CONTINUE' to start a conversation.
@@ -29,7 +29,7 @@
 {:else}
     <!-- Second Modal -->
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white p-6 rounded-lg shadow-lg w-full">
+        <div class="bg-white p-6 w-full">
             <h2 class="text-lg font-semibold mb-4 text-center">Innovated Building Group Representative</h2>
             <div class="flex space-x-4 mb-6 justify-center">
                 <!-- Representatives (Add more as needed) -->

@@ -242,7 +242,7 @@
         {#if participants?.length === 1}
             <WaitingForOthersTile />
         {/if}
-        <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-[999] bg-white py-4 px-2">
+        <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-[9] bg-white py-4 px-2">
             <Dialog.Root>
                 <Dialog.Trigger>
                     <Button variant="ghost" size="icon" class="w-full">

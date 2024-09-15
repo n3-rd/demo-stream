@@ -8,6 +8,8 @@
     import send from './assets/send.svg';
     import * as Sheet from "$lib/components/ui/sheet";
     import { MessageSquareDashed } from 'lucide-svelte';
+    import { Button } from '$lib/components/ui/button';
+    import { SendHorizontal } from 'lucide-svelte';
 
     const dispatch = createEventDispatcher();
 
@@ -73,11 +75,11 @@
                     </p>
                 {/each}
             </div>
-            <form on:submit|preventDefault={sendMessage} class="flex justify-between border-t border-gray-300 p-4">
-                <input type="text" placeholder="Type a message..." bind:value={newText} class="flex-grow border-none" />
-                <button type="submit" class="bg-transparent border-none cursor-pointer">
-                    <img src={send} alt="send message" class="w-6 h-6" />
-                </button>
+            <form on:submit|preventDefault={sendMessage} class="flex justify-between w-full border-t border-gray-300 p-4 space-x-3">
+                <input type="text" placeholder="Type a message..." bind:value={newText} class="flex-grow border-none py-2 px-4" />
+                <Button type="submit" class="bg-primary border-none cursor-pointer ">
+                    <SendHorizontal class="w-6 h-6" />
+                </Button>
             </form>
         </div>
     </Sheet.Content>

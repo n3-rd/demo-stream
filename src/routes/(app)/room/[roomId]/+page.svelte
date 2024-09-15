@@ -41,6 +41,7 @@
     let loading = true;
     let deviceError = false;
     let hasNewNotification = false;
+    let scheduleOpen = false;
     $: screensList = participants?.filter((p) => p?.screen);
     
     
@@ -215,6 +216,9 @@
             // .off('camera-error', handleDeviceError)
             .off('app-message', handleAppMessage);
     });
+    const handleScheduleClose = () => {
+       scheduleOpen = false;
+    };
 </script>
 
 <sveltekit:head>
@@ -242,7 +246,7 @@
         {#if participants?.length === 1}
             <WaitingForOthersTile />
         {/if}
-        <div class="absolute bottom-4 right-4 flex flex-col gap-4 z-[9] bg-white py-4 px-2">
+        <div class="absolute bottom-0 max-sm:inset-x-0 max-sm:justify-between lg:bottom-4 right-4 flex lg:flex-col gap-4 z-[9] bg-white py-4 px-2">
             <Dialog.Root>
                 <Dialog.Trigger>
                     <Button variant="ghost" size="icon" class="w-full">
@@ -264,7 +268,9 @@
                     <InviteRepresentative {representatives} />
                 </Dialog.Content>
             </Dialog.Root>
-            <Dialog.Root >
+            <Dialog.Root 
+            bind:open={scheduleOpen}
+            >
                 <Dialog.Trigger>
                     <Button variant="ghost" size="icon" class="w-full">
                         <Calendar scale={1.3} />
@@ -272,7 +278,7 @@
                 </Dialog.Trigger>
                 <Dialog.Content class="p-4 rounded-lg w-auto bg-transparent">
                     <div class="w-full bg-transparent">
-                        <ScheduleMeeting userId={user.id} />
+                        <ScheduleMeeting userId={user.id} on:close={handleScheduleClose}/>
                     </div>
                 </Dialog.Content>
             </Dialog.Root>

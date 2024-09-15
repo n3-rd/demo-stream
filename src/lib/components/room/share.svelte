@@ -16,7 +16,7 @@
 
     <!-- Link Input -->
     <div class="mb-4">
-        <label class="mb-2 block text-sm text-gray-700">One time link (unique link)</label>
+        <label class="mb-2 block text-sm text-gray-700">Direct meeting link</label>
         <div class="flex items-center rounded-lg bg-gray-100 p-2">
             <input
                 type="text"

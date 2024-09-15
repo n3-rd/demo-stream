@@ -5,6 +5,9 @@
 
 	export let participant;
 	let displayName;
+	$:{
+		console.log('participant from placeholder',participant);
+	}
 
 	onMount(() => {
 		// Use saved name in local storage as fall back if local username isn't available
@@ -18,8 +21,12 @@
 </script>
 
 <div class="video-placeholder">
-	<span class="name">{displayName}</span>
-	<img src={participant?.audio ? micOnIcon : micOffIcon} alt="Toggle local audio" />
+	<div class="participant flex flex-col gap-2 items-center">
+		<img class="h-18 w-18 rounded-full" src={`https://ui-avatars.com/api/?name=${participant?.user_name}?background="#000000"`} alt="participant placeholder"/>
+		<div class="name font-semibold">{displayName}</div>
+		<img src={participant?.audio ? micOnIcon : micOffIcon} alt="Toggle local audio" />
+	</div>
+
 </div>
 
 <style>

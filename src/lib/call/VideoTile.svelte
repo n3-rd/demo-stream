@@ -49,13 +49,14 @@
     }
 </script>
 
-<div class={screen ? 'video-tile screen' : 'video-tile'}>
+<div class={screen ? 'video-tile screen' : 'video-tile max-h-96 bg-black rounded-lg'}>
     {#if !videoSrc}
         <NoVideoPlaceholder {participant} />
     {:else}
         <video
             id={`video-${participant?.session_id || screen?.session_id}`}
             autoPlay
+            class="h-full "
             muted
             playsInline
             use:srcObject={videoSrc}
@@ -110,7 +111,7 @@
         border-radius: 8px;
     }
     .screen video {
-        max-height: inherit;
+        max-height: 50vh;
     }
     .audio-icon {
         position: absolute;

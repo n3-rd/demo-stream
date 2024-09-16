@@ -2,8 +2,8 @@
     import { onMount } from 'svelte';
     import { Button } from '$lib/components/ui/button';
     import { toast } from 'svelte-sonner';
-    import * as Popover from "$lib/components/ui/popover";
-	import { pickerOpen } from '../../store.js';
+    import { pickerOpen } from '../../store.js';
+    import { get } from 'svelte/store';
 
     export let callObject;
 
@@ -20,6 +20,7 @@
             return;
         }
         videoEl.src = URL.createObjectURL(file);
+        videoEl.volume = 0.01;
         videoEl.play().then(() => {
             if (typeof videoEl.mozCaptureStream == 'function') {
                 localVideoStream = videoEl.mozCaptureStream();
@@ -90,6 +91,10 @@
         }
     }
 
+    function togglePicker() {
+        pickerOpen.set(!get(pickerOpen));
+    }
+
     onMount(() => {
         if (videoInput) {
             videoInput.addEventListener('change', playLocalVideoFile, false);
@@ -101,30 +106,24 @@
     }
 </script>
 
+<div>
+    <Button on:click={togglePicker} variant="outline" class="bg-white text-black hover:bg-gray-100 mb-2 z-[999] hidden">
+        Show Video Picker
+    </Button>
+</div>
 
-
-<Popover.Root
-open={$pickerOpen}
-onOpenChange={(isOpen) => pickerOpen.set(isOpen)}
->
-    <Popover.Trigger>
-        <!-- <div class="w-full absolute left-0 flex">
-            <Button variant="outline" class="bg-white text-black hover:bg-gray-100 mb-2 z-[999]">
-                Show Video Picker
-            </Button>
-        </div> -->
-    </Popover.Trigger>
-    <Popover.Content class="bg-transparent shadow-none border-none" side="right" avoidCollisions={true}>
-        <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-4 right-40">
-            <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
-            <video id="local-vid" controls loop class="w-full max-w-xs mb-2"></video>
-            <div class="flex space-x-2">
-                <Button on:click={shareVideo}>Share video</Button>
-                <Button on:click={stopVideo}>Stop video</Button>
-            </div>
+{#if $pickerOpen}
+    <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-4 right-40 absolute left-40 z-[999]">
+        <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
+        <video id="local-vid" controls loop class="w-full max-w-xs mb-2"
+        volume="0.1"
+        ></video>
+        <div class="flex space-x-2">
+            <Button on:click={shareVideo}>Share video</Button>
+            <Button on:click={stopVideo}>Stop video</Button>
         </div>
-    </Popover.Content>
-</Popover.Root>
+    </div>
+{/if}
 
 <style>
     .video-picker-popup {

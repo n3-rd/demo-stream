@@ -112,8 +112,10 @@
     </Button>
 </div>
 
-{#if $pickerOpen}
-    <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-4 right-40 absolute left-40 z-[999]">
+
+    <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-4 right-40 absolute left-40 z-[999]"
+    style="display: {$pickerOpen ? 'block' : 'none'};"
+    >
         <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
         <video id="local-vid" controls loop class="w-full max-w-xs mb-2"
         volume="0.1"
@@ -123,7 +125,7 @@
             <Button on:click={stopVideo}>Stop video</Button>
         </div>
     </div>
-{/if}
+
 
 <style>
     .video-picker-popup {

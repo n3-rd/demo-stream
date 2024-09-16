@@ -16,6 +16,7 @@
 
 	export let callObject;
 	export let screensList;
+	export let host;
 	let browserSupport;
 	let camOn;
 	let micOn;
@@ -67,6 +68,10 @@
 		
 		goto(`/`);
 	};
+
+	const togglePicker = () => {
+		pickerOpen.set(!$pickerOpen);
+	};
 </script>
 
 <div class="controls-container w-full">
@@ -93,9 +98,10 @@
 				<Monitor color="#fff"/>
             </button>
         {/if}
+		
         <button
             on:click={() => {
-                pickerOpen.set(true);
+                togglePicker();
             }}
         >
             <Clapperboard color="#fff" stroke-width="0.4" />

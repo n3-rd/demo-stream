@@ -11,6 +11,7 @@
     import { goto } from '$app/navigation';
     import ScheduleMeeting from '../room/schedule-meeting.svelte';
     import InviteRepresentative from '../room/invite-representative.svelte';
+	import { onMount } from 'svelte';
 
     export let loggedIn = false;
     export let user;
@@ -40,7 +41,10 @@
         }
     }
 
-    fetchRepresentatives();
+    onMount(() => {
+        fetchRepresentatives();
+    });
+
 
     function toggleMenu() {
         isMenuOpen = !isMenuOpen;

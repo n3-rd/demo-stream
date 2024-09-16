@@ -29,7 +29,8 @@
   let selectedMonth = value.month;
   let selectedYear = value.year;
   let time: any;
-  let roomName:string;
+  let roomName: string = '';
+  let roomNameError: string = '';
 
   const form = useForm();
 
@@ -40,47 +41,66 @@
     selectedYear = value.year;
   }
 
+  // Function to validate room name
+  function validateRoomName(name: string): boolean {
+    const regex = /^[A-Za-z0-9_-]+$/;
+    return regex.test(name);
+  }
+
+  // Function to handle room name change
+  function handleRoomNameChange() {
+    if (!validateRoomName(roomName)) {
+      roomNameError = "Room name can only contain letters, numbers, hyphens, and underscores.";
+    } else {
+      roomNameError = "";
+    }
+  }
+
   // Reactive statement to check if all required fields are filled
-  $: isFormValid = firstName && lastName && phoneNumber && email && address.street && address.city && address.state && address.zip && address.country && time && roomName;
+  $: isFormValid = firstName && lastName && phoneNumber && email && address.street && address.city && address.state && address.zip && address.country && time && roomName && !roomNameError;
 
   async function handleSubmit() {
-      // Handle form submission
-      console.log({
-          firstName,
-          lastName,
-          phoneNumber,
-          email,
-          address,
-          selectedDay,
-          selectedMonth,
-          selectedYear,
-          time,
-          roomName
-      });
+    // Handle form submission
+    console.log({
+      firstName,
+      lastName,
+      phoneNumber,
+      email,
+      address,
+      selectedDay,
+      selectedMonth,
+      selectedYear,
+      time,
+      roomName
+    });
 
-      dispatch('scheduleMeeting', {
-          firstName,
-          lastName,
-          phoneNumber,
-          email,
-          address,
-          selectedDay,
-          selectedMonth,
-          selectedYear,
-          time,
-          roomName
-      });
+    dispatch('scheduleMeeting', {
+      firstName,
+      lastName,
+      phoneNumber,
+      email,
+      address,
+      selectedDay,
+      selectedMonth,
+      selectedYear,
+      time,
+      roomName
+    });
 
-      // Call createOrGetPermanentRoom with the form data
+    // Call createOrGetPermanentRoom with the form data
+    if (validateRoomName(roomName)) {
       const result = await createOrGetPermanentRoom(userId, selectedMonth, selectedDay, selectedYear, time, roomName);
 
       if (result) {
-          dispatch('close'); // Dispatch close event to close the dialog
+        dispatch('close'); // Dispatch close event to close the dialog
       }
+    } else {
+      console.error('Invalid room name');
+    }
   }
 
   function handleCancel() {
-      dispatch('close'); // Dispatch close event to close the dialog
+    dispatch('close'); // Dispatch close event to close the dialog
   }
 
   // Function to check if a date is in the past
@@ -195,19 +215,23 @@
               </HintGroup>
             </div>
             <div class="grid gap-2">
-              <label for="romName">Room name</label>
+              <label for="roomName">Room name</label>
               <input
                 id="roomName"
                 name="roomName"
-                type="roomName"
+                type="text"
                 placeholder="Room Name"
                 bind:value={roomName}
+                on:input={handleRoomNameChange}
                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 use:validators={[required]}
               />
-              <HintGroup for="email">
+              <HintGroup for="roomName">
                 <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
                   <Hint on="required"><HintValidate>Room name is required</HintValidate></Hint>
+                  {#if roomNameError}
+                    <HintValidate>{roomNameError}</HintValidate>
+                  {/if}
                 </div>
               </HintGroup>
             </div>

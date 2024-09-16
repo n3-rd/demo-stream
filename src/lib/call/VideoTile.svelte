@@ -12,6 +12,8 @@
     export let host = false;
     export let name;
 
+    console.log('host', host)
+
     let videoTrackSet = false;
     let videoSrc;
     $: videoTrack = participant?.tracks?.video;
@@ -21,8 +23,8 @@
         if (!screen && videoTrack?.state === 'playable' && !videoTrackSet) {
             videoSrc = new MediaStream([videoTrack.persistentTrack]);
             videoTrackSet = true;
-        } else if (screen && screenTrack?.state === 'playable' && screenAudioTrack?.state === 'playable' && !videoTrackSet) {
-            videoSrc = new MediaStream([screenTrack.track, screenAudioTrack.track]);
+        } else if (screen && screenTrack?.state === 'playable' && !videoTrackSet) {
+            videoSrc = new MediaStream([screenTrack.track]);
             videoTrackSet = true;
         }
     }
@@ -31,16 +33,20 @@
     let audioSrc;
     $: audioTrack = participant?.tracks?.audio;
     $: {
-        if (audioTrack?.state === 'playable' && !audioTrackSet) {
+        if (audioTrack?.state === 'playable' && !audioTrackSet && !host) {
             audioSrc = new MediaStream([audioTrack.persistentTrack]);
             audioTrackSet = true;
         }
-        else if (screen && screenTrack?.state === 'playable' && screenAudioTrack?.state === 'playable' && !audioTrackSet) {
-            audioSrc = new MediaStream([screenTrack.track, screenAudioTrack.track]);
-            audioTrackSet = true;
-        }
+    }
 
-        console.log('screen', screen);
+    // Separate audio source for screen audio
+    let screenAudioSrc;
+    $: {
+        if (screen && screenAudioTrack?.state === 'playable' && !host) {
+            screenAudioSrc = new MediaStream([screenAudioTrack.track]);
+        } else {
+            screenAudioSrc = null;
+        }
     }
 
     function srcObject(node, stream) {
@@ -62,24 +68,29 @@
         <video
             id={`video-${participant?.session_id || screen?.session_id}`}
             autoPlay
-            class="h-full "
-            muted
+            class="h-full"
+            muted={!host}
             playsInline
             use:srcObject={videoSrc}
         />
-        <audio id={`audio-${participant?.session_id || screen?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
-            <track kind="captions" />
-        </audio>
+        
+        <!-- Audio for participant's microphone -->
+        {#if !participant?.local && audioSrc}
+            <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc} muted={host}>
+                <track kind="captions" />
+            </audio>
+        {/if}
+
+        <!-- Audio for screen sharing, muted for the host -->
+        {#if screenAudioSrc}
+            <audio id={`screen-audio-${screen?.session_id}`} autoPlay playsInline use:srcObject={screenAudioSrc} muted={host}>
+                <track kind="captions" />
+            </audio>
+        {/if}
     {/if}
 
     {#if !participant?.video && (!screen || screen?.length === 0)}
         <NoVideoPlaceholder {participant} />
-    {/if}
-
-    {#if !participant?.local && audioSrc}
-        <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
-            <track kind="captions" />
-        </audio>
     {/if}
 
     {#if participant?.video && !participant?.local}
@@ -89,7 +100,7 @@
     {/if}
 
     {#if participant?.local}
-        <Controls {callObject} {screensList} />
+        <Controls {callObject} {screensList} {host} />
         {#if host}
             <VideoStreamerTile {callObject} />
         {/if}

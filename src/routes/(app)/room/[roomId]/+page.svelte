@@ -9,17 +9,18 @@
     import Chat from '$lib/call/Chat.svelte';
     import Loading from '$lib/call/Loading.svelte';
     import PermissionErrorMessage from '$lib/call/PermissionErrorMessage.svelte';
-    import { chatMessages, dailyErrorMessage, username } from '../../../../store';
+    import { chatMessages, dailyErrorMessage, username, pickerOpen } from '../../../../store'; // Import pickerOpen store
     import { PUBLIC_DAILY_DOMAIN, PUBLIC_DAILY_API_KEY } from '$env/static/public';
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings } from 'lucide-svelte';
+    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard } from 'lucide-svelte'; // Import Clapperboard icon
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
     import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
     import Share from '$lib/components/room/share.svelte';
+	import { currentVideoUrl } from '$lib/callStores';
 
     export let data;
 
@@ -35,6 +36,8 @@
     console.log('host', host);
     
     const isHost = host === (user ? user.id : '');
+
+    const videoURL = $currentVideoUrl;
     
     let callObject;
     let participants = [];
@@ -219,6 +222,11 @@
             }
         };
     }
+
+    // Method to toggle the picker
+    const togglePicker = () => {
+        pickerOpen.set(!$pickerOpen);
+    };
 </script>
 
 <sveltekit:head>
@@ -272,6 +280,10 @@
                         <CreateQuote />
                     </Dialog.Content>
                 </Dialog.Root>
+                <!-- Add a button to trigger the picker -->
+                <Button variant="ghost" size="icon" class="w-full" on:click={togglePicker}>
+                    <Clapperboard scale={1.3} color="#fff"/>
+                </Button>
             </div>
             <div class="w-full h-full bg-green-500">
                 {#each participants as participant}
@@ -279,7 +291,9 @@
                 
                 <VideoTile {callObject} {participant} {screensList} host={isHost} {name} />
                     {#if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'playable'}
-                        <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}></video>
+                        <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}
+                        controls={isHost}
+                        ></video>
                         <audio autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenAudio.track])}></audio>
                     {/if}
                 {/each}

@@ -9,8 +9,8 @@
     import {currentVideoUrl} from '$lib/callStores';
 
     import { toast } from 'svelte-sonner';
-	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
+    import { browser } from '$app/environment';
+    import { goto } from '$app/navigation';
 
     let loading = false;
     let loomUrl = '';
@@ -18,8 +18,7 @@
     let dialogOpen = false;
 
     // only to test
-    currentVideoUrl.set("https://demo-meeting.pockethost.io/api/files/udj43ofu3ndhbvh/ykjc5o3zkz8n5wr/b34036af43be4a658c24d0ee66305575_wssqRXL4np.mp4?token=");
-
+    
     async function downloadAndSaveLoomVideo(node: HTMLFormElement) {
         async function handleSubmit(event: Event) {
             event.preventDefault();
@@ -138,6 +137,7 @@
         <Button
             class="gap-3 rounded-3xl bg-primary px-4 py-6 text-xl font-semibold hover:text-white"
             type="submit"
+            disabled={!videoUrl}
         >
             Create a Demo Room <PlayCircle />
         </Button>

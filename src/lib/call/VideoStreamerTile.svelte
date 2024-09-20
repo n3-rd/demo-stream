@@ -4,6 +4,7 @@
     import { toast } from 'svelte-sonner';
     import { pickerOpen } from '../../store.js';
     import { get } from 'svelte/store';
+	import { currentVideoUrl } from '$lib/callStores.js';
 
     export let callObject;
 
@@ -11,7 +12,15 @@
     let localVideoStream;
     let localAudioStream;
 
-    function playLocalVideoFile(evt) {
+    const videoURL = $currentVideoUrl;
+
+    async function fetchVideoBlob(url) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+    }
+
+    async function playLocalVideoFile(evt) {
         let videoEl = document.getElementById('local-vid');
         let file = evt.target.files[0];
         let type = file.type;
@@ -21,23 +30,27 @@
         }
         videoEl.src = URL.createObjectURL(file);
         videoEl.volume = 0.01;
-        videoEl.play().then(() => {
-            if (typeof videoEl.mozCaptureStream == 'function') {
-                localVideoStream = videoEl.mozCaptureStream();
-            } else if (typeof videoEl.captureStream == 'function') {
-                localVideoStream = videoEl.captureStream();
-            }
-            // Ensure the localVideoStream contains only video tracks
-            if (localVideoStream) {
-                const videoTracks = localVideoStream.getVideoTracks();
-                localVideoStream = new MediaStream(videoTracks);
-            }
-            // Extract audio tracks separately
-            const audioTracks = videoEl.captureStream().getAudioTracks();
-            if (audioTracks.length > 0) {
-                localAudioStream = new MediaStream(audioTracks);
-            }
-        });
+        await videoEl.play();
+        await captureStream(videoEl);
+        await shareVideo();
+    }
+
+    async function captureStream(videoEl) {
+        if (typeof videoEl.mozCaptureStream == 'function') {
+            localVideoStream = videoEl.mozCaptureStream();
+        } else if (typeof videoEl.captureStream == 'function') {
+            localVideoStream = videoEl.captureStream();
+        }
+        // Ensure the localVideoStream contains only video tracks
+        if (localVideoStream) {
+            const videoTracks = localVideoStream.getVideoTracks();
+            localVideoStream = new MediaStream(videoTracks);
+        }
+        // Extract audio tracks separately
+        const audioTracks = videoEl.captureStream().getAudioTracks();
+        if (audioTracks.length > 0) {
+            localAudioStream = new MediaStream(audioTracks);
+        }
     }
 
     async function shareVideo() {
@@ -95,10 +108,18 @@
         pickerOpen.set(!get(pickerOpen));
     }
 
-    onMount(() => {
+    onMount(async () => {
         if (videoInput) {
             videoInput.addEventListener('change', playLocalVideoFile, false);
         }
+        // Automatically play the video from the URL
+        let videoEl = document.getElementById('local-vid');
+        const blobURL = await fetchVideoBlob(videoURL);
+        videoEl.src = blobURL;
+        videoEl.volume = 0.01;
+        await videoEl.play();
+        await captureStream(videoEl);
+        await shareVideo();
     });
 
     $:{

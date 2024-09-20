@@ -9,17 +9,18 @@
     import Chat from '$lib/call/Chat.svelte';
     import Loading from '$lib/call/Loading.svelte';
     import PermissionErrorMessage from '$lib/call/PermissionErrorMessage.svelte';
-    import { chatMessages, dailyErrorMessage, username } from '../../../../store';
+    import { chatMessages, dailyErrorMessage, username, pickerOpen } from '../../../../store'; // Import pickerOpen store
     import { PUBLIC_DAILY_DOMAIN, PUBLIC_DAILY_API_KEY } from '$env/static/public';
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-    import { Calendar, CircleUser, Quote, ShareIcon } from 'lucide-svelte';
+    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard } from 'lucide-svelte'; // Import Clapperboard icon
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
     import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
     import Share from '$lib/components/room/share.svelte';
+	import { currentVideoUrl } from '$lib/callStores';
 
     export let data;
 
@@ -35,6 +36,8 @@
     console.log('host', host);
     
     const isHost = host === (user ? user.id : '');
+
+    const videoURL = $currentVideoUrl;
     
     let callObject;
     let participants = [];
@@ -42,8 +45,11 @@
     let deviceError = false;
     let hasNewNotification = false;
     let scheduleOpen = false;
-    $: screensList = participants?.filter((p) => p?.screen);
-    
+
+    $:{
+        console.log('participants list', participants)
+    }
+    $: screensList = participants?.filter((p) => p?.audio);
     
     const clearNotification = () => (hasNewNotification = false);
     const joinURL = $page.url.href;
@@ -89,7 +95,6 @@
     const handleAppMessage = (e) => {
         console.log('new app message', e?.data);
         if (!e?.data?.name && !e?.data?.text) return;
-        // $chatMessages = [...$chatMessages, e?.data];
         chatMessages.update((messages) => [...messages, e?.data]);
         console.log('chatMessages', $chatMessages);
         hasNewNotification = true;
@@ -100,14 +105,14 @@
             const response = await fetch('https://api.daily.co/v1/rooms?limit=100', {
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${PUBLIC_DAILY_API_KEY}` // Replace with your actual token
+                    'Authorization': `Bearer ${PUBLIC_DAILY_API_KEY}`
                 }
             });
             if (!response.ok) {
                 throw new Error('Failed to fetch rooms');
             }
             const data = await response.json();
-            return data.data || []; // Ensure it returns an array
+            return data.data || [];
         } catch (error) {
             console.error('Error fetching rooms:', error);
             toast('Error fetching rooms');
@@ -117,7 +122,7 @@
 
     const createAndJoinCall = async () => {
         const roomName = $page.url.pathname.split('/').pop();
-        console.log('page',roomName)
+        console.log('page', roomName);
         const domain = PUBLIC_DAILY_DOMAIN;
         if (!roomName || !domain) {
             toast('Invalid room or domain');
@@ -131,9 +136,9 @@
             goto('/');
             return;
         }
-        console.log('fetched rooms', rooms)
+        console.log('fetched rooms', rooms);
         const room = rooms.find(room => room.name === roomName);
-        console.log(room)
+        console.log(room);
         if (!room) {
             toast('Room not found or not available yet');
             goto('/');
@@ -147,35 +152,21 @@
             return;
         }
 
-        // Check for webcam availability
-        let videoSource = false;
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const hasWebcam = devices.some(device => device.kind === 'videoinput');
-            if (hasWebcam) {
-                videoSource = {
-                    facingMode: 'user',
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                    frameRate: { ideal: 60 }
-                };
-            }
-        } catch (error) {
-            console.error('Error checking for webcam:', error);
-        }
-
         const url = `https://${domain}.daily.co/${roomName}`;
         callObject = daily.createCallObject({
             url,
             userName: name,
+            audioSource: true,
+            videoSource: false,
             dailyConfig: {
-                videoSource,
                 audioSource: true,
+                videoSource: false,
                 bandwidth: {
-                    kbs: 4000 // Adjust this value based on your requirements
+                    kbs: 4000
                 }
             }
         });
+
         callObject
             .on('joining-meeting', updateParticpants)
             .on('joined-meeting', handleJoinedMeeting)
@@ -183,7 +174,6 @@
             .on('participant-left', updateParticpants)
             .on('participant-updated', updateParticpants)
             .on('error', handleError)
-            // .on('camera-error', handleDeviceError)
             .on('app-message', handleAppMessage);
 
         try {
@@ -204,8 +194,8 @@
 
     onDestroy(() => {
         if (!callObject) return;
-         callObject.leave();
-		 callObject.destroy();
+        callObject.leave();
+        callObject.destroy();
         callObject
             .off('joining-meeting', updateParticpants)
             .off('joined-meeting', handleJoinedMeeting)
@@ -215,11 +205,27 @@
             .off('track-stopped', updateParticpants)
             .off('participant-left', updateParticpants)
             .off('error', handleError)
-            // .off('camera-error', handleDeviceError)
             .off('app-message', handleAppMessage);
     });
+
     const handleScheduleClose = () => {
-       scheduleOpen = false;
+        scheduleOpen = false;
+    };
+
+    function srcObject(node, stream) {
+        node.srcObject = stream;
+        return {
+            update(newStream) {
+                if (node.srcObject != newStream) {
+                    node.srcObject = newStream;
+                }
+            }
+        };
+    }
+
+    // Method to toggle the picker
+    const togglePicker = () => {
+        pickerOpen.set(!$pickerOpen);
     };
 </script>
 
@@ -227,74 +233,90 @@
     <title>Daily call</title>
 </sveltekit:head>
 
-<!-- <div class="flex flex-start mb-4 min-h-screen">
-    <button class="border border-gray-300 rounded-lg ml-4 mb-4 px-2 py-1 bg-white cursor-pointer text-xs uppercase font-bold" on:click={goHome}>Home</button>
-    <p class="text-turquoise ml-4 text-sm">{$page.url.href}</p>
-</div> -->
-{#if loading}
-    <div class="m-auto">
-        <Loading />
-    </div>
-{:else if deviceError}
-    <PermissionErrorMessage on:clear-device-error={clearDeviceError} />
-{:else}
-    {#if screensList?.length > 0}
-        <VideoTile {callObject} screen={screensList[0]} />
-    {/if}
-    <div class="flex flex-wrap">
-        {#each participants as participant}
-            <VideoTile {callObject} {participant} {screensList} host={isHost} {name} />
-        {/each}
-        {#if participants?.length === 1}
-            <WaitingForOthersTile />
-        {/if}
-        <div class="absolute bottom-0 max-sm:inset-x-0 max-sm:justify-between lg:bottom-4 right-4 flex lg:flex-col gap-4 z-[9] bg-white py-4 px-2">
-            <Dialog.Root>
-                <Dialog.Trigger>
-                    <Button variant="ghost" size="icon" class="w-full">
-                        <ShareIcon scale={1.3} />
-                    </Button>
-                </Dialog.Trigger>
-                <Dialog.Content class="p-4  rounded-lg shadow-lg">
-                  <Share {joinURL} />
-                </Dialog.Content>
-            </Dialog.Root>
-            <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
-            <Dialog.Root>
-                <Dialog.Trigger>
-                    <Button variant="ghost" size="icon" class="w-full">
-                        <CircleUser scale={1.3} />
-                    </Button>
-                </Dialog.Trigger>
-                <Dialog.Content class="p-4  rounded-lg shadow-lg">
-                    <InviteRepresentative {representatives} />
-                </Dialog.Content>
-            </Dialog.Root>
-            <Dialog.Root 
-            bind:open={scheduleOpen}
-            >
-                <Dialog.Trigger>
-                    <Button variant="ghost" size="icon" class="w-full">
-                        <Calendar scale={1.3} />
-                    </Button>
-                </Dialog.Trigger>
-                <Dialog.Content class="p-4 rounded-lg w-auto bg-transparent">
-                    <div class="w-full bg-transparent">
-                        <ScheduleMeeting userId={user.id} on:close={handleScheduleClose}/>
-                    </div>
-                </Dialog.Content>
-            </Dialog.Root>
-            <Notes />
-            <Dialog.Root>
-                <Dialog.Trigger>
-                    <Button variant="ghost" size="icon" class="w-full">
-                        <Quote scale={1.3} />
-                    </Button>
-                </Dialog.Trigger>
-                <Dialog.Content class="rounded-lg bg-transparent">
-                    <CreateQuote />
-                </Dialog.Content>
-            </Dialog.Root>
+<div class="h-screen min-w-full bg-[#9d9d9f] relative">
+    <div class="h-full">
+        <div class="flex items-center h-full pt-6 pb-24">
+            <div class="w-14 h-full bg-red flex flex-col gap-4">
+                <Dialog.Root>
+                    <Dialog.Trigger>
+                        <Button variant="ghost" size="icon" class="w-full">
+                            <ShareIcon scale={1.3} color="#fff"/>
+                        </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Content class="p-4 rounded-lg shadow-lg">
+                        <Share {joinURL} scale={1.3} color="#fff" />
+                    </Dialog.Content>
+                </Dialog.Root>
+                <Dialog.Root>
+                    <Dialog.Trigger>
+                        <Button variant="ghost" size="icon" class="w-full">
+                            <CircleUser scale={1.3} color="#fff"/>
+                        </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Content class="p-4 rounded-lg shadow-lg">
+                        <InviteRepresentative {representatives} />
+                    </Dialog.Content>
+                </Dialog.Root>
+                <Dialog.Root bind:open={scheduleOpen}>
+                    <Dialog.Trigger>
+                        <Button variant="ghost" size="icon" class="w-full">
+                            <Calendar scale={1.3} color="#fff"/>
+                        </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Content class="p-4 rounded-lg w-auto bg-transparent">
+                        <div class="w-full bg-transparent">
+                            <ScheduleMeeting userId={user.id} on:close={handleScheduleClose} />
+                        </div>
+                    </Dialog.Content>
+                </Dialog.Root>
+                <Notes scale={1.3} color="#fff"/>
+                <Dialog.Root>
+                    <Dialog.Trigger>
+                        <Button variant="ghost" size="icon" class="w-full">
+                            <Quote scale={1.3} color="#fff"/>
+                        </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Content class="rounded-lg bg-transparent">
+                        <CreateQuote />
+                    </Dialog.Content>
+                </Dialog.Root>
+                <!-- Add a button to trigger the picker -->
+                <Button variant="ghost" size="icon" class="w-full" on:click={togglePicker}>
+                    <Clapperboard scale={1.3} color="#fff"/>
+                </Button>
+            </div>
+            <div class="w-full h-full bg-green-500">
+                {#each participants as participant}
+                {participant.user_name}
+                
+                <VideoTile {callObject} {participant} {screensList} host={isHost} {name} />
+                    {#if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'playable'}
+                        <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}
+                        controls={isHost}
+                        ></video>
+                        <audio autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenAudio.track])}></audio>
+                    {/if}
+                {/each}
+            </div>
+            <div class="w-14 h-full bg-red flex flex-col gap-4 justify-end">
+                <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
+            </div>
         </div>
     </div>
-{/if}
+    <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
+        <div class="room-name text-white">Room name</div>
+        <div class="controls flex items-center gap-3">
+            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white text-black">
+                <MicOff color="#fff" size={24} class="hover:text-black"/>
+            </button>
+            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white text-black">
+                <Settings color="#fff" size={24} class="hover:text-black"/>
+            </button>
+        </div>
+        <div class="leave-room">
+            <Button variant="destructive">
+                Leave Room
+            </Button>
+        </div>
+    </div>
+</div>

@@ -1,9 +1,9 @@
 <script>
-    import Controls from './Controls.svelte';
     import micOnIcon from './assets/mic_on.svg';
     import micOffIcon from './assets/mic_off.svg';
     import NoVideoPlaceholder from './NoVideoPlaceholder.svelte';
     import VideoStreamerTile from './VideoStreamerTile.svelte';
+	import Controls from './Controls.svelte';
 
     export let participant;
     export let callObject;
@@ -11,8 +11,6 @@
     export let screensList;
     export let host = false;
     export let name;
-
-    console.log('host', host)
 
     let videoTrackSet = false;
     let videoSrc;
@@ -61,11 +59,11 @@
     }
 </script>
 
-<div class={screen ? 'video-tile screen' : 'video-tile max-h-96 bg-black rounded-lg'}>
-    {#if !videoSrc}
-        <NoVideoPlaceholder {participant} />
-    {:else}
-        <video
+<div class={screen ? 'video-tile screen hidden' : 'hidden video-tile max-h-96 bg-black rounded-lg'}>
+    <!-- {#if }
+        <NoVideoPlaceholder {participant} /> -->
+    <!-- {:else} -->
+        <!-- <video
             id={`video-${participant?.session_id || screen?.session_id}`}
             autoPlay
             class="h-full"
@@ -73,7 +71,7 @@
             playsInline
             use:srcObject={videoSrc}
         />
-        
+         -->
         <!-- Audio for participant's microphone -->
         {#if !participant?.local && audioSrc}
             <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc} muted={host}>
@@ -87,10 +85,10 @@
                 <track kind="captions" />
             </audio>
         {/if}
-    {/if}
+    <!-- {/if} -->
 
     {#if !participant?.video && (!screen || screen?.length === 0)}
-        <NoVideoPlaceholder {participant} />
+        <!-- <NoVideoPlaceholder {participant} /> -->
     {/if}
 
     {#if participant?.video && !participant?.local}
@@ -117,7 +115,7 @@
         flex: 1 1 350px;
         margin: 10px 20px;
         min-height: 100px;
-        display: flex;
+        /* display: flex; */
         flex-direction: column;
         justify-content: center;
         align-items: center;

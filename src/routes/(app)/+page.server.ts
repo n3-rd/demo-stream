@@ -119,5 +119,35 @@ export const actions: Actions = {
                 status: 500
             };
         }
+    },
+    'upload-video': async ({ cookies, request, locals }) => {
+        const userId = locals.pb.authStore.model.id;
+        console.log('userId:', userId);
+
+        const formData = new FormData();
+        const data = await request.formData();
+        let name = data.get('name');
+        let video = data.get('video');
+
+        if (!video) {
+            return { success: false, message: 'No video was uploaded' };
+        }
+
+        // Append the video file to the form data
+        formData.append('video', video);
+
+        // Append the user id to the form data
+        formData.append('user', userId);
+        formData.append('name', name);
+
+        // Upload and create new record
+        try {
+            const result = await locals.pb.collection('videos').create(formData);
+            console.log('result:', result);
+            return { success: true, message: 'Video uploaded successfully' };
+        } catch (err) {
+            console.log('err:', err);
+            return { success: false, message: 'Failed to upload video' };
+        }
     }
 };

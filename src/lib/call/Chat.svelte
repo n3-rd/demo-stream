@@ -55,7 +55,7 @@
 <Sheet.Root>
     <Sheet.Trigger>
         <button on:click={toggleChat} class="p-2">
-           <MessageSquareDashed class="w-6 h-6" />
+           <MessageSquareDashed class="w-6 h-6" color="#fff" />
         </button>
     </Sheet.Trigger>
     <Sheet.Content>

@@ -4,6 +4,7 @@
     import { toast } from 'svelte-sonner';
     import { pickerOpen } from '../../store.js';
     import { get } from 'svelte/store';
+	import { currentVideoUrl } from '$lib/callStores.js';
 
     export let callObject;
 
@@ -11,7 +12,15 @@
     let localVideoStream;
     let localAudioStream;
 
-    function playLocalVideoFile(evt) {
+    const videoURL = $currentVideoUrl;
+
+    async function fetchVideoBlob(url) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+    }
+
+    async function playLocalVideoFile(evt) {
         let videoEl = document.getElementById('local-vid');
         let file = evt.target.files[0];
         let type = file.type;
@@ -21,23 +30,27 @@
         }
         videoEl.src = URL.createObjectURL(file);
         videoEl.volume = 0.01;
-        videoEl.play().then(() => {
-            if (typeof videoEl.mozCaptureStream == 'function') {
-                localVideoStream = videoEl.mozCaptureStream();
-            } else if (typeof videoEl.captureStream == 'function') {
-                localVideoStream = videoEl.captureStream();
-            }
-            // Ensure the localVideoStream contains only video tracks
-            if (localVideoStream) {
-                const videoTracks = localVideoStream.getVideoTracks();
-                localVideoStream = new MediaStream(videoTracks);
-            }
-            // Extract audio tracks separately
-            const audioTracks = videoEl.captureStream().getAudioTracks();
-            if (audioTracks.length > 0) {
-                localAudioStream = new MediaStream(audioTracks);
-            }
-        });
+        await videoEl.play();
+        await captureStream(videoEl);
+        await shareVideo();
+    }
+
+    async function captureStream(videoEl) {
+        if (typeof videoEl.mozCaptureStream == 'function') {
+            localVideoStream = videoEl.mozCaptureStream();
+        } else if (typeof videoEl.captureStream == 'function') {
+            localVideoStream = videoEl.captureStream();
+        }
+        // Ensure the localVideoStream contains only video tracks
+        if (localVideoStream) {
+            const videoTracks = localVideoStream.getVideoTracks();
+            localVideoStream = new MediaStream(videoTracks);
+        }
+        // Extract audio tracks separately
+        const audioTracks = videoEl.captureStream().getAudioTracks();
+        if (audioTracks.length > 0) {
+            localAudioStream = new MediaStream(audioTracks);
+        }
     }
 
     async function shareVideo() {
@@ -95,10 +108,18 @@
         pickerOpen.set(!get(pickerOpen));
     }
 
-    onMount(() => {
+    onMount(async () => {
         if (videoInput) {
             videoInput.addEventListener('change', playLocalVideoFile, false);
         }
+        // Automatically play the video from the URL
+        let videoEl = document.getElementById('local-vid');
+        const blobURL = await fetchVideoBlob(videoURL);
+        videoEl.src = blobURL;
+        videoEl.volume = 0.01;
+        await videoEl.play();
+        await captureStream(videoEl);
+        await shareVideo();
     });
 
     $:{
@@ -107,25 +128,20 @@
 </script>
 
 <div>
-    <Button on:click={togglePicker} variant="outline" class="bg-white text-black hover:bg-gray-100 mb-2 z-[999] hidden">
+    <Button on:click={togglePicker} variant="outline" class="bg-white text-black hover:bg-gray-100 mb-2 z-[999]">
         Show Video Picker
     </Button>
 </div>
 
-
-    <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-4 right-40 absolute left-40 z-[999]"
-    style="display: {$pickerOpen ? 'block' : 'none'};"
-    >
-        <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
-        <video id="local-vid" controls loop class="w-full max-w-xs mb-2"
-        volume="0.1"
-        ></video>
-        <div class="flex space-x-2">
-            <Button on:click={shareVideo}>Share video</Button>
-            <Button on:click={stopVideo}>Stop video</Button>
-        </div>
+<div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-4 right-40 absolute left-40 z-[999]"
+    style="display: {$pickerOpen ? 'block' : 'none'};">
+    <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
+    <video id="local-vid" controls loop class="w-full max-w-xs mb-2" volume="0.1"></video>
+    <div class="flex space-x-2">
+        <Button on:click={shareVideo}>Share video</Button>
+        <Button on:click={stopVideo}>Stop video</Button>
     </div>
-
+</div>
 
 <style>
     .video-picker-popup {
@@ -134,7 +150,6 @@
         border-radius: 5px;
         padding: 10px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        /* margin-top: 10px; */
     }
     video {
         width: 100%;

@@ -59,11 +59,11 @@
     }
 </script>
 
-<div class={screen ? 'video-tile screen' : 'video-tile max-h-96 bg-black rounded-lg'}>
+<div class={screen ? 'video-tile screen hidden' : 'hidden video-tile max-h-96 bg-black rounded-lg'}>
     <!-- {#if }
         <NoVideoPlaceholder {participant} /> -->
     <!-- {:else} -->
-        <video
+        <!-- <video
             id={`video-${participant?.session_id || screen?.session_id}`}
             autoPlay
             class="h-full"
@@ -71,7 +71,7 @@
             playsInline
             use:srcObject={videoSrc}
         />
-        
+         -->
         <!-- Audio for participant's microphone -->
         {#if !participant?.local && audioSrc}
             <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc} muted={host}>
@@ -88,7 +88,7 @@
     <!-- {/if} -->
 
     {#if !participant?.video && (!screen || screen?.length === 0)}
-        <NoVideoPlaceholder {participant} />
+        <!-- <NoVideoPlaceholder {participant} /> -->
     {/if}
 
     {#if participant?.video && !participant?.local}
@@ -115,7 +115,7 @@
         flex: 1 1 350px;
         margin: 10px 20px;
         min-height: 100px;
-        display: flex;
+        /* display: flex; */
         flex-direction: column;
         justify-content: center;
         align-items: center;

@@ -79,16 +79,13 @@
                 </Dialog.Trigger>
                 <Dialog.Content>
                     <Tabs.Root value="video" class="w-[500px] bg-background">
-                        <Tabs.List>
-                            <Tabs.Trigger value="video">Video File</Tabs.Trigger>
-                        </Tabs.List>
                         <Tabs.Content value="video" class="min-h-28">
                             <form
                                 class="grid gap-4"
                                 use:handleVideoUpload
                             >
                                 <div class="grid gap-2">
-                                    <Label for="videoFile">Video File</Label>
+                                  
                                     <Input id="videoFile" type="file" accept="video/*" on:change={(e) => videoFile = e.target.files[0]} required />
                                 </div>
                                 <Button type="submit" class="w-full" disabled={loading}>
@@ -103,7 +100,7 @@
     </div>
 </div>
 
-<!-- <div class="absolute bottom-8 right-8 flex flex-col gap-2">
+ <div class="absolute bottom-[13rem] right-16 flex flex-col gap-2">
     <form
         action='/?/create-room'
         method='POST'
@@ -168,4 +165,4 @@
             </Dialog.Content>
         </Dialog.Root>
     </div>
-</div> -->
+</div> 

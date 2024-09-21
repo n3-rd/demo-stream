@@ -67,7 +67,7 @@
 
     <div class="video-upload-container flex flex-col items-center gap-4">
         {#if videoUrl}
-            <div class="video-box">
+            <div class="video-box h-96 w-[30rem]">
                 <video src={videoUrl} controls class="w-full h-auto"></video>
             </div>
         {:else}

@@ -1,57 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">
-	<g fill="none" fill-rule="evenodd" stroke-width="2" class="jsx-3467701036">
-		<circle cx="22" cy="22" r="19.4775" class="jsx-3467701036">
-			<animate
-				attributeName="r"
-				begin="0s"
-				dur="1.8s"
-				values="1; 20"
-				calcMode="spline"
-				keyTimes="0; 1"
-				keySplines="0.165, 0.84, 0.44, 1"
-				repeatCount="indefinite"
-			/>
-			<animate
-				attributeName="stroke-opacity"
-				begin="0s"
-				dur="1.8s"
-				values="1; 0"
-				calcMode="spline"
-				keyTimes="0; 1"
-				keySplines="0.3, 0.61, 0.355, 1"
-				repeatCount="indefinite"
-			/>
-		</circle>
-		<circle cx="22" cy="22" r="11.8787" class="jsx-3467701036">
-			<animate
-				attributeName="r"
-				begin="-0.9s"
-				dur="1.8s"
-				values="1; 20"
-				calcMode="spline"
-				keyTimes="0; 1"
-				keySplines="0.165, 0.84, 0.44, 1"
-				repeatCount="indefinite"
-			/>
-			<animate
-				attributeName="stroke-opacity"
-				begin="-0.9s"
-				dur="1.8s"
-				values="1; 0"
-				calcMode="spline"
-				keyTimes="0; 1"
-				keySplines="0.3, 0.61, 0.355, 1"
-				repeatCount="indefinite"
-			/>
-		</circle>
-	</g>
-</svg>
-
+<span class="loader"></span>
 <style>
-	svg {
-		display: block;
-		height: 36px;
-		width: 36px;
-		stroke: var(--white);
-	}
+	.loader {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      position: relative;
+      animation: rotate 1s linear infinite
+    }
+    .loader::before {
+      content: "";
+      box-sizing: border-box;
+      position: absolute;
+      inset: 0px;
+      border-radius: 50%;
+      border: 5px solid #FFF;
+      animation: prixClipFix 2s linear infinite ;
+    }
+
+    @keyframes rotate {
+      100%   {transform: rotate(360deg)}
+    }
+
+    @keyframes prixClipFix {
+        0%   {clip-path:polygon(50% 50%,0 0,0 0,0 0,0 0,0 0)}
+        25%  {clip-path:polygon(50% 50%,0 0,100% 0,100% 0,100% 0,100% 0)}
+        50%  {clip-path:polygon(50% 50%,0 0,100% 0,100% 100%,100% 100%,100% 100%)}
+        75%  {clip-path:polygon(50% 50%,0 0,100% 0,100% 100%,0 100%,0 100%)}
+        100% {clip-path:polygon(50% 50%,0 0,100% 0,100% 100%,0 100%,0 0)}
+    }
 </style>

@@ -14,13 +14,18 @@
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard } from 'lucide-svelte';
+    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal } from 'lucide-svelte';
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
     import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
     import Share from '$lib/components/room/share.svelte';
     import { currentVideoUrl } from '$lib/callStores';
+    import GreetingPopup from '$lib/call/GreetingPopup.svelte';
+    import Controls from '$lib/call/Controls.svelte';
+    import VideoStreamerTile from '$lib/call/VideoStreamerTile.svelte';
+    import { slide } from 'svelte/transition';
+    import { quintOut } from 'svelte/easing';
 
     export let data;
 
@@ -45,8 +50,11 @@
     let deviceError = false;
     let hasNewNotification = false;
     let scheduleOpen = false;
+    let chatIsOpen = false;
+    let testPanelIsOpen = true;
+    let newText = '';
 
-    $:{
+    $: {
         console.log('participants list', participants)
     }
     $: screensList = participants?.filter((p) => p?.audio);
@@ -82,7 +90,6 @@
         if (!callObject) return;
         participants = Object.values(callObject.participants());
     };
-
 
     const handleError = async () => {
         console.error('Error: ending call and returning to home page');
@@ -199,16 +206,6 @@
         if (!callObject) return;
         callObject.leave();
         callObject.destroy();
-        callObject
-        .on('joining-meeting', updateParticpants)
-            .on('joined-meeting', handleJoinedMeeting)
-            .on('participant-joined', updateParticpants)
-            .on('participant-left', updateParticpants)
-            .on('participant-updated', updateParticpants)
-            .on('local-screen-share-started', updateParticpants)
-            .on('loaded', updateParticpants)
-            .on('error', handleError)
-            .on('app-message', handleAppMessage);
     });
 
     const handleScheduleClose = () => {
@@ -229,19 +226,55 @@
     const togglePicker = () => {
         pickerOpen.set(!$pickerOpen);
     };
+
+    function toggleTestPanel() {
+        testPanelIsOpen = !testPanelIsOpen;
+        const testPanel = document.getElementById('testPanel');
+        if (testPanelIsOpen) {
+            testPanel.style.width = '30rem';
+        } else {
+            testPanel.style.width = '0px';
+        }
+    }
+
+    function toggleChat() {
+        chatIsOpen = !chatIsOpen;
+        if (chatIsOpen && hasNewNotification) {
+            clearNotification();
+        }
+    }
+
+    const sendMessage = () => {
+        if (!callObject) return;
+        const local = callObject.participants().local.user_name || 'Guest';
+        const newMessage = {
+            name: local,
+            text: newText
+        };
+        callObject.sendAppMessage(newMessage);
+        chatMessages.update(messages => [...messages, newMessage]);
+        newText = '';
+    };
 </script>
 
 <sveltekit:head>
     <title>Daily call</title>
 </sveltekit:head>
 
+<GreetingPopup {name} host={isHost} />
+
+{#if deviceError}
+    <PermissionErrorMessage on:close={clearDeviceError} />
+{/if}
+
 <div class="h-screen min-w-full bg-[#9d9d9f] relative">
     <div class="h-full">
         <div class="flex items-center h-full pt-6 pb-24">
+            <!-- Left sidebar -->
             <div class="w-14 h-full bg-red flex flex-col gap-4">
                 <Dialog.Root>
                     <Dialog.Trigger>
-                        <Button variant="ghost" size="icon" class="w-full">
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                             <ShareIcon scale={1.3} color="#fff"/>
                         </Button>
                     </Dialog.Trigger>
@@ -251,7 +284,7 @@
                 </Dialog.Root>
                 <Dialog.Root>
                     <Dialog.Trigger>
-                        <Button variant="ghost" size="icon" class="w-full">
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                             <CircleUser scale={1.3} color="#fff"/>
                         </Button>
                     </Dialog.Trigger>
@@ -261,7 +294,7 @@
                 </Dialog.Root>
                 <Dialog.Root bind:open={scheduleOpen}>
                     <Dialog.Trigger>
-                        <Button variant="ghost" size="icon" class="w-full">
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                             <Calendar scale={1.3} color="#fff"/>
                         </Button>
                     </Dialog.Trigger>
@@ -274,7 +307,7 @@
                 <Notes scale={1.3} color="#fff"/>
                 <Dialog.Root>
                     <Dialog.Trigger>
-                        <Button variant="ghost" size="icon" class="w-full">
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                             <Quote scale={1.3} color="#fff"/>
                         </Button>
                     </Dialog.Trigger>
@@ -282,44 +315,125 @@
                         <CreateQuote />
                     </Dialog.Content>
                 </Dialog.Root>
-                <Button variant="ghost" size="icon" class="w-full" on:click={togglePicker}>
+                <Button variant="ghost" size="icon" class="w-full hover:bg-red-700" on:click={togglePicker}>
                     <Clapperboard scale={1.3} color="#fff"/>
                 </Button>
             </div>
-            <div class="w-full h-full bg-black">
-                {#each participants as participant}
-                    <VideoTile {callObject} {participant} {screensList} host={isHost} {name} {videoURL} />
-                    {#if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'playable'}
-                        <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}
-                       class="w-full h-full"
 
-
-                        ></video>
-                        <audio autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenAudio.track])}></audio>
-                    {:else if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'loading'}
+            <!-- Main content area -->
+            <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
+                {#if loading}
+                    <div class="h-full w-full z-[9] absolute flex justify-center items-center bg-[#9d9d9f]">
                         <Loading />
-                    {/if}
-                {/each}
+                    </div>
+                {/if}
+
+                <!-- Video container -->
+                <div class="flex-grow h-full relative">
+                    {#each participants as participant}
+                        <VideoTile {callObject} {participant} {screensList} host={isHost} {name} {videoURL} />
+                        {#if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'playable'}
+                            <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}
+                                class="w-full h-full object-cover">
+                            </video>
+                            <audio autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenAudio.track])}></audio>
+                        {:else if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'loading'}
+                            <Loading />
+                        {/if}
+                    {/each}
+                </div>
+
+                <!-- Test panel with Chat -->
+                <div class="w-[30rem] bg-[#666669] h-full overflow-y-auto flex flex-col" id="testPanel">
+                    <div class="flex justify-between items-center p-4 border-b bg-[#47484b]">
+                        <h2 class="text-xl font-bold text-white">Test Panel</h2>
+                    </div>
+                    
+                   
+                        <div class="flex-grow flex flex-col gap-4 p-4 overflow-y-auto">
+                            {#each $chatMessages as message}
+                            <!-- {console.log('message', message)} -->
+                            <div class="flex gap-2 {message.name == name? "flex-row-reverse": "flex-row"}">
+                                <img class="h-12 w-12 rounded-full" src={`https://ui-avatars.com/api/?name=${name}"`} alt="participant placeholder"/>
+                                <div class="flex flex-col flex-1 gap-1">
+                                   
+                                        <div class="flex flex-col rounded-xl text-sm {message.name == name ? "bg-[#d8e1ed] text-black" : "bg-[#9d9d9f] text-white"} flex-1 px-2 py-2">
+                                    <div class="text-lg font-medium py-3 ">{message.name}</div>
+                                    <div>
+                                        <p>{message.text}</p>
+
+                                    </div>
+                                        </div>
+                                    
+                                </div>
+                            </div>
+                            {/each}
+                        </div>
+                        <form on:submit|preventDefault={sendMessage} class="flex justify-between border-t border-gray-300 p-4">
+                            <div class="relative flex-grow">
+                              <input
+                                type="text"
+                                placeholder="Type a message..."
+                                bind:value={newText}
+                                class="w-full border-none rounded py-2 px-4 pr-10 text-sm bg-[#47484b] text-white placeholder-gray-400"
+                              />
+                              <button
+                                type="submit"
+                                class="absolute right-2 top-1/2 transform -translate-y-1/2 text-white hover:text-primary-dark"
+                              >
+                                <SendHorizontal class="w-5 h-5" />
+                              </button>
+                            </div>
+                          </form>
+                        
+                   
+                </div>
+
+                
             </div>
+
+            <!-- Right sidebar (Chat) -->
             <div class="w-14 h-full bg-red flex flex-col gap-4 justify-end">
-                <Chat {callObject} {hasNewNotification} on:clear-notification={clearNotification} />
+                <Button variant="ghost" size="icon" class="w-full hover:bg-red-700" on:click={toggleTestPanel}>
+                    <MessageSquareDashed scale={1.3} color="#fff"/>
+                </Button>
             </div>
         </div>
     </div>
+
+    <!-- Bottom controls bar -->
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
         <div class="room-name text-white">Room name</div>
         <div class="controls flex items-center gap-3">
-            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white text-black">
+            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
                 <MicOff color="#fff" size={24} class="hover:text-black"/>
             </button>
-            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white text-black">
+            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
                 <Settings color="#fff" size={24} class="hover:text-black"/>
             </button>
         </div>
         <div class="leave-room">
-            <Button variant="destructive">
+            <Button variant="destructive" class="hover:bg-red-700">
                 Leave Room
             </Button>
         </div>
     </div>
 </div>
+
+<style>
+    #testPanel {
+        transition: width 0.3s ease-in-out;
+    }
+    .hover\:bg-red-700:hover {
+        background-color: #b91c1c;
+    }
+    .hover\:bg-white:hover {
+        background-color: #ffffff;
+    }
+    .hover\:text-black:hover {
+        color: #000000;
+    }
+    .hover\:bg-primary-dark:hover {
+        background-color: #1f2937;
+    }
+</style>

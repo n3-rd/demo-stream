@@ -67,7 +67,7 @@
 
     <div class="video-upload-container flex flex-col items-center gap-4">
         {#if videoUrl}
-            <div class="video-box">
+            <div class="video-box h-96 w-[30rem]">
                 <video src={videoUrl} controls class="w-full h-auto"></video>
             </div>
         {:else}
@@ -103,7 +103,7 @@
     </div>
 </div>
 
-<div class="absolute bottom-8 right-8 flex flex-col gap-2">
+<!-- <div class="absolute bottom-8 right-8 flex flex-col gap-2">
     <form
         action='/?/create-room'
         method='POST'
@@ -168,4 +168,4 @@
             </Dialog.Content>
         </Dialog.Root>
     </div>
-</div>
+</div> -->

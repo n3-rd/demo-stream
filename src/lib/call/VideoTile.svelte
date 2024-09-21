@@ -103,7 +103,8 @@
                     mediaStream: combinedStream,
                     videoSource: localVideoStream ? 'mediaStream' : false,
                     audioSource: localAudioStream ? 'mediaStream' : false,
-                    systemAudio: 'include'
+                    systemAudio: 'include',
+                    screenVideoSendSettings: 'motion-optimized',
                 });
             } catch (error) {
                 console.error('Error starting screen share:', error);
@@ -158,7 +159,7 @@
 
     {#if screenVideoSrc}
         <video id={`screen-video-${screen?.session_id}`} autoPlay playsInline use:srcObject={screenVideoSrc} muted={host}>
-            <!-- <track kind="captions" /> -->
+            <track kind="captions" />
         </video>
     {/if}
 
@@ -175,7 +176,7 @@
     {/if}
 
     {#if participant?.local}
-        <Controls {callObject} {screensList} {host} />
+        <!-- <Controls {callObject} {screensList} {host} /> -->
         {#if host}
             <VideoStreamerTile {callObject} />
         {/if}

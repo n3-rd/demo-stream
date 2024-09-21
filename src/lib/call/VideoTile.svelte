@@ -3,7 +3,8 @@
     import micOffIcon from './assets/mic_off.svg';
     import NoVideoPlaceholder from './NoVideoPlaceholder.svelte';
     import VideoStreamerTile from './VideoStreamerTile.svelte';
-	import Controls from './Controls.svelte';
+    import Controls from './Controls.svelte';
+    import { onMount, onDestroy } from 'svelte';
 
     export let participant;
     export let callObject;
@@ -11,6 +12,7 @@
     export let screensList;
     export let host = false;
     export let name;
+    export let videoURL;
 
     let videoTrackSet = false;
     let videoSrc;
@@ -47,6 +49,22 @@
         }
     }
 
+    let screenVideoSrc;
+    $: {
+        if (screen && screenTrack?.state === 'playable') {
+            screenVideoSrc = new MediaStream([screenTrack.track]);
+        }
+    }
+
+    // Reactive statement to constantly check for changes in screen video
+    $: {
+        if (screen && screenTrack?.state === 'playable') {
+            screenVideoSrc = new MediaStream([screenTrack.track]);
+        } else {
+            screenVideoSrc = null;
+        }
+    }
+
     function srcObject(node, stream) {
         node.srcObject = stream;
         return {
@@ -57,38 +75,97 @@
             }
         };
     }
+
+    let videoEl;
+    let localVideoStream;
+    let localAudioStream;
+
+    async function captureStream(videoEl) {
+        if (typeof videoEl.captureStream == 'function') {
+            localVideoStream = videoEl.captureStream();
+        }
+        const videoTracks = localVideoStream.getVideoTracks();
+        localVideoStream = new MediaStream(videoTracks);
+        const audioTracks = videoEl.captureStream().getAudioTracks();
+        if (audioTracks.length > 0) {
+            localAudioStream = new MediaStream(audioTracks);
+        }
+    }
+
+    async function shareVideo() {
+        if (localVideoStream) {
+            try {
+                const combinedStream = new MediaStream([
+                    ...localVideoStream.getVideoTracks(),
+                    ...(localAudioStream ? localAudioStream.getAudioTracks() : [])
+                ]);
+                await callObject.startScreenShare({
+                    mediaStream: combinedStream,
+                    videoSource: localVideoStream ? 'mediaStream' : false,
+                    audioSource: localAudioStream ? 'mediaStream' : false,
+                    systemAudio: 'include'
+                });
+            } catch (error) {
+                console.error('Error starting screen share:', error);
+            }
+        }
+    }
+
+    $: if (host && videoEl && videoURL) {
+        videoEl.src = videoURL;
+        videoEl.play().then(() => {
+            captureStream(videoEl).then(shareVideo);
+        });
+    }
+
+    function handleTrackStarted(event) {
+        const { track } = event;
+        if (track.kind === 'video' && track.label.includes('screen')) {
+            screenVideoSrc = new MediaStream([track]);
+        }
+    }
+
+    function handleTrackStopped(event) {
+        const { track } = event;
+        if (track.kind === 'video' && track.label.includes('screen')) {
+            screenVideoSrc = null;
+        }
+    }
+
+    onMount(() => {
+        callObject.on('track-started', handleTrackStarted);
+        callObject.on('track-stopped', handleTrackStopped);
+    });
+
+    onDestroy(() => {
+        callObject.off('track-started', handleTrackStarted);
+        callObject.off('track-stopped', handleTrackStopped);
+    });
 </script>
 
-<div class={screen ? 'video-tile screen hidden' : 'hidden video-tile max-h-96 bg-black rounded-lg'}>
-    <!-- {#if }
-        <NoVideoPlaceholder {participant} /> -->
-    <!-- {:else} -->
-        <!-- <video
-            id={`video-${participant?.session_id || screen?.session_id}`}
-            autoPlay
-            class="h-full"
-            muted={!host}
-            playsInline
-            use:srcObject={videoSrc}
-        />
-         -->
-        <!-- Audio for participant's microphone -->
-        {#if !participant?.local && audioSrc}
-            <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc} muted={host}>
-                <track kind="captions" />
-            </audio>
-        {/if}
+<div class={screen ? 'video-tile screen hidden' : 'video-tile max-h-96 rounded-lg'}>
+    {#if !participant?.local && audioSrc}
+        <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc} muted={host}>
+            <track kind="captions" />
+        </audio>
+    {/if}
 
-        <!-- Audio for screen sharing, muted for the host -->
-        {#if screenAudioSrc}
-            <audio id={`screen-audio-${screen?.session_id}`} autoPlay playsInline use:srcObject={screenAudioSrc} muted={host}>
-                <track kind="captions" />
-            </audio>
-        {/if}
-    <!-- {/if} -->
+    {#if screenAudioSrc}
+        <audio id={`screen-audio-${screen?.session_id}`} autoPlay playsInline use:srcObject={screenAudioSrc} muted={host}>
+            <track kind="captions" />
+        </audio>
+    {/if}
 
-    {#if !participant?.video && (!screen || screen?.length === 0)}
-        <!-- <NoVideoPlaceholder {participant} /> -->
+    {#if screenVideoSrc}
+        <video id={`screen-video-${screen?.session_id}`} autoPlay playsInline use:srcObject={screenVideoSrc} muted={host}>
+            <!-- <track kind="captions" /> -->
+        </video>
+    {/if}
+
+    {#if videoSrc}
+        <video id={`video-${participant?.session_id}`} autoPlay playsInline use:srcObject={videoSrc} muted={host}>
+            <track kind="captions" />
+        </video>
     {/if}
 
     {#if participant?.video && !participant?.local}
@@ -104,18 +181,15 @@
         {/if}
     {/if}
 
-    {#if participant?.user_name}
+    <!-- {#if participant?.user_name}
         <div class="participant-name">{participant.user_name}</div>
-    {/if}
+    {/if} -->
 </div>
 
 <style>
     .video-tile {
         position: relative;
         flex: 1 1 350px;
-        margin: 10px 20px;
-        min-height: 100px;
-        /* display: flex; */
         flex-direction: column;
         justify-content: center;
         align-items: center;
@@ -126,6 +200,7 @@
     }
     video {
         width: 100%;
+        height: 100%;
         border-radius: 8px;
     }
     .screen video {

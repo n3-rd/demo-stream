@@ -98,71 +98,71 @@
             </Dialog.Root>
         {/if}
     </div>
+    <div class="absolute inset-y-0 right-0 justify-end pb-6 pr-6 flex flex-col gap-2">
+        <form
+            action='/?/create-room'
+            method='POST'
+            use:enhance={() => {
+                return async ({ result }) => {
+                    if (result.data.room?.name) {
+                        toast.success('Room created successfully');
+                        goto(`/room/${result.data.room.name}`);
+                    } else if (result.status === 400) {
+                        toast('Bad request');
+                    } else if (result.status === 500) {
+                        toast('Server error :|');
+                    } else {
+                        toast('Oops, something went wrong!');
+                    }
+                };
+            }}
+        >
+            <Button
+                class="gap-3 rounded-3xl bg-primary px-4 py-6 text-xl font-semibold hover:text-white"
+                type="submit"
+                disabled={!videoUrl}
+            >
+                Create a Demo Room <PlayCircle />
+            </Button>
+        </form>
+        <div
+            class="flex flex-col items-center gap-3 rounded-[26px] bg-primary pt-4 font-bold text-white hover:text-white"
+        >
+            <p>QUESTIONS? JUST ASK!</p>
+    
+            <Dialog.Root>
+                <Dialog.Trigger
+                    class="flex w-full gap-3 rounded-3xl border border-primary bg-white p-4 text-center text-xl font-semibold text-primary hover:text-white"
+                >
+                    <div class="mx-auto flex gap-2">TEXT US <Smartphone /></div>
+                </Dialog.Trigger>
+                <Dialog.Content class="w-[481px] p-9">
+                    <Dialog.Header>
+                        <Dialog.Title>
+                            <img src="/logo/main-logo.svg" alt="clearsky" class="mx-auto h-9 w-[131px]" />
+                        </Dialog.Title>
+                        <Dialog.Description class="py-7 text-center">
+                            <b>Text with us.</b> Message us now. book a demo.
+                        </Dialog.Description>
+    
+                        <div class="flex flex-col gap-4 bg-[#F2F3F4] px-16 py-7">
+                            <Button
+                                class="w-full gap-2 rounded-[27px] bg-white py-4 text-2xl font-semibold text-foreground hover:text-white"
+                                ><Smartphone /> Text Us</Button
+                            >
+                            <Button
+                                class="w-full gap-2 rounded-[27px] bg-white py-4 text-2xl font-semibold text-foreground hover:text-white"
+                                ><Phone /> Request a Call</Button
+                            >
+                            <Button
+                                class="w-full gap-2 rounded-[27px] bg-white py-4 text-2xl font-semibold text-foreground hover:text-white"
+                                ><PlayCircle />Watch a Demo</Button
+                            >
+                        </div>
+                    </Dialog.Header>
+                </Dialog.Content>
+            </Dialog.Root>
+        </div>
+    </div> 
 </div>
 
- <div class="absolute bottom-[13rem] right-16 flex flex-col gap-2">
-    <form
-        action='/?/create-room'
-        method='POST'
-        use:enhance={() => {
-            return async ({ result }) => {
-                if (result.data.room?.name) {
-                    toast.success('Room created successfully');
-                    goto(`/room/${result.data.room.name}`);
-                } else if (result.status === 400) {
-                    toast('Bad request');
-                } else if (result.status === 500) {
-                    toast('Server error :|');
-                } else {
-                    toast('Oops, something went wrong!');
-                }
-            };
-        }}
-    >
-        <Button
-            class="gap-3 rounded-3xl bg-primary px-4 py-6 text-xl font-semibold hover:text-white"
-            type="submit"
-            disabled={!videoUrl}
-        >
-            Create a Demo Room <PlayCircle />
-        </Button>
-    </form>
-    <div
-        class="flex flex-col items-center gap-3 rounded-[26px] bg-primary pt-4 font-bold text-white hover:text-white"
-    >
-        <p>QUESTIONS? JUST ASK!</p>
-
-        <Dialog.Root>
-            <Dialog.Trigger
-                class="flex w-full gap-3 rounded-3xl border border-primary bg-white p-4 text-center text-xl font-semibold text-primary hover:text-white"
-            >
-                <div class="mx-auto flex gap-2">TEXT US <Smartphone /></div>
-            </Dialog.Trigger>
-            <Dialog.Content class="w-[481px] p-9">
-                <Dialog.Header>
-                    <Dialog.Title>
-                        <img src="/logo/main-logo.svg" alt="clearsky" class="mx-auto h-9 w-[131px]" />
-                    </Dialog.Title>
-                    <Dialog.Description class="py-7 text-center">
-                        <b>Text with us.</b> Message us now. book a demo.
-                    </Dialog.Description>
-
-                    <div class="flex flex-col gap-4 bg-[#F2F3F4] px-16 py-7">
-                        <Button
-                            class="w-full gap-2 rounded-[27px] bg-white py-4 text-2xl font-semibold text-foreground hover:text-white"
-                            ><Smartphone /> Text Us</Button
-                        >
-                        <Button
-                            class="w-full gap-2 rounded-[27px] bg-white py-4 text-2xl font-semibold text-foreground hover:text-white"
-                            ><Phone /> Request a Call</Button
-                        >
-                        <Button
-                            class="w-full gap-2 rounded-[27px] bg-white py-4 text-2xl font-semibold text-foreground hover:text-white"
-                            ><PlayCircle />Watch a Demo</Button
-                        >
-                    </div>
-                </Dialog.Header>
-            </Dialog.Content>
-        </Dialog.Root>
-    </div>
-</div> 

@@ -128,12 +128,12 @@
 </script>
 
 <div>
-    <Button on:click={togglePicker} variant="outline" class="bg-white text-black hover:bg-gray-100 mb-2 z-[999]">
+    <Button on:click={togglePicker} variant="outline" class="bg-white text-black hover:bg-gray-100 mb-2 z-[999] hidden">
         Show Video Picker
     </Button>
 </div>
 
-<div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-4 right-40 absolute left-40 z-[999]"
+<div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-[-39rem] right-40 absolute left-0 z-[999]"
     style="display: {$pickerOpen ? 'block' : 'none'};">
     <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
     <video id="local-vid" controls loop class="w-full max-w-xs mb-2" volume="0.1"></video>

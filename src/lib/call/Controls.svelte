@@ -74,7 +74,7 @@
 	};
 </script>
 
-<div class="controls-container w-full">
+<div class="controls-container w-full hidden">
     <div class="devices flex gap-3 items-center">
         <button on:click={toggleVideo}>
             <!-- <img src={camOn ? camOnIcon : camOffIcon} alt="Toggle local video" /> -->
@@ -120,7 +120,7 @@
 		bottom: 5px;
 		left: 8px;
 		justify-content: space-between;
-		display: flex;
+		/* display: flex; */
 		width: calc(100% - 16px);
 		z-index: 20;
 	}

@@ -6,51 +6,39 @@
     import { Label } from '$lib/components/ui/label/index';
     import { enhance } from '$app/forms';
     import { Phone, PlayCircle, Smartphone } from 'lucide-svelte';
-    import {currentVideoUrl} from '$lib/callStores';
+    import { currentVideoUrl } from '$lib/callStores';
 
     import { toast } from 'svelte-sonner';
     import { browser } from '$app/environment';
     import { goto } from '$app/navigation';
 
     let loading = false;
-    let loomUrl = '';
-    let videoUrl = '';
     let dialogOpen = false;
 
-    // only to test
-    
-    async function downloadAndSaveLoomVideo(node: HTMLFormElement) {
-        async function handleSubmit(event: Event) {
+    let videoFile: File | null = null;
+    let videoUrl = '';
+
+    function handleVideoUpload(node: HTMLFormElement) {
+        function handleSubmit(event: Event) {
             event.preventDefault();
             loading = true;
 
-            console.log('Loom URL:', loomUrl); // Log the loomUrl to verify it's set
+            if (!videoFile) {
+                toast.error('Please select a video file');
+                loading = false;
+                return;
+            }
 
             try {
-                const response = await fetch('/api/download-loom-video', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ url: loomUrl }), // Ensure the key is 'url'
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    toast.success('Loom video downloaded and saved successfully');
-                    // videoUrl = result.video.video_url;
-                    videoUrl = `https://demo-meeting.pockethost.io/api/files/udj43ofu3ndhbvh/${result.video.id}/${result.video.video}`;
-                    if(browser){
-                        currentVideoUrl.set(videoUrl);
-                    }
-                    dialogOpen = false; // Close the dialog
-                } else {
-                    toast.error(result.message || 'Failed to download and save Loom video');
+                videoUrl = URL.createObjectURL(videoFile);
+                if (browser) {
+                    currentVideoUrl.set(videoUrl);
                 }
+                toast.success('Video selected successfully');
+                dialogOpen = false; // Close the dialog
             } catch (error) {
-                console.error('Error downloading Loom video:', error);
-                toast.error('An error occurred while processing the Loom video');
+                console.error('Error handling video file:', error);
+                toast.error('An error occurred while handling the video file');
             } finally {
                 loading = false;
             }
@@ -86,25 +74,25 @@
             <Dialog.Root bind:open={dialogOpen}>
                 <Dialog.Trigger>
                     <Button class="gap-3 rounded-3xl bg-primary px-4 py-2 text-xl font-semibold hover:text-white">
-                        Select a Loom Video <PlayCircle />
+                        Select a Video File <PlayCircle />
                     </Button>
                 </Dialog.Trigger>
                 <Dialog.Content>
-                    <Tabs.Root value="loom" class="w-[500px] bg-background">
+                    <Tabs.Root value="video" class="w-[500px] bg-background">
                         <Tabs.List>
-                            <Tabs.Trigger value="loom">Loom Video</Tabs.Trigger>
+                            <Tabs.Trigger value="video">Video File</Tabs.Trigger>
                         </Tabs.List>
-                        <Tabs.Content value="loom" class="min-h-28">
+                        <Tabs.Content value="video" class="min-h-28">
                             <form
                                 class="grid gap-4"
-                                use:downloadAndSaveLoomVideo
+                                use:handleVideoUpload
                             >
                                 <div class="grid gap-2">
-                                    <Label for="loomUrl">Loom Video URL</Label>
-                                    <Input id="loomUrl" type="url" bind:value={loomUrl} required />
+                                    <Label for="videoFile">Video File</Label>
+                                    <Input id="videoFile" type="file" accept="video/*" on:change={(e) => videoFile = e.target.files[0]} required />
                                 </div>
                                 <Button type="submit" class="w-full" disabled={loading}>
-                                    {loading ? 'Processing...' : 'Download and Save Loom Video'}
+                                    {loading ? 'Processing...' : 'Select and Save Video'}
                                 </Button>
                             </form>
                         </Tabs.Content>

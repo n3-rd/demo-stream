@@ -4,7 +4,7 @@
     import NoVideoPlaceholder from './NoVideoPlaceholder.svelte';
     import VideoStreamerTile from './VideoStreamerTile.svelte';
     import Controls from './Controls.svelte';
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount, onDestroy, tick } from 'svelte';
 
     export let participant;
     export let callObject;
@@ -17,14 +17,14 @@
     let videoTrackSet = false;
     let videoSrc;
     $: videoTrack = participant?.tracks?.video;
-    $: screenTrack = screen?.tracks?.screenVideo;
-    $: screenAudioTrack = screen?.tracks?.screenAudio;
+    $: screenTrack = participant?.tracks?.screenVideo;
+    $: screenAudioTrack = participant?.tracks?.screenAudio;
     $: {
-        if (!screen && videoTrack?.state === 'playable' && !videoTrackSet) {
-            videoSrc = new MediaStream([videoTrack.persistentTrack]);
-            videoTrackSet = true;
-        } else if (screen && screenTrack?.state === 'playable' && !videoTrackSet) {
+        if (screenTrack?.state === 'playable' && !videoTrackSet) {
             videoSrc = new MediaStream([screenTrack.track]);
+            videoTrackSet = true;
+        } else if (videoTrack?.state === 'playable' && !videoTrackSet) {
+            videoSrc = new MediaStream([videoTrack.persistentTrack]);
             videoTrackSet = true;
         }
     }
@@ -33,7 +33,10 @@
     let audioSrc;
     $: audioTrack = participant?.tracks?.audio;
     $: {
-        if (audioTrack?.state === 'playable' && !audioTrackSet && !host) {
+        if (screenAudioTrack?.state === 'playable' && !audioTrackSet) {
+            audioSrc = new MediaStream([screenAudioTrack.track]);
+            audioTrackSet = true;
+        } else if (audioTrack?.state === 'playable' && !audioTrackSet) {
             audioSrc = new MediaStream([audioTrack.persistentTrack]);
             audioTrackSet = true;
         }
@@ -133,38 +136,77 @@
         }
     }
 
+    function handleScreenShareStarted(event) {
+        console.log('Screen share started', event);
+        if (event.participant.session_id === participant.session_id) {
+            videoSrc = new MediaStream([event.participant.tracks.screenVideo.track]);
+            audioSrc = new MediaStream([event.participant.tracks.screenAudio.track]);
+        }
+    }
+
+    function handleScreenShareStopped(event) {
+        console.log('Screen share stopped', event);
+        if (event.participant.session_id === participant.session_id) {
+            videoSrc = null;
+            audioSrc = null;
+        }
+    }
+
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    async function setupVideo() {
+        await tick();
+        if (videoSrc && !participant?.local) {
+            const video = document.getElementById(`video-${participant?.session_id}`);
+            if (video) {
+                video.srcObject = videoSrc;
+                try {
+                    await video.play();
+                    retryCount = 0;
+                } catch (error) {
+                    console.error('Error playing video:', error);
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        setTimeout(setupVideo, 1000);
+                    } else {
+                        console.error('Failed to play video after retries');
+                    }
+                }
+            }
+        }
+    }
+
+    $: {
+        if (videoSrc) {
+            setupVideo();
+        }
+    }
+
     onMount(() => {
         callObject.on('track-started', handleTrackStarted);
         callObject.on('track-stopped', handleTrackStopped);
+        callObject.on('screen-share-started', handleScreenShareStarted);
+        callObject.on('screen-share-stopped', handleScreenShareStopped);
     });
 
     onDestroy(() => {
         callObject.off('track-started', handleTrackStarted);
         callObject.off('track-stopped', handleTrackStopped);
+        callObject.off('screen-share-started', handleScreenShareStarted);
+        callObject.off('screen-share-stopped', handleScreenShareStopped);
     });
 </script>
 
-<div class={screen ? 'video-tile screen hidden' : 'video-tile max-h-96 rounded-lg'}>
-    {#if !participant?.local && audioSrc}
-        <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc} muted={host}>
+<div class={screen ? 'video-tile screen' : 'video-tile max-h-96 rounded-lg'}>
+    {#if audioSrc}
+        <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
             <track kind="captions" />
         </audio>
-    {/if}
-
-    {#if screenAudioSrc}
-        <audio id={`screen-audio-${screen?.session_id}`} autoPlay playsInline use:srcObject={screenAudioSrc} muted={host}>
-            <track kind="captions" />
-        </audio>
-    {/if}
-
-    {#if screenVideoSrc}
-        <video id={`screen-video-${screen?.session_id}`} autoPlay playsInline use:srcObject={screenVideoSrc} muted={host}>
-            <track kind="captions" />
-        </video>
     {/if}
 
     {#if videoSrc}
-        <video id={`video-${participant?.session_id}`} autoPlay playsInline use:srcObject={videoSrc} muted={host}>
+        <video id={`video-${participant?.session_id}`} class="hidden" autoPlay playsInline use:srcObject={videoSrc}>
             <track kind="captions" />
         </video>
     {/if}

@@ -103,7 +103,7 @@
     </div>
 </div>
 
-<div class="absolute bottom-8 right-8 flex flex-col gap-2">
+<!-- <div class="absolute bottom-8 right-8 flex flex-col gap-2">
     <form
         action='/?/create-room'
         method='POST'
@@ -168,4 +168,4 @@
             </Dialog.Content>
         </Dialog.Root>
     </div>
-</div>
+</div> -->

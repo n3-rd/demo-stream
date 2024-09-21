@@ -12,6 +12,7 @@
     import ScheduleMeeting from '../room/schedule-meeting.svelte';
     import InviteRepresentative from '../room/invite-representative.svelte';
 	import { onMount } from 'svelte';
+	import { currentVideoUrl } from '$lib/callStores';
 
     export let loggedIn = false;
     export let user;
@@ -24,6 +25,7 @@
 
     $: {
         console.log('route',pageRoute);
+        console.log('currentVideoUrl', $currentVideoUrl);
         // isInMeeting = pageRoute.pathname.includes('room');
     }
 
@@ -59,7 +61,30 @@
         <img src="/logo/main-logo.svg" alt="clearsky" class="h-9 w-[131px]" />
     </a>
 
-
+    <form
+    action='/?/create-room'
+    method='POST'
+    use:enhance={() => {
+        return async ({ result }) => {
+            if (result.data.room?.name) {
+                toast.success('Room created successfully');
+                goto(`/room/${result.data.room.name}`);
+            } else if (result.status === 400) {
+                toast('Bad request');
+            } else if (result.status === 500) {
+                toast('Server error :|');
+            } else {
+                toast('Oops, something went wrong!');
+            }
+        };
+    }}
+>
+<Button class="bg-[#ECEFF3] text-primary hover:text-white" type="submit"
+disabled={$currentVideoUrl == ''}
+>
+    Create Room
+</Button>
+</form>
     
     <!-- <div class="flex gap-4">
 

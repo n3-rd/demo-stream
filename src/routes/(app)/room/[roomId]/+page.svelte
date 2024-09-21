@@ -53,6 +53,7 @@
     let chatIsOpen = false;
     let testPanelIsOpen = true;
     let newText = '';
+    let globRoomName = '';
 
     $: {
         console.log('participants list', participants)
@@ -130,6 +131,7 @@
 
     const createAndJoinCall = async () => {
         const roomName = $page.url.pathname.split('/').pop();
+        globRoomName = roomName;
         console.log('page', roomName);
         const domain = PUBLIC_DAILY_DOMAIN;
         if (!roomName || !domain) {
@@ -184,7 +186,12 @@
             .on('local-screen-share-started', updateParticpants)
             .on('loaded', updateParticpants)
             .on('error', handleError)
-            .on('app-message', handleAppMessage);
+            .on('app-message', handleAppMessage)
+            .on('screen-share-started', handleScreenShareStarted)
+            .on('screen-share-stopped', handleScreenShareStopped)
+            .on('active-speaker-change', updateParticpants)
+            .on('track-started', updateParticpants)
+            .on('track-stopped', updateParticpants);
 
         try {
             await callObject.join();
@@ -193,6 +200,16 @@
             dailyErrorMessage.set(e);
             toast('Error joining the call');
         }
+    };
+
+    const handleScreenShareStarted = (event) => {
+        console.log('Screen share started', event);
+        updateParticpants(event);
+    };
+
+    const handleScreenShareStopped = (event) => {
+        console.log('Screen share stopped', event);
+        updateParticpants(event);
     };
 
     onMount(() => {
@@ -320,7 +337,7 @@
                 </Button>
             </div>
 
-            <!-- Main content area -->
+            <!-- Main content area  -->
             <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
                 {#if loading}
                     <div class="h-full w-full z-[9] absolute flex justify-center items-center bg-[#9d9d9f]">
@@ -346,7 +363,7 @@
                 <!-- Test panel with Chat -->
                 <div class="w-[30rem] bg-[#666669] h-full overflow-y-auto flex flex-col" id="testPanel">
                     <div class="flex justify-between items-center p-4 border-b bg-[#47484b]">
-                        <h2 class="text-xl font-bold text-white">Test Panel</h2>
+                        <h2 class="text-xl font-bold text-white">Chat</h2>
                     </div>
                     
                    
@@ -403,7 +420,7 @@
 
     <!-- Bottom controls bar -->
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
-        <div class="room-name text-white">Room name</div>
+        <div class="room-name text-white">{globRoomName}</div>
         <div class="controls flex items-center gap-3">
             <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
                 <MicOff color="#fff" size={24} class="hover:text-black"/>

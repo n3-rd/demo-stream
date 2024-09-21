@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import { Button } from '$lib/components/ui/button';
     import { toast } from 'svelte-sonner';
     import { pickerOpen } from '../../store.js';
@@ -14,18 +14,29 @@
 
     const videoURL = $currentVideoUrl;
 
+    let retryCount = 0;
+    const maxRetries = 3;
+
     async function fetchVideoBlob(url) {
         const response = await fetch(url);
         const blob = await response.blob();
         return URL.createObjectURL(blob);
     }
 
-    async function playLocalVideoFile(evt) {
-        let videoEl = document.getElementById('local-vid');
-        let file = evt.target.files[0];
+    async function playLocalVideoFile(evt: Event) {
+        let videoEl = document.getElementById('local-vid') as HTMLVideoElement;
+        if (!videoEl) {
+            console.error('Video element not found');
+            return;
+        }
+        let file = (evt.target as HTMLInputElement).files?.[0];
+        if (!file) {
+            console.error('No file selected');
+            return;
+        }
         let type = file.type;
         if (!videoEl.canPlayType(type)) {
-            toast('cannot play that file');
+            toast('Cannot play that file type');
             return;
         }
         videoEl.src = URL.createObjectURL(file);
@@ -35,50 +46,62 @@
         await shareVideo();
     }
 
-    async function captureStream(videoEl) {
-        if (typeof videoEl.mozCaptureStream == 'function') {
-            localVideoStream = videoEl.mozCaptureStream();
-        } else if (typeof videoEl.captureStream == 'function') {
-            localVideoStream = videoEl.captureStream();
-        }
-        // Ensure the localVideoStream contains only video tracks
-        if (localVideoStream) {
-            const videoTracks = localVideoStream.getVideoTracks();
-            localVideoStream = new MediaStream(videoTracks);
-        }
-        // Extract audio tracks separately
-        const audioTracks = videoEl.captureStream().getAudioTracks();
-        if (audioTracks.length > 0) {
-            localAudioStream = new MediaStream(audioTracks);
+    async function captureStream(videoEl: HTMLVideoElement) {
+        if (typeof videoEl.captureStream === 'function') {
+            const stream = videoEl.captureStream();
+            localVideoStream = new MediaStream(stream.getVideoTracks());
+            localAudioStream = new MediaStream(stream.getAudioTracks());
+            
+            // Simulate hot reload effect
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await shareVideo();
+        } else {
+            console.error('captureStream is not supported in this browser');
+            toast('Screen sharing is not supported in this browser');
         }
     }
 
     async function shareVideo() {
         console.log('shareVideo() called');
-        if (localVideoStream) {
+        if (localVideoStream && localAudioStream) {
             try {
-                console.log('Combining video and audio streams');
-                // Combine video and audio streams
-                const combinedStream = new MediaStream([
-                    ...localVideoStream.getVideoTracks(),
-                    ...(localAudioStream ? localAudioStream.getAudioTracks() : [])
-                ]);
-
                 console.log('Starting screen share');
+                const combinedStream = new MediaStream([
+                    ...localVideoStream.getTracks(),
+                    ...localAudioStream.getTracks()
+                ]);
                 await callObject.startScreenShare({
                     mediaStream: combinedStream,
-                    videoSource: 'mediaStream',
-                    audioSource: localAudioStream ? 'mediaStream' : false,
-                    systemAudio: 'include'
                 });
+                console.log('Screen share started successfully');
+                
+                // Retry mechanism
+                retryCount = 0;
+                checkVideoPlayback();
             } catch (error) {
                 console.error('Error starting screen share:', error);
                 toast('Failed to start screen share: ' + error.message);
             }
         } else {
-            console.log('No video stream available to share');
-            toast('No video stream available to share.');
+            console.log('No video or audio stream available to share');
+            toast('No video or audio stream available to share.');
         }
+    }
+
+    function checkVideoPlayback() {
+        setTimeout(() => {
+            const remoteVideos = document.querySelectorAll('video:not(#local-vid)');
+            const allPlaying = Array.from(remoteVideos).every(video => !video.paused);
+            
+            if (!allPlaying && retryCount < maxRetries) {
+                console.log(`Retry ${retryCount + 1}: Restarting screen share`);
+                retryCount++;
+                shareVideo();
+            } else if (!allPlaying) {
+                console.error('Failed to start video playback for all participants after retries');
+                toast('Video playback issues. Please try refreshing the page.');
+            }
+        }, 2000);
     }
 
     function stopVideo() {
@@ -119,11 +142,10 @@
         videoEl.volume = 0.01;
         await videoEl.play();
         await captureStream(videoEl);
-        await shareVideo();
     });
 
     $:{
-        console.log('pickerOpen', $pickerOpen);
+        console.log('pickerOpen k', $pickerOpen);
     }
 </script>
 

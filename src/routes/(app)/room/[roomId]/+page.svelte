@@ -24,8 +24,8 @@
     import GreetingPopup from '$lib/call/GreetingPopup.svelte';
     import Controls from '$lib/call/Controls.svelte';
     import VideoStreamerTile from '$lib/call/VideoStreamerTile.svelte';
-	import { slide } from 'svelte/transition';
-	import { quintOut } from 'svelte/easing';
+    import { slide } from 'svelte/transition';
+    import { quintOut } from 'svelte/easing';
 
     export let data;
 
@@ -274,7 +274,7 @@
             <div class="w-14 h-full bg-red flex flex-col gap-4">
                 <Dialog.Root>
                     <Dialog.Trigger>
-                        <Button variant="ghost" size="icon" class="w-full">
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                             <ShareIcon scale={1.3} color="#fff"/>
                         </Button>
                     </Dialog.Trigger>
@@ -284,7 +284,7 @@
                 </Dialog.Root>
                 <Dialog.Root>
                     <Dialog.Trigger>
-                        <Button variant="ghost" size="icon" class="w-full">
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                             <CircleUser scale={1.3} color="#fff"/>
                         </Button>
                     </Dialog.Trigger>
@@ -294,7 +294,7 @@
                 </Dialog.Root>
                 <Dialog.Root bind:open={scheduleOpen}>
                     <Dialog.Trigger>
-                        <Button variant="ghost" size="icon" class="w-full">
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                             <Calendar scale={1.3} color="#fff"/>
                         </Button>
                     </Dialog.Trigger>
@@ -307,7 +307,7 @@
                 <Notes scale={1.3} color="#fff"/>
                 <Dialog.Root>
                     <Dialog.Trigger>
-                        <Button variant="ghost" size="icon" class="w-full">
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                             <Quote scale={1.3} color="#fff"/>
                         </Button>
                     </Dialog.Trigger>
@@ -315,19 +315,18 @@
                         <CreateQuote />
                     </Dialog.Content>
                 </Dialog.Root>
-                <Button variant="ghost" size="icon" class="w-full" on:click={togglePicker}>
+                <Button variant="ghost" size="icon" class="w-full hover:bg-red-700" on:click={togglePicker}>
                     <Clapperboard scale={1.3} color="#fff"/>
                 </Button>
-
             </div>
 
             <!-- Main content area -->
-            <div class="flex-grow h-full bg-black relative flex">
-                <!-- {#if loading}
-                    <div class="h-full w-full z-[9] absolute flex justify-center items-center bg-black">
+            <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
+                {#if loading}
+                    <div class="h-full w-full z-[9] absolute flex justify-center items-center bg-[#9d9d9f]">
                         <Loading />
                     </div>
-                {/if} -->
+                {/if}
 
                 <!-- Video container -->
                 <div class="flex-grow h-full relative">
@@ -389,11 +388,13 @@
                         
                    
                 </div>
+
+                
             </div>
 
             <!-- Right sidebar (Chat) -->
             <div class="w-14 h-full bg-red flex flex-col gap-4 justify-end">
-                <Button variant="ghost" size="icon" class="w-full" on:click={toggleTestPanel}>
+                <Button variant="ghost" size="icon" class="w-full hover:bg-red-700" on:click={toggleTestPanel}>
                     <MessageSquareDashed scale={1.3} color="#fff"/>
                 </Button>
             </div>
@@ -404,15 +405,15 @@
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
         <div class="room-name text-white">Room name</div>
         <div class="controls flex items-center gap-3">
-            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white text-black">
+            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
                 <MicOff color="#fff" size={24} class="hover:text-black"/>
             </button>
-            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white text-black">
+            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
                 <Settings color="#fff" size={24} class="hover:text-black"/>
             </button>
         </div>
         <div class="leave-room">
-            <Button variant="destructive">
+            <Button variant="destructive" class="hover:bg-red-700">
                 Leave Room
             </Button>
         </div>
@@ -422,5 +423,17 @@
 <style>
     #testPanel {
         transition: width 0.3s ease-in-out;
+    }
+    .hover\:bg-red-700:hover {
+        background-color: #b91c1c;
+    }
+    .hover\:bg-white:hover {
+        background-color: #ffffff;
+    }
+    .hover\:text-black:hover {
+        color: #000000;
+    }
+    .hover\:bg-primary-dark:hover {
+        background-color: #1f2937;
     }
 </style>

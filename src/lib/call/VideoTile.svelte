@@ -4,7 +4,7 @@
     import NoVideoPlaceholder from './NoVideoPlaceholder.svelte';
     import VideoStreamerTile from './VideoStreamerTile.svelte';
     import Controls from './Controls.svelte';
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
 
     export let participant;
     export let callObject;
@@ -51,9 +51,17 @@
 
     let screenVideoSrc;
     $: {
-        if (screen && screenTrack?.state === 'playable' && !videoTrackSet) {
+        if (screen && screenTrack?.state === 'playable') {
             screenVideoSrc = new MediaStream([screenTrack.track]);
-            videoTrackSet = true;
+        }
+    }
+
+    // Reactive statement to constantly check for changes in screen video
+    $: {
+        if (screen && screenTrack?.state === 'playable') {
+            screenVideoSrc = new MediaStream([screenTrack.track]);
+        } else {
+            screenVideoSrc = null;
         }
     }
 
@@ -93,7 +101,7 @@
                 ]);
                 await callObject.startScreenShare({
                     mediaStream: combinedStream,
-                    videoSource: 'mediaStream',
+                    videoSource: localVideoStream ? 'mediaStream' : false,
                     audioSource: localAudioStream ? 'mediaStream' : false,
                     systemAudio: 'include'
                 });
@@ -109,24 +117,33 @@
             captureStream(videoEl).then(shareVideo);
         });
     }
+
+    function handleTrackStarted(event) {
+        const { track } = event;
+        if (track.kind === 'video' && track.label.includes('screen')) {
+            screenVideoSrc = new MediaStream([track]);
+        }
+    }
+
+    function handleTrackStopped(event) {
+        const { track } = event;
+        if (track.kind === 'video' && track.label.includes('screen')) {
+            screenVideoSrc = null;
+        }
+    }
+
+    onMount(() => {
+        callObject.on('track-started', handleTrackStarted);
+        callObject.on('track-stopped', handleTrackStopped);
+    });
+
+    onDestroy(() => {
+        callObject.off('track-started', handleTrackStarted);
+        callObject.off('track-stopped', handleTrackStopped);
+    });
 </script>
 
 <div class={screen ? 'video-tile screen hidden' : 'video-tile max-h-96 rounded-lg'}>
-    <!-- {#if host}
-        <video 
-            bind:this={videoEl}
-            controls
-            class="w-full h-auto"
-        ></video>
-    {:else}
-       
-        <video 
-            autoplay
-            playsInline
-            class="w-full h-auto"
-        ></video>
-    {/if} -->
-
     {#if !participant?.local && audioSrc}
         <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc} muted={host}>
             <track kind="captions" />
@@ -151,10 +168,6 @@
         </video>
     {/if}
 
-    <!-- {#if !participant?.video && (!screen || screen?.length === 0)}
-        <NoVideoPlaceholder {participant} />
-    {/if} -->
-
     {#if participant?.video && !participant?.local}
         <span class="audio-icon">
             <img src={participant?.audio ? micOnIcon : micOffIcon} alt="Toggle local audio" />
@@ -168,17 +181,15 @@
         {/if}
     {/if}
 
-    {#if participant?.user_name}
+    <!-- {#if participant?.user_name}
         <div class="participant-name">{participant.user_name}</div>
-    {/if}
+    {/if} -->
 </div>
 
 <style>
     .video-tile {
         position: relative;
         flex: 1 1 350px;
-        /* margin: 10px 20px; */
-        /* min-height: 100px; */
         flex-direction: column;
         justify-content: center;
         align-items: center;
@@ -189,6 +200,7 @@
     }
     video {
         width: 100%;
+        height: 100%;
         border-radius: 8px;
     }
     .screen video {

@@ -83,6 +83,7 @@
         participants = Object.values(callObject.participants());
     };
 
+
     const handleError = async () => {
         console.error('Error: ending call and returning to home page');
         await goHome();
@@ -173,6 +174,8 @@
             .on('participant-joined', updateParticpants)
             .on('participant-left', updateParticpants)
             .on('participant-updated', updateParticpants)
+            .on('local-screen-share-started', updateParticpants)
+            .on('loaded', updateParticpants)
             .on('error', handleError)
             .on('app-message', handleAppMessage);
 
@@ -197,15 +200,15 @@
         callObject.leave();
         callObject.destroy();
         callObject
-            .off('joining-meeting', updateParticpants)
-            .off('joined-meeting', handleJoinedMeeting)
-            .off('participant-joined', updateParticpants)
-            .off('participant-left', updateParticpants)
-            .off('track-started', updateParticpants)
-            .off('track-stopped', updateParticpants)
-            .off('participant-left', updateParticpants)
-            .off('error', handleError)
-            .off('app-message', handleAppMessage);
+        .on('joining-meeting', updateParticpants)
+            .on('joined-meeting', handleJoinedMeeting)
+            .on('participant-joined', updateParticpants)
+            .on('participant-left', updateParticpants)
+            .on('participant-updated', updateParticpants)
+            .on('local-screen-share-started', updateParticpants)
+            .on('loaded', updateParticpants)
+            .on('error', handleError)
+            .on('app-message', handleAppMessage);
     });
 
     const handleScheduleClose = () => {
@@ -283,12 +286,14 @@
                     <Clapperboard scale={1.3} color="#fff"/>
                 </Button>
             </div>
-            <div class="w-full h-full bg-green-500">
+            <div class="w-full h-full bg-black">
                 {#each participants as participant}
                     <VideoTile {callObject} {participant} {screensList} host={isHost} {name} {videoURL} />
                     {#if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'playable'}
                         <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}
-                        controls={isHost}
+                       class="w-full h-full"
+
+
                         ></video>
                         <audio autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenAudio.track])}></audio>
                     {:else if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'loading'}

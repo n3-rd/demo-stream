@@ -135,12 +135,12 @@
 
 <div class="video-picker-popup bg-white border border-gray-300 rounded-t-lg p-4 shadow-lg w-fit bottom-[-39rem] right-40 absolute left-0 z-[999]"
     style="display: {$pickerOpen ? 'block' : 'none'};">
-    <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} />
+    <!-- <input bind:this={videoInput} id="vid-file-picker" type="file" accept="video/*" class="mb-2" on:change={playLocalVideoFile} /> -->
     <video id="local-vid" controls loop class="w-full max-w-xs mb-2" volume="0.1"></video>
-    <div class="flex space-x-2">
+    <!-- <div class="flex space-x-2">
         <Button on:click={shareVideo}>Share video</Button>
         <Button on:click={stopVideo}>Stop video</Button>
-    </div>
+    </div> -->
 </div>
 
 <style>

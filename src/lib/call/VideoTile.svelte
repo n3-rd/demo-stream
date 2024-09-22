@@ -45,7 +45,7 @@
     // Separate audio source for screen audio
     let screenAudioSrc;
     $: {
-        if (screen && screenAudioTrack?.state === 'playable' && !host) {
+        if (screenAudioTrack?.state === 'playable') {
             screenAudioSrc = new MediaStream([screenAudioTrack.track]);
         } else {
             screenAudioSrc = null;
@@ -138,8 +138,10 @@
 
     function handleScreenShareStarted(event) {
         console.log('Screen share started', event);
-        if (event.participant.session_id === participant.session_id) {
+        if (event.participant.tracks.screenVideo) {
             videoSrc = new MediaStream([event.participant.tracks.screenVideo.track]);
+        }
+        if (event.participant.tracks.screenAudio) {
             audioSrc = new MediaStream([event.participant.tracks.screenAudio.track]);
         }
     }
@@ -151,6 +153,17 @@
             audioSrc = null;
         }
     }
+
+    const updateParticipants = (e) => {
+    console.log('[update participants]', e);
+    if (!callObject) return;
+    participants = Object.values(callObject.participants()).map(participant => {
+        return {
+            ...participant,
+            isScreenSharing: participant.tracks.screenVideo?.state === 'playable'
+        };
+    });
+};
 
     let retryCount = 0;
     const maxRetries = 3;
@@ -198,7 +211,7 @@
     });
 </script>
 
-<div class={screen ? 'video-tile screen' : 'video-tile max-h-96 rounded-lg'}>
+<div class={screen ? 'video-tile screen ' : 'video-tile max-h-96 h-0 rounded-lg'}>
     {#if audioSrc}
         <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
             <track kind="captions" />
@@ -227,6 +240,26 @@
     <!-- {#if participant?.user_name}
         <div class="participant-name">{participant.user_name}</div>
     {/if} -->
+
+    {#if participant.isScreenSharing}
+        <video 
+            autoplay 
+            playsinline 
+            use:srcObject={screenVideoSrc}
+            class="screen-share-video"
+        >
+            <track kind="captions" />
+        </video>
+        {#if screenAudioSrc}
+            <audio 
+                autoplay 
+                playsinline 
+                use:srcObject={screenAudioSrc}
+            >
+                <track kind="captions" />
+            </audio>
+        {/if}
+    {/if}
 </div>
 
 <style>

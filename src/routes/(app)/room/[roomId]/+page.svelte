@@ -89,7 +89,12 @@
     const updateParticpants = (e) => {
         console.log('[update participants]', e);
         if (!callObject) return;
-        participants = Object.values(callObject.participants());
+        participants = Object.values(callObject.participants()).map(participant => {
+            return {
+                ...participant,
+                isScreenSharing: participant.tracks.screenVideo?.state === 'playable'
+            };
+        });
     };
 
     const handleError = async () => {

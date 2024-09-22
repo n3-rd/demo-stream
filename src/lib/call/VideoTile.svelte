@@ -211,7 +211,7 @@
     });
 </script>
 
-<div class={screen ? 'video-tile screen' : 'video-tile max-h-96 rounded-lg'}>
+<div class={screen ? 'video-tile screen ' : 'video-tile max-h-96 h-0 rounded-lg'}>
     {#if audioSrc}
         <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
             <track kind="captions" />

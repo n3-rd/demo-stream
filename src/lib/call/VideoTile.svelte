@@ -5,6 +5,8 @@
     import VideoStreamerTile from './VideoStreamerTile.svelte';
     import Controls from './Controls.svelte';
     import { onMount, onDestroy, tick } from 'svelte';
+    import { playVideoStore } from '$lib/stores/playStore.js';
+	import { PlayCircle } from 'lucide-svelte';
 
     export let participant;
     export let callObject;
@@ -82,6 +84,7 @@
     let videoEl;
     let localVideoStream;
     let localAudioStream;
+    let isPlaying = false;
 
     async function captureStream(videoEl) {
         if (typeof videoEl.captureStream == 'function') {
@@ -115,11 +118,17 @@
         }
     }
 
-    $: if (host && videoEl && videoURL) {
-        videoEl.src = videoURL;
-        videoEl.play().then(() => {
-            captureStream(videoEl).then(shareVideo);
-        });
+    async function playVideo() {
+        if (videoEl) {
+            try {
+                await videoEl.play();
+                isPlaying = true;
+                captureStream(videoEl).then(shareVideo);
+                playVideoStore.set(true); // Update the store to trigger play in VideoStreamerTile
+            } catch (error) {
+                console.error('Error playing video:', error);
+            }
+        }
     }
 
     function handleTrackStarted(event) {
@@ -201,6 +210,10 @@
         callObject.on('track-stopped', handleTrackStopped);
         callObject.on('screen-share-started', handleScreenShareStarted);
         callObject.on('screen-share-stopped', handleScreenShareStopped);
+        callObject.on('participants-updated', updateParticipants);
+        callObject.on('participant-left', updateParticipants);
+        callObject.on('participant-joined', updateParticipants);
+
     });
 
     onDestroy(() => {
@@ -208,6 +221,9 @@
         callObject.off('track-stopped', handleTrackStopped);
         callObject.off('screen-share-started', handleScreenShareStarted);
         callObject.off('screen-share-stopped', handleScreenShareStopped);
+        callObject.off('participants-updated', updateParticipants);
+        callObject.off('participant-left', updateParticipants);
+        callObject.off('participant-joined', updateParticipants);
     });
 </script>
 
@@ -219,9 +235,27 @@
     {/if}
 
     {#if videoSrc}
-        <video id={`video-${participant?.session_id}`} class="hidden" autoPlay playsInline use:srcObject={videoSrc}>
+        <video id={`video-${participant?.session_id}`} class="hidden" playsInline use:srcObject={videoSrc}>
             <track kind="captions" />
         </video>
+        {#if !isPlaying && host && !$playVideoStore}
+            <div class="play-button h-screen  min-w-full absolute top-[30rem] flex justify-center items-center z-[999]" >
+                <button
+                on:click={()=>{
+                    playVideoStore.set(true);
+                }}
+                >
+                <PlayCircle size={48}
+                class="cursor-pointer"
+                on:click={()=>{
+                 playVideoStore.set(true);
+                 
+             }}
+                 />
+                </button>
+              
+           </div>
+        {/if}
     {/if}
 
     {#if participant?.video && !participant?.local}
@@ -243,7 +277,6 @@
 
     {#if participant.isScreenSharing}
         <video 
-            autoplay 
             playsinline 
             use:srcObject={screenVideoSrc}
             class="screen-share-video"
@@ -300,5 +333,17 @@
         padding: 0.25rem 0.5rem;
         border-radius: 4px;
         font-size: 0.875rem;
+    }
+    .play-button {
+        /* position: absolute;
+        top: 50%; */
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 4rem;
+        color: white;
+        /* background-color: rgba(0, 0, 0, 0.5); */
+        border-radius: 50%;
+        padding: 1rem;
+        /* cursor: pointer; */
     }
 </style>

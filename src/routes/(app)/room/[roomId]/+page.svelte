@@ -26,6 +26,7 @@
     import VideoStreamerTile from '$lib/call/VideoStreamerTile.svelte';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
+	import { playVideoStore } from '$lib/stores/playStore';
 
     export let data;
 
@@ -206,6 +207,12 @@
         }
     };
 
+    $:{
+        if($playVideoStore){
+          updateParticpants();
+        }
+    }
+
     const handleScreenShareStarted = (event) => {
         console.log('Screen share started', event);
         updateParticpants(event);
@@ -375,7 +382,7 @@
                             {#each $chatMessages as message}
                             <!-- {console.log('message', message)} -->
                             <div class="flex gap-2 {message.name == name? "flex-row-reverse": "flex-row"}">
-                                <img class="h-12 w-12 rounded-full" src={`https://ui-avatars.com/api/?name=${name}"`} alt="participant placeholder"/>
+                                <img class="h-12 w-12 rounded-full" src={`https://ui-avatars.com/api/?name=${message.name}"`} alt="participant placeholder"/>
                                 <div class="flex flex-col flex-1 gap-1">
                                    
                                         <div class="flex flex-col rounded-xl text-sm {message.name == name ? "bg-[#d8e1ed] text-black" : "bg-[#9d9d9f] text-white"} flex-1 px-2 py-2">

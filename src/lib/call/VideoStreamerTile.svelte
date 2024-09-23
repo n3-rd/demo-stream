@@ -4,13 +4,21 @@
     import { toast } from 'svelte-sonner';
     import { pickerOpen } from '../../store.js';
     import { get } from 'svelte/store';
-	import { currentVideoUrl } from '$lib/callStores.js';
+    import { currentVideoUrl } from '$lib/callStores.js';
+    import { playVideoStore } from '$lib/stores/playStore.js';
 
     export let callObject;
 
     let videoInput;
     let localVideoStream;
     let localAudioStream;
+    let videoEl;
+    $:{
+        console.log('playVideoStore', $playVideoStore);
+        if($playVideoStore && videoEl){
+            videoEl.play();
+        }
+    }
 
     const videoURL = $currentVideoUrl;
 
@@ -21,7 +29,7 @@
     }
 
     async function playLocalVideoFile(evt: Event) {
-        let videoEl = document.getElementById('local-vid') as HTMLVideoElement;
+        videoEl = document.getElementById('local-vid') as HTMLVideoElement;
         if (!videoEl) {
             console.error('Video element not found');
             return;
@@ -58,6 +66,8 @@
         }
     }
 
+    
+
     async function shareVideo() {
         console.log('shareVideo() called');
         if (localVideoStream && localAudioStream) {
@@ -76,8 +86,8 @@
                 retryCount = 0;
                 checkVideoPlayback();
             } catch (error) {
-                console.error('Error starting screen share:', error);
-                toast('Failed to start screen share: ' + error.message);
+                // console.error('Error starting screen share:', error);
+                // toast('Failed to start screen share: ' + error.message);
             }
         } else {
             console.log('No video or audio stream available to share');
@@ -102,7 +112,7 @@
     }
 
     function stopVideo() {
-        let videoEl = document.getElementById('local-vid');
+        videoEl = document.getElementById('local-vid');
         if (videoEl) {
             videoEl.pause();
             videoEl.src = '';
@@ -133,12 +143,22 @@
             videoInput.addEventListener('change', playLocalVideoFile, false);
         }
         // Automatically play the video from the URL
-        let videoEl = document.getElementById('local-vid');
+        videoEl = document.getElementById('local-vid');
         const blobURL = await fetchVideoBlob(videoURL);
         videoEl.src = blobURL;
         videoEl.volume = 0.01;
         await videoEl.play();
         await captureStream(videoEl);
+        // pause and restart video from the start
+        videoEl.pause();
+        videoEl.currentTime = 0;
+
+        // Subscribe to playVideoStore
+        playVideoStore.subscribe(async (value) => {
+            if (value && videoEl) {
+                await videoEl.play();
+            }
+        });
     });
 
     $:{

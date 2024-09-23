@@ -58,6 +58,8 @@
     $: {
         if (screen && screenTrack?.state === 'playable') {
             screenVideoSrc = new MediaStream([screenTrack.track]);
+        } else {
+            screenVideoSrc = null;
         }
     }
 
@@ -205,6 +207,9 @@
         }
     }
 
+    // New reactive statement to determine if the video should be displayed
+    $: shouldDisplayVideo = videoSrc && (!host || (host && $playVideoStore));
+
     onMount(() => {
         callObject.on('track-started', handleTrackStarted);
         callObject.on('track-stopped', handleTrackStopped);
@@ -227,34 +232,35 @@
     });
 </script>
 
-<div class={screen ? 'video-tile screen ' : 'video-tile max-h-96 h-0 rounded-lg'}>
+<div class={screen ? 'video-tile screen' : 'video-tile rounded-lg'} class:h-full={host}>
     {#if audioSrc}
         <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
             <track kind="captions" />
         </audio>
     {/if}
 
-    {#if videoSrc}
-        <video id={`video-${participant?.session_id}`} class="hidden" playsInline use:srcObject={videoSrc}>
+    {#if participant?.local}
+        {#if host}
+            <VideoStreamerTile {callObject} />
+        {/if}
+    {/if}
+
+    {#if shouldDisplayVideo}
+        <video 
+            id={`video-${participant?.session_id}`}
+            playsInline 
+            use:srcObject={videoSrc}
+            class={host ? 'host-video' : 'participant-video'}
+        >
             <track kind="captions" />
         </video>
-        {#if !isPlaying && host && !$playVideoStore}
-            <div class="play-button h-screen  min-w-full absolute top-[30rem] flex justify-center items-center z-[999]" >
-                <button
-                on:click={()=>{
-                    playVideoStore.set(true);
-                }}
-                >
-                <PlayCircle size={48}
-                class="cursor-pointer"
-                on:click={()=>{
-                 playVideoStore.set(true);
-                 
-             }}
-                 />
+
+        {#if  host && !$playVideoStore}
+            <div class="play-button h-screen min-w-full absolute  flex justify-center items-center z-[999]">
+                <button on:click={() => playVideoStore.set(true)}>
+                    <PlayCircle size={48} class="cursor-pointer" />
                 </button>
-              
-           </div>
+            </div>
         {/if}
     {/if}
 
@@ -263,17 +269,6 @@
             <img src={participant?.audio ? micOnIcon : micOffIcon} alt="Toggle local audio" />
         </span>
     {/if}
-
-    {#if participant?.local}
-        <!-- <Controls {callObject} {screensList} {host} /> -->
-        {#if host}
-            <VideoStreamerTile {callObject} />
-        {/if}
-    {/if}
-
-    <!-- {#if participant?.user_name}
-        <div class="participant-name">{participant.user_name}</div>
-    {/if} -->
 
     {#if participant.isScreenSharing}
         <video 
@@ -305,15 +300,23 @@
     }
     .video-tile.screen {
         flex: 0;
-        max-height: 50vh;
+        /* max-height: 50vh; */
     }
-    video {
+    .host-video {
         width: 100%;
         height: 100%;
+        object-fit: contain;
+    }
+    .participant-video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
         border-radius: 8px;
     }
-    .screen video {
-        max-height: 50vh;
+    .screen-share-video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
     }
     .audio-icon {
         position: absolute;
@@ -335,15 +338,11 @@
         font-size: 0.875rem;
     }
     .play-button {
-        /* position: absolute;
-        top: 50%; */
         left: 50%;
         transform: translate(-50%, -50%);
         font-size: 4rem;
         color: white;
-        /* background-color: rgba(0, 0, 0, 0.5); */
         border-radius: 50%;
         padding: 1rem;
-        /* cursor: pointer; */
     }
 </style>

@@ -27,6 +27,8 @@
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
 	import { playVideoStore } from '$lib/stores/playStore';
+	import { PlayCircle } from 'lucide-svelte';
+
 
     export let data;
 
@@ -295,7 +297,7 @@
     <PermissionErrorMessage on:close={clearDeviceError} />
 {/if}
 
-<div class="h-screen min-w-full bg-[#9d9d9f] relative">
+<div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
     <div class="h-full">
         <div class="flex items-center h-full pt-6 pb-24">
             <!-- Left sidebar -->
@@ -361,15 +363,28 @@
                     {#each participants as participant}
                         <VideoTile {callObject} {participant} {screensList} host={isHost} {name} {videoURL} />
                         {#if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'playable'}
+                        {#if !host}
                             <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}
-                                class="w-full h-full object-cover">
+                                class="w-full h-full object-cover"
+                               
+                                >
                             </video>
+                            {/if}
                             <audio autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenAudio.track])}></audio>
                         {:else if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'loading'}
                             <Loading />
                         {/if}
                     {/each}
                 </div>
+
+                {#if host && !$playVideoStore}
+                <div class="play-button h-screen min-w-full absolute -left-[10rem] flex justify-center items-center z-[999]">
+                    <button on:click={() => playVideoStore.set(true)}>
+                        <PlayCircle size={48} class="cursor-pointer" color="#fff"/>
+                    </button>
+                </div>
+            {/if}
+        
 
                 <!-- Test panel with Chat -->
                 <div class="w-[30rem] bg-[#666669] h-full overflow-y-auto flex flex-col" id="testPanel">

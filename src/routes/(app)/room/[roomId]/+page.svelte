@@ -26,6 +26,7 @@
     import VideoStreamerTile from '$lib/call/VideoStreamerTile.svelte';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
+	import { playVideoStore } from '$lib/stores/playStore';
 
     export let data;
 
@@ -205,6 +206,12 @@
             toast('Error joining the call');
         }
     };
+
+    $:{
+        if($playVideoStore){
+          updateParticpants();
+        }
+    }
 
     const handleScreenShareStarted = (event) => {
         console.log('Screen share started', event);

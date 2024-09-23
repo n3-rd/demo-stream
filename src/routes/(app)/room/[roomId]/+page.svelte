@@ -194,7 +194,6 @@
             .on('app-message', handleAppMessage)
             .on('screen-share-started', handleScreenShareStarted)
             .on('screen-share-stopped', handleScreenShareStopped)
-            .on('active-speaker-change', updateParticpants)
             .on('track-started', updateParticpants)
             .on('track-stopped', updateParticpants);
 

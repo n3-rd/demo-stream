@@ -14,9 +14,6 @@
 
     const videoURL = $currentVideoUrl;
 
-    let retryCount = 0;
-    const maxRetries = 3;
-
     async function fetchVideoBlob(url) {
         const response = await fetch(url);
         const blob = await response.blob();
@@ -92,11 +89,11 @@
         setTimeout(() => {
             const remoteVideos = document.querySelectorAll('video:not(#local-vid)');
             const allPlaying = Array.from(remoteVideos).every(video => !video.paused);
-            
-            if (!allPlaying && retryCount < maxRetries) {
+
+            if (!allPlaying && retryCount < 1) { // Retry only once
                 console.log(`Retry ${retryCount + 1}: Restarting screen share`);
                 retryCount++;
-                shareVideo();
+                setTimeout(shareVideo, 1000); // Add a delay before retrying
             } else if (!allPlaying) {
                 console.error('Failed to start video playback for all participants after retries');
                 toast('Video playback issues. Please try refreshing the page.');

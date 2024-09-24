@@ -298,6 +298,14 @@
         chatMessages.update(messages => [...messages, newMessage]);
         newText = '';
     };
+
+    const leaveRoom = async () => {
+        if (!callObject) return;
+        await destroyCall();
+        document?.body?.classList?.remove('in-call');
+        playVideoStore.set(false);  // Reset the video play state
+        goto('/');  // Navigate back to the home page
+    };
 </script>
 
 <sveltekit:head>
@@ -484,7 +492,7 @@
             </button>
         </div>
         <div class="leave-room">
-            <Button variant="destructive" class="hover:bg-red-700">
+            <Button variant="destructive" class="hover:bg-red-700" on:click={leaveRoom}>
                 Leave Room
             </Button>
         </div>

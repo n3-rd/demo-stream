@@ -5,15 +5,14 @@
 	import { page } from '$app/stores';
     export let isHost: boolean;
     export let name: string;
-    export let users;
+    export let users: any[] = []; // Provide a default empty array
     const pageName = $page.url.pathname.split('/').pop().split('-').pop();
+    
+    $: hostUser = users.length > 0 ? users.find((user) => user.id === pageName) || users[0] : null;
 
     console.log('users', users);
     console.log('pageName', pageName);
-    
-    $: hostUser = users.length > 0 ? users.find((user) => user.id == pageName) : null;
-    console.log('hostUser', hostUser);``
-
+    console.log('hostUser', hostUser);
 </script>
 <div class="flex justify-between items-center p-4 border-b bg-[#47484b]">
     <h2 class="text-xl font-bold text-white">Participants</h2>
@@ -52,7 +51,7 @@
           <span class="text-gray-400"> (You)</span>
         {/if}
       </span>
-      {#if isHost && hostUser && participant.user_name === hostUser.user_name}
+      {#if isHost && hostUser && participant.user_name === hostUser.name}
         <span class="text-gray-100 text-xs">Demo room host</span>
       {/if}
     </div>

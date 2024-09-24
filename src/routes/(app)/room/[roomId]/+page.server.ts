@@ -14,11 +14,15 @@ export const load: PageServerLoad = async ({ locals }) => {
     const representatives = await locals.pb.collection('users').getFullList({
         filter: 'representative = true',
     });
+    const users = await locals.pb.collection('users').getFullList();
+
+    console.log('users', users);
 
     return {
         isLoggedIn: true,
         user,
-        representatives
+        users,
+        representatives,
     };
 };
 

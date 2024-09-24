@@ -14,7 +14,7 @@
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal } from 'lucide-svelte';
+    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal, UsersRound, Mic } from 'lucide-svelte';
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
@@ -28,6 +28,7 @@
     import { quintOut } from 'svelte/easing';
 	import { playVideoStore } from '$lib/stores/playStore';
 	import { PlayCircle } from 'lucide-svelte';
+	import Participants from '$lib/call/Participants.svelte';
 
 
     export let data;
@@ -54,7 +55,7 @@
     let hasNewNotification = false;
     let scheduleOpen = false;
     let chatIsOpen = false;
-    let testPanelIsOpen = true;
+    let chIsOpen = true;
     let newText = '';
     let globRoomName = '';
 
@@ -257,14 +258,25 @@
         pickerOpen.set(!$pickerOpen);
     };
 
-    function toggleTestPanel() {
-        testPanelIsOpen = !testPanelIsOpen;
-        const testPanel = document.getElementById('testPanel');
-        if (testPanelIsOpen) {
-            testPanel.style.width = '30rem';
+    function togglech() {
+        chIsOpen = !chIsOpen;
+        const ch = document.getElementById('ch');
+        if (chIsOpen) {
+            ch.style.width = '30rem';
         } else {
-            testPanel.style.width = '0px';
+            ch.style.width = '0px';
         }
+    }
+
+    function togglePanel(id) {
+        if(id === 'chatPanel'){
+            document.getElementById('participantsPanel').style.width = '0px';
+        }
+        if(id === 'participantsPanel'){
+            document.getElementById('chatPanel').style.width = '0px';
+        }
+        const panel = document.getElementById(id);
+        panel.style.width = panel.style.width === '30rem' ? '0px' : '30rem';
     }
 
     function toggleChat() {
@@ -387,7 +399,7 @@
         
 
                 <!-- Test panel with Chat -->
-                <div class="w-[30rem] bg-[#666669] h-full overflow-y-auto flex flex-col" id="testPanel">
+                <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="chatPanel">
                     <div class="flex justify-between items-center p-4 border-b bg-[#47484b]">
                         <h2 class="text-xl font-bold text-white">Chat</h2>
                     </div>
@@ -432,15 +444,30 @@
                    
                 </div>
 
+                <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="participantsPanel">
+  <Participants {participants} {host} />
+                   
+                </div>
+
                 
             </div>
 
-            <!-- Right sidebar (Chat) -->
-            <div class="w-14 h-full bg-red flex flex-col gap-4 justify-end">
-                <Button variant="ghost" size="icon" class="w-full hover:bg-red-700" on:click={toggleTestPanel}>
-                    <MessageSquareDashed scale={1.3} color="#fff"/>
-                </Button>
-            </div>
+<div class="flex flex-col gap-3 h-full justify-end">
+ <!-- Right sidebar (Chat) -->
+ <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
+    <Button variant="ghost" size="icon" class="w-full hover:bg-red-700" on:click={()=>togglePanel('chatPanel')}>
+        <MessageSquareDashed scale={1.3} color="#fff"/>
+    </Button>
+</div>
+
+ <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
+    <Button variant="ghost" size="icon" class="w-full hover:bg-red-700" on:click={()=>togglePanel('participantsPanel')}>
+        <UsersRound scale={1.3} color="#fff"/>
+    </Button>
+</div>
+</div>
+
+           
         </div>
     </div>
 
@@ -464,7 +491,7 @@
 </div>
 
 <style>
-    #testPanel {
+    .panel {
         transition: width 0.3s ease-in-out;
     }
     .hover\:bg-red-700:hover {

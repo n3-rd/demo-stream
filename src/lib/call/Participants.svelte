@@ -1,10 +1,18 @@
 <script lang="ts">
-    export let participants: any;
+    export let participants: any[];
     import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal, UsersRound, Mic, UserRoundPlus } from 'lucide-svelte';
     import { Button } from '$lib/components/ui/button';
-    export let host;
+	import { page } from '$app/stores';
+    export let isHost: boolean;
+    export let name: string;
+    export let users: any[] = []; // Provide a default empty array
+    const pageName = $page.url.pathname.split('/').pop().split('-').pop();
+    
+    $: hostUser = users.length > 0 ? users.find((user) => user.id === pageName) || users[0] : null;
 
-
+    console.log('users', users);
+    console.log('pageName', pageName);
+    console.log('hostUser', hostUser);
 </script>
 <div class="flex justify-between items-center p-4 border-b bg-[#47484b]">
     <h2 class="text-xl font-bold text-white">Participants</h2>
@@ -29,7 +37,7 @@
         <span>({participants.length})</span>
     </div>
     <div class="p-2">
-{#each participants as participant (participant.id)}
+{#each participants as participant}
   <div class="flex items-center py-4">
     <img
       src={`https://ui-avatars.com/api/?name=${encodeURIComponent(participant.user_name)}&background=random`}
@@ -43,7 +51,7 @@
           <span class="text-gray-400"> (You)</span>
         {/if}
       </span>
-      {#if host}
+      {#if isHost && hostUser && participant.user_name === hostUser.name}
         <span class="text-gray-100 text-xs">Demo room host</span>
       {/if}
     </div>
@@ -56,7 +64,7 @@
     {/each}
 </div>
     </div>
-</div>
+    </div>  
 </div>
 
   

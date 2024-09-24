@@ -40,6 +40,7 @@
     let user = data.user;
     let name = user ? user.name : '';
     let representatives = data.representatives;
+    let users = data.users;
     
     const host = $page.url.pathname.split('/').pop().split('-').pop();
     console.log('host', host);
@@ -445,7 +446,7 @@
                 </div>
 
                 <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="participantsPanel">
-  <Participants {participants} {host} />
+  <Participants {participants} {isHost} {name} {users} />
                    
                 </div>
 

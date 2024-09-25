@@ -175,7 +175,7 @@
 </script>
 
 <div class="relative w-full h-full min-w-full h-full">
-    <video id="local-vid" controls loop class="w-full h-full object-cover z-[999] absolute" volume="0.1"></video>
+    <video id="local-vid" controls loop class="w-full h-full object-cover z-[30] absolute" volume="0.1"></video>
 
     {#if isVideoPickerVisible}
         <div class="video-picker-popup absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]">

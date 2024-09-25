@@ -1,14 +1,19 @@
 <script lang="ts">
     export let participants: any[];
-    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal, UsersRound, Mic, UserRoundPlus } from 'lucide-svelte';
+    import { ShareIcon, MicOff, Mic, UserRoundPlus } from 'lucide-svelte';
+    import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
 	import { page } from '$app/stores';
+  import Share from '$lib/components/room/share.svelte';
+
     export let isHost: boolean;
     export let name: string;
     export let users: any[] = []; // Provide a default empty array
     const pageName = $page.url.pathname.split('/').pop().split('-').pop();
     
     $: hostUser = users.length > 0 ? users.find((user) => user.id === pageName) || users[0] : null;
+    const joinURL = $page.url.href;
+
 
     console.log('users', users);
     console.log('pageName', pageName);
@@ -20,10 +25,19 @@
 
 <div class="max-h-full overflow-y-auto py-4 w-full flex flex-col justify-center px-4 text-white">
 
+
+    <Dialog.Root>
+      <Dialog.Trigger>
+          
     <Button class="bg-[#47484b] text-white mx-auto">
-        <UserRoundPlus size={16} class="" />
+      <UserRoundPlus size={16} class="" />
         Invite People
     </Button>
+      </Dialog.Trigger>
+      <Dialog.Content class="p-4 rounded-lg shadow-lg">
+          <Share {joinURL} />
+      </Dialog.Content>
+  </Dialog.Root>
 
     <div class="pt-4">
         <h2>In room</h2>

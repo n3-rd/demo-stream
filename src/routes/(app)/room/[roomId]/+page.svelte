@@ -64,19 +64,7 @@
     }
     $: screensList = participants?.filter((p) => p?.tracks?.screenVideo?.state === 'playable');
 
-    $:{
-        updateParticpants();
-        console.log('updateParticpants from store', participants);
-        setTimeout(() => {
-            updateParticpants();
-            console.log('updateParticpants from timeout', participants);
-            setInterval(() => {
-                updateParticpants();
-                console.log('updateParticpants from interval', participants);
-            }, 10000);
-        }, 9000);
-    }
-    
+ 
     const clearNotification = () => (hasNewNotification = false);
     const joinURL = $page.url.href;
 

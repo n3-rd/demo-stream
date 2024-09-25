@@ -330,7 +330,7 @@
                 <Dialog.Root>
                     <Dialog.Trigger>
                         <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
-                            <CircleUser scale={1.3} color="#fff"/>
+                            <img src="/icons/icon-representative.svg" alt="user" class="w-5 h-5"/>
                         </Button>
                     </Dialog.Trigger>
                     <Dialog.Content class="p-4 rounded-lg shadow-lg">
@@ -340,7 +340,7 @@
                 <Dialog.Root bind:open={scheduleOpen}>
                     <Dialog.Trigger>
                         <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
-                            <Calendar scale={1.3} color="#fff"/>
+                            <img src="/icons/icon-calendar.svg" alt="calendar" class="w-5 h-5"/>
                         </Button>
                     </Dialog.Trigger>
                     <Dialog.Content class="p-4 rounded-lg w-auto bg-transparent">
@@ -353,7 +353,7 @@
                 <Dialog.Root>
                     <Dialog.Trigger>
                         <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
-                            <Quote scale={1.3} color="#fff"/>
+                            <img src="/icons/icon-quotes.svg" alt="quote" class="w-5 h-5"/>
                         </Button>
                     </Dialog.Trigger>
                     <Dialog.Content class="rounded-lg bg-transparent">

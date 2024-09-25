@@ -6,6 +6,7 @@
     import { get } from 'svelte/store';
     import { currentVideoUrl } from '$lib/callStores.js';
     import { playVideoStore } from '$lib/stores/playStore.js';
+    import { PlayCircle } from 'lucide-svelte';
 
     export let callObject;
 
@@ -66,7 +67,18 @@
         }
     }
 
-    
+    let isPaused = true;
+
+    function togglePlay() {
+        if (videoEl) {
+            if (videoEl.paused) {
+                videoEl.play();
+            } else {
+                videoEl.pause();
+            }
+            isPaused = videoEl.paused;
+        }
+    }
 
     async function shareVideo() {
         console.log('shareVideo() called');
@@ -138,6 +150,11 @@
         pickerOpen.set(!get(pickerOpen));
     }
 
+    function handleParticipantJoined(event) {
+        console.log('Participant joined:', event.participant);
+        shareVideo();
+    }
+
     onMount(async () => {
         if (videoInput) {
             videoInput.addEventListener('change', playLocalVideoFile, false);
@@ -159,6 +176,17 @@
                 await videoEl.play();
             }
         });
+
+        videoEl.addEventListener('play', () => isPaused = false);
+        videoEl.addEventListener('pause', () => isPaused = true);
+
+        // Add event listener for participant joined
+        callObject.on('participant-joined', handleParticipantJoined);
+    });
+
+    onDestroy(() => {
+        // Remove event listener when component is destroyed
+        callObject.off('participant-joined', handleParticipantJoined);
     });
 
     $:{
@@ -177,6 +205,14 @@
 <div class="relative w-full h-full min-w-full h-full">
     <video id="local-vid" controls loop class="w-full h-full object-cover z-[30] absolute" volume="0.1"></video>
 
+    {#if isPaused}
+        <div class="absolute inset-0 flex items-center justify-center z-[31]">
+            <button on:click={togglePlay} class="text-white opacity-80 hover:opacity-100 transition-opacity">
+                <PlayCircle size={80} />
+            </button>
+        </div>
+    {/if}
+
     {#if isVideoPickerVisible}
         <div class="video-picker-popup absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]">
             <div class="bg-white p-4 rounded-lg shadow-lg w-full max-w-md">
@@ -193,8 +229,6 @@
         </div>
     {/if}
 </div>
-
-
 
 <style>
     .video-picker-popup {

@@ -372,9 +372,6 @@
                         <CreateQuote />
                     </Dialog.Content>
                 </Dialog.Root>
-                <Button variant="ghost" size="icon" class="w-full hover:bg-red-700" on:click={togglePicker}>
-                    <Clapperboard scale={1.3} color="#fff"/>
-                </Button>
             </div>
 
             <!-- Main content area  -->

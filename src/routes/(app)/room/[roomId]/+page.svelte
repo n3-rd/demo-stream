@@ -398,14 +398,14 @@
                         {/if}
                     {/each}
                 </div>
-
+<!-- 
                 {#if host && !$playVideoStore}
                 <div class="play-button h-screen min-w-full absolute -left-[10rem] flex justify-center items-center z-[999]">
                     <button on:click={() => playVideoStore.set(true)}>
                         <PlayCircle size={48} class="cursor-pointer" color="#fff"/>
                     </button>
                 </div>
-            {/if}
+            {/if} -->
 
                 <!-- Test panel with Chat -->
                 <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="chatPanel">

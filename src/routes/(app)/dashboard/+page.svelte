@@ -1,6 +1,9 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
-  
+    export let data;
+    const { user } = data;
+    const superUser = user.superuser;
+    console.log(user);
     const sidebarItems = [
       { name: 'Dashboard', active: true },
       { name: 'Others' },
@@ -42,12 +45,17 @@
     </aside>
 
     <!-- Main content area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden ">
         <!-- Header -->
         <header class="shadow-sm z-10 mt-6 rounded-lg">
             <div class="bg-white top-header !w-[95%] mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
                 <h1 class="text-3xl font-bold !text-[#808080]">Dashboard</h1>
-                <Button class="bg-primary hover:bg-primary/90 text-white">Upload a Video</Button>
+                {#if superUser}
+                <Button
+                href="/dashboard/upload"
+                
+                class="bg-primary hover:bg-primary/90 text-white">Upload a Video</Button>
+                {/if}
             </div>
         </header>
 

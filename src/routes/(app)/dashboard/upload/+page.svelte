@@ -1,5 +1,7 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
+    export let data;
+    const { user } = data;
 
     const sidebarItems = [
       { name: 'Dashboard', active: true },

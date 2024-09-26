@@ -31,12 +31,13 @@ export const handle: Handle = async ({ event, resolve }) => {
     if (!cookies.userid) {
         response.headers.set('set-cookie', cookie.serialize('userid', event.locals.userid, {
             path: '/',
-            httpOnly: true
+            httpOnly: true,
+            maxAge: 1800 // 30 minutes in seconds
         }));
     }
 
     // TODO: secure before deployment
-    response.headers.append('set-cookie', event.locals.pb.authStore.exportToCookie({ secure: false }));
+    response.headers.append('set-cookie', event.locals.pb.authStore.exportToCookie({ secure: false, maxAge: 1800 }));
 
     return response;
 };

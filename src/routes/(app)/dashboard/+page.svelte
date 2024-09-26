@@ -1,8 +1,11 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
+    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
     export let data;
     const { user } = data;
     const superUser = user.superuser;
+    const rooms = data.rooms;
+    console.log(rooms);
     console.log(user);
     const sidebarItems = [
       { name: 'Dashboard', active: true },
@@ -62,10 +65,10 @@
         <!-- Scrollable content -->
         <main class="flex-1 p-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                {#each videoCards as card}
+                {#each rooms as room}
                     <div class="bg-white rounded-lg overflow-hidden">
                         <div class="relative h-48 bg-gray-200 p-2 cursor-pointer">
-                            <img src={card.image} alt={card.title} class="w-full h-full object-cover" />
+                            <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${room.collectionId}/${room.id}/${room.thumbnail}`} alt={room.title} class="w-full h-full object-cover" />
                             <div class="absolute inset-0 flex items-center justify-center">
                                 <div class="w-12 h-12  bg-opacity-75 rounded-full flex items-center justify-center">
                                   <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
@@ -73,8 +76,8 @@
                             </div>
                         </div>
                         <div class="p-4">
-                            <h3 class="font-semibold text-base mb-2 text-primary">{card.title}</h3>
-                            <p class="text-gray-600 text-sm">{card.description}</p>
+                            <h3 class="font-semibold text-base mb-2 text-primary">{room.title}</h3>
+                            <p class="text-gray-600 text-sm">{room.desc}</p>
                         </div>
                     </div>
                 {/each}

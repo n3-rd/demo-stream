@@ -6,6 +6,7 @@
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { currentVideoUrl } from '$lib/callStores';
+    import { invalidateAll } from '$app/navigation';
     export let data;
     const { user } = data;
     const superUser = user.superuser;
@@ -32,9 +33,30 @@
       { title: 'Milling Cutters Machine', description: 'Explore the versatility of our milling cutters. This demo highlights various cutting techniques and how these tools can enhance precision in manufacturing processes.', image: '/img/ford.png' },
       { title: 'Harley Davidson Showroom', description: 'Experience the iconic Harley Davidson motorcycles in our virtual showroom. This demo showcases the latest models and their cutting-edge features.', image: '/img/ford.png' },
     ];
+
+    async function deleteVideo(videoId: string) {
+        const confirmed = confirm('Are you sure you want to delete this video?');
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/api/videos/${videoId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                toast.success('Video deleted successfully');
+                await invalidateAll();
+            } else {
+                toast.error('Failed to delete video');
+            }
+        } catch (error) {
+            console.error('Error deleting video:', error);
+            toast.error('An error occurred while deleting the video');
+        }
+    }
 </script>
 
-<div class="flex h-screen overflow-hidden bg-gray-100">
+<div class="flex h-auto overflow-hidden bg-gray-100">
     <!-- Sidebar -->
     <aside class="w-64 h-full overflow-y-auto bg-white shadow-md">
         <div class="p-4">
@@ -53,7 +75,7 @@
     </aside>
 
     <!-- Main content area -->
-    <div class="flex-1 flex flex-col overflow-hidden ">
+    <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Header -->
         <header class="shadow-sm z-10 mt-6 rounded-lg">
             <div class="bg-white top-header !w-[95%] mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
@@ -68,10 +90,10 @@
         </header>
 
         <!-- Scrollable content -->
-        <main class="flex-1 p-6">
+        <main class="flex-1 overflow-y-auto p-6 pb-20">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 {#each roomVideos as video}
-                    <div class="bg-white rounded-lg overflow-hidden">
+                    <div class="bg-white rounded-lg overflow-hidden relative"> <!-- Added relative positioning -->
                         <div class="relative h-48 bg-gray-200 p-2 cursor-pointer">
                             <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.thumbnail}`} alt={video.title} class="w-full h-full object-cover" />
                             <div class="absolute inset-0 flex items-center justify-center">
@@ -132,6 +154,16 @@
                             <h3 class="font-semibold text-base mb-2 text-primary">{video.title}</h3>
                             <p class="text-gray-600 text-sm">{video.desc}</p>
                         </div>
+                        {#if superUser}
+                            <button
+                                class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                                on:click={() => deleteVideo(video.id)}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        {/if}
                     </div>
                 {/each}
             </div>

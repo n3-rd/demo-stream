@@ -154,5 +154,49 @@ export const actions: Actions = {
             console.log('err:', err);
             return { success: false, message: 'Failed to upload video' };
         }
+    },
+    'delete-video': async ({ locals, request }) => {
+        const formData = await request.formData();
+        const videoId = formData.get('videoId') as string;
+
+        if (!locals.pb.authStore.model?.superuser) {
+            return {
+                success: false,
+                message: 'Unauthorized: Only super users can delete videos',
+                status: 403
+            };
+        }
+
+        try {
+            await locals.pb.collection('room_videos').delete(videoId);
+            return {
+                success: true,
+                message: 'Video deleted successfully'
+            };
+        } catch (error) {
+            console.error('Error deleting video:', error);
+            return {
+                success: false,
+                message: 'Failed to delete video',
+                status: 500
+            };
+        }
+    }
+};
+
+// Add this API endpoint handler
+export const DELETE = async ({ locals, params }) => {
+    const { videoId } = params;
+
+    if (!locals.pb.authStore.model?.superuser) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
+    }
+
+    try {
+        await locals.pb.collection('room_videos').delete(videoId);
+        return new Response(JSON.stringify({ message: 'Video deleted successfully' }), { status: 200 });
+    } catch (error) {
+        console.error('Error deleting video:', error);
+        return new Response(JSON.stringify({ error: 'Failed to delete video' }), { status: 500 });
     }
 };

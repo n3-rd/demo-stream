@@ -184,19 +184,3 @@ export const actions: Actions = {
     }
 };
 
-// Add this API endpoint handler
-export const DELETE = async ({ locals, params }) => {
-    const { videoId } = params;
-
-    if (!locals.pb.authStore.model?.superuser) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
-    }
-
-    try {
-        await locals.pb.collection('room_videos').delete(videoId);
-        return new Response(JSON.stringify({ message: 'Video deleted successfully' }), { status: 200 });
-    } catch (error) {
-        console.error('Error deleting video:', error);
-        return new Response(JSON.stringify({ error: 'Failed to delete video' }), { status: 500 });
-    }
-};

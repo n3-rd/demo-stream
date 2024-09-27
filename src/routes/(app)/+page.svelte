@@ -2,6 +2,10 @@
     import { Button } from '$lib/components/ui/button';
 	import * as Dialog from "$lib/components/ui/dialog";
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
+    import { goto } from '$app/navigation';
+    import { enhance } from '$app/forms';
+    import { toast } from 'svelte-sonner';
+    import { currentVideoUrl } from '$lib/callStores';
     export let data;
     const { user } = data;
     const superUser = user.superuser;
@@ -87,7 +91,36 @@
 										</Dialog.Description>
 									  </Dialog.Header>
 									  <Dialog.Footer>
-										<Button class="bg-primary hover:bg-primary/90 text-white w-full">Proceed</Button>
+										<form
+										  action='/?/create-room'
+										  method='POST'
+										  use:enhance={() => {
+											return async ({ result }) => {
+												if (result.data.room?.name) {
+													toast.success('Room created successfully');
+													goto(`/room/${result.data.room.name}`);
+												} else if (result.status === 400) {
+													toast('Bad request');
+												} else if (result.status === 500) {
+													toast('Server error');
+												} else {
+													toast('Oops, something went wrong!');
+												}
+											};
+										}}
+									  >
+										<input 
+										  type="hidden" 
+										  name="videoUrl" 
+										  value={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`}
+										/>
+										<Button 
+										  type="submit" 
+										  class="bg-primary hover:bg-primary/90 text-white w-full"
+										>
+										  Proceed
+										</Button>
+									  </form>
 									  </Dialog.Footer>
 									</Dialog.Content>
 								  </Dialog.Root>

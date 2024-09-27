@@ -53,17 +53,51 @@
     }
 
     async function captureStream(videoEl: HTMLVideoElement) {
-        if (typeof videoEl.captureStream === 'function') {
-            const stream = videoEl.captureStream();
-            localVideoStream = new MediaStream(stream.getVideoTracks());
-            localAudioStream = new MediaStream(stream.getAudioTracks());
-            
-            // Simulate hot reload effect
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await shareVideo();
+        if ('captureStream' in videoEl) {
+            try {
+                const stream = (videoEl as any).captureStream();
+                localVideoStream = new MediaStream(stream.getVideoTracks());
+                localAudioStream = new MediaStream(stream.getAudioTracks());
+                
+                // Simulate hot reload effect
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await shareVideo();
+            } catch (error) {
+                console.error('Error capturing stream:', error);
+                toast('Unable to capture video stream. This may be due to cross-origin restrictions.');
+                // Fallback: try to create a stream from the video source
+                await createStreamFromSource(videoEl.src);
+            }
         } else {
             console.error('captureStream is not supported in this browser');
             toast('Screen sharing is not supported in this browser');
+        }
+    }
+
+    async function createStreamFromSource(src: string) {
+        try {
+            const response = await fetch(src);
+            const blob = await response.blob();
+            const mediaSource = new MediaSource();
+            const video = document.createElement('video');
+            video.src = URL.createObjectURL(mediaSource);
+            
+            await new Promise<void>((resolve) => {
+                mediaSource.addEventListener('sourceopen', async () => {
+                    const sourceBuffer = mediaSource.addSourceBuffer(blob.type);
+                    const arrayBuffer = await blob.arrayBuffer();
+                    sourceBuffer.appendBuffer(arrayBuffer);
+                    resolve();
+                });
+            });
+
+            await video.play();
+            localVideoStream = new MediaStream(video.captureStream().getVideoTracks());
+            localAudioStream = new MediaStream(video.captureStream().getAudioTracks());
+            await shareVideo();
+        } catch (error) {
+            console.error('Error creating stream from source:', error);
+            toast('Unable to share video. Please try a different file or source.');
         }
     }
 
@@ -110,7 +144,7 @@
     function checkVideoPlayback() {
         setTimeout(() => {
             const remoteVideos = document.querySelectorAll('video:not(#local-vid)');
-            const allPlaying = Array.from(remoteVideos).every(video => !video.paused);
+            const allPlaying = Array.from(remoteVideos).every(video => !(video as HTMLVideoElement).paused);
 
             if (!allPlaying && retryCount < 1) { // Retry only once
                 console.log(`Retry ${retryCount + 1}: Restarting screen share`);
@@ -161,7 +195,7 @@
         }
         // Automatically play the video from the URL
         videoEl = document.getElementById('local-vid');
-        const blobURL = await fetchVideoBlob(videoURL);
+        const blobURL = videoURL;
         videoEl.src = blobURL;
         videoEl.volume = 0.01;
         await videoEl.play();
@@ -203,7 +237,9 @@
 </script>
 
 <div class="relative w-full h-full min-w-full h-full">
-    <video id="local-vid" controls loop class="w-full h-full object-cover z-[30] absolute" volume="0.1"></video>
+    <video
+    crossOrigin="anonymous"
+    id="local-vid" controls loop class="w-full h-full object-cover z-[30] absolute" volume="0.1"></video>
 
     {#if isPaused}
         <div class="absolute inset-0 flex items-center justify-center z-[31]">

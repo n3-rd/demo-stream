@@ -97,6 +97,7 @@
 										  use:enhance={() => {
 											return async ({ result }) => {
 												if (result.data.room?.name) {
+                          currentVideoUrl.set(`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`);
 													toast.success('Room created successfully');
 													goto(`/room/${result.data.room.name}`);
 												} else if (result.status === 400) {

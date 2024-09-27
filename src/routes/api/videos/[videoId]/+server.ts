@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const DELETE: RequestHandler = async ({ locals, params }) => {
+export const DELETE: RequestHandler = async ({ params, locals }) => {
     const { videoId } = params;
 
     if (!locals.pb.authStore.model?.superuser) {
-        return json({ error: 'Unauthorized' }, { status: 403 });
+        return json({ message: 'Unauthorized: Only super users can delete videos' }, { status: 403 });
     }
 
     try {
@@ -13,6 +13,6 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
         return json({ message: 'Video deleted successfully' });
     } catch (error) {
         console.error('Error deleting video:', error);
-        return json({ error: 'Failed to delete video' }, { status: 500 });
+        return json({ message: 'Failed to delete video' }, { status: 500 });
     }
 };

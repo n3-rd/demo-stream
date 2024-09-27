@@ -10,7 +10,8 @@
     export let data;
     const { user } = data;
     const superUser = user.superuser;
-    const roomVideos = data.roomVideos;
+    let roomVideos;
+   $: roomVideos = data.roomVideos;
     console.log(roomVideos);
     console.log(user);
     const sidebarItems = [
@@ -23,20 +24,7 @@
       { name: 'Option E' },
     ];
   
-    const videoCards = [
-      { title: '2024 Ford F150', description: "Ford's F150 Model represents the pinnacle of full-size pickup trucks as a hallmark of rugged capability and versatile performance in the world of pickup trucks. With a lineage that spans over several decades, the F-150...", image: '/img/ford.png' },
-      { title: 'Smart CNC Milling Tools', description: 'Join this demo to explore the latest CNC milling tools designed for high-speed precision machining. Learn how these tools reduce setup time and improve cutting accuracy.', image: '/img/ford.png' },
-      { title: '3D Printing for Prototyping', description: 'Watch our 3D printing in action as they create high-quality prototypes. This demo highlights how 3D printing can accelerate product development and bring designs to life.', image: '/img/ford.png' },
-      { title: 'Advanced Laser Cutting', description: "In this demo, you'll see how advanced laser cutting machines offer superior precision for metal and non-metal materials, enhancing cutting quality for various manufacturing applications.", image: '/img/ford.png' },
-      { title: 'Hydraulic Press Machine', description: 'Learn how hydraulic press machines are transforming manufacturing processes with increased force and accuracy. This demo explains the technology behind these powerful machines.', image: '/img/ford.png' },
-      { title: 'Lathe Machine', description: 'Discover the precision and efficiency of our lathe machines. This demo showcases advanced turning techniques and how these machines can boost productivity in industrial settings.', image: '/img/ford.png' },
-      { title: 'Milling Cutters Machine', description: 'Explore the versatility of our milling cutters. This demo highlights various cutting techniques and how these tools can enhance precision in manufacturing processes.', image: '/img/ford.png' },
-      { title: 'Harley Davidson Showroom', description: 'Experience the iconic Harley Davidson motorcycles in our virtual showroom. This demo showcases the latest models and their cutting-edge features.', image: '/img/ford.png' },
-    ];
-
     async function deleteVideo(videoId: string) {
-        const confirmed = confirm('Are you sure you want to delete this video?');
-        if (!confirmed) return;
 
         try {
             const response = await fetch(`/api/videos/${videoId}`, {
@@ -47,10 +35,25 @@
                 toast.success('Video deleted successfully');
                 await invalidateAll();
             } else {
-                toast.error('Failed to delete video');
+                const errorData = await response.json();
+                toast.error(errorData.message || 'Failed to delete video');
             }
         } catch (error) {
             console.error('Error deleting video:', error);
+            toast.error('An error occurred while deleting the video');
+        }
+    }
+
+    function handleDeleteResult(result) {
+        if (result.type === 'success') {
+            const data = result.data;
+            if (data.success) {
+                toast.success(data.message);
+                invalidateAll();
+            } else {
+                toast.error(data.message);
+            }
+        } else {
             toast.error('An error occurred while deleting the video');
         }
     }
@@ -112,14 +115,14 @@
 										 />
 										</Dialog.Description>
 									  </Dialog.Header>
-									  <Dialog.Footer>
+									  <Dialog.Footer class="flex justify-between">
 										<form
 										  action='/?/create-room'
 										  method='POST'
 										  use:enhance={() => {
 											return async ({ result }) => {
 												if (result.data.room?.name) {
-                          currentVideoUrl.set(`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`);
+													currentVideoUrl.set(`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`);
 													toast.success('Room created successfully');
 													goto(`/room/${result.data.room.name}`);
 												} else if (result.status === 400) {
@@ -139,11 +142,31 @@
 										/>
 										<Button 
 										  type="submit" 
-										  class="bg-primary hover:bg-primary/90 text-white w-full"
+										  class="bg-primary hover:bg-primary/90 text-white"
 										>
 										  Proceed
 										</Button>
 									  </form>
+									  {#if superUser}
+										<form
+											action='/?/delete-video'
+											method='POST'
+											use:enhance={() => {
+												return async ({ result }) => {
+													handleDeleteResult(result);
+												};
+											}}
+										>
+											<input type="hidden" name="videoId" value={video.id} />
+                      <Button 
+                      type="submit" 
+                      class="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      Delete
+                    </Button>
+										</form>
+
+									  {/if}
 									  </Dialog.Footer>
 									</Dialog.Content>
 								  </Dialog.Root>
@@ -155,14 +178,41 @@
                             <p class="text-gray-600 text-sm">{video.desc}</p>
                         </div>
                         {#if superUser}
-                            <button
-                                class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                        <Dialog.Root>
+                      <Dialog.Trigger>
+                        <button
+                        class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                       
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                      </Dialog.Trigger>
+                          <Dialog.Content>
+                            <Dialog.Header> 
+                              <Dialog.Title> Delete Video </Dialog.Title>
+                            </Dialog.Header>
+                            <Dialog.Description>
+                              Are you sure you want to delete this video?
+                            </Dialog.Description>
+                            <Dialog.Footer>
+                              <Dialog.Close>
+                                <Button> Cancel </Button>
+                              </Dialog.Close>
+                              <Dialog.Close>
+                                <Button 
                                 on:click={() => deleteVideo(video.id)}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
+                                class="bg-red-500 hover:bg-red-600 text-white"
+                              >
+                                Delete
+                              </Button>
+                              </Dialog.Close>
+                            </Dialog.Footer>
+                          </Dialog.Content>
+                        </Dialog.Root>
+  
+                            
                         {/if}
                     </div>
                 {/each}

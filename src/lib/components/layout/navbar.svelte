@@ -60,9 +60,6 @@
     <a class="logo" href="/">
         <img src="/logo/main-logo.svg" alt="clearsky" class="h-9 w-[131px]" />
     </a>
-    <a href="/dashboard" class="text-primary">
-        Dashboard
-    </a>
 
     <div class="flex items-center gap-4">
 

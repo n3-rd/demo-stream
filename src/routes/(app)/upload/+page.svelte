@@ -144,7 +144,7 @@ $: console.log(selectedRepresentatives);
                             console.log('quote request results', result);
                             if (result.status === 200) {
                                 toast.success('Successfully created room');
-                                goto('/dashboard');
+                                goto('/');
                             } else {
                                 toast.error('Error creating room');
                             }

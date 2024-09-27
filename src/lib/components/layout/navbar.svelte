@@ -61,41 +61,15 @@
         <img src="/logo/main-logo.svg" alt="clearsky" class="h-9 w-[131px]" />
     </a>
 
-    <form
-    action='/?/create-room'
-    method='POST'
-    use:enhance={() => {
-        return async ({ result }) => {
-            if (result.data.room?.name) {
-                toast.success('Room created successfully');
-                goto(`/room/${result.data.room.name}`);
-            } else if (result.status === 400) {
-                toast('Bad request');
-            } else if (result.status === 500) {
-                toast('Server error :|');
-            } else {
-                toast('Oops, something went wrong!');
-            }
-        };
-    }}
->
-<Button class="bg-[#ECEFF3] text-primary hover:text-white" type="submit"
-disabled={$currentVideoUrl == ''}
->
-    Create Room
-</Button>
-</form>
-    
-    <!-- <div class="flex gap-4">
+    <div class="flex items-center gap-4">
 
-        <form use:form
+     
+        <form
         action='/?/create-room'
         method='POST'
         use:enhance={() => {
             return async ({ result }) => {
-                console.log('create results', result.data.room);
                 if (result.data.room?.name) {
-                    console.log('room name', result.data.room.name);
                     toast.success('Room created successfully');
                     goto(`/room/${result.data.room.name}`);
                 } else if (result.status === 400) {
@@ -108,64 +82,21 @@ disabled={$currentVideoUrl == ''}
             };
         }}
     >
-        <Button class="bg-[#ECEFF3] text-primary hover:text-white" type="submit">
-            Create Room
-        </Button>
+    
+    <Button class="bg-[#ECEFF3] text-primary hover:text-white" type="submit"
+    disabled={$currentVideoUrl == ''}
+    >
+        Create Room
+    </Button>
     </form>
-
-    <Dialog.Root open={isJoinDialogOpen} on:close={() => isJoinDialogOpen = false}>
-        <Dialog.Trigger>
-            <Button class="bg-[#ECEFF3] text-primary hover:text-white" on:click={() => isJoinDialogOpen = true}>
-                Join a Demo Room
-            </Button>
-        </Dialog.Trigger>
-        <Dialog.Content>
-            <Dialog.Header>
-                <Dialog.Title>Enter URL</Dialog.Title>
-            </Dialog.Header>
-            <form use:form
-                action='/?/join-room'
-                method='POST'
-                use:enhance={() => {
-                    return async ({ result }) => {
-                        console.log('join results', result);
-                        if (result.data.url) {
-                            toast.success('Successfully joined');
-                            const roomName = result.data.url.split('/').at(-1);
-                            goto(`/room/${roomName}`);
-                            isJoinDialogOpen = false;
-                        } else if (result.status === 400) {
-                            toast('Bad request');
-                        } else if (result.status === 500) {
-                            toast('Server error :|');
-                        } else {
-                            toast('Oops, something went wrong!');
-                        }
-                    };
-                }}
-            >
-                <input 
-                    type="text" 
-                    name="dailyUrl"
-                    placeholder="Enter URL" 
-                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    use:validators={[required, url]}
-                />
-                <HintGroup for="dailyUrl">
-                    <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-                        <Hint on="required"><HintValidate>URL is required</HintValidate></Hint>
-                        <Hint on="url" hideWhenRequired><HintValidate>URL is not valid</HintValidate></Hint>
-                    </div>
-                </HintGroup>
-                <Button class="bg-[#ECEFF3] text-primary hover:text-white" type="submit" disabled={!$form.valid}>   
-                
-                    Join with URL
-                </Button>
-            </form>
-        </Dialog.Content>
-    </Dialog.Root>
-    </div> -->
-
+    
+    <Button class="bg-red-500 text-white hover:bg-red-700" 
+    href="/logout"
+    >
+        Logout
+    </Button>
+    
+    </div>
 
  </div>
 {/if} 

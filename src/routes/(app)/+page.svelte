@@ -1,11 +1,12 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
+	import * as Dialog from "$lib/components/ui/dialog";
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
     export let data;
     const { user } = data;
     const superUser = user.superuser;
-    const rooms = data.rooms;
-    console.log(rooms);
+    const roomVideos = data.roomVideos;
+    console.log(roomVideos);
     console.log(user);
     const sidebarItems = [
       { name: 'Dashboard', active: true },
@@ -65,19 +66,37 @@
         <!-- Scrollable content -->
         <main class="flex-1 p-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                {#each rooms as room}
+                {#each roomVideos as video}
                     <div class="bg-white rounded-lg overflow-hidden">
                         <div class="relative h-48 bg-gray-200 p-2 cursor-pointer">
-                            <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${room.collectionId}/${room.id}/${room.thumbnail}`} alt={room.title} class="w-full h-full object-cover" />
+                            <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.thumbnail}`} alt={video.title} class="w-full h-full object-cover" />
                             <div class="absolute inset-0 flex items-center justify-center">
-                                <div class="w-12 h-12  bg-opacity-75 rounded-full flex items-center justify-center">
-                                  <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
-                                </div>
+								<Dialog.Root>
+									<Dialog.Trigger>
+										<div class="w-12 h-12  bg-opacity-75 rounded-full flex items-center justify-center">
+											<img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
+										  </div>
+									</Dialog.Trigger>
+									<Dialog.Content>
+									  <Dialog.Header>
+										<Dialog.Title class="text-primary py-4">{video.title}</Dialog.Title>
+										<Dialog.Description>
+										 <video src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`} class="w-full h-full object-cover"
+										 controls
+										 />
+										</Dialog.Description>
+									  </Dialog.Header>
+									  <Dialog.Footer>
+										<Button class="bg-primary hover:bg-primary/90 text-white w-full">Proceed</Button>
+									  </Dialog.Footer>
+									</Dialog.Content>
+								  </Dialog.Root>
+                              
                             </div>
                         </div>
                         <div class="p-4">
-                            <h3 class="font-semibold text-base mb-2 text-primary">{room.title}</h3>
-                            <p class="text-gray-600 text-sm">{room.desc}</p>
+                            <h3 class="font-semibold text-base mb-2 text-primary">{video.title}</h3>
+                            <p class="text-gray-600 text-sm">{video.desc}</p>
                         </div>
                     </div>
                 {/each}

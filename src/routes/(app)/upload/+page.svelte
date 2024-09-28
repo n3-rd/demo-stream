@@ -74,7 +74,7 @@
 
     let selectedRepresentatives: string[] = [];
     let isRepresentativeModalOpen = false;
-    let isCreatingRoom = false; // New state to track room creation
+    let isUploadingVideo = false; // New state to track room creation
 
     function toggleRepresentative(id: string) {
     if (selectedRepresentatives.includes(id)) {
@@ -136,17 +136,17 @@ $: console.log(selectedRepresentatives);
             <div class="max-w-7xl mx-auto">
                 <div class="bg-white p-6 rounded-lg shadow">
                     <!-- Form Section -->
-                    <form method="POST" action="?/createRoom" 
+                    <form method="POST" action="?/uploadVideo" 
                     use:enhance={() => {
-                        isCreatingRoom = true; // Set loading state to true when form is submitted
+                        isUploadingVideo = true; // Set loading state to true when form is submitted
                         return async ({ result }) => {
-                            isCreatingRoom = false; // Set loading state to false when we get a result
+                            isUploadingVideo = false; // Set loading state to false when we get a result
                             console.log('quote request results', result);
                             if (result.status === 200) {
-                                toast.success('Successfully created room');
+                                toast.success('Successfully uploaded video');
                                 goto('/');
                             } else {
-                                toast.error('Error creating room');
+                                toast.error('Error uploading video');
                             }
                         };
                     }}
@@ -164,7 +164,10 @@ $: console.log(selectedRepresentatives);
                             </div>
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 <div class="flex flex-col gap-2">
+                                    <!-- svelte-ignore a11y-label-has-associated-control -->
                                     <label class="text-sm font-medium text-gray-700">Upload a Video</label>
+                                    <!-- svelte-ignore a11y-click-events-have-key-events -->
+                                    <!-- svelte-ignore a11y-no-static-element-interactions -->
                                     <div 
                                         class="border-dashed border-2 p-4 mt-2 text-center cursor-pointer"
                                         on:drop={(e) => handleDrop(e, 'video')}
@@ -186,8 +189,11 @@ $: console.log(selectedRepresentatives);
                                         name="video"
                                     />
                                 </div>
+                                <!-- svelte-ignore a11y-click-events-have-key-events -->
                                 <div class="flex flex-col gap-2">
                                     <label class="text-sm font-medium text-gray-700">Video Thumbnail</label>
+                                    <!-- svelte-ignore a11y-click-events-have-key-events -->
+                                    <!-- svelte-ignore a11y-no-static-element-interactions -->
                                     <div 
                                         class="border-dashed border-2 p-4 mt-2 text-center cursor-pointer"
                                         on:drop={(e) => handleDrop(e, 'thumbnail')}
@@ -264,12 +270,12 @@ $: console.log(selectedRepresentatives);
                         <input type="hidden" name="representatives" value={selectedRepresentatives.join(',')} />
 
                         <div class="mt-6">
-                            <Button type="submit" variant="default" disabled={isCreatingRoom}>
-                                {#if isCreatingRoom}
+                            <Button type="submit" variant="default" disabled={isUploadingVideo}>
+                                {#if isUploadingVideo}
                                     <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                                    Creating Room...
+                                    Uploading Video...
                                 {:else}
-                                    Create Room
+                                    Upload Video
                                 {/if}
                             </Button>
                         </div>
@@ -286,7 +292,7 @@ $: console.log(selectedRepresentatives);
         <Dialog.Header>
             <Dialog.Title>Select Representatives</Dialog.Title>
             <Dialog.Description>
-                Choose the representatives for this room.
+                Choose the representatives for this video.
             </Dialog.Description>
         </Dialog.Header>
         <div class="grid gap-4 py-4">

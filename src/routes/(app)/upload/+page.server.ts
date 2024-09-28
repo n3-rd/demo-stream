@@ -19,7 +19,7 @@ export const load = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-    createRoom: async ({ request, locals }) => {
+    uploadVideo: async ({ request, locals }) => {
         const formData = await request.formData();
         
         const title = formData.get('title') as string;
@@ -49,15 +49,15 @@ export const actions: Actions = {
         if (email) data.append('email', email as string);
 
         try {
-            const record = await locals.pb.collection('rooms').create(data);
+            const record = await locals.pb.collection('room_videos').create(data);
             
             // Redirect to the newly created room or a success page
-            return { success: true, roomId: record.id, status: 200 };
+            return { success: true, videoId: record.id, status: 200 };
         } catch (err) {
-            console.error('Error creating room:', err);
+            console.error('Error creating video:', err);
             return fail(400, { 
                 error: true, 
-                message: 'Failed to create room',
+                message: 'Failed to create video',
                 data: Object.fromEntries(formData)  // Use formData instead of data for re-population
             });
         }

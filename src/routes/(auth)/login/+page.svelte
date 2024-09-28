@@ -7,10 +7,25 @@
 	import HintValidate from '$lib/components/layout/hint-validate.svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
+	import type { ActionResult } from '@sveltejs/kit';
 
 	let loading = false;
 
 	const form = useForm();
+
+	function handleLogin(result: ActionResult) {
+		if (result.type === 'success') {
+			const data = result.data as { success: boolean; message: string };
+			if (data.success) {
+				toast.success(data.message);
+				goto('/');
+			} else {
+				toast.error(data.message);
+			}
+		} else {
+			toast.error('An error occurred while logging in');
+		}
+	}
 </script>
 
 <div class="flex min-h-screen bg-[#3583c6]">
@@ -44,14 +59,10 @@
 				method="POST"
 				use:form
 				use:enhance={() => {
+					loading = true;
 					return async ({ result }) => {
-						console.log('login results', result);
-						if (result.status === 200) {
-							toast.success('Successfully logged in');
-							goto('/');
-						} else {
-							toast.error('Error occurred logging in');
-						}
+						loading = false;
+						handleLogin(result);
 					};
 				}}
 				class="space-y-4"

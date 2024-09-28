@@ -1,11 +1,18 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
+	import * as Dialog from "$lib/components/ui/dialog";
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
+    import { goto } from '$app/navigation';
+    import { enhance } from '$app/forms';
+    import { toast } from 'svelte-sonner';
+    import { currentVideoUrl } from '$lib/callStores';
+    import { invalidateAll } from '$app/navigation';
     export let data;
     const { user } = data;
     const superUser = user.superuser;
-    const rooms = data.rooms;
-    console.log(rooms);
+    let roomVideos;
+   $: roomVideos = data.roomVideos;
+    console.log(roomVideos);
     console.log(user);
     const sidebarItems = [
       { name: 'Dashboard', active: true },
@@ -17,19 +24,42 @@
       { name: 'Option E' },
     ];
   
-    const videoCards = [
-      { title: '2024 Ford F150', description: "Ford's F150 Model represents the pinnacle of full-size pickup trucks as a hallmark of rugged capability and versatile performance in the world of pickup trucks. With a lineage that spans over several decades, the F-150...", image: '/img/ford.png' },
-      { title: 'Smart CNC Milling Tools', description: 'Join this demo to explore the latest CNC milling tools designed for high-speed precision machining. Learn how these tools reduce setup time and improve cutting accuracy.', image: '/img/ford.png' },
-      { title: '3D Printing for Prototyping', description: 'Watch our 3D printing in action as they create high-quality prototypes. This demo highlights how 3D printing can accelerate product development and bring designs to life.', image: '/img/ford.png' },
-      { title: 'Advanced Laser Cutting', description: "In this demo, you'll see how advanced laser cutting machines offer superior precision for metal and non-metal materials, enhancing cutting quality for various manufacturing applications.", image: '/img/ford.png' },
-      { title: 'Hydraulic Press Machine', description: 'Learn how hydraulic press machines are transforming manufacturing processes with increased force and accuracy. This demo explains the technology behind these powerful machines.', image: '/img/ford.png' },
-      { title: 'Lathe Machine', description: 'Discover the precision and efficiency of our lathe machines. This demo showcases advanced turning techniques and how these machines can boost productivity in industrial settings.', image: '/img/ford.png' },
-      { title: 'Milling Cutters Machine', description: 'Explore the versatility of our milling cutters. This demo highlights various cutting techniques and how these tools can enhance precision in manufacturing processes.', image: '/img/ford.png' },
-      { title: 'Harley Davidson Showroom', description: 'Experience the iconic Harley Davidson motorcycles in our virtual showroom. This demo showcases the latest models and their cutting-edge features.', image: '/img/ford.png' },
-    ];
+    async function deleteVideo(videoId: string) {
+
+        try {
+            const response = await fetch(`/api/videos/${videoId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                toast.success('Video deleted successfully');
+                await invalidateAll();
+            } else {
+                const errorData = await response.json();
+                toast.error(errorData.message || 'Failed to delete video');
+            }
+        } catch (error) {
+            console.error('Error deleting video:', error);
+            toast.error('An error occurred while deleting the video');
+        }
+    }
+
+    function handleDeleteResult(result) {
+        if (result.type === 'success') {
+            const data = result.data;
+            if (data.success) {
+                toast.success(data.message);
+                invalidateAll();
+            } else {
+                toast.error(data.message);
+            }
+        } else {
+            toast.error('An error occurred while deleting the video');
+        }
+    }
 </script>
 
-<div class="flex h-screen overflow-hidden bg-gray-100">
+<div class="flex h-auto overflow-hidden bg-gray-100">
     <!-- Sidebar -->
     <aside class="w-64 h-full overflow-y-auto bg-white shadow-md">
         <div class="p-4">
@@ -48,7 +78,7 @@
     </aside>
 
     <!-- Main content area -->
-    <div class="flex-1 flex flex-col overflow-hidden ">
+    <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Header -->
         <header class="shadow-sm z-10 mt-6 rounded-lg">
             <div class="bg-white top-header !w-[95%] mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
@@ -63,22 +93,127 @@
         </header>
 
         <!-- Scrollable content -->
-        <main class="flex-1 p-6">
+        <main class="flex-1 overflow-y-auto p-6 pb-20">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                {#each rooms as room}
-                    <div class="bg-white rounded-lg overflow-hidden">
+                {#each roomVideos as video}
+                    <div class="bg-white rounded-lg overflow-hidden relative"> <!-- Added relative positioning -->
                         <div class="relative h-48 bg-gray-200 p-2 cursor-pointer">
-                            <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${room.collectionId}/${room.id}/${room.thumbnail}`} alt={room.title} class="w-full h-full object-cover" />
+                            <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.thumbnail}`} alt={video.title} class="w-full h-full object-cover" />
                             <div class="absolute inset-0 flex items-center justify-center">
-                                <div class="w-12 h-12  bg-opacity-75 rounded-full flex items-center justify-center">
-                                  <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
-                                </div>
+								<Dialog.Root>
+									<Dialog.Trigger>
+										<div class="w-12 h-12  bg-opacity-75 rounded-full flex items-center justify-center">
+											<img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
+										  </div>
+									</Dialog.Trigger>
+									<Dialog.Content>
+									  <Dialog.Header>
+										<Dialog.Title class="text-primary py-4">{video.title}</Dialog.Title>
+										<Dialog.Description>
+										 <video src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`} class="w-full h-full object-cover"
+										 controls
+										 />
+										</Dialog.Description>
+									  </Dialog.Header>
+									  <Dialog.Footer class="flex justify-between">
+										<form
+										  action='/?/create-room'
+										  method='POST'
+										  use:enhance={() => {
+											return async ({ result }) => {
+												if (result.data.room?.name) {
+													currentVideoUrl.set(`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`);
+													toast.success('Room created successfully');
+													goto(`/room/${result.data.room.name}`);
+												} else if (result.status === 400) {
+													toast('Bad request');
+												} else if (result.status === 500) {
+													toast('Server error');
+												} else {
+													toast('Oops, something went wrong!');
+												}
+											};
+										}}
+									  >
+										<input 
+										  type="hidden" 
+										  name="videoUrl" 
+										  value={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`}
+										/>
+										<Button 
+										  type="submit" 
+										  class="bg-primary hover:bg-primary/90 text-white"
+										>
+										  Proceed
+										</Button>
+									  </form>
+									  {#if superUser}
+										<form
+											action='/?/delete-video'
+											method='POST'
+											use:enhance={() => {
+												return async ({ result }) => {
+													handleDeleteResult(result);
+												};
+											}}
+										>
+											<input type="hidden" name="videoId" value={video.id} />
+                      <Button 
+                      type="submit" 
+                      class="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      Delete
+                    </Button>
+										</form>
+
+									  {/if}
+									  </Dialog.Footer>
+									</Dialog.Content>
+								  </Dialog.Root>
+                              
                             </div>
                         </div>
                         <div class="p-4">
-                            <h3 class="font-semibold text-base mb-2 text-primary">{room.title}</h3>
-                            <p class="text-gray-600 text-sm">{room.desc}</p>
+                            <h3 class="font-semibold text-base mb-2 text-primary">{video.title}</h3>
+                            <p class="text-gray-600 text-sm">{video.desc}</p>
                         </div>
+                        {#if superUser}
+                        <Dialog.Root>
+                      <Dialog.Trigger>
+                        <button
+                        class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                       
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                      </Dialog.Trigger>
+                          <Dialog.Content>
+                            <Dialog.Header> 
+                              <Dialog.Title> Delete Video </Dialog.Title>
+                            </Dialog.Header>
+                            <Dialog.Description>
+                              Are you sure you want to delete this video?
+                            </Dialog.Description>
+                            <Dialog.Footer>
+                              <Dialog.Close>
+                                <Button> Cancel </Button>
+                              </Dialog.Close>
+                              <Dialog.Close>
+                                <Button 
+                                on:click={() => deleteVideo(video.id)}
+                                class="bg-red-500 hover:bg-red-600 text-white"
+                              >
+                                Delete
+                              </Button>
+                              </Dialog.Close>
+                            </Dialog.Footer>
+                          </Dialog.Content>
+                        </Dialog.Root>
+  
+                            
+                        {/if}
                     </div>
                 {/each}
             </div>

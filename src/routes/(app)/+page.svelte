@@ -110,7 +110,7 @@
 									  <Dialog.Header>
 										<Dialog.Title class="text-primary py-4">{video.title}</Dialog.Title>
 										<Dialog.Description>
-										 <video src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`} class="w-full h-full object-cover"
+										 <video src={`/video/${video.video_ref}.mp4`} class="w-full h-full object-cover"
 										 controls
 										 />
 										</Dialog.Description>
@@ -122,7 +122,7 @@
 										  use:enhance={() => {
 											return async ({ result }) => {
 												if (result.data.room?.name) {
-													currentVideoUrl.set(`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`);
+													currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
 													toast.success('Room created successfully');
 													goto(`/room/${result.data.room.name}`);
 												} else if (result.status === 400) {
@@ -138,7 +138,7 @@
 										<input 
 										  type="hidden" 
 										  name="videoUrl" 
-										  value={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.video}`}
+										  value={`/video/${video.video_ref}.mp4`}
 										/>
 										<Button 
 										  type="submit" 

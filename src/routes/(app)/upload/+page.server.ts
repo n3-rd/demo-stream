@@ -1,6 +1,10 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync, unlinkSync, createWriteStream } from 'fs';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+
+const pipelineAsync = promisify(pipeline);
 
 export const load = async ({ locals }) => {
     const user = locals.pb.authStore.model;
@@ -51,17 +55,18 @@ export const actions: Actions = {
         const data = new FormData();
         data.append('title', title);
         data.append('desc', desc);
-        // if (video) data.append('video', video);
-        let videoBuffer = await video.arrayBuffer();
-        let videoName = random_ref();
-        console.log('videoBuffer', videoBuffer);
         if (thumbnail) data.append('thumbnail', thumbnail);
         representatives.forEach(rep => data.append('representatives', rep));
 
         checkFolder();
 
+        const videoName = random_ref();
+        const videoPath = `static/video/${videoName}.mp4`;
+
         try {
-            writeFileSync(`static/video/${videoName}.mp4`, Buffer.from(videoBuffer));
+            const videoStream = video.stream();
+            const writeStream = createWriteStream(videoPath);
+            await pipelineAsync(videoStream, writeStream);
         } catch (e) {
             console.log(e);
             return fail(500, { error: true, message: 'Failed to save video file' });
@@ -74,7 +79,7 @@ export const actions: Actions = {
         if (name) data.append('name', name as string);
         if (phone) data.append('phone', phone as string);
         if (email) data.append('email', email as string);
-        data.append('video_ref', videoName as string)
+        data.append('video_ref', videoName as string);
 
         try {
             const record = await locals.pb.collection('room_videos_duplicate').create(data);
@@ -88,6 +93,29 @@ export const actions: Actions = {
                 message: 'Failed to create video',
                 data: Object.fromEntries(formData)  // Use formData instead of data for re-population
             });
+        }
+    },
+    deleteVideo: async ({ params, locals, request }) => {
+
+        if (!locals.pb.authStore.model?.superuser) {
+            return {
+                success: false,
+                message: 'Unauthorized: Only super users can delete videos',
+                status: 403
+            };
+        }
+        const data = await request.formData();
+        const videoId = data.get('id');
+        const video_ref = data.get('ref')
+        try {
+            await locals.pb.collection('room_videos_duplicate').delete(videoId);
+            if(existsSync(`static/video/${video_ref}.mp4`)){
+            unlinkSync(`static/video/${video_ref}.mp4`)
+            }
+            return { success: true, status: 200 };
+        } catch (err) {
+            console.error('Error deleting video:', err);
+            return fail(400, { error: true, message: 'Failed to delete video' });
         }
     }
 };

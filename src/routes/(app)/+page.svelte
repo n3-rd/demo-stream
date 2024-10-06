@@ -24,39 +24,7 @@
       { name: 'Option E' },
     ];
   
-    async function deleteVideo(videoId: string) {
 
-        try {
-            const response = await fetch(`/api/videos/${videoId}`, {
-                method: 'DELETE',
-            });
-
-            if (response.ok) {
-                toast.success('Video deleted successfully');
-                await invalidateAll();
-            } else {
-                const errorData = await response.json();
-                toast.error(errorData.message || 'Failed to delete video');
-            }
-        } catch (error) {
-            console.error('Error deleting video:', error);
-            toast.error('An error occurred while deleting the video');
-        }
-    }
-
-    function handleDeleteResult(result) {
-        if (result.type === 'success') {
-            const data = result.data;
-            if (data.success) {
-                toast.success(data.message);
-                invalidateAll();
-            } else {
-                toast.error(data.message);
-            }
-        } else {
-            toast.error('An error occurred while deleting the video');
-        }
-    }
 </script>
 
 <div class="flex h-auto overflow-hidden bg-gray-100">
@@ -149,15 +117,22 @@
 									  </form>
 									  {#if superUser}
 										<form
-											action='/?/delete-video'
+											action='/upload/?/deleteVideo'
 											method='POST'
 											use:enhance={() => {
-												return async ({ result }) => {
-													handleDeleteResult(result);
-												};
+                        return async ({ result }) => {
+                          if (result.status === 200) {
+                            toast.success('Video deleted successfully');
+                            await invalidateAll();
+                          } else {
+                            toast.error('Failed to delete video');
+                          }
+                        };
 											}}
 										>
-											<input type="hidden" name="videoId" value={video.id} />
+											<input type="hidden" name="id" value={video.id} />
+											<input type="hidden" name="ref" value={video.video_ref} />
+
                       <Button 
                       type="submit" 
                       class="bg-red-500 hover:bg-red-600 text-white"
@@ -201,12 +176,29 @@
                                 <Button> Cancel </Button>
                               </Dialog.Close>
                               <Dialog.Close>
+                              <form
+                                action='/upload/?/deleteVideo'
+                                method='POST'
+                                use:enhance={() => {
+                                  return async ({ result }) => {
+                                    if (result.status === 200) {
+                                      toast.success('Video deleted successfully');
+                                      await invalidateAll();
+                                    } else {
+                                      toast.error('Failed to delete video');
+                                    }
+                                  };
+                                }}
+                              >
+                                <input type="hidden" name="id" value={video.id} />
+                                <input type="hidden" name="ref" value={video.video_ref} />
                                 <Button 
-                                on:click={() => deleteVideo(video.id)}
+                                type="submit"
                                 class="bg-red-500 hover:bg-red-600 text-white"
                               >
                                 Delete
                               </Button>
+                              </form>
                               </Dialog.Close>
                             </Dialog.Footer>
                           </Dialog.Content>

@@ -1,6 +1,6 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 
 export const load = async ({ locals }) => {
     const user = locals.pb.authStore.model;
@@ -88,6 +88,29 @@ export const actions: Actions = {
                 message: 'Failed to create video',
                 data: Object.fromEntries(formData)  // Use formData instead of data for re-population
             });
+        }
+    },
+    deleteVideo: async ({ params, locals, request }) => {
+
+        if (!locals.pb.authStore.model?.superuser) {
+            return {
+                success: false,
+                message: 'Unauthorized: Only super users can delete videos',
+                status: 403
+            };
+        }
+        const data = await request.formData();
+        const videoId = data.get('id');
+        const video_ref = data.get('ref')
+        try {
+            await locals.pb.collection('room_videos_duplicate').delete(videoId);
+            if(existsSync(`static/video/${video_ref}.mp4`)){
+            unlinkSync(`static/video/${video_ref}.mp4`)
+            }
+            return { success: true, status: 200 };
+        } catch (err) {
+            console.error('Error deleting video:', err);
+            return fail(400, { error: true, message: 'Failed to delete video' });
         }
     }
 };

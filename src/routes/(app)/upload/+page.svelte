@@ -1,88 +1,122 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
-    import { enhance } from '$app/forms';
     import { Checkbox } from '$lib/components/ui/checkbox';
     import * as Dialog from '$lib/components/ui/dialog';
     import * as Table from "$lib/components/ui/table";
     import { toast } from 'svelte-sonner';
-    import { Loader2 } from 'lucide-svelte'; // Import the loader icon
-	import { goto } from '$app/navigation';
+    import { Loader2 } from 'lucide-svelte';
+    import { goto } from '$app/navigation';
     
     export let data;
     const { user } = data;
     let representatives = data.representatives;
 
-    const sidebarItems = [
-      { name: 'Dashboard', active: true },
-      { name: 'Others' },
-      { name: 'Option A' },
-      { name: 'Option B' },
-      { name: 'Option C' },
-      { name: 'Option D' },
-      { name: 'Option E' },
-    ];
-
-    let newRepresentative = { name: '', phone: '', email: '' };
-
-    function addRepresentative() {
-      if (newRepresentative.name && newRepresentative.phone && newRepresentative.email) {
-        representatives = [...representatives, newRepresentative];
-        newRepresentative = { name: '', phone: '', email: '' }; // Reset form fields
-      }
-    }
-
-    function removeRepresentative(index: number) {
-      representatives = representatives.filter((_, i) => i !== index);
-    }
-
     let videoFile: File | null = null;
     let thumbnailFile: File | null = null;
-    let thumbnailUrl = '';
+    let isUploadingVideo = false;
+    let uploadProgress = 0;
+    let uploadedChunks: Set<number> = new Set();
 
-    function handleDrop(event: DragEvent, type: 'video' | 'thumbnail') {
-        event.preventDefault();
-        const files = event.dataTransfer?.files;
-        if (files && files.length > 0) {
-            handleFile(files[0], type);
+    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+
+    async function uploadChunk(chunk: Blob, index: number, filename: string, totalChunks: number) {
+        const formData = new FormData();
+        formData.append('chunk', chunk);
+        formData.append('index', index.toString());
+        formData.append('filename', filename);
+        formData.append('totalChunks', totalChunks.toString());
+
+        const response = await fetch('/api/upload-chunk', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to upload chunk ${index}`);
         }
+
+        uploadedChunks.add(index);
+        uploadProgress = (uploadedChunks.size / totalChunks) * 100;
     }
 
-    function handleDragOver(event: DragEvent) {
+    async function uploadVideo(file: File) {
+        const filename = `${Date.now()}-${file.name}`;
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+        for (let i = 0; i < totalChunks; i++) {
+            if (!uploadedChunks.has(i)) {
+                const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+                await uploadChunk(chunk, i, filename, totalChunks);
+            }
+        }
+
+        return filename;
+    }
+
+    async function handleSubmit(event: Event) {
         event.preventDefault();
+        if (!videoFile) {
+            toast.error('Please select a video file');
+            return;
+        }
+
+        isUploadingVideo = true;
+        uploadProgress = 0;
+        uploadedChunks.clear();
+
+        try {
+            const videoFilename = await uploadVideo(videoFile);
+
+            const formData = new FormData(event.target as HTMLFormElement);
+            formData.append('video_ref', videoFilename);
+
+            if (thumbnailFile) {
+                formData.append('thumbnail', thumbnailFile);
+            }
+
+            const response = await fetch('?/uploadVideo', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.status === 200) {
+                toast.success('Successfully uploaded video');
+                goto('/');
+            } else {
+                toast.error('Error creating video entry');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            toast.error('Error uploading video');
+        } finally {
+            isUploadingVideo = false;
+        }
     }
 
     function handleFileInput(event: Event, type: 'video' | 'thumbnail') {
         const input = event.target as HTMLInputElement;
         const files = input.files;
         if (files && files.length > 0) {
-            handleFile(files[0], type);
+            if (type === 'video') {
+                videoFile = files[0];
+            } else {
+                thumbnailFile = files[0];
+            }
         }
-    }
-
-    function handleFile(file: File, type: 'video' | 'thumbnail') {
-        if (type === 'video' && file.type.startsWith('video/')) {
-            videoFile = file;
-        } else if (type === 'thumbnail' && file.type.startsWith('image/')) {
-            thumbnailFile = file;
-            thumbnailUrl = URL.createObjectURL(file);
-        }
-    }
-
-    function triggerFileInput(inputId: string) {
-        document.getElementById(inputId)?.click();
     }
 
     let selectedRepresentatives: string[] = [];
     let isRepresentativeModalOpen = false;
-    let isUploadingVideo = false; // New state to track room creation
 
     function toggleRepresentative(id: string) {
-    if (selectedRepresentatives.includes(id)) {
-        selectedRepresentatives = selectedRepresentatives.filter(repId => repId !== id);
-    } else {
-        selectedRepresentatives = [...selectedRepresentatives, id];
+        if (selectedRepresentatives.includes(id)) {
+            selectedRepresentatives = selectedRepresentatives.filter(repId => repId !== id);
+        } else {
+            selectedRepresentatives = [...selectedRepresentatives, id];
+        }
     }
-}
 
     function openRepresentativeModal() {
         isRepresentativeModalOpen = true;
@@ -96,12 +130,11 @@
         closeRepresentativeModal();
     }
 
-    // Function to get selected representatives' details
     function getSelectedRepresentativesDetails() {
-    return representatives.filter(rep => selectedRepresentatives.includes(rep.id));
-}
+        return representatives.filter(rep => selectedRepresentatives.includes(rep.id));
+    }
 
-$: console.log(selectedRepresentatives);
+    $: console.log(selectedRepresentatives);
 </script>
 
 <div class="flex bg-gray-100">
@@ -110,14 +143,7 @@ $: console.log(selectedRepresentatives);
         <div class="p-4">
             <div class="bg-gray-300 h-12 w-24 mb-4">LOGO</div>
             <nav>
-                {#each sidebarItems as item}
-                    <a
-                        href="#"
-                        class="block py-2 px-4 text-gray-600 hover:bg-gray-100 {item.active ? 'bg-gray-100 font-semibold' : ''}"
-                    >
-                        {item.name}
-                    </a>
-                {/each}
+            sidebar
             </nav>
         </div>
     </aside>
@@ -136,21 +162,7 @@ $: console.log(selectedRepresentatives);
             <div class="max-w-7xl mx-auto">
                 <div class="bg-white p-6 rounded-lg shadow">
                     <!-- Form Section -->
-                    <form method="POST" action="?/uploadVideo" 
-                    use:enhance={() => {
-                        isUploadingVideo = true; // Set loading state to true when form is submitted
-                        return async ({ result }) => {
-                            isUploadingVideo = false; // Set loading state to false when we get a result
-                            console.log('quote request results', result);
-                            if (result.status === 200) {
-                                toast.success('Successfully uploaded video');
-                                goto('/');
-                            } else {
-                                toast.error('Error uploading video');
-                            }
-                        };
-                    }}
-                    enctype="multipart/form-data">
+                    <form on:submit={handleSubmit} enctype="multipart/form-data">
                         <div class="space-y-6">
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 <div class="flex flex-col gap-2">
@@ -164,55 +176,23 @@ $: console.log(selectedRepresentatives);
                             </div>
                             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 <div class="flex flex-col gap-2">
-                                    <!-- svelte-ignore a11y-label-has-associated-control -->
-                                    <label class="text-sm font-medium text-gray-700">Upload a Video</label>
-                                    <!-- svelte-ignore a11y-click-events-have-key-events -->
-                                    <!-- svelte-ignore a11y-no-static-element-interactions -->
-                                    <div 
-                                        class="border-dashed border-2 p-4 mt-2 text-center cursor-pointer"
-                                        on:drop={(e) => handleDrop(e, 'video')}
-                                        on:dragover={handleDragOver}
-                                        on:click={() => triggerFileInput('video-input')}
-                                    >
-                                        {#if videoFile}
-                                            <p>{videoFile.name}</p>
-                                        {:else}
-                                            Drag and drop or click here to upload your video.
-                                        {/if}
-                                    </div>
+                                    <label for="video" class="text-sm font-medium text-gray-700">Upload a Video</label>
                                     <input 
                                         type="file" 
+                                        id="video" 
                                         accept="video/*" 
-                                        class="hidden" 
                                         on:change={(e) => handleFileInput(e, 'video')}
-                                        id="video-input"
-                                        name="video"
+                                        class="border border-gray-300 rounded-md p-2"
                                     />
                                 </div>
-                                <!-- svelte-ignore a11y-click-events-have-key-events -->
                                 <div class="flex flex-col gap-2">
-                                    <label class="text-sm font-medium text-gray-700">Video Thumbnail</label>
-                                    <!-- svelte-ignore a11y-click-events-have-key-events -->
-                                    <!-- svelte-ignore a11y-no-static-element-interactions -->
-                                    <div 
-                                        class="border-dashed border-2 p-4 mt-2 text-center cursor-pointer"
-                                        on:drop={(e) => handleDrop(e, 'thumbnail')}
-                                        on:dragover={handleDragOver}
-                                        on:click={() => triggerFileInput('thumbnail-input')}
-                                    >
-                                        {#if thumbnailUrl}
-                                            <img src={thumbnailUrl} alt="Thumbnail" class="w-full h-auto" />
-                                        {:else}
-                                            Upload Image
-                                        {/if}
-                                    </div>
+                                    <label for="thumbnail" class="text-sm font-medium text-gray-700">Video Thumbnail</label>
                                     <input 
                                         type="file" 
+                                        id="thumbnail" 
                                         accept="image/*" 
-                                        class="hidden" 
                                         on:change={(e) => handleFileInput(e, 'thumbnail')}
-                                        id="thumbnail-input"
-                                        name="thumbnail"
+                                        class="border border-gray-300 rounded-md p-2"
                                     />
                                 </div>
                             </div>
@@ -273,7 +253,7 @@ $: console.log(selectedRepresentatives);
                             <Button type="submit" variant="default" disabled={isUploadingVideo}>
                                 {#if isUploadingVideo}
                                     <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                                    Uploading Video...
+                                    Uploading Video... {uploadProgress.toFixed(2)}%
                                 {:else}
                                     Upload Video
                                 {/if}

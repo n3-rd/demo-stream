@@ -6,7 +6,8 @@
     import Controls from './Controls.svelte';
     import { onMount, onDestroy, tick } from 'svelte';
     import { playVideoStore } from '$lib/stores/playStore.js';
-	import { PlayCircle } from 'lucide-svelte';
+    import { PlayCircle } from 'lucide-svelte';
+    import Hls from 'hls.js';
 
     export let participant;
     export let callObject;
@@ -166,15 +167,15 @@
     }
 
     const updateParticipants = (e) => {
-    console.log('[update participants]', e);
-    if (!callObject) return;
-    participants = Object.values(callObject.participants()).map(participant => {
-        return {
-            ...participant,
-            isScreenSharing: participant.tracks.screenVideo?.state === 'playable'
-        };
-    });
-};
+        console.log('[update participants]', e);
+        if (!callObject) return;
+        participants = Object.values(callObject.participants()).map(participant => {
+            return {
+                ...participant,
+                isScreenSharing: participant.tracks.screenVideo?.state === 'playable'
+            };
+        });
+    };
 
     let retryCount = 0;
     const maxRetries = 3;
@@ -219,6 +220,19 @@
         callObject.on('participant-left', updateParticipants);
         callObject.on('participant-joined', updateParticipants);
 
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(videoURL);
+            hls.attachMedia(videoEl);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoEl.play();
+            });
+        } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+            videoEl.src = videoURL;
+            videoEl.addEventListener('loadedmetadata', () => {
+                videoEl.play();
+            });
+        }
     });
 
     onDestroy(() => {
@@ -249,14 +263,15 @@
         <video 
             id={`video-${participant?.session_id}`}
             playsInline 
-            use:srcObject={videoSrc}
+            controls
             class={host ? 'host-video' : 'participant-video'}
+            bind:this={videoEl}
         >
             <track kind="captions" />
         </video>
 
-        {#if  host && !$playVideoStore}
-            <div class="play-button h-screen min-w-full absolute  flex justify-center items-center z-[999]">
+        {#if host && !$playVideoStore}
+            <div class="play-button h-screen min-w-full absolute flex justify-center items-center z-[999]">
                 <button on:click={() => playVideoStore.set(true)}>
                     <PlayCircle size={48} class="cursor-pointer" />
                 </button>

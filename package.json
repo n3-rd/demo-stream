@@ -42,6 +42,8 @@
 		"dayjs": "^1.11.13",
 		"dotenv": "^16.4.5",
 		"fs": "0.0.1-security",
+		"hls": "^0.0.1",
+		"hls.js": "^1.5.15",
 		"ics": "^3.7.6",
 		"lucide-svelte": "^0.439.0",
 		"nodemailer": "^6.9.15",

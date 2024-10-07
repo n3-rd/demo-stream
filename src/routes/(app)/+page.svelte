@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
-	import * as Dialog from "$lib/components/ui/dialog";
-    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
+    import * as Dialog from "$lib/components/ui/dialog";
+    import { PUBLIC_POCKETBASE_INSTANCE, PUBLIC_R2_SUBDOMAIN } from '$env/static/public';
     import { goto } from '$app/navigation';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
@@ -11,7 +11,7 @@
     const { user } = data;
     const superUser = user.superuser;
     let roomVideos;
-   $: roomVideos = data.roomVideos;
+    $: roomVideos = data.roomVideos;
     console.log(roomVideos);
     console.log(user);
     const sidebarItems = [
@@ -23,8 +23,9 @@
       { name: 'Option D' },
       { name: 'Option E' },
     ];
-  
 
+    // Define your S3 bucket URL
+    const S3_BUCKET_URL = 'https://your-s3-bucket-url';
 </script>
 
 <div class="flex h-auto overflow-hidden bg-gray-100">
@@ -68,58 +69,58 @@
                         <div class="relative h-48 bg-gray-200 p-2 cursor-pointer">
                             <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.thumbnail}`} alt={video.title} class="w-full h-full object-cover" />
                             <div class="absolute inset-0 flex items-center justify-center">
-								<Dialog.Root>
-									<Dialog.Trigger>
-										<div class="w-12 h-12  bg-opacity-75 rounded-full flex items-center justify-center">
-											<img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
-										  </div>
-									</Dialog.Trigger>
-									<Dialog.Content>
-									  <Dialog.Header>
-										<Dialog.Title class="text-primary py-4">{video.title}</Dialog.Title>
-										<Dialog.Description>
-										 <video src={`/video/${video.video_ref}.mp4`} class="w-full h-full object-cover"
-										 controls
-										 />
-										</Dialog.Description>
-									  </Dialog.Header>
-									  <Dialog.Footer class="flex justify-between">
-										<form
-										  action='/?/create-room'
-										  method='POST'
-										  use:enhance={() => {
-											return async ({ result }) => {
-												if (result.data.room?.name) {
-													currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
-													toast.success('Room created successfully');
-													goto(`/room/${result.data.room.name}`);
-												} else if (result.status === 400) {
-													toast('Bad request');
-												} else if (result.status === 500) {
-													toast('Server error');
-												} else {
-													toast('Oops, something went wrong!');
-												}
-											};
-										}}
-									  >
-										<input 
-										  type="hidden" 
-										  name="videoUrl" 
-										  value={`/video/${video.video_ref}.mp4`}
-										/>
-										<Button 
-										  type="submit" 
-										  class="bg-primary hover:bg-primary/90 text-white"
-										>
-										  Proceed
-										</Button>
-									  </form>
-									  {#if superUser}
-										<form
-											action='/upload/?/deleteVideo'
-											method='POST'
-											use:enhance={() => {
+                                <Dialog.Root>
+                                    <Dialog.Trigger>
+                                        <div class="w-12 h-12  bg-opacity-75 rounded-full flex items-center justify-center">
+                                            <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
+                                          </div>
+                                    </Dialog.Trigger>
+                                    <Dialog.Content>
+                                      <Dialog.Header>
+                                        <Dialog.Title class="text-primary py-4">{video.title}</Dialog.Title>
+                                        <Dialog.Description>
+                                         <video src={`${PUBLIC_R2_SUBDOMAIN}/${video.video_ref}`} class="w-full h-full object-cover"
+                                         controls
+                                         />
+                                        </Dialog.Description>
+                                      </Dialog.Header>
+                                      <Dialog.Footer class="flex justify-between">
+                                        <form
+                                          action='/?/create-room'
+                                          method='POST'
+                                          use:enhance={() => {
+                                            return async ({ result }) => {
+                                                if (result.data.room?.name) {
+                                                    currentVideoUrl.set(`${S3_BUCKET_URL}/${video.video_ref}.mp4`);
+                                                    toast.success('Room created successfully');
+                                                    goto(`/room/${result.data.room.name}`);
+                                                } else if (result.status === 400) {
+                                                    toast('Bad request');
+                                                } else if (result.status === 500) {
+                                                    toast('Server error');
+                                                } else {
+                                                    toast('Oops, something went wrong!');
+                                                }
+                                            };
+                                        }}
+                                      >
+                                        <input 
+                                          type="hidden" 
+                                          name="videoUrl" 
+                                          value={`${PUBLIC_R2_SUBDOMAIN}/${video.video_ref}`}
+                                        />
+                                        <Button 
+                                          type="submit" 
+                                          class="bg-primary hover:bg-primary/90 text-white"
+                                        >
+                                          Proceed
+                                        </Button>
+                                      </form>
+                                      {#if superUser}
+                                        <form
+                                            action='/upload/?/deleteVideo'
+                                            method='POST'
+                                            use:enhance={() => {
                         return async ({ result }) => {
                           if (result.status === 200) {
                             toast.success('Video deleted successfully');
@@ -128,10 +129,10 @@
                             toast.error('Failed to delete video');
                           }
                         };
-											}}
-										>
-											<input type="hidden" name="id" value={video.id} />
-											<input type="hidden" name="ref" value={video.video_ref} />
+                                            }}
+                                        >
+                                            <input type="hidden" name="id" value={video.id} />
+                                            <input type="hidden" name="ref" value={video.video_ref} />
 
                       <Button 
                       type="submit" 
@@ -139,12 +140,12 @@
                     >
                       Delete
                     </Button>
-										</form>
+                                        </form>
 
-									  {/if}
-									  </Dialog.Footer>
-									</Dialog.Content>
-								  </Dialog.Root>
+                                      {/if}
+                                      </Dialog.Footer>
+                                    </Dialog.Content>
+                                  </Dialog.Root>
                               
                             </div>
                         </div>

@@ -1,7 +1,7 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { writeFile, appendFile, rename, mkdir } from 'fs/promises';
-import { existsSync, unlinkSync, unlink } from 'fs';
+import { writeFile, appendFile, rename, mkdir, unlink } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
 
 export const load = async ({ locals }) => {
@@ -37,14 +37,8 @@ export const actions: Actions = {
 
         const title = formData.get('title') as string;
         const desc = formData.get('desc') as string;
-
-        // Handle file uploads
-        const video = formData.get('video') as File;
+        const videoRef = formData.get('video_ref') as string;
         const thumbnail = formData.get('thumbnail') as File | null;
-
-        if (!video) {
-            return fail(400, { error: true, message: 'Video file is required' });
-        }
 
         // Handle representatives
         const representativesString = formData.get('representatives') as string;
@@ -55,58 +49,31 @@ export const actions: Actions = {
         data.append('desc', desc);
         if (thumbnail) data.append('thumbnail', thumbnail);
         representatives.forEach(rep => data.append('representatives', rep));
+        data.append('video_ref', videoRef);
 
-        // Ensure the upload directories exist
-        const tempDir = 'static/video/temp';
-        const finalDir = 'static/video';
-        await ensureDir(tempDir);
-        await ensureDir(finalDir);
-
-        const videoName = random_ref();
-        const tempPath = join(tempDir, videoName);
-        const finalPath = join(finalDir, `${videoName}.mp4`);
-
-        // Implement chunked upload
-        const chunkSize = 1024 * 1024; // 1MB chunks
-        const fileSize = video.size;
-        const chunks = Math.ceil(fileSize / chunkSize);
+        // Optional fields
+        const name = formData.get('name');
+        const phone = formData.get('phone');
+        const email = formData.get('email');
+        if (name) data.append('name', name as string);
+        if (phone) data.append('phone', phone as string);
+        if (email) data.append('email', email as string);
 
         try {
-            for (let i = 0; i < chunks; i++) {
-                const start = i * chunkSize;
-                const end = Math.min(start + chunkSize, fileSize);
-                const chunk = video.slice(start, end);
-
-                const buffer = Buffer.from(await chunk.arrayBuffer());
-
-                if (i === 0) {
-                    await writeFile(tempPath, buffer);
-                } else {
-                    await appendFile(tempPath, buffer);
-                }
-            }
-
-            // Move the completed file to the final location
+            // Move the uploaded video from temp to final location
+            const tempPath = join('static/video/temp', videoRef);
+            const finalPath = join('static/video', `${videoRef}.mp4`);
             await rename(tempPath, finalPath);
-
-            // Optional fields
-            const name = formData.get('name');
-            const phone = formData.get('phone');
-            const email = formData.get('email');
-            if (name) data.append('name', name as string);
-            if (phone) data.append('phone', phone as string);
-            if (email) data.append('email', email as string);
-            data.append('video_ref', videoName);
 
             // Create the database record
             const record = await locals.pb.collection('room_videos_duplicate').create(data);
 
             return { success: true, videoId: record.id, status: 200 };
         } catch (err) {
-            console.error('Error uploading video:', err);
+            console.error('Error creating video entry:', err);
             return fail(500, {
                 error: true,
-                message: 'Failed to upload video',
+                message: 'Failed to create video entry',
                 data: Object.fromEntries(formData)
             });
         }
@@ -122,12 +89,12 @@ export const actions: Actions = {
         }
         const data = await request.formData();
         const videoId = data.get('id');
-        const video_ref = data.get('ref')
+        const video_ref = data.get('ref');
         try {
             await locals.pb.collection('room_videos_duplicate').delete(videoId);
             const videoPath = join('static/video', `${video_ref}.mp4`);
             if (existsSync(videoPath)) {
-                await unlinkSync(videoPath);
+                await unlink(videoPath);
             }
             return { success: true, status: 200 };
         } catch (err) {
@@ -136,3 +103,4 @@ export const actions: Actions = {
         }
     }
 };
+

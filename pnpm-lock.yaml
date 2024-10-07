@@ -50,6 +50,12 @@ importers:
       fs:
         specifier: 0.0.1-security
         version: 0.0.1-security
+      hls:
+        specifier: ^0.0.1
+        version: 0.0.1
+      hls.js:
+        specifier: ^1.5.15
+        version: 1.5.15
       ics:
         specifier: ^3.7.6
         version: 3.7.6
@@ -1464,6 +1470,12 @@ packages:
   hasown@2.0.2:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
+
+  hls.js@1.5.15:
+    resolution: {integrity: sha512-6cD7xN6bycBHaXz2WyPIaHn/iXFizE5au2yvY5q9aC4wfihxAr16C9fUy4nxh2a3wOw0fEgLRa9dN6wsYjlpNg==}
+
+  hls@0.0.1:
+    resolution: {integrity: sha512-ov6aIzckaDCdFFAeJbrmZYhAR0O7w+nDXh3fz9XEcf8P6EercldLht/23JHRFXmAMtvKw8dzuOCafzktdV1AZw==}
 
   html-to-text@9.0.5:
     resolution: {integrity: sha512-qY60FjREgVZL03vJU6IfMV4GDjGBIoOyvuFdpBDIX9yTlDw0TjxVBQp+P8NvpdIXNJvfWBTNul7fsAQJq2FNpg==}
@@ -4135,6 +4147,10 @@ snapshots:
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
+
+  hls.js@1.5.15: {}
+
+  hls@0.0.1: {}
 
   html-to-text@9.0.5:
     dependencies:

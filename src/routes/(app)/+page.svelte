@@ -91,7 +91,7 @@
                                           use:enhance={() => {
                                             return async ({ result }) => {
                                                 if (result.data.room?.name) {
-                                                    currentVideoUrl.set(`${S3_BUCKET_URL}/${video.video_ref}.mp4`);
+                                                    currentVideoUrl.set(`${PUBLIC_R2_SUBDOMAIN}/${video.video_ref}`);
                                                     toast.success('Room created successfully');
                                                     goto(`/room/${result.data.room.name}`);
                                                 } else if (result.status === 400) {

@@ -17,7 +17,11 @@
     let uploadProgress = 0;
     let uploadedChunks: Set<number> = new Set();
 
-    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks (minimum for S3 multipart upload)
+    const SINGLE_UPLOAD_LIMIT = 5 * 1024 * 1024; // 5MB (use single upload for files smaller than this)
+
+    let uploadId: string | null = null;
+    let parts: { ETag: string, PartNumber: number }[] = [];
 
     async function uploadChunk(chunk: Blob, index: number, filename: string, totalChunks: number) {
         const formData = new FormData();
@@ -25,6 +29,7 @@
         formData.append('index', index.toString());
         formData.append('filename', filename);
         formData.append('totalChunks', totalChunks.toString());
+        if (uploadId) formData.append('uploadId', uploadId);
 
         const response = await fetch('/api/upload-chunk', {
             method: 'POST',
@@ -35,17 +40,33 @@
             throw new Error(`Failed to upload chunk ${index}`);
         }
 
+        const result = await response.json();
+
+        if (index === 0 && result.uploadId) {
+            uploadId = result.uploadId;
+        }
+
+        if (result.part) {
+            parts.push(result.part);
+        }
         uploadedChunks.add(index);
         uploadProgress = (uploadedChunks.size / totalChunks) * 100;
     }
 
     async function uploadVideo(file: File) {
         const filename = `${Date.now()}-${file.name}`;
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-        for (let i = 0; i < totalChunks; i++) {
-            if (!uploadedChunks.has(i)) {
-                const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        if (file.size <= SINGLE_UPLOAD_LIMIT) {
+            // Single part upload
+            await uploadChunk(file, 0, filename, 1);
+        } else {
+            // Multipart upload
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
                 await uploadChunk(chunk, i, filename, totalChunks);
             }
         }
@@ -69,6 +90,8 @@
 
             const formData = new FormData(event.target as HTMLFormElement);
             formData.append('video_ref', videoFilename);
+            formData.append('uploadId', uploadId!);
+            formData.append('parts', JSON.stringify(parts));
 
             if (thumbnailFile) {
                 formData.append('thumbnail', thumbnailFile);

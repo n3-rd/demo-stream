@@ -1,10 +1,8 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { writeFileSync, existsSync, mkdirSync, unlinkSync, createWriteStream } from 'fs';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
-
-const pipelineAsync = promisify(pipeline);
+import { writeFile, appendFile, rename, mkdir } from 'fs/promises';
+import { existsSync, unlinkSync, unlink } from 'fs';
+import { join } from 'path';
 
 export const load = async ({ locals }) => {
     const user = locals.pb.authStore.model;
@@ -23,9 +21,9 @@ export const load = async ({ locals }) => {
     return { user, representatives };
 };
 
-function checkFolder() {
-    if (!existsSync('static/video')) {
-        mkdirSync('static/video');
+async function ensureDir(dir: string) {
+    if (!existsSync(dir)) {
+        await mkdir(dir, { recursive: true });
     }
 }
 
@@ -41,7 +39,7 @@ export const actions: Actions = {
         const desc = formData.get('desc') as string;
 
         // Handle file uploads
-        const video = formData.get('video') as File | null;
+        const video = formData.get('video') as File;
         const thumbnail = formData.get('thumbnail') as File | null;
 
         if (!video) {
@@ -58,45 +56,63 @@ export const actions: Actions = {
         if (thumbnail) data.append('thumbnail', thumbnail);
         representatives.forEach(rep => data.append('representatives', rep));
 
-        checkFolder();
+        // Ensure the upload directories exist
+        const tempDir = 'static/video/temp';
+        const finalDir = 'static/video';
+        await ensureDir(tempDir);
+        await ensureDir(finalDir);
 
         const videoName = random_ref();
-        const videoPath = `static/video/${videoName}.mp4`;
+        const tempPath = join(tempDir, videoName);
+        const finalPath = join(finalDir, `${videoName}.mp4`);
+
+        // Implement chunked upload
+        const chunkSize = 1024 * 1024; // 1MB chunks
+        const fileSize = video.size;
+        const chunks = Math.ceil(fileSize / chunkSize);
 
         try {
-            const videoStream = video.stream();
-            const writeStream = createWriteStream(videoPath);
-            await pipelineAsync(videoStream, writeStream);
-        } catch (e) {
-            console.log(e);
-            return fail(500, { error: true, message: 'Failed to save video file' });
-        }
+            for (let i = 0; i < chunks; i++) {
+                const start = i * chunkSize;
+                const end = Math.min(start + chunkSize, fileSize);
+                const chunk = video.slice(start, end);
 
-        // Optional fields
-        const name = formData.get('name');
-        const phone = formData.get('phone');
-        const email = formData.get('email');
-        if (name) data.append('name', name as string);
-        if (phone) data.append('phone', phone as string);
-        if (email) data.append('email', email as string);
-        data.append('video_ref', videoName as string);
+                const buffer = Buffer.from(await chunk.arrayBuffer());
 
-        try {
+                if (i === 0) {
+                    await writeFile(tempPath, buffer);
+                } else {
+                    await appendFile(tempPath, buffer);
+                }
+            }
+
+            // Move the completed file to the final location
+            await rename(tempPath, finalPath);
+
+            // Optional fields
+            const name = formData.get('name');
+            const phone = formData.get('phone');
+            const email = formData.get('email');
+            if (name) data.append('name', name as string);
+            if (phone) data.append('phone', phone as string);
+            if (email) data.append('email', email as string);
+            data.append('video_ref', videoName);
+
+            // Create the database record
             const record = await locals.pb.collection('room_videos_duplicate').create(data);
 
-            // Redirect to the newly created room or a success page
             return { success: true, videoId: record.id, status: 200 };
         } catch (err) {
-            console.error('Error creating video:', err);
-            return fail(400, {
+            console.error('Error uploading video:', err);
+            return fail(500, {
                 error: true,
-                message: 'Failed to create video',
-                data: Object.fromEntries(formData)  // Use formData instead of data for re-population
+                message: 'Failed to upload video',
+                data: Object.fromEntries(formData)
             });
         }
     },
-    deleteVideo: async ({ params, locals, request }) => {
 
+    deleteVideo: async ({ params, locals, request }) => {
         if (!locals.pb.authStore.model?.superuser) {
             return {
                 success: false,
@@ -109,8 +125,9 @@ export const actions: Actions = {
         const video_ref = data.get('ref')
         try {
             await locals.pb.collection('room_videos_duplicate').delete(videoId);
-            if(existsSync(`static/video/${video_ref}.mp4`)){
-            unlinkSync(`static/video/${video_ref}.mp4`)
+            const videoPath = join('static/video', `${video_ref}.mp4`);
+            if (existsSync(videoPath)) {
+                await unlinkSync(videoPath);
             }
             return { success: true, status: 200 };
         } catch (err) {

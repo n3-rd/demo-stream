@@ -1,7 +1,7 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { writeFile, appendFile, rename, mkdir, unlink } from 'fs/promises';
-import { existsSync } from 'fs';
+import fs, { existsSync } from 'node:fs';
 import { join } from 'path';
 
 export const load = async ({ locals }) => {
@@ -60,6 +60,7 @@ export const actions: Actions = {
         if (email) data.append('email', email as string);
 
         try {
+            await ensureDir('static/video/temp');
             // Move the uploaded video from temp to final location
             const tempPath = join('static/video/temp', videoRef);
             const finalPath = join('static/video', `${videoRef}.mp4`);

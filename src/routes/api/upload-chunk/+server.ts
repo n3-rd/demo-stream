@@ -1,5 +1,5 @@
-import { writeFile, appendFile, rename, mkdir, unlink } from 'fs/promises';
-import { existsSync } from 'fs';
+import { writeFile, appendFile, rename, mkdir, unlink } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
 import { join } from 'path';
 async function ensureDir(dir: string) {

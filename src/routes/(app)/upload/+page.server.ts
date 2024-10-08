@@ -3,7 +3,6 @@ import type { Actions } from './$types';
 import { writeFile, appendFile, rename, mkdir, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { completeMultipartUpload, uploadSingleObject, deleteObject } from '../../../lib/cloudflareR2';
 
 export const load = async ({ locals }) => {
     const user = locals.pb.authStore.model;
@@ -40,8 +39,6 @@ export const actions: Actions = {
         const desc = formData.get('desc') as string;
         const videoRef = formData.get('video_ref') as string;
         const thumbnail = formData.get('thumbnail') as File | null;
-        const uploadId = formData.get('uploadId') as string;
-        const parts = JSON.parse(formData.get('parts') as string);
 
         // Handle representatives
         const representativesString = formData.get('representatives') as string;
@@ -50,6 +47,7 @@ export const actions: Actions = {
         const data = new FormData();
         data.append('title', title);
         data.append('desc', desc);
+        if (thumbnail) data.append('thumbnail', thumbnail);
         representatives.forEach(rep => data.append('representatives', rep));
         data.append('video_ref', videoRef);
 
@@ -60,13 +58,13 @@ export const actions: Actions = {
         if (name) data.append('name', name as string);
         if (phone) data.append('phone', phone as string);
         if (email) data.append('email', email as string);
-        if (thumbnail) data.append('thumbnail', thumbnail);
 
         try {
-            // Complete multipart upload for video
-            await completeMultipartUpload(videoRef, uploadId, parts);
+            // Move the uploaded video from temp to final location
+            const tempPath = join('static/video/temp', videoRef);
+            const finalPath = join('static/video', `${videoRef}.mp4`);
+            await rename(tempPath, finalPath);
 
-         
             // Create the database record
             const record = await locals.pb.collection('room_videos_duplicate').create(data);
 
@@ -81,7 +79,7 @@ export const actions: Actions = {
         }
     },
 
-    deleteVideo: async ({ locals, request }) => {
+    deleteVideo: async ({ params, locals, request }) => {
         if (!locals.pb.authStore.model?.superuser) {
             return {
                 success: false,
@@ -98,7 +96,6 @@ export const actions: Actions = {
             if (existsSync(videoPath)) {
                 await unlink(videoPath);
             }
-            await deleteObject(video_ref); // Delete the video from R2 storage
             return { success: true, status: 200 };
         } catch (err) {
             console.error('Error deleting video:', err);

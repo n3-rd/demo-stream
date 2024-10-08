@@ -1,6 +1,6 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { writeFile, appendFile, rename, mkdir, unlink } from 'fs/promises';
+import { writeFile, appendFile, rename, mkdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'path';
 

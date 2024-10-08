@@ -1,7 +1,7 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { writeFile, appendFile, rename, mkdir, unlink } from 'fs/promises';
-import fs, { existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'path';
 
 export const load = async ({ locals }) => {

@@ -23,7 +23,7 @@ import * as Dialog from "$lib/components/ui/dialog";
     { name: 'Option D' },
     { name: 'Option E' },
   ];
-
+  let loading = false; // New loading state variable
 
 </script>
 
@@ -68,7 +68,9 @@ import * as Dialog from "$lib/components/ui/dialog";
                       <div class="relative h-48 bg-gray-200 p-2 cursor-pointer">
                           <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.thumbnail}`} alt={video.title} class="w-full h-full object-cover" />
                           <div class="absolute inset-0 flex items-center justify-center">
-              <Dialog.Root>
+              <Dialog.Root
+              closeOnOutsideClick={!loading}
+              >
                 <Dialog.Trigger>
                   <div class="w-12 h-12  bg-opacity-75 rounded-full flex items-center justify-center">
                     <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
@@ -88,7 +90,9 @@ import * as Dialog from "$lib/components/ui/dialog";
                     action='/?/create-room'
                     method='POST'
                     use:enhance={() => {
+                      loading = true; 
                     return async ({ result }) => {
+                      // Set loading to true on form submission
                       if (result.data.room?.name) {
                         currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
                         toast.success('Room created successfully');
@@ -100,6 +104,7 @@ import * as Dialog from "$lib/components/ui/dialog";
                       } else {
                         toast('Oops, something went wrong!');
                       }
+                      loading = false; // Reset loading after processing
                     };
                   }}
                   >
@@ -111,8 +116,9 @@ import * as Dialog from "$lib/components/ui/dialog";
                   <Button 
                     type="submit" 
                     class="bg-primary hover:bg-primary/90 text-white"
+                    disabled={loading} 
                   >
-                    Proceed
+                    {loading ? 'Loading...' : 'Proceed'} 
                   </Button>
                   </form>
                   {#if superUser}
@@ -136,6 +142,7 @@ import * as Dialog from "$lib/components/ui/dialog";
                     <Button 
                     type="submit" 
                     class="bg-red-500 hover:bg-red-600 text-white"
+                    disabled={loading}
                   >
                     Delete
                   </Button>
@@ -212,6 +219,10 @@ import * as Dialog from "$lib/components/ui/dialog";
       </main>
   </div>
 </div>
+
+{#if loading}
+  <div class="loading-indicator">Loading...</div> <!-- Loading indicator -->
+{/if}
 
 <style>
 

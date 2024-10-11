@@ -5,8 +5,6 @@
     import { goto } from '$app/navigation';
     import { browser } from '$app/environment';
     import VideoTile from '$lib/call/VideoTile.svelte';
-    import WaitingForOthersTile from '$lib/call/WaitingForOthersTile.svelte';
-    import Chat from '$lib/call/Chat.svelte';
     import Loading from '$lib/call/Loading.svelte';
     import PermissionErrorMessage from '$lib/call/PermissionErrorMessage.svelte';
     import { chatMessages, dailyErrorMessage, username, pickerOpen } from '../../../../store';
@@ -20,14 +18,9 @@
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
     import InviteRepresentative from '$lib/components/room/invite-representative.svelte';
     import Share from '$lib/components/room/share.svelte';
-    import { currentVideoUrl } from '$lib/callStores';
+    import { activeSpeaker, currentVideoUrl } from '$lib/callStores';
     import GreetingPopup from '$lib/call/GreetingPopup.svelte';
-    import Controls from '$lib/call/Controls.svelte';
-    import VideoStreamerTile from '$lib/call/VideoStreamerTile.svelte';
-    import { slide } from 'svelte/transition';
-    import { quintOut } from 'svelte/easing';
 	import { playVideoStore } from '$lib/stores/playStore';
-	import { PlayCircle } from 'lucide-svelte';
 	import Participants from '$lib/call/Participants.svelte';
 
     export let data;
@@ -40,13 +33,28 @@
     let name = user ? user.name : '';
     let representatives = data.representatives;
     let users = data.users;
+    let roomId = data.roomId;
+    console.log('roomId', roomId);
     
     const host = $page.url.pathname.split('/').pop().split('-').pop();
     console.log('host', host);
     
     const isHost = host === (user ? user.id : '');
+    let videoURL;
 
-    const videoURL = $currentVideoUrl;
+    // Check if currentVideoUrl is set, if not use associated_video from roomId
+    $: {
+         videoURL = $currentVideoUrl || `/static/video${roomId[0].associated_video}`;
+        if (!$currentVideoUrl && roomId[0].associated_video) {
+            currentVideoUrl.set(roomId[0].associated_video); // Set the current video URL from the database
+        }
+        console.log('videoURL', videoURL);
+    }
+
+    // if(!videoURL || videoURL === ''){
+    //     toast('No video stream available');
+    //     goto('/');
+    // }
     
     let callObject;
     let participants = [];
@@ -200,7 +208,8 @@
             .on('screen-share-started', handleScreenShareStarted)
             .on('screen-share-stopped', handleScreenShareStopped)
             .on('track-started', updateParticpants)
-            .on('track-stopped', updateParticpants);
+            .on('track-stopped', updateParticpants)
+            .on('active-speaker-change', handleActiveSpeakerChanged);
 
         try {
             await callObject.join();
@@ -219,6 +228,11 @@
     const handleScreenShareStopped = (event) => {
         console.log('Screen share stopped', event);
         updateParticpants(event);
+    };
+
+    const handleActiveSpeakerChanged = (event) => {
+        console.log('Active speaker changed:', event);
+        activeSpeaker.set(event.activeSpeaker.peerId);
     };
 
     onMount(() => {
@@ -373,7 +387,7 @@
                 <!-- Video container -->
                 <div class="flex-grow h-full relative">
                     {#each participants as participant}
-                        <VideoTile {callObject} {participant} {screensList} host={isHost} {name} {videoURL} />
+                        <VideoTile {callObject} {participant} {screensList} host={isHost} {name} {roomId} />
                         {#if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'playable'}
                         {#if !host}
                             <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}

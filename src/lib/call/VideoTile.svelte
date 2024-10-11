@@ -8,6 +8,8 @@
     import { playVideoStore } from '$lib/stores/playStore.js';
     import { PlayCircle } from 'lucide-svelte';
     import Hls from 'hls.js';
+	import { writable } from 'svelte/store';
+	import { activeSpeaker, currentVideoUrl } from '$lib/callStores';
 
     export let participant;
     export let callObject;
@@ -15,7 +17,8 @@
     export let screensList;
     export let host = false;
     export let name;
-    export let videoURL;
+    export let roomId;
+    
 
     let videoTrackSet = false;
     let videoSrc;
@@ -30,6 +33,10 @@
             videoSrc = new MediaStream([videoTrack.persistentTrack]);
             videoTrackSet = true;
         }
+    }
+    let videoUrl;
+    $: {
+        videoUrl = $currentVideoUrl || `/static/video${roomId[0].associated_video}`;
     }
 
     let audioTrackSet = false;
@@ -177,6 +184,11 @@
         });
     };
 
+    function handleActiveSpeakerChanged(event) {
+        console.log('Active speaker changed:', event);
+        activeSpeaker.set(event.activeSpeaker.peerId);
+    }
+
     let retryCount = 0;
     const maxRetries = 3;
 
@@ -219,10 +231,11 @@
         callObject.on('participants-updated', updateParticipants);
         callObject.on('participant-left', updateParticipants);
         callObject.on('participant-joined', updateParticipants);
+        callObject.on('active-speaker-change', handleActiveSpeakerChanged);
 
         if (Hls.isSupported()) {
             const hls = new Hls();
-            hls.loadSource(videoURL);
+            hls.loadSource(videoUrl);
             hls.attachMedia(videoEl);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 videoEl.play();
@@ -247,7 +260,7 @@
 </script>
 
 <div class={screen ? 'video-tile screen' : 'video-tile rounded-lg'} class:h-full={host}>
-    {#if audioSrc}
+    {#if audioSrc && !participant?.local} <!-- Added condition to check if not local -->
         <audio id={`audio-${participant?.session_id}`} autoPlay playsInline use:srcObject={audioSrc}>
             <track kind="captions" />
         </audio>

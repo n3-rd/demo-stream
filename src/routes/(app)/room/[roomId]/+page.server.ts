@@ -5,7 +5,7 @@ import type { PageServerLoad } from "./$types";
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
     if (!locals.pb.authStore.isValid) {
         throw redirect(302, '/login');
     }
@@ -15,14 +15,15 @@ export const load: PageServerLoad = async ({ locals }) => {
         filter: 'representative = true',
     });
     const users = await locals.pb.collection('users').getFullList();
-
-    console.log('users', users);
+    const roomId = await locals.pb.collection('rooms').getFullList({
+        filter: `room_id = "${params.roomId}"`
+    })
 
     return {
-        isLoggedIn: true,
         user,
-        users,
         representatives,
+        users,
+        roomId
     };
 };
 

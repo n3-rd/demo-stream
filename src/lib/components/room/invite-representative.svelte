@@ -2,11 +2,20 @@
     import * as Dialog from "$lib/components/ui/dialog";
     import { toast } from "svelte-sonner";
     import ScheduleMeeting from "./schedule-meeting.svelte";
-    import { createOrGetPermanentRoom } from "$lib/helpers/schedule"; // Import the function
+	import { enhance } from "$app/forms";
 
     export let representatives;
     let showRepresentativeList = false;
     let dialogOpen = false;
+    let selectedRepresentative: any = null;
+    let inviteConfirmed = false;
+    let invitedRepresentative = '';
+
+    $: {
+        if (selectedRepresentative) {
+            console.log('selectedRepresentative', selectedRepresentative);
+        }
+    }
 
     function showNextModal() {
         showRepresentativeList = true;
@@ -15,7 +24,36 @@
     function handleClose() {
         dialogOpen = false;
     }
+
+    function selectRepresentative(representative: any) {
+        selectedRepresentative = representative;
+        console.log('Representative selected:', representative);
+    }
+
+    function handleInviteConfirmation() {
+        inviteConfirmed = true;
+        invitedRepresentative = selectedRepresentative.name;
+    }
 </script>
+
+<Dialog.Root bind:open={inviteConfirmed}>
+    <Dialog.Content>
+        <div class="flex flex-col items-center p-6">
+            <svg class="w-16 h-16 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <Dialog.Title class="text-xl font-semibold text-center mb-2">
+                You've successfully sent an invitation to {invitedRepresentative}.
+            </Dialog.Title>
+            <Dialog.Description class="text-center mb-6">
+                Please allow a moment for him to join the room and connect with you.
+            </Dialog.Description>
+            <Dialog.Close class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                OK
+            </Dialog.Close>
+        </div>
+    </Dialog.Content>
+</Dialog.Root>
 
 {#if !showRepresentativeList}
     <!-- First Modal -->
@@ -37,35 +75,51 @@
         <div class="bg-white lg:p-6 w-full">
             <h2 class="text-lg font-semibold mb-4 text-center">Innovated Building Group Representative</h2>
             <div class="flex space-x-4 mb-6 justify-center flex-wrap">
-                <!-- Representatives (Add more as needed) -->
+                <!-- Representatives -->
                 {#each representatives as representative}
-                <Dialog.Root
-                    bind:open={dialogOpen}
+                <div 
+                    class="flex flex-col items-center cursor-pointer"
+                    on:click={() => selectRepresentative(representative)}
                 >
-                    <Dialog.Trigger>
-                        <div class="flex flex-col items-center">
-                            <div class="w-20 h-20 rounded-full border-2 border-green-500"></div>
-                            <span class="mt-2">{representative.name}</span>
-                        </div>
-                    </Dialog.Trigger>
-                    <Dialog.Content>
-                        <Dialog.Header>
-                            <Dialog.Title>Are you sure absolutely sure to invite {representative.name}?</Dialog.Title>
-                            <Dialog.Description>
-                                <ScheduleMeeting
-                                userId={representative.id}
-                                on:close={handleClose}
-                                />
-                            </Dialog.Description>
-                        </Dialog.Header>
-                    </Dialog.Content>
-                </Dialog.Root>
+                    <div class={`w-20 h-20 rounded-full border-2 ${selectedRepresentative === representative ? 'border-green-500' : 'border-gray-300'}`}>
+                        <!-- Add representative image here if available -->
+                    </div>
+                    <span class="mt-2">{representative.name}</span>
+                </div>
                 {/each}
             </div>
             <p class="text-sm mb-4 text-center">
                 Welcome to Speak to a Representative. Choosing the right representative can make all the difference in getting the information and guidance you need.
                 <span class="block mt-2 text-xs text-gray-500">Note: Please Choose a Representative</span>
             </p>
+            <div class="flex justify-center w-full ">
+               
+                <form action="?/send-email" method="POST"
+                    use:enhance={() => {
+                        return async ({ result }) => {
+                            if (result.ok) {
+                                handleInviteConfirmation();
+                                toast.success('Email sent to representative successfully');
+                            } else {
+                                toast.error('Failed to send email to representative');
+                            }
+                        };
+                    }}
+                >
+                    {#if selectedRepresentative }
+                        <input type="hidden" name="name" value={selectedRepresentative.name} />
+                        <input type="hidden" name="url" value={window.location.href} />
+                        <input type="hidden" name="receipient" value={selectedRepresentative.email} />
+                    {/if}
+                    <button 
+                        type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700"
+                        disabled={!selectedRepresentative}
+                    >
+                        CONNECT
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 {/if}

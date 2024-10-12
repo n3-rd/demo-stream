@@ -26,7 +26,7 @@
 
 <div class="max-h-full overflow-y-auto py-4 w-full flex flex-col justify-center px-4 text-white">
 
-
+{#if isHost && hostUser}
     <Dialog.Root>
       <Dialog.Trigger>
           
@@ -39,6 +39,7 @@
           <Share {joinURL} />
       </Dialog.Content>
   </Dialog.Root>
+{/if}
 
     <div class="pt-4">
         <h2>In room</h2>

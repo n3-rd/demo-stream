@@ -471,7 +471,7 @@
 
     <!-- Bottom controls bar -->
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
-        <div class="room-name text-white">{globRoomName}</div>
+        <div class="room-name text-white">{roomId[0].associated_video_name}</div>
         <div class="controls flex items-center gap-3">
             <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
                 <MicOff color="#fff" size={24} class="hover:text-black"/>

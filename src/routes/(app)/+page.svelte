@@ -113,6 +113,11 @@ import * as Dialog from "$lib/components/ui/dialog";
                     name="videoUrl" 
                     value={`/video/${video.video_ref}.mp4`}
                   />
+                  <input 
+                    type="hidden" 
+                    name="videoName" 
+                    value={video.title}
+                  />
                   <Button 
                     type="submit" 
                     class="bg-primary hover:bg-primary/90 text-white"

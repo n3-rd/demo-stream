@@ -12,7 +12,7 @@
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal, UsersRound, Mic } from 'lucide-svelte';
+    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal, UsersRound, Mic, Code } from 'lucide-svelte';
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
@@ -22,6 +22,7 @@
     import GreetingPopup from '$lib/call/GreetingPopup.svelte';
 	import { playVideoStore } from '$lib/stores/playStore';
 	import Participants from '$lib/call/Participants.svelte';
+	import Embed from '$lib/components/room/embed.svelte';
 
     export let data;
 
@@ -66,6 +67,7 @@
     let chIsOpen = true;
     let newText = '';
     let globRoomName = '';
+    let isMicMuted = false;
 
     $: {
         console.log('participants list', participants)
@@ -214,6 +216,7 @@
         try {
             await callObject.join();
             dailyErrorMessage.set('');
+            isMicMuted = !callObject.localAudio();
         } catch (e) {
             dailyErrorMessage.set(e);
             toast('Error joining the call');
@@ -314,6 +317,12 @@
         playVideoStore.set(false);  // Reset the video play state
         goto('/');  // Navigate back to the home page
     };
+
+    const toggleMicrophone = () => {
+        if (!callObject) return;
+        isMicMuted = !isMicMuted;
+        callObject.setLocalAudio(!isMicMuted);
+    };
 </script>
 
 <sveltekit:head>
@@ -372,6 +381,16 @@
                     </Dialog.Trigger>
                     <Dialog.Content class="rounded-lg bg-transparent">
                         <CreateQuote />
+                    </Dialog.Content>
+                </Dialog.Root>
+                <Dialog.Root>
+                    <Dialog.Trigger>
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
+                          <Code scale={1.3} color="#fff"/>
+                        </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Content class="rounded-lg bg-transparent">
+                        <Embed roomUrl={joinURL} />
                     </Dialog.Content>
                 </Dialog.Root>
             </div>
@@ -473,8 +492,15 @@
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
         <div class="room-name text-white">{roomId[0].associated_video_name}</div>
         <div class="controls flex items-center gap-3">
-            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
-                <MicOff color="#fff" size={24} class="hover:text-black"/>
+            <button 
+                class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
+                on:click={toggleMicrophone}
+            >
+                {#if isMicMuted}
+                    <MicOff color="#fff" size={24} class="hover:text-black"/>
+                {:else}
+                    <Mic color="#fff" size={24} class="hover:text-black"/>
+                {/if}
             </button>
             <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
                 <Settings color="#fff" size={24} class="hover:text-black"/>

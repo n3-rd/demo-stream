@@ -158,10 +158,10 @@
     function handleScreenShareStarted(event) {
         console.log('Screen share started', event);
         if (event.participant.tracks.screenVideo) {
-            videoSrc = new MediaStream([event.participant.tracks.screenVideo.track]);
+            videoSrc = new MediaStream([event.participant.tracks.screenVideo.persistentTrack]);
         }
         if (event.participant.tracks.screenAudio) {
-            audioSrc = new MediaStream([event.participant.tracks.screenAudio.track]);
+            audioSrc = new MediaStream([event.participant.tracks.screenAudio.persistentTrack]);
         }
     }
 
@@ -306,8 +306,9 @@
         >
             <track kind="captions" />
         </video>
-        {#if screenAudioSrc}
+        {#if screenAudioSrc && host}
             <audio 
+               
                 autoplay 
                 playsinline 
                 use:srcObject={screenAudioSrc}

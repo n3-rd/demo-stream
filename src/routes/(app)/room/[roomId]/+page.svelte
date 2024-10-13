@@ -66,6 +66,7 @@
     let chIsOpen = true;
     let newText = '';
     let globRoomName = '';
+    let isMicMuted = false;
 
     $: {
         console.log('participants list', participants)
@@ -214,6 +215,7 @@
         try {
             await callObject.join();
             dailyErrorMessage.set('');
+            isMicMuted = !callObject.localAudio();
         } catch (e) {
             dailyErrorMessage.set(e);
             toast('Error joining the call');
@@ -313,6 +315,12 @@
         document?.body?.classList?.remove('in-call');
         playVideoStore.set(false);  // Reset the video play state
         goto('/');  // Navigate back to the home page
+    };
+
+    const toggleMicrophone = () => {
+        if (!callObject) return;
+        isMicMuted = !isMicMuted;
+        callObject.setLocalAudio(!isMicMuted);
     };
 </script>
 
@@ -473,8 +481,15 @@
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
         <div class="room-name text-white">{roomId[0].associated_video_name}</div>
         <div class="controls flex items-center gap-3">
-            <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
-                <MicOff color="#fff" size={24} class="hover:text-black"/>
+            <button 
+                class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
+                on:click={toggleMicrophone}
+            >
+                {#if isMicMuted}
+                    <MicOff color="#fff" size={24} class="hover:text-black"/>
+                {:else}
+                    <Mic color="#fff" size={24} class="hover:text-black"/>
+                {/if}
             </button>
             <button class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black">
                 <Settings color="#fff" size={24} class="hover:text-black"/>

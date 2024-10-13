@@ -53,25 +53,54 @@
     }
 
     async function captureStream(videoEl: HTMLVideoElement) {
-        if ('captureStream' in videoEl) {
-            try {
-                const stream = (videoEl as any).captureStream();
-                localVideoStream = new MediaStream(stream.getVideoTracks());
-                localAudioStream = new MediaStream(stream.getAudioTracks());
-                
-                // Simulate hot reload effect
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                await shareVideo();
-            } catch (error) {
-                console.error('Error capturing stream:', error);
-                toast('Unable to capture video stream. This may be due to cross-origin restrictions.');
-                // Fallback: try to create a stream from the video source
-                await createStreamFromSource(videoEl.src);
+        try {
+            let stream;
+            if ('captureStream' in videoEl) {
+                // For browsers that support captureStream (Chrome, Edge)
+                stream = (videoEl as any).captureStream();
+            } else if ('mozCaptureStream' in videoEl) {
+                // For Firefox
+                stream = (videoEl as any).mozCaptureStream();
+            } else {
+                // Fallback for other browsers
+                stream = await createMediaStreamFromVideo(videoEl);
             }
-        } else {
-            console.error('captureStream is not supported in this browser');
-            toast('Screen sharing is not supported in this browser');
+
+            localVideoStream = new MediaStream(stream.getVideoTracks());
+            localAudioStream = new MediaStream(stream.getAudioTracks());
+
+            // Simulate hot reload effect
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await shareVideo();
+        } catch (error) {
+            console.error('Error capturing stream:', error);
+            toast('Unable to capture video stream. This may be due to cross-origin restrictions.');
+            // Fallback: try to create a stream from the video source
+            await createStreamFromSource(videoEl.src);
         }
+    }
+
+    function createMediaStreamFromVideo(video: HTMLVideoElement): MediaStream {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const ctx = canvas.getContext('2d');
+        const fps = 30;
+
+        const stream = canvas.captureStream(fps);
+        const audioCtx = new AudioContext();
+        const source = audioCtx.createMediaElementSource(video);
+        const destination = audioCtx.createMediaStreamDestination();
+        source.connect(destination);
+
+        stream.addTrack(destination.stream.getAudioTracks()[0]);
+
+        setInterval(() => {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        }, 1000 / fps);
+
+        return stream;
     }
 
     async function createStreamFromSource(src: string) {

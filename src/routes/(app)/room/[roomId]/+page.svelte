@@ -12,7 +12,7 @@
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
-    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal, UsersRound, Mic } from 'lucide-svelte';
+    import { Calendar, CircleUser, Quote, ShareIcon, MicOff, Settings, Clapperboard, MessageSquareDashed, SendHorizontal, UsersRound, Mic, Code } from 'lucide-svelte';
     import CreateQuote from '$lib/components/room/create-quote.svelte';
     import Notes from '$lib/components/room/notes.svelte';
     import ScheduleMeeting from '$lib/components/room/schedule-meeting.svelte';
@@ -22,6 +22,7 @@
     import GreetingPopup from '$lib/call/GreetingPopup.svelte';
 	import { playVideoStore } from '$lib/stores/playStore';
 	import Participants from '$lib/call/Participants.svelte';
+	import Embed from '$lib/components/room/embed.svelte';
 
     export let data;
 
@@ -380,6 +381,16 @@
                     </Dialog.Trigger>
                     <Dialog.Content class="rounded-lg bg-transparent">
                         <CreateQuote />
+                    </Dialog.Content>
+                </Dialog.Root>
+                <Dialog.Root>
+                    <Dialog.Trigger>
+                        <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
+                          <Code scale={1.3} color="#fff"/>
+                        </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Content class="rounded-lg bg-transparent">
+                        <Embed roomUrl={joinURL} />
                     </Dialog.Content>
                 </Dialog.Root>
             </div>

@@ -140,7 +140,7 @@
 
 <div class="flex bg-gray-100">
     <!-- Sidebar (fixed) -->
-    <Sidenav />
+    <Sidenav activePage="upload"/>
     <!-- Main content area (scrollable) -->
     <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Header (fixed) -->

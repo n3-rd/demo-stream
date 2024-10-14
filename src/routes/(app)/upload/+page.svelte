@@ -6,6 +6,7 @@
     import { toast } from 'svelte-sonner';
     import { Loader2 } from 'lucide-svelte';
     import { goto } from '$app/navigation';
+	import Sidenav from '$lib/components/layout/sidenav.svelte';
     
     export let data;
     const { user } = data;
@@ -139,15 +140,7 @@
 
 <div class="flex bg-gray-100">
     <!-- Sidebar (fixed) -->
-    <aside class="w-64 h-auto overflow-y-auto bg-white shadow-md flex-shrink-0">
-        <div class="p-4">
-            <div class="bg-gray-300 h-12 w-24 mb-4">LOGO</div>
-            <nav>
-            sidebar
-            </nav>
-        </div>
-    </aside>
-
+    <Sidenav />
     <!-- Main content area (scrollable) -->
     <div class="flex-1 flex flex-col overflow-hidden">
         <!-- Header (fixed) -->

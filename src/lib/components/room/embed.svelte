@@ -17,7 +17,7 @@
         toast.success('Embed code copied to clipboard');
     }
 
-    // let scriptEmbedCode = `<script src="${window.location.origin}/embed.js" data-room-url="${roomUrl}" data-width="${width}" data-height="${height}"><\/script>`;
+    let scriptEmbedCode = `<script src="${window.location.origin}/embed.js" data-room-url="${roomUrl}" data-width="${width}" data-height="${height}"><\/script>`;
 </script>
 
 <div class="bg-white rounded-lg p-4">
@@ -30,10 +30,10 @@
         Copy Embed Code <ClipboardCopy class="h-5 w-5 ml-2" />
     </Button>
     
-    <!-- <h3 class="mt-4 font-bold">Alternative Embed Method</h3>
+    <h3 class="mt-4 font-bold">Alternative Embed Method</h3>
     <p class="mt-2">You can also use this script tag for a more flexible embed:</p>
     <textarea class="w-full mt-2 p-2 border rounded" rows="3" readonly>{scriptEmbedCode}</textarea>
     <Button on:click={() => copyText(scriptEmbedCode)} class="mt-2">
         Copy Script Embed Code <ClipboardCopy class="h-5 w-5 ml-2" />
-    </Button> -->
+    </Button>
 </div>

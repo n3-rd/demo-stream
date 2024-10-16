@@ -3,12 +3,17 @@
     import { toast } from "svelte-sonner";
     import ScheduleMeeting from "./schedule-meeting.svelte";
 	import { enhance } from "$app/forms";
+	import Share from "./share.svelte";
+	import { page } from '$app/stores';
+
 
     export let representatives;
     let showRepresentativeList = false;
     let dialogOpen = false;
     let selectedRepresentative: any = null;
     let inviteConfirmed = false;
+    const joinURL = $page.url.href;
+
     let invitedRepresentative = '';
 
     $: {
@@ -92,9 +97,27 @@
                 Welcome to Speak to a Representative. Choosing the right representative can make all the difference in getting the information and guidance you need.
                 <span class="block mt-2 text-xs text-gray-500">Note: Please Choose a Representative</span>
             </p>
+            
             <div class="flex justify-center w-full ">
+                <Dialog.Root>
+                    <Dialog.Trigger>
+                        
+                        <button 
+                        type="submit"
+                        class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700"
+                        disabled={!selectedRepresentative}
+                    >
+                        CONNECT
+                    </button>
+                 
+                    </Dialog.Trigger>
+                    <Dialog.Content class="p-4 rounded-lg shadow-lg">
+                        <Share {joinURL} representative={true} />
+                    </Dialog.Content>
+                </Dialog.Root>
                
-                <form action="?/send-email" method="POST"
+               
+                <!-- <form action="?/send-email" method="POST"
                     use:enhance={() => {
                         return async ({ result }) => {
                             if (result.ok) {
@@ -118,7 +141,7 @@
                     >
                         CONNECT
                     </button>
-                </form>
+                </form> -->
             </div>
         </div>
     </div>

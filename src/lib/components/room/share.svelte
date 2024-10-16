@@ -6,21 +6,28 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
     export let joinURL: string;
+    export let representative: boolean;
 </script>
 <div class="w-full rounded-lg  p-6 ">
     <!-- Dialog content styled to match the provided image -->
 
     <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Invite People</h2>
+        <h2 class="text-lg font-semibold">Invite <span>
+            {representative ? 'Representative': 'People'}
+        </span></h2>
     </div>
 
     <!-- Link Input -->
     <div class="mb-4">
-        <label class="mb-2 block text-sm text-gray-700">Direct meeting link</label>
+        <label class="mb-2 block text-sm text-gray-700">
+            <span>
+                {representative ? 'Direct meeting link' : 'One time link'}
+            </span>
+        </label>
         <div class="flex items-center rounded-lg bg-gray-100 p-2">
             <input
                 type="text"
-                value={joinURL}
+                value={`${joinURL}/representative`}
                 class="flex-1 border-none bg-transparent text-gray-700 outline-none"
 
                 disabled
@@ -29,7 +36,14 @@
                 class="ml-2"
                 on:click={() => {
                     try {
+                        if(representative){
+                            copyText(`${joinURL}/representative`);
+
+                        }
+                        else{
                         copyText(joinURL);
+                            
+                        }
                         toast.success('Link copied to clipboard');
                     } catch (error) {
                         toast.error('Failed to copy link');
@@ -38,6 +52,8 @@
             >
         </div>
     </div>
+
+    {#if !representative}
 
     <!-- Email/SMS Tabs -->
     <div class="mb-4 flex border-b">
@@ -91,4 +107,5 @@
     type="submit"
     >Invite</Button>
 </form>
+{/if}
 </div>

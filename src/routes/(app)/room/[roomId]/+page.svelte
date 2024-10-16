@@ -35,10 +35,8 @@
     let representatives = data.representatives;
     let users = data.users;
     let roomId = data.roomId;
-    console.log('roomId', roomId);
     
     const host = $page.url.pathname.split('/').pop().split('-').pop();
-    console.log('host', host);
     
     const isHost = host === (user ? user.id : '');
     let videoURL;
@@ -49,13 +47,7 @@
         if (!$currentVideoUrl && roomId[0].associated_video) {
             currentVideoUrl.set(roomId[0].associated_video); // Set the current video URL from the database
         }
-        console.log('videoURL', videoURL);
     }
-
-    // if(!videoURL || videoURL === ''){
-    //     toast('No video stream available');
-    //     goto('/');
-    // }
     
     let callObject;
     let participants = [];
@@ -69,9 +61,6 @@
     let globRoomName = '';
     let isMicMuted = false;
 
-    $: {
-        console.log('participants list', participants)
-    }
     $: screensList = participants?.filter((p) => p?.tracks?.screenVideo?.state === 'playable');
 
  
@@ -97,14 +86,32 @@
 
     const handleJoinedMeeting = (e) => {
         console.log('[joined-meeting]', e);
+        console.log('joined participants', callObject.participants());
+       
         loading = false;
         updateParticpants(e);
     };
 
     const updateParticpants = (e) => {
-        console.log('[update participants]', e);
         if (!callObject) return;
-        participants = Object.values(callObject.participants()).map(participant => {
+        const currentParticipants = Object.values(callObject.participants());
+        
+        const seenUserNames = new Set();
+        const uniqueParticipants = [];
+
+        for (const participant of currentParticipants) {
+            if (seenUserNames.has(participant.user_name)) {
+                // This is a duplicate participant, kick them out
+                console.log(`Kicking out duplicate participant: ${participant.user_name}`);
+                toast(`Duplicate user ${participant.user_name} has been removed from the call.`);
+                goto('/');  
+            } else {
+                seenUserNames.add(participant.user_name);
+                uniqueParticipants.push(participant);
+            }
+        }
+
+        participants = uniqueParticipants.map(participant => {
             return {
                 ...participant,
                 isScreenSharing: participant.tracks.screenVideo?.state === 'playable'
@@ -113,7 +120,6 @@
     };
 
     const handleError = async () => {
-        console.error('Error: ending call and returning to home page');
         await goHome();
     };
 
@@ -122,10 +128,8 @@
     };
 
     const handleAppMessage = (e) => {
-        console.log('new app message', e?.data);
         if (!e?.data?.name && !e?.data?.text) return;
         chatMessages.update((messages) => [...messages, e?.data]);
-        console.log('chatMessages', $chatMessages);
         hasNewNotification = true;
     };
 
@@ -143,7 +147,6 @@
             const data = await response.json();
             return data.data || [];
         } catch (error) {
-            console.error('Error fetching rooms:', error);
             toast('Error fetching rooms');
             return [];
         }
@@ -152,7 +155,6 @@
     const createAndJoinCall = async () => {
         const roomName = $page.url.pathname.split('/').pop();
         globRoomName = roomName;
-        console.log('page', roomName);
         const domain = PUBLIC_DAILY_DOMAIN;
         if (!roomName || !domain) {
             toast('Invalid room or domain');
@@ -166,9 +168,7 @@
             goto('/');
             return;
         }
-        console.log('fetched rooms', rooms);
         const room = rooms.find(room => room.name === roomName);
-        console.log(room);
         if (!room) {
             toast('Room not found or not available yet');
             goto('/');
@@ -185,7 +185,7 @@
         const url = `https://${domain}.daily.co/${roomName}`;
         callObject = daily.createCallObject({
             url,
-            userName: name,
+            userName: name, // Make sure this is set correctly
             audioSource: true,
             videoSource: false,
             dailyConfig: {
@@ -224,17 +224,14 @@
     };
 
     const handleScreenShareStarted = (event) => {
-        console.log('Screen share started', event);
         updateParticpants(event);
     };
 
     const handleScreenShareStopped = (event) => {
-        console.log('Screen share stopped', event);
         updateParticpants(event);
     };
 
     const handleActiveSpeakerChanged = (event) => {
-        console.log('Active speaker changed:', event);
         activeSpeaker.set(event.activeSpeaker.peerId);
     };
 
@@ -419,14 +416,6 @@
                         {/if}
                     {/each}
                 </div>
-<!-- 
-                {#if host && !$playVideoStore}
-                <div class="play-button h-screen min-w-full absolute -left-[10rem] flex justify-center items-center z-[999]">
-                    <button on:click={() => playVideoStore.set(true)}>
-                        <PlayCircle size={48} class="cursor-pointer" color="#fff"/>
-                    </button>
-                </div>
-            {/if} -->
 
                 <!-- Test panel with Chat -->
                 <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="chatPanel">

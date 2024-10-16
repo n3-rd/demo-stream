@@ -36,7 +36,7 @@
     </Button>
       </Dialog.Trigger>
       <Dialog.Content class="p-4 rounded-lg shadow-lg">
-          <Share {joinURL} />
+          <Share {joinURL} representative={false} />
       </Dialog.Content>
   </Dialog.Root>
 {/if}

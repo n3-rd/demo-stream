@@ -8,13 +8,12 @@ export const load: PageServerLoad = async ({ locals, params  }) => {
 
     const user = locals.pb.authStore.model;
     const representative = user.representative
-    if (representative) {
-        throw redirect(302, `/room/${params.roomId}`);
-    }
+    const roomUrl = `/room/${params.roomId}`
     console.log(user)
     return {
         user,
         params,
-        representative
+        representative,
+        roomUrl
     };
 };

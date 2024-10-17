@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
         user,
         representatives,
         users,
-        roomId
+        roomId,
     };
 };
 

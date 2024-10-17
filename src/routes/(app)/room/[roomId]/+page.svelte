@@ -23,6 +23,7 @@
 	import { playVideoStore } from '$lib/stores/playStore';
 	import Participants from '$lib/call/Participants.svelte';
 	import Embed from '$lib/components/room/embed.svelte';
+	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
 
     export let data;
 
@@ -31,7 +32,14 @@
     }
 
     let user = data.user;
-    let name = user ? user.name : '';
+    console.log('User:', user);
+    let name;
+    if(data.user.representative === true){
+       name = user.name + ' (Representative)';
+    }
+    else{
+        name = user.name;
+    }
     let representatives = data.representatives;
     let users = data.users;
     let roomId = data.roomId;
@@ -476,6 +484,8 @@
             </div>
         </div>
     </div>
+
+    <RepresentativeIndicator {representatives} {participants} />
 
     <!-- Bottom controls bar -->
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">

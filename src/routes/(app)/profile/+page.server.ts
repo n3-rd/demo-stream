@@ -1,5 +1,6 @@
 // import type { PageServerLoad } from './$types';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
+import { error } from '@sveltejs/kit';
 
 export const load = async ({ locals }) => {
 	const userId = locals.pb.authStore.model.id;
@@ -22,12 +23,15 @@ export const load = async ({ locals }) => {
 	});
 	}
 
+	const avatarUrl = user.avatar ? locals.pb.files.getUrl(user, user.avatar) : null;
+
 	return {
 		user,
 		isLoggedIn,
 		videoRecords,
 		scheduled_rooms,
-		quotes
+		quotes,
+		avatarUrl
 	};
 };
 
@@ -93,6 +97,26 @@ export const actions = {
         } catch (err) {
             console.error('Failed to delete meeting:', err);
             return { success: false, message: 'Failed to delete meeting' };
+        }
+    },
+    'update-avatar': async ({ request, locals }) => {
+        const userId = locals.pb.authStore.model.id;
+        const formData = await request.formData();
+        const avatarFile = formData.get('avatar') as File;
+
+        if (!avatarFile) {
+            throw error(400, 'No file uploaded');
+        }
+
+        try {
+            const user = await locals.pb.collection('users').update(userId, {
+                avatar: avatarFile
+            });
+
+            return { success: true, user };
+        } catch (err) {
+            console.error('Failed to update avatar:', err);
+            throw error(500, 'Failed to update avatar');
         }
     }
 };

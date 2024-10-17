@@ -27,9 +27,15 @@
     </script>
     
     {#if Array.isArray(participantData)}
+    <div class="absolute bottom-0 right-24 top-[37%] z-50 flex items-center gap-3 pointer-events-none">
         {#each participantData as participant}
-            <div class="absolute bottom-0 right-24 top-[67%] h-32 w-52 bg-red-500 z-50">
-                {participant.name || 'Unknown'}
-            </div>
+        {#if participant.user_name && participant.user_name.includes('(Representative)')}
+
+        <div class=" bg-red-500 h-32 w-52">
+
+                {participant.user_name || 'Unknown'}
+    </div>
+    {/if}
         {/each}
+        </div>
     {/if}

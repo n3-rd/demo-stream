@@ -19,6 +19,14 @@ $:{
     quotes = data.quotes;
 }
 
+let imageFile: File | null = null;
+
+function handleImageChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+        imageFile = target.files[0];
+    }
+}
 
 function extractSecondSegment(meetingString: string): string {
     const segments = meetingString.split('-');
@@ -55,10 +63,24 @@ function extractSecondSegment(meetingString: string): string {
 <div class="container mx-auto p-4 min-h-screen">
 
     <div class="profile-info flex flex-col items-center p-4 bg-gray-100 rounded-lg shadow-md my-8">
-        <img src={`https://ui-avatars.com/api/?name=${user.name}?background=random`} alt="User Avatar" class="w-24 h-24 rounded-full mb-4">
+        <img src={user.avatar ? `${data.avatarUrl}` : `https://ui-avatars.com/api/?name=${user.name}?background=random`} alt="User Avatar" class="w-24 h-24 rounded-full mb-4">
         <h2 class="text-xl font-semibold mb-2">{user.name}</h2>
         <p class="text-gray-700 mb-1">Email: {user.email}</p>
         <p class="text-gray-700">Username: {user.username}</p>
+        
+        <form method="POST" action="?/update-avatar" enctype="multipart/form-data" use:enhance={() => {
+            return async ({ result }) => {
+                if (result.type === 'success') {
+                    toast.success('Profile image updated successfully');
+                    invalidateAll();
+                } else {
+                    toast.error('Failed to update profile image');
+                }
+            };
+        }}>
+            <input type="file" name="avatar" accept="image/*" on:change={handleImageChange} class="mt-4">
+            <Button type="submit" disabled={!imageFile} class="mt-2">Update Profile Image</Button>
+        </form>
     </div>
 
     <h1 class="text-2xl font-bold mb-4">My Scheduled Meetings</h1>

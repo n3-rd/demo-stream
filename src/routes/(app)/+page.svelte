@@ -13,7 +13,7 @@
 
   export let data;
   const { user } = data;
-  const superUser = user.superuser;
+  const superUser = user?.superuser ?? false;
   let roomVideos;
   $: roomVideos = data.roomVideos;
   let loading = false;

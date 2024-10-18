@@ -6,9 +6,9 @@ import type { PageServerLoad } from "./$types";
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-    if (!locals.pb.authStore.isValid) {
-        throw redirect(302, '/login');
-    }
+    // if (!locals.pb.authStore.isValid) {
+    //     throw redirect(302, '/login');
+    // }
 
     const user = locals.pb.authStore.model;
     const representatives = await locals.pb.collection('users').getFullList({

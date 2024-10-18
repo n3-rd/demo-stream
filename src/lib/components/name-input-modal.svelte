@@ -16,7 +16,7 @@
   }
 </script>
 
-<Dialog.Root bind:open>
+<Dialog.Root bind:open closeOnOutsideClick={false} closeOnEscape={false}>
   <Dialog.Content>
     <Dialog.Header>
       <Dialog.Title>Enter Your Name</Dialog.Title>

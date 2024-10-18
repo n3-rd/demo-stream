@@ -8,6 +8,8 @@
   import { currentVideoUrl } from '$lib/callStores';
   import { invalidateAll } from '$app/navigation';
   import Sidenav from '$lib/components/layout/sidenav.svelte';
+  import { Mic, Code } from 'lucide-svelte';
+	import Embed from '$lib/components/room/embed.svelte';
 
   export let data;
   const { user } = data;
@@ -112,9 +114,26 @@
               <p class="text-gray-600 text-sm">{video.desc}</p>
             </div>
             {#if superUser}
+            <div class="flex justify-end absolute top-2 right-2 gap-2">
               <Dialog.Root>
                 <Dialog.Trigger>
-                  <button class="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors duration-300">
+                  <button class=" bg-primary text-white p-2 rounded-full hover:bg-primary/90 transition-colors duration-300">
+                    <Code />
+                  </button>
+                </Dialog.Trigger>
+                <Dialog.Content>
+                  <Dialog.Header>
+                    <Dialog.Title class="text-xl font-bold">Embed Code</Dialog.Title>
+                  </Dialog.Header>
+                  <Dialog.Description class="my-4">
+                    Copy the embed code to use this video in your website.
+                  </Dialog.Description>
+                  <Embed videoId={video.id} />
+                </Dialog.Content>
+              </Dialog.Root>
+              <Dialog.Root>
+                <Dialog.Trigger>
+                  <button class=" bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                     </svg>
@@ -156,6 +175,7 @@
                   </Dialog.Footer>
                 </Dialog.Content>
               </Dialog.Root>
+              </div>
             {/if}
           </div>
         {/each}

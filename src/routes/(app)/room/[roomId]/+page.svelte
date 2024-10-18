@@ -395,7 +395,7 @@
                         <CreateQuote />
                     </Dialog.Content>
                 </Dialog.Root>
-                <Dialog.Root>
+                <!-- <Dialog.Root>
                     <Dialog.Trigger>
                         <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                           <Code scale={1.3} color="#fff"/>
@@ -404,7 +404,7 @@
                     <Dialog.Content class="rounded-lg bg-transparent">
                         <Embed roomUrl={joinURL} />
                     </Dialog.Content>
-                </Dialog.Root>
+                </Dialog.Root> -->
             </div>
 
             <!-- Main content area  -->

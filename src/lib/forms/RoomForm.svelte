@@ -9,23 +9,15 @@
   import { Label } from "$lib/components/ui/label/index.js";
 
   let dailyUrl = '';
-  let dailyName = '';
 
   onMount(() => {
     const storedUrl = localStorage?.getItem('DAILY_SVELTE_URL');
     if (storedUrl) {
       dailyUrl = storedUrl;
     }
-    const storedName = localStorage?.getItem('DAILY_SVELTE_NAME');
-    if (storedName) {
-      dailyName = storedName;
-    }
   });
 
   async function submitForm() {
-    username.set(dailyName);
-    localStorage?.setItem('DAILY_SVELTE_NAME', dailyName);
-
     if (dailyUrl) {
       localStorage?.setItem('DAILY_SVELTE_URL', dailyUrl);
       const roomName = dailyUrl.split('/').at(-1);
@@ -59,13 +51,9 @@
 <Card.Root class="w-full max-w-sm">
   <Card.Header>
     <Card.Title class="text-2xl">Join or Create Room</Card.Title>
-    <Card.Description>Enter your name and optionally a Daily URL to join a call.</Card.Description>
+    <Card.Description>Enter a Daily URL to join a call or create a new room.</Card.Description>
   </Card.Header>
   <Card.Content class="grid gap-4">
-    <div class="grid gap-2">
-      <Label for="name">Your name</Label>
-      <Input id="name" type="text" bind:value={dailyName} required />
-    </div>
     <div class="grid gap-2">
       <Label for="url">Meeting URL (leave empty to create a new room)</Label>
       <Input id="url" type="text" bind:value={dailyUrl} />

@@ -83,13 +83,19 @@
                 <!-- Representatives -->
                 {#each representatives as representative}
                 <div 
-                    class="flex flex-col items-center cursor-pointer"
+                    class="flex flex-col items-center cursor-pointer relative"
                     on:click={() => selectRepresentative(representative)}
                 >
-                    <div class={`w-20 h-20 rounded-full border-2 ${selectedRepresentative === representative ? 'border-green-500' : 'border-gray-300'}`}>
-                        <!-- Add representative image here if available -->
+                    <img 
+                        src={representative.avatar 
+                            ? `${import.meta.env.VITE_POCKETBASE_URL}/api/files/${representative.collectionId}/${representative.id}/${representative.avatar}` 
+                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(representative.name)}&background=random`} 
+                        alt="{representative.name}'s Avatar" 
+                        class="w-24 h-24 rounded-full mb-4 object-cover object-center"
+                    >
+                    <div class={`w-24 h-24 rounded-full border-4 ${selectedRepresentative === representative ? 'border-green-500' : 'border-transparent'} absolute top-0`}>
                     </div>
-                    <span class="mt-2">{representative.name}</span>
+                    <span class="mt-2 text-center">{representative.name}</span>
                 </div>
                 {/each}
             </div>

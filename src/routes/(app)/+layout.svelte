@@ -30,10 +30,10 @@ $:{
 	let user = data.user;
 	let representatives = data.representatives;
 
-	if (!loggedIn && browser) {
-		toast.error('You must be logged in to access this page.');
-		goto('/login');
-	}
+	// if (!loggedIn && browser) {
+	// 	toast.error('You must be logged in to access this page.');
+	// 	goto('/login');
+	// }
 </script>
 <Toaster />
 

@@ -24,22 +24,14 @@
 	import Participants from '$lib/call/Participants.svelte';
 	import Embed from '$lib/components/room/embed.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
+    import NameInputModal from '$lib/components/name-input-modal.svelte';
 
     export let data;
 
-    if (data.isLoggedIn == false && browser) {
-        goto('/login');
-    }
-
     let user = data.user;
+    let isAuthenticated = !!user;
     console.log('User:', user);
-    let name;
-    if(data.user.representative === true){
-       name = user.name + ' (Representative)';
-    }
-    else{
-        name = user.name;
-    }
+    let name = isAuthenticated ? user.name : '';
     let representatives = data.representatives;
     let users = data.users;
     let roomId = data.roomId;
@@ -160,6 +152,16 @@
         }
     };
 
+    let showNameModal = !isAuthenticated;
+
+    function handleNameSubmitted(event) {
+        const submittedName = event.detail;
+        username.set(submittedName);
+        showNameModal = false;
+        name = submittedName;
+        createAndJoinCall();
+    }
+
     const createAndJoinCall = async () => {
         const roomName = $page.url.pathname.split('/').pop();
         globRoomName = roomName;
@@ -193,7 +195,7 @@
         const url = `https://${domain}.daily.co/${roomName}`;
         callObject = daily.createCallObject({
             url,
-            userName: name, // Make sure this is set correctly
+            userName: name, // Use the name variable
             audioSource: true,
             videoSource: false,
             dailyConfig: {
@@ -245,7 +247,9 @@
 
     onMount(() => {
         if (!browser) return;
-        createAndJoinCall();
+        if (isAuthenticated) {
+            createAndJoinCall();
+        }
         if (!document) return;
         document.body.classList.add('in-call');
     });
@@ -340,7 +344,10 @@
     <PermissionErrorMessage on:close={clearDeviceError} />
 {/if}
 
-<div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
+{#if showNameModal}
+  <NameInputModal on:nameSubmitted={handleNameSubmitted} />
+{:else}
+  <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
     <div class="h-full">
         <div class="flex items-center h-full pt-6 pb-24">
             <!-- Left sidebar -->
@@ -388,7 +395,7 @@
                         <CreateQuote />
                     </Dialog.Content>
                 </Dialog.Root>
-                <Dialog.Root>
+                <!-- <Dialog.Root>
                     <Dialog.Trigger>
                         <Button variant="ghost" size="icon" class="w-full hover:bg-red-700">
                           <Code scale={1.3} color="#fff"/>
@@ -397,7 +404,7 @@
                     <Dialog.Content class="rounded-lg bg-transparent">
                         <Embed roomUrl={joinURL} />
                     </Dialog.Content>
-                </Dialog.Root>
+                </Dialog.Root> -->
             </div>
 
             <!-- Main content area  -->
@@ -512,6 +519,7 @@
         </div>
     </div>
 </div>
+{/if}
 
 <style>
     .panel {

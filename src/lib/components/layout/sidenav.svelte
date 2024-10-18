@@ -3,6 +3,7 @@
     const sidebarItems = [
         { name: 'Dashboard', active: activePage === 'dashboard', href: '/' },
         { name: 'Representatives', active: activePage === 'representatives', href: '/representatives' },
+        { name: 'Profile', active: activePage === 'profile', href: '/profile' },
 
     ];
 </script>

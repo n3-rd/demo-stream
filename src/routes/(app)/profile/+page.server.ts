@@ -1,8 +1,11 @@
 // import type { PageServerLoad } from './$types';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 
 export const load = async ({ locals }) => {
+    if (!locals.pb.authStore.isValid) {
+        throw redirect(302, '/login');
+    }
 	const userId = locals.pb.authStore.model.id;
 	const isLoggedIn = locals.pb.authStore.isValid;
 	const user = locals.pb.authStore.model;

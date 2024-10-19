@@ -221,7 +221,11 @@
     }
 
     // New reactive statement to determine if the video should be displayed
-    $: shouldDisplayVideo = videoSrc && (!host || (host && $playVideoStore));
+    let shouldDisplayVideo;
+    $: {
+        shouldDisplayVideo = videoSrc && (!host || (host && $playVideoStore) || participant.isScreenSharing);
+        console.log('shouldDisplayVideo', shouldDisplayVideo);
+    }
 
     onMount(() => {
         callObject.on('track-started', handleTrackStarted);
@@ -272,7 +276,7 @@
         {/if}
     {/if}
 
-    {#if shouldDisplayVideo}
+    {#if shouldDisplayVideo }
         <video 
             id={`video-${participant?.session_id}`}
             playsInline 
@@ -298,7 +302,7 @@
         </span>
     {/if}
 
-    {#if participant.isScreenSharing}
+    {#if participant.isScreenSharing }
         <video 
             playsinline 
             use:srcObject={screenVideoSrc}

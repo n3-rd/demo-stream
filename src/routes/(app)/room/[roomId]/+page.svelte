@@ -34,21 +34,15 @@
     let representatives = data.representatives;
     let users = data.users;
     let roomId = data.roomId;
+    let videoRepresentatives = data.videoRepresentativesInfo;
+    console.log('videoRepresentatives', videoRepresentatives);
     
     const host = $page.url.pathname.split('/').pop().split('-').pop();
     
     const isHost = host === (user ? user.id : '');
     let videoURL;
 
-    // Check for representative information in the URL
-    const representativeId = $page.url.searchParams.get('representativeId');
-    const representativeName = $page.url.searchParams.get('representativeName');
-    let isRepresentativeFromUrl = !!representativeId;
-
-    if (isRepresentativeFromUrl) {
-        name = decodeURIComponent(representativeName);
-    }
-
+  
     // Check if currentVideoUrl is set, if not use associated_video from roomId
     $: {
          videoURL = $currentVideoUrl || `/static/video${roomId[0].associated_video}`;
@@ -164,9 +158,11 @@
 
     function handleNameSubmitted(event) {
         const submittedName = event.detail;
+        console.log('submittedName', submittedName);
         username.set(submittedName);
         showNameModal = false;
         name = submittedName;
+        console.log('name submitted', name);
         createAndJoinCall();
     }
 
@@ -201,18 +197,19 @@
         }
 
         const url = `https://${domain}.daily.co/${roomName}`;
+        console.log('roomName', roomName);
+        console.log('url', url);
 
-        // Modify the userName assignment
-        const userName = isRepresentative ? `${name} (Representative)` : name;
+        console.log('roomid', roomId[0])
 
         callObject = daily.createCallObject({
             url,
-            userName,
+            userName: name,
             audioSource: true,
-            videoSource: false,
+            videoSource: false, // Enable video for all participants
             dailyConfig: {
                 audioSource: true,
-                videoSource: false,
+                videoSource: false, // Enable video in the config as well
                 bandwidth: {
                     kbs: 4000
                 }
@@ -259,7 +256,7 @@
 
     onMount(() => {
         if (!browser) return;
-        if (isAuthenticated || isRepresentative) {
+        if (isAuthenticated ) {
             createAndJoinCall();
         }
         if (!document) return;
@@ -345,25 +342,6 @@
         callObject.setLocalAudio(!isMicMuted);
     };
 
-    let isRepresentativeFromPath = $page.url.pathname.includes('/representative');
-    let representativeData = null;
-
-    if (isRepresentativeFromPath) {
-        const repId = $page.url.searchParams.get('id');
-        if (repId) {
-            // Fetch representative data
-            fetch(`/api/representatives/${repId}`)
-                .then(response => response.json())
-                .then(data => {
-                    representativeData = data;
-                    name = data.name; // Set the name for the call
-                })
-                .catch(error => console.error('Error fetching representative data:', error));
-        }
-    }
-
-    // Combine both checks for isRepresentative
-    $: isRepresentative = isRepresentativeFromUrl || isRepresentativeFromPath;
 </script>
 
 <sveltekit:head>
@@ -401,7 +379,7 @@
                         </Button>
                     </Dialog.Trigger>
                     <Dialog.Content class="p-4 rounded-lg shadow-lg">
-                        <InviteRepresentative {representatives} />
+                        <InviteRepresentative representatives={videoRepresentatives} />
                     </Dialog.Content>
                 </Dialog.Root>
                 <Dialog.Root bind:open={scheduleOpen}>
@@ -443,7 +421,7 @@
             <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
                 {#if loading}
                     <div class="h-full w-full z-[9] absolute flex justify-center items-center bg-[#9d9d9f]">
-                        <Loading />
+                        <Loading /> 
                     </div>
                 {/if}
 
@@ -524,7 +502,7 @@
         </div>
     </div>
 
-    <RepresentativeIndicator {representatives} {participants} {representativeData} {isRepresentative} />
+    <RepresentativeIndicator {representatives} {participants}  />
 
     <!-- Bottom controls bar -->
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">

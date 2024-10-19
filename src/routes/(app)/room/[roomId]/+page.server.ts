@@ -4,6 +4,17 @@ import { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from "./$types";
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
+const sanitizeAssociatedVideo = (videoRef: string) => {
+    // Remove '/video/' prefix if present
+    let sanitizedVideo = videoRef.startsWith('/video/') ? videoRef.slice(7) : videoRef;
+    
+    // Remove the last '.mp4' if present
+    if (sanitizedVideo.endsWith('.mp4')) {
+        sanitizedVideo = sanitizedVideo.slice(0, -4);
+    }
+    
+    return sanitizedVideo;
+}
 
 export const load: PageServerLoad = async ({ locals, params }) => {
     // if (!locals.pb.authStore.isValid) {
@@ -11,6 +22,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     // }
 
     const user = locals.pb.authStore.model;
+    let videoRepresentativesInfo = [];
     const representatives = await locals.pb.collection('users').getFullList({
         filter: 'representative = true',
     });
@@ -18,12 +30,22 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     const roomId = await locals.pb.collection('rooms').getFullList({
         filter: `room_id = "${params.roomId}"`
     })
+    const videoRepresentatives = await locals.pb.collection('room_videos_duplicate').getFirstListItem(`video_ref = "${sanitizeAssociatedVideo(roomId[0].associated_video)}"`).then((result) => {
+        console.log('result', result);
+        return result.representatives;
+    })
+    videoRepresentatives.forEach((rep) => {
+        videoRepresentativesInfo.push(representatives.find((repInfo) => repInfo.id === rep));
+    })
+    console.log('videoRepresentativesInfo', videoRepresentativesInfo);
 
     return {
         user,
         representatives,
         users,
         roomId,
+        videoRepresentatives,
+        videoRepresentativesInfo
     };
 };
 

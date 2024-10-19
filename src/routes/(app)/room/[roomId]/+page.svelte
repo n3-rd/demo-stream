@@ -34,6 +34,8 @@
     let representatives = data.representatives;
     let users = data.users;
     let roomId = data.roomId;
+    let videoRepresentatives = data.videoRepresentativesInfo;
+    console.log('videoRepresentatives', videoRepresentatives);
     
     const host = $page.url.pathname.split('/').pop().split('-').pop();
     
@@ -198,6 +200,7 @@
         console.log('roomName', roomName);
         console.log('url', url);
 
+        console.log('roomid', roomId[0])
 
         callObject = daily.createCallObject({
             url,
@@ -376,7 +379,7 @@
                         </Button>
                     </Dialog.Trigger>
                     <Dialog.Content class="p-4 rounded-lg shadow-lg">
-                        <InviteRepresentative {representatives} />
+                        <InviteRepresentative representatives={videoRepresentatives} />
                     </Dialog.Content>
                 </Dialog.Root>
                 <Dialog.Root bind:open={scheduleOpen}>

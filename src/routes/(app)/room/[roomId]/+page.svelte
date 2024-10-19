@@ -1,7 +1,7 @@
 <script>
+    import { page } from '$app/stores';
     import { onDestroy, onMount } from 'svelte';
     import daily from '@daily-co/daily-js';
-    import { page } from '$app/stores';
     import { goto } from '$app/navigation';
     import { browser } from '$app/environment';
     import VideoTile from '$lib/call/VideoTile.svelte';
@@ -30,7 +30,6 @@
 
     let user = data.user;
     let isAuthenticated = !!user;
-    console.log('User:', user);
     let name = isAuthenticated ? user.name : '';
     let representatives = data.representatives;
     let users = data.users;
@@ -40,6 +39,15 @@
     
     const isHost = host === (user ? user.id : '');
     let videoURL;
+
+    // Check for representative information in the URL
+    const representativeId = $page.url.searchParams.get('representativeId');
+    const representativeName = $page.url.searchParams.get('representativeName');
+    let isRepresentativeFromUrl = !!representativeId;
+
+    if (isRepresentativeFromUrl) {
+        name = decodeURIComponent(representativeName);
+    }
 
     // Check if currentVideoUrl is set, if not use associated_video from roomId
     $: {
@@ -193,9 +201,13 @@
         }
 
         const url = `https://${domain}.daily.co/${roomName}`;
+
+        // Modify the userName assignment
+        const userName = isRepresentative ? `${name} (Representative)` : name;
+
         callObject = daily.createCallObject({
             url,
-            userName: name, // Use the name variable
+            userName,
             audioSource: true,
             videoSource: false,
             dailyConfig: {
@@ -247,7 +259,7 @@
 
     onMount(() => {
         if (!browser) return;
-        if (isAuthenticated) {
+        if (isAuthenticated || isRepresentative) {
             createAndJoinCall();
         }
         if (!document) return;
@@ -332,6 +344,26 @@
         isMicMuted = !isMicMuted;
         callObject.setLocalAudio(!isMicMuted);
     };
+
+    let isRepresentativeFromPath = $page.url.pathname.includes('/representative');
+    let representativeData = null;
+
+    if (isRepresentativeFromPath) {
+        const repId = $page.url.searchParams.get('id');
+        if (repId) {
+            // Fetch representative data
+            fetch(`/api/representatives/${repId}`)
+                .then(response => response.json())
+                .then(data => {
+                    representativeData = data;
+                    name = data.name; // Set the name for the call
+                })
+                .catch(error => console.error('Error fetching representative data:', error));
+        }
+    }
+
+    // Combine both checks for isRepresentative
+    $: isRepresentative = isRepresentativeFromUrl || isRepresentativeFromPath;
 </script>
 
 <sveltekit:head>
@@ -492,7 +524,7 @@
         </div>
     </div>
 
-    <RepresentativeIndicator {representatives} {participants} />
+    <RepresentativeIndicator {representatives} {participants} {representativeData} {isRepresentative} />
 
     <!-- Bottom controls bar -->
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
@@ -520,7 +552,6 @@
     </div>
 </div>
 {/if}
-
 <style>
     .panel {
         transition: width 0.3s ease-in-out;

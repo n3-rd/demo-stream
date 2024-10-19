@@ -118,7 +118,7 @@
                  
                     </Dialog.Trigger>
                     <Dialog.Content class="p-4 rounded-lg shadow-lg">
-                        <Share {joinURL} representative={true} />
+                        <Share {joinURL} representative={true} representativeId={selectedRepresentative.id} />
                     </Dialog.Content>
                 </Dialog.Root>
                

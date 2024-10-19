@@ -7,6 +7,7 @@
 	import { invalidateAll } from '$app/navigation';
     export let joinURL: string;
     export let representative: boolean;
+    export let representativeId: string = '';
 </script>
 <div class="w-full rounded-lg  p-6 ">
     <!-- Dialog content styled to match the provided image -->
@@ -27,7 +28,7 @@
         <div class="flex items-center rounded-lg bg-gray-100 p-2">
             <input
                 type="text"
-                value={`${joinURL}/representative`}
+                value={`${joinURL}/representative?id=${representativeId}`}
                 class="flex-1 border-none bg-transparent text-gray-700 outline-none"
 
                 disabled
@@ -37,7 +38,7 @@
                 on:click={() => {
                     try {
                         if(representative){
-                            copyText(`${joinURL}/representative`);
+                            copyText(`${joinURL}/representative?id=${representativeId}`);
 
                         }
                         else{

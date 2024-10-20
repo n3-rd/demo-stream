@@ -42,7 +42,7 @@
 
                         }
                         else{
-                        copyText(joinURL);
+                        copyText(joinURL.split('?')[0]);
                             
                         }
                         toast.success('Link copied to clipboard');

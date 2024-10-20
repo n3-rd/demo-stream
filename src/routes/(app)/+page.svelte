@@ -13,10 +13,14 @@
 
   export let data;
   const { user } = data;
+  console.log('user', user);
   const superUser = user?.superuser ?? false;
   let roomVideos;
   $: roomVideos = data.roomVideos;
   let loading = false;
+  if (!user){
+    goto('/login');
+  }
 </script>
 
 <div class="flex h-screen bg-gray-100">
@@ -55,33 +59,37 @@
                       <video src={`/video/${video.video_ref}.mp4`} class="w-full rounded-lg" controls />
                     </Dialog.Description>
                     <Dialog.Footer class="flex justify-between mt-4">
-                      <form
-                        action='/?/create-room'
-                        method='POST'
-                        use:enhance={() => {
-                          loading = true;
-                          return async ({ result }) => {
-                            if (result.data?.room?.name) {
-                              currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
-                              toast.success('Room created successfully');
-                              goto(`/room/${result.data.room.name}`);
-                            } else if (result.status === 400) {
-                              toast.error('Bad request');
-                            } else if (result.status === 500) {
-                              toast.error('Server error');
-                            } else {
-                              toast.error('Oops, something went wrong!');
-                            }
-                            loading = false;
-                          };
-                        }}
-                      >
-                        <input type="hidden" name="videoUrl" value={`/video/${video.video_ref}.mp4`} />
-                        <input type="hidden" name="videoName" value={video.title} />
-                        <Button type="submit" class="bg-primary hover:bg-primary/90 text-white" disabled={loading}>
-                          {loading ? 'Loading...' : 'Proceed'}
-                        </Button>
-                      </form>
+                      <div class="mt-8">
+                        <form 
+                            use:enhance={() => {
+                                loading = true;
+                                return async ({ result }) => {
+                                    if (result.data?.room?.name) {
+                                        currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
+                                        toast.success('Room created successfully');
+                                        goto(`/room/${result.data.room.name}`);
+                                    } else if (result.status === 400) {
+                                        toast.error('Bad request');
+                                    } else if (result.status === 500) {
+                                        toast.error('Server error');
+                                    } else {
+                                        toast.error('Oops, something went wrong!');
+                                    }
+                                    loading = false;
+                                };
+                            }}
+                            class="mt-4" method="post" action="/?/create-room"
+                        >
+                            <input type="hidden" name="videoUrl" value={`/video/${video.video_ref}.mp4`} />
+                            <input type="hidden" name="videoName" value={video.title} />
+                            {#if !data.user}
+                                <input type="text" name="anonymousName" placeholder="Enter your name" required class="w-full mb-4 p-2 border rounded" />
+                            {/if}
+                            <Button type="submit" disabled={loading} class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+                                {loading ? 'Creating...' : 'Go to View Room'}
+                            </Button>
+                        </form>
+                      </div>
                       {#if superUser}
                         <form
                           action='/upload/?/deleteVideo'
@@ -197,3 +205,4 @@
     @apply bg-gray-100;
   }
 </style>
+

@@ -1,6 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
     import { page } from '$app/stores';
+	import { toast } from 'svelte-sonner';
   
     const dispatch = createEventDispatcher();
     
@@ -8,6 +9,8 @@
     
     let name = '';
     let isRepresentative = $page.url.searchParams.get('representativeId') !== null;
+    let anonymousUser = $page.url.searchParams.get('anonymousUserId') !== null;
+    console.log('anonymousUser', anonymousUser);
     let submitBtn: HTMLButtonElement;
     export let room;
 
@@ -15,8 +18,12 @@
     function handleSubmit() {
         if(isRepresentative) {
             submitBtn?.click();
-        } else if (name.trim()) {
+        }
+        else if (name.trim()) {
             dispatch('nameSubmitted', name.trim());
+        }
+        else {
+            toast.error('Please enter your name');
         }
     }
   
@@ -24,6 +31,12 @@
         if (isRepresentative) {
             const representativeName = $page.url.searchParams.get('representativeName');
             name = decodeURIComponent(representativeName + ' (Representative)' || '');
+            submitBtn?.click();
+            dispatch('nameSubmitted', name.trim());
+        }
+        else if(anonymousUser) {
+           const anonymousUserId = $page.url.searchParams.get('anonymousUserId');
+            name = decodeURIComponent(anonymousUserId || '');
             submitBtn?.click();
             dispatch('nameSubmitted', name.trim());
         }

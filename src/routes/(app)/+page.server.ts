@@ -1,30 +1,35 @@
 import type { PageServerLoad } from './$types';
 import { Actions, redirect } from '@sveltejs/kit';
 import { PUBLIC_DAILY_API_KEY, PUBLIC_DAILY_DOMAIN } from '$env/static/public';
+import { browser } from '$app/environment';
 
 
 export const load: PageServerLoad = async ({ locals }) => {
-    const user = locals.pb.authStore.model;
+    const user = locals.pb.authStore.isValid ? locals.pb.authStore.model : null;
     const roomVideos = await locals.pb.collection('room_videos_duplicate').getFullList();
-
-    if (!user) {
-        throw redirect(302, '/login');
-    }
-
-    return { user, roomVideos };
+    return {
+        user,
+        roomVideos
+    };
 };
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
 
 
 export const actions: Actions = {
-    'create-room': async ({ fetch, locals, request }) => {
+    'create-room': async ({ fetch, locals, request,params }) => {
         const formData = await request.formData();
         const videoUrl = formData.get('videoUrl') as string;
         const videoName = formData.get('videoName') as string;
+        let anonymousUserId = formData.get('anonymousUserId') as string;
 
         console.log('Create room action called');
-        const userId = locals.pb.authStore.model.id;
+        let userId = '';
+        if (!locals.pb.authStore.isValid) {
+            userId = anonymousUserId;
+        } else {
+            userId = locals.pb.authStore.model.id;
+        }
         const exp = Math.round(Date.now() / 1000) + 60 * 60;
         const meetingName = `meet-${Math.random().toString(36).substring(2, 7)}-${userId}`;
         const options = {
@@ -56,7 +61,7 @@ export const actions: Actions = {
                 return {
                     success: true,
                     room: {
-                        name: room.name,
+                        name: `${room.name}${anonymousUserId ? `?anonymousUserId=${encodeURIComponent(anonymousUserId)}` : ''}`,
                         url: room.url,
                         videoUrl: videoUrl,
                         videoName: videoName

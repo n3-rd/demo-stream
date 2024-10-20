@@ -21,15 +21,22 @@ export const load = async ({ locals }) => {
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
 
 export const actions = {
-    'create-room': async ({ fetch, locals }) => {
+    'create-room': async ({ fetch, locals, request }) => {
+        const formData = await request.formData();
+        const videoUrl = formData.get('videoUrl') as string;
+        const videoName = formData.get('videoName') as string;
+        const anonymousName = formData.get('anonymousName') as string;
+
         console.log('Create room action called');
-        const userId = locals.pb.authStore.model.id;
-        const exp = Math.round(Date.now() / 1000) + 60 * 30;
+        const userId = locals.pb.authStore.isValid ? locals.pb.authStore.model.id : 'anonymous';
+        const exp = Math.round(Date.now() / 1000) + 60 * 60;
+        const meetingName = `meet-${Math.random().toString(36).substring(2, 7)}-${userId}`;
         const options = {
+            name: meetingName,
             properties: {
                 exp,
-                user_id: userId,
-                enable_adaptive_simulcast: false,
+                enable_chat: true,
+                user_name: locals.pb.authStore.isValid ? locals.pb.authStore.model.name : anonymousName,
             }
         };
 
@@ -45,14 +52,21 @@ export const actions = {
 
             if (res.ok) {
                 const room = await res.json();
-                console.log('Room created successfully:', room);
+                // Store the videoUrl with the room data
+                await locals.pb.collection('rooms').create({
+                    room_id: meetingName,
+                    associated_video: videoUrl,
+                    associated_video_name: videoName,
+                    created_by: userId
+                });
                 return {
                     success: true,
                     room: {
                         name: room.name,
                         url: room.url,
-                        created_at: room.created_at,
-                        // Add other necessary fields here
+                        videoUrl: videoUrl,
+                        videoName: videoName,
+                        anonymousName: anonymousName
                     }
                 };
             } else {

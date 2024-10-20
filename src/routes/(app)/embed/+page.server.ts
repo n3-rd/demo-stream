@@ -1,11 +1,8 @@
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ locals, url }) => {
-    if (!locals.pb.authStore.isValid) {
-        throw redirect(302, '/login');
-    }
-
-    const user = locals.pb.authStore.model;
+  
+    const user = locals.pb.authStore.model || null;
     const videoId = url.searchParams.get('videoId');
 
     if (!videoId) {

@@ -38,9 +38,9 @@
     console.log('videoRepresentatives', videoRepresentatives);
     
     const host = $page.url.pathname.split('/').pop().split('-').pop();
+    console.log('host', host);
     
-    const isHost = host === (user ? user.id : '');
-    let videoURL;
+ 
 
   
     // Check if currentVideoUrl is set, if not use associated_video from roomId
@@ -65,6 +65,20 @@
 
     $: screensList = participants?.filter((p) => p?.tracks?.screenVideo?.state === 'playable');
 
+    let isHost = false;
+
+    function updateHostStatus() {
+        if (callObject) {
+            const localParticipant = callObject.participants().local;
+            isHost = host === (user ? user.id : '') || localParticipant.user_name === host;
+        } else {
+            isHost = host === (user ? user.id : '');
+        }
+    }
+
+    let videoURL;
+    console.log('callObject', callObject);
+    console.log('local participant', callObject?.participants().local);
  
     const clearNotification = () => (hasNewNotification = false);
     const joinURL = $page.url.href;
@@ -92,6 +106,7 @@
        
         loading = false;
         updateParticpants(e);
+        updateHostStatus(); // Add this line
     };
 
     const updateParticpants = (e) => {
@@ -236,6 +251,7 @@
             await callObject.join();
             dailyErrorMessage.set('');
             isMicMuted = !callObject.localAudio();
+            updateHostStatus(); // Add this line
         } catch (e) {
             dailyErrorMessage.set(e);
             toast('Error joining the call');
@@ -547,3 +563,4 @@
         background-color: #1f2937;
     }
 </style>
+

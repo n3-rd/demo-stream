@@ -355,7 +355,7 @@
 {/if}
 
 {#if showNameModal}
-  <NameInputModal on:nameSubmitted={handleNameSubmitted} />
+  <NameInputModal on:nameSubmitted={handleNameSubmitted} room={roomId[0]}/>
 {:else}
   <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
     <div class="h-full">

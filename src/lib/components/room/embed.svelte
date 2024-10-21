@@ -9,7 +9,7 @@
     let width = 1100;
     let height = 700;
     
-    $: embedCode = `<iframe src="${$page.url.origin}/embed?videoId=${videoId}" style="border: none; width: ${width}px; height: ${height}px;" allow="camera; microphone; fullscreen; display-capture; autoplay"></iframe>`;
+    $: embedCode = `<iframe src="${$page.url.origin}/embed?videoId=${videoId}" style="border: none; width: ${width}px; height: ${height}px;" allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read"></iframe>`;
     
     // $: scriptEmbedCode = `<script src="${window.location.origin}/embed.js" data-room-url="${roomUrl}" data-width="${width}" data-height="${height}"><\/script>`;
     

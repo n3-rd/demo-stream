@@ -64,6 +64,7 @@
                     <button 
                         type="submit" 
                         bind:this={submitBtn}
+                        disabled={!name.trim() || name.trim() == room.associated_video_name}
                         class="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/60 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">

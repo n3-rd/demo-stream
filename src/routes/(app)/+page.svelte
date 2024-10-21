@@ -59,7 +59,7 @@
                       <video src={`/video/${video.video_ref}.mp4`} class="w-full rounded-lg" controls />
                     </Dialog.Description>
                     <Dialog.Footer class="flex justify-between mt-4">
-                      <div class="mt-8">
+                      <div class="">
                         <form 
                             use:enhance={() => {
                                 loading = true;
@@ -78,16 +78,16 @@
                                     loading = false;
                                 };
                             }}
-                            class="mt-4" method="post" action="/?/create-room"
+                            method="post" action="/?/create-room"
                         >
-                            <input type="hidden" name="videoUrl" value={`/video/${video.video_ref}.mp4`} />
-                            <input type="hidden" name="videoName" value={video.title} />
-                            {#if !data.user}
-                                <input type="text" name="anonymousName" placeholder="Enter your name" required class="w-full mb-4 p-2 border rounded" />
-                            {/if}
-                            <Button type="submit" disabled={loading} class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
-                                {loading ? 'Creating...' : 'Go to View Room'}
-                            </Button>
+                        <input type="hidden" name="videoUrl" value={`/video/${video.video_ref}.mp4`} />
+                        <input type="hidden" name="videoName" value={video.title} />
+                        {#if !data.user}
+                          <input type="text" name="anonymousName" placeholder="Enter your name" required class="w-full mb-4 p-2 border rounded" />
+                        {/if}
+                        <Button type="submit" class="bg-primary hover:bg-primary/90 text-white" disabled={loading}>
+                          {loading ? 'Loading...' : 'Proceed'}
+                        </Button>
                         </form>
                       </div>
                       {#if superUser}

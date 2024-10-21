@@ -17,7 +17,7 @@
 
     function generateEmbedCode(meetingUrl: string) {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        return `<iframe src="${origin}/room/${meetingUrl.split('/').pop()}/embed" width="100%" height="600" allow="camera; microphone; fullscreen; display-capture; autoplay" style="border: none;"></iframe>`;
+        return `<iframe src="${origin}/room/${meetingUrl.split('/').pop()}/embed" width="100%" height="600" allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read" style="border: none;"></iframe>`;
     }
 
     function handleKeydown(event: KeyboardEvent) {

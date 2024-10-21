@@ -8,6 +8,7 @@
     export let joinURL: string;
     export let representative: boolean;
     export let representativeId: string = '';
+    import { page } from '$app/stores';
 </script>
 <div class="w-full rounded-lg  p-6 ">
     <!-- Dialog content styled to match the provided image -->
@@ -28,9 +29,10 @@
         <div class="flex items-center rounded-lg bg-gray-100 p-2">
             <input
                 type="text"
-                value={`${joinURL}/representative?id=${representativeId}`}
+                value={
+                     joinURL.replace(/\?anonymousUserId=[^&]+/, '').replace(/\?representativeId=[^&]+&representativeName=[^&]+/, '')
+                }
                 class="flex-1 border-none bg-transparent text-gray-700 outline-none"
-
                 disabled
             />
             <Button
@@ -38,12 +40,14 @@
                 on:click={() => {
                     try {
                         if(representative){
-                            copyText(`${joinURL}/representative?id=${representativeId}`);
-
+                            const cleanURL = joinURL.replace(/\?anonymousUserId=[^&]+/, '').replace(/\?representativeId=[^&]+&representativeName=[^&]+/, '');
+                            copyText(`${cleanURL}/representative?id=${representativeId}`);
                         }
                         else{
-                        copyText(joinURL.split('?')[0]);
-                            
+                           
+                            const cleanURL = joinURL.replace(/\?anonymousUserId=[^&]+/, '').replace(/\?representativeId=[^&]+&representativeName=[^&]+/, '');
+
+                            copyText(cleanURL);
                         }
                         toast.success('Link copied to clipboard');
                     } catch (error) {

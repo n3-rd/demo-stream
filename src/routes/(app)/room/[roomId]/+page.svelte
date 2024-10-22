@@ -221,10 +221,10 @@
             url,
             userName: name,
             audioSource: true,
-            videoSource: false, // Enable video for all participants
+            videoSource: true, // Enable video for all participants
             dailyConfig: {
                 audioSource: true,
-                videoSource: false, // Enable video in the config as well
+                videoSource: true, // Enable video in the config as well
                 bandwidth: {
                     kbs: 4000
                 }
@@ -518,8 +518,11 @@
         </div>
     </div>
 
-    <RepresentativeIndicator {representatives} {participants}  />
-
+    <RepresentativeIndicator 
+    representatives={videoRepresentatives} 
+    participants={participants} 
+    {callObject}
+/>
     <!-- Bottom controls bar -->
     <div class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14">
         <div class="room-name text-white">{roomId[0].associated_video_name}</div>

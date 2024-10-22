@@ -277,7 +277,7 @@
     {/if}
 
     {#if shouldDisplayVideo }
-        <video 
+        <!-- <video 
             id={`video-${participant?.session_id}`}
             playsInline 
             controls
@@ -285,7 +285,7 @@
             bind:this={videoEl}
         >
             <track kind="captions" />
-        </video>
+        </video> -->
 
         {#if host && !$playVideoStore}
             <div class="play-button h-screen min-w-full absolute flex justify-center items-center z-[999]">

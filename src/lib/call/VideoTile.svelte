@@ -109,22 +109,32 @@
     }
 
     async function shareVideo() {
-        if (localVideoStream) {
+        console.log('shareVideo() called');
+        if (localVideoStream && localAudioStream) {
             try {
+                console.log('Starting screen share');
                 const combinedStream = new MediaStream([
-                    ...localVideoStream.getVideoTracks(),
-                    ...(localAudioStream ? localAudioStream.getAudioTracks() : [])
+                    ...localVideoStream.getTracks(),
+                    ...localAudioStream.getTracks()
                 ]);
                 await callObject.startScreenShare({
                     mediaStream: combinedStream,
-                    videoSource: localVideoStream ? 'mediaStream' : false,
-                    audioSource: localAudioStream ? 'mediaStream' : false,
-                    systemAudio: 'include',
-                    screenVideoSendSettings: 'motion-optimized',
+                    videoTrackSettings: {
+                        maxFramerate: 30,
+                        maxBitrate: 3000000 // 3 Mbps
+                    }
                 });
+                console.log('Screen share started successfully');
+                
+                // Notify other participants that a video is being shared
+                callObject.sendAppMessage({ type: 'video-share-started' }, '*');
             } catch (error) {
                 console.error('Error starting screen share:', error);
+                toast('Failed to start screen share: ' + error.message);
             }
+        } else {
+            console.log('No video or audio stream available to share');
+            toast('No video or audio stream available to share.');
         }
     }
 
@@ -302,14 +312,14 @@
         </span>
     {/if}
 
-    {#if participant.isScreenSharing }
-        <video 
+    {#if participant.isScreenSharing && !participant?.local}
+        <!-- <video 
             playsinline 
             use:srcObject={screenVideoSrc}
             class="screen-share-video"
         >
             <track kind="captions" />
-        </video>
+        </video> -->
         {#if screenAudioSrc && host}
             <audio 
                

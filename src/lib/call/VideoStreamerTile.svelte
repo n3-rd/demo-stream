@@ -270,7 +270,7 @@
     crossOrigin="anonymous"
     id="local-vid" controls loop class="w-full h-full object-cover z-[30] absolute" volume="0.1"></video>
 
-    {#if isPaused}
+    {#if isPaused }
         <div class="absolute inset-0 flex items-center justify-center z-[31]">
             <button on:click={togglePlay} class="text-white opacity-80 hover:opacity-100 transition-opacity">
                 <PlayCircle size={80} />

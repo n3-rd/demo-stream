@@ -446,12 +446,18 @@
                     {#each participants as participant}
                         <VideoTile {callObject} {participant} {screensList} host={isHost} {name} {roomId} />
                         {#if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'playable'}
-                        {#if !host}
-                            <video autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}
-                                class="w-full h-full object-cover">
+                            <video 
+                                autoplay 
+                                playsinline 
+                                use:srcObject={new MediaStream([participant.tracks.screenVideo.track])}
+                                class="w-full h-full object-contain">
+                                <track kind="captions" />
                             </video>
-                            {/if}
-                            <audio autoplay playsinline use:srcObject={new MediaStream([participant.tracks.screenAudio.track])}></audio>
+                            <audio 
+                                autoplay 
+                                playsinline 
+                                use:srcObject={new MediaStream([participant.tracks.screenAudio.track])}>
+                            </audio>
                         {:else if participant.tracks.screenVideo && participant.tracks.screenVideo.state === 'loading'}
                             <Loading />
                         {/if}
@@ -566,4 +572,5 @@
         background-color: #1f2937;
     }
 </style>
+
 

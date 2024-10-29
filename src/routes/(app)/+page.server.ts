@@ -1,6 +1,5 @@
 import type { PageServerLoad } from './$types';
 import { Actions, redirect } from '@sveltejs/kit';
-import { PUBLIC_DAILY_API_KEY, PUBLIC_DAILY_DOMAIN } from '$env/static/public';
 import { browser } from '$app/environment';
 
 
@@ -13,128 +12,80 @@ export const load: PageServerLoad = async ({ locals }) => {
     };
 };
 
-const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
-
 
 export const actions: Actions = {
-    'create-room': async ({ fetch, locals, request,params }) => {
+    'create-room': async ({ locals, request }) => {
         const formData = await request.formData();
         const videoUrl = formData.get('videoUrl') as string;
         const videoName = formData.get('videoName') as string;
         let anonymousUserId = formData.get('anonymousUserId') as string;
 
-        console.log('Create room action called');
-        let userId = '';
-        if (!locals.pb.authStore.isValid) {
-            userId = anonymousUserId;
-        } else {
-            userId = locals.pb.authStore.model.id;
-        }
-        const exp = Math.round(Date.now() / 1000) + 60 * 60;
-        const meetingName = `meet-${Math.random().toString(36).substring(2, 7)}-${userId}`;
-        const options = {
-            name: meetingName,
-            properties: {
-                exp,
-                enable_chat: true,
-            }
-        };
+        let userId = locals.pb.authStore.isValid
+            ? locals.pb.authStore.model.id
+            : anonymousUserId;
+
+        const roomId = `room-${Math.random().toString(36).substring(2, 7)}-${userId}`;
 
         try {
-            const res = await fetch('https://api.daily.co/v1/rooms', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${DAILY_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(options)
+            const room = await locals.pb.collection('rooms').create({
+                room_id: roomId,
+                associated_video: videoUrl,
+                associated_video_name: videoName,
+                created_by: userId
             });
 
-            if (res.ok) {
-                const room = await res.json();
-                // Store the videoUrl with the room data
-                await locals.pb.collection('rooms').create({
-                    room_id: meetingName,
-                    associated_video: videoUrl,
-                    associated_video_name: videoName
-                });
-                return {
-                    success: true,
-                    room: {
-                        name: `${room.name}${anonymousUserId ? `?anonymousUserId=${encodeURIComponent(anonymousUserId)}` : ''}`,
-                        url: room.url,
-                        videoUrl: videoUrl,
-                        videoName: videoName
-                        // ... other room data ...
-                    }
-                };
-            } else {
-                console.error('Failed to create room:', res.status);
-                return {
-                    success: false,
-                    status: res.status
-                };
-            }
+            return {
+                success: true,
+                room: {
+                    id: room.id,
+                    room_id: roomId,
+                    videoUrl: videoUrl,
+                    videoName: videoName
+                },
+                message: 'Room created successfully'
+            };
         } catch (error) {
             console.error('Error creating room:', error);
             return {
                 success: false,
-                message: 'something went wrong with the room submit!',
+                message: 'Failed to create room',
                 status: 500
             };
         }
     },
-    'join-room': async ({ request, fetch }) => {
+    'join-room': async ({ locals, request }) => {
         console.log('Join room action called');
         const formData = await request.formData();
-        const dailyUrl = formData.get('dailyUrl') as string;
-
-        if (dailyUrl) {
-            console.log('Joining existing room with URL:', dailyUrl);
-            return {
-                success: true,
-                url: dailyUrl
-            };
-        }
-
-        const exp = Math.round(Date.now() / 1000) + 60 * 30;
-        const options = {
-            properties: {
-                exp
-            }
-        };
+        const roomId = formData.get('roomId') as string;
 
         try {
-            const res = await fetch('https://api.daily.co/v1/rooms', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${DAILY_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(options)
-            });
+            // Find the room in PocketBase
+            const room = await locals.pb.collection('rooms').getFirstListItem(`room_id="${roomId}"`);
 
-            if (res.ok) {
-                const room = await res.json();
-                const DOMAIN = PUBLIC_DAILY_DOMAIN;
-                const roomUrl = `https://${DOMAIN}.daily.co/${room.name}`;
-                console.log('Room joined successfully:', roomUrl);
+            if (room) {
+                console.log('Room found:', room);
                 return {
                     success: true,
-                    url: roomUrl
+                    room: {
+                        id: room.id,
+                        room_id: room.room_id,
+                        videoUrl: room.associated_video,
+                        videoName: room.associated_video_name
+                    }
                 };
             } else {
-                console.error('Failed to join room:', res.status);
+                console.error('Room not found');
                 return {
                     success: false,
-                    status: res.status
+                    message: 'Room not found',
+                    status: 404
                 };
             }
         } catch (error) {
             console.error('Error joining room:', error);
             return {
                 success: false,
-                message: 'something went wrong with the room submit!',
+                message: 'Failed to join room',
                 status: 500
             };
         }

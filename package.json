@@ -28,6 +28,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@antmedia/webrtc_adaptor": "^2.11.3",
 		"@aws-sdk/client-s3": "^3.670.0",
 		"@daily-co/daily-js": "0.72.1",
 		"@fontsource/fira-mono": "^4.5.10",

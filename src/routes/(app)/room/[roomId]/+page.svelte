@@ -1,5 +1,5 @@
 <script>
-    import { page } from '$app/stores';
+	import { page } from '$app/stores';
     import { onDestroy, onMount } from 'svelte';
     import daily from '@daily-co/daily-js';
     import { goto } from '$app/navigation';
@@ -8,7 +8,7 @@
     import Loading from '$lib/call/Loading.svelte';
     import PermissionErrorMessage from '$lib/call/PermissionErrorMessage.svelte';
     import { chatMessages, dailyErrorMessage, username, pickerOpen } from '../../../../store';
-    import { PUBLIC_DAILY_DOMAIN, PUBLIC_DAILY_API_KEY } from '$env/static/public';
+    import { PUBLIC_DAILY_DOMAIN, PUBLIC_DAILY_API_KEY, PUBLIC_ANT_MEDIA_URL } from '$env/static/public';
     import { toast } from 'svelte-sonner';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
@@ -25,6 +25,7 @@
 	import Embed from '$lib/components/room/embed.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
     import NameInputModal from '$lib/components/name-input-modal.svelte';
+    import { antMediaService } from '$lib/antmedia';
 
     export let data;
 
@@ -95,45 +96,14 @@
         goto(`/`);
     };
 
-    const clearDeviceError = () => {
-        goHome();
-        deviceError = false;
-    };
-
-    const handleJoinedMeeting = (e) => {
-        console.log('[joined-meeting]', e);
-        console.log('joined participants', callObject.participants());
-       
-        loading = false;
-        updateParticpants(e);
-        updateHostStatus(); // Add this line
-    };
-
     const updateParticpants = (e) => {
-        if (!callObject) return;
-        const currentParticipants = Object.values(callObject.participants());
-        
-        const seenUserNames = new Set();
-        const uniqueParticipants = [];
-
-        for (const participant of currentParticipants) {
-            if (seenUserNames.has(participant.user_name)) {
-                // This is a duplicate participant, kick them out
-                console.log(`Kicking out duplicate participant: ${participant.user_name}`);
-                toast(`Duplicate user ${participant.user_name} has been removed from the call.`);
-                goto('/');  
-            } else {
-                seenUserNames.add(participant.user_name);
-                uniqueParticipants.push(participant);
-            }
+      console.log('updateParticpants', e);
+      participants.push(e);
+      participants.map((participant) => {
+        if (participant.id === e.id) {
+          participant.isScreenSharing = e.isScreenSharing;
         }
-
-        participants = uniqueParticipants.map(participant => {
-            return {
-                ...participant,
-                isScreenSharing: participant.tracks.screenVideo?.state === 'playable'
-            };
-        });
+      });
     };
 
     const handleError = async () => {
@@ -150,24 +120,7 @@
         hasNewNotification = true;
     };
 
-    const fetchRooms = async () => {
-        try {
-            const response = await fetch('https://api.daily.co/v1/rooms?limit=100', {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${PUBLIC_DAILY_API_KEY}`
-                }
-            });
-            if (!response.ok) {
-                throw new Error('Failed to fetch rooms');
-            }
-            const data = await response.json();
-            return data.data || [];
-        } catch (error) {
-            toast('Error fetching rooms');
-            return [];
-        }
-    };
+    
 
     let showNameModal = !isAuthenticated;
 
@@ -184,90 +137,57 @@
     const createAndJoinCall = async () => {
         const roomName = $page.url.pathname.split('/').pop();
         globRoomName = roomName;
-        const domain = PUBLIC_DAILY_DOMAIN;
-        if (!roomName || !domain) {
-            toast('Invalid room or domain');
-            goto('/');
-            return;
-        }
-
-        const rooms = await fetchRooms();
-        if (!Array.isArray(rooms)) {
-            toast('Error fetching rooms');
-            goto('/');
-            return;
-        }
-        const room = rooms.find(room => room.name === roomName);
-        if (!room) {
-            toast('Room not found or not available yet');
-            goto('/');
-            return;
-        }
-
-        const currentTime = Math.floor(Date.now() / 1000);
-        if (room.config && room.config.nbf && currentTime < room.config.nbf) {
-            toast('Room has not yet started');
-            goto('/');
-            return;
-        }
-
-        const url = `https://${domain}.daily.co/${roomName}`;
-        console.log('roomName', roomName);
-        console.log('url', url);
-
-        console.log('roomid', roomId[0])
-
-        callObject = daily.createCallObject({
-            url,
-            userName: name,
-            audioSource: true,
-            videoSource: true, // Enable video for all participants
-            dailyConfig: {
-                audioSource: true,
-                videoSource: true, // Enable video in the config as well
-                bandwidth: {
-                    kbs: 4000
-                }
-            }
-        });
-
-        callObject
-            .on('joining-meeting', updateParticpants)
-            .on('joined-meeting', handleJoinedMeeting)
-            .on('participant-joined', updateParticpants)
-            .on('participant-left', updateParticpants)
-            .on('participant-updated', updateParticpants)
-            .on('local-screen-share-started', updateParticpants)
-            .on('loaded', updateParticpants)
-            .on('error', handleError)
-            .on('app-message', handleAppMessage)
-            .on('screen-share-started', handleScreenShareStarted)
-            .on('screen-share-stopped', handleScreenShareStopped)
-            .on('track-started', updateParticpants)
-            .on('track-stopped', updateParticpants)
-            .on('active-speaker-change', handleActiveSpeakerChanged);
-
+        
         try {
-            await callObject.join();
-            dailyErrorMessage.set('');
-            isMicMuted = !callObject.localAudio();
-            updateHostStatus(); // Add this line
+            console.log('Initializing AntMedia service...');
+            
+            const serverUrl = PUBLIC_ANT_MEDIA_URL || 'test.antmedia.io:5443';
+            
+            console.log('Connecting to:', serverUrl);
+            
+            await antMediaService.initialize(
+                serverUrl,
+                'localVideoId',
+                {
+                    onParticipantJoined: (participant) => {
+                        console.log('participant joined', participant);
+                        participants = [...participants, participant];
+                        loading = false;
+                    },
+                    onParticipantLeft: (streamId) => {
+                        console.log('participant left', streamId);
+                        participants = participants.filter(p => p.streamId !== streamId);
+                    },
+                    onLocalStream: (stream) => {
+                        const audioTracks = stream.getAudioTracks();
+                        if (audioTracks.length > 0) {
+                            audioTracks[0].enabled = !isMicMuted;
+                        }
+                    },
+                    onError: (error, message) => {
+                        console.error('WebRTC Error:', error, message);
+                        toast.error(typeof message === 'string' ? message : 'Connection error');
+                    },
+                    onSuccess: (message) => {
+                        toast.success(message);
+                        console.log('AntMedia service initialized and joined room');
+                        
+                        console.log('participants',  antMediaService.getParticipants());
+                      
+                    }
+                }
+            );
+
+            console.log('Joining room:', roomName);
+            const cleanName = name?.trim() || 'Guest';
+            await antMediaService.joinRoom(roomName, cleanName);
+            updateHostStatus();
+            
         } catch (e) {
-            dailyErrorMessage.set(e);
-            toast('Error joining the call');
+            console.error('Failed to join room:', e);
+            toast.error(e.message || 'Failed to connect to the room');
+            handleError();
         }
-    };
-
-    const handleScreenShareStarted = (event) => {
-        updateParticpants(event);
-    };
-
-    const handleScreenShareStopped = (event) => {
-        updateParticpants(event);
-    };
-
-    const handleActiveSpeakerChanged = (event) => {
-        activeSpeaker.set(event.activeSpeaker.peerId);
     };
 
     onMount(() => {
@@ -353,10 +273,17 @@
     };
 
     const toggleMicrophone = () => {
-        if (!callObject) return;
-        isMicMuted = !isMicMuted;
-        callObject.setLocalAudio(!isMicMuted);
-    };
+    isMicMuted = !isMicMuted;
+    
+    // Get the local stream from AntMedia service
+    const localStream = antMediaService.getLocalStream();
+    if (localStream) {
+        const audioTracks = localStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+            audioTracks[0].enabled = !isMicMuted;
+        }
+    }
+};
 
 </script>
 

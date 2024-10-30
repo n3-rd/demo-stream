@@ -34,6 +34,8 @@ export const actions: Actions = {
                 created_by: userId
             });
 
+            console.log('room:', room);
+
             return {
                 success: true,
                 room: {

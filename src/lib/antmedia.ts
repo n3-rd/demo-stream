@@ -21,15 +21,18 @@ export class AntMediaService {
     private roomId?: string;
     private localStream: MediaStream | null = null;
     private isInitialized = false;
+    private isPublishing = false;
+    private currentStreamId: string | null = null;
+    private isPublished = false;
 
     initialize(websocketUrl: string, localVideoId: string, callbacks?: RoomCallbacks) {
         this.callbacks = callbacks || {};
 
         // Force WSS protocol
         const host = websocketUrl.replace(/^(wss?:\/\/|https?:\/\/)/, '');
-        const wsUrl = `wss://${host}/WebRTCAppEE/websocket`;
+        const wsUrl = `ws://${host}/WebRTCAppEE/websocket`;
 
-        console.log('Forcing WSS connection to:', wsUrl);
+        console.log('Forcing WS connection to:', wsUrl);
 
         const connectionOptions = {
             websocket_url: wsUrl,
@@ -100,22 +103,43 @@ export class AntMediaService {
 
             case "publish_started":
                 console.log("Stream publishing started");
+                this.isPublishing = true;
+                this.isPublished = true;
                 this.callbacks.onSuccess?.("Your stream has started");
                 break;
 
             case "publish_finished":
                 console.log("Stream publishing finished");
+                this.isPublishing = false;
+                this.isPublished = false;
+                this.currentStreamId = null;
                 this.callbacks.onSuccess?.("Stream ended");
                 break;
 
             case "streamJoined":
-                this.handleNewParticipant(obj);
-                this.callbacks.onSuccess?.(`${obj.name || 'A new participant'} joined the room`);
+                console.log("Stream joined event:", obj);
+                if (obj.streamId) {
+                    const participant: Participant = {
+                        streamId: obj.streamId,
+                        name: obj.streamName || 'Unknown User'
+                    };
+                    this.handleNewParticipant(participant);
+                }
                 break;
 
-            case "streamLeaved":
-                this.handleParticipantLeft(obj.streamId);
-                this.callbacks.onSuccess?.(`${obj.name || 'A participant'} left the room`);
+            case "roomInformation":
+                console.log("Room information received:", obj);
+                if (obj.streams) {
+                    obj.streams.forEach((stream: any) => {
+                        if (!this.participants.has(stream.streamId)) {
+                            const participant: Participant = {
+                                streamId: stream.streamId,
+                                name: stream.streamName || 'Unknown User'
+                            };
+                            this.handleNewParticipant(participant);
+                        }
+                    });
+                }
                 break;
 
             case "newStreamAvailable":
@@ -132,6 +156,33 @@ export class AntMediaService {
 
     private handleError(error: any, message: string | Event) {
         console.error("WebRTC Error:", error, message);
+
+        // Handle the already_publishing error silently
+        if (error?.definition === 'already_publishing') {
+            if (error.streamId === this.currentStreamId) {
+                console.log('Stream is already publishing, continuing...');
+                this.isPublishing = true;
+                this.callbacks.onSuccess?.("You are already streaming");
+                return;
+            }
+        }
+
+        // Handle noStreamNameSpecified error
+        if (error?.definition === 'noStreamNameSpecified') {
+            console.log('Stream name specification error - attempting to republish');
+            if (this.currentStreamId && this.roomId) {
+                const streamName = this.currentStreamId.split('_')[1] || 'default_user';
+                this.webRTCAdaptor?.publish(
+                    this.currentStreamId,
+                    null,
+                    null,
+                    null,
+                    streamName,
+                    this.roomId
+                );
+                return;
+            }
+        }
 
         if (error instanceof Event && error.type === 'error' && error.target instanceof WebSocket) {
             const ws = error.target;
@@ -189,10 +240,18 @@ export class AntMediaService {
         }
 
         this.roomId = roomId;
-        const streamId = `${roomId}_${userName}_${Date.now()}`;
+        const streamId = this.roomId
 
         try {
-            await this.webRTCAdaptor.publish(streamId);
+            const randomName = Math.random().toString(36).substring(2, 15);
+            console.log('Creating room with streamId:', streamId, 'and streamName:', randomName);
+            if (!this.isPublishing) {
+                await this.webRTCAdaptor.publish(streamId, null, null, null, randomName, roomId);
+                console.log('created stream', streamId);
+            } else {
+                console.log('already publishing', streamId);
+            }
+
             return streamId;
         } catch (error) {
             throw new Error(`Failed to create room: ${error}`);
@@ -200,39 +259,67 @@ export class AntMediaService {
     }
 
     async joinRoom(roomId: string, userName: string) {
+        console.log('Joining room:', roomId, 'with userName:', userName);
         if (!this.webRTCAdaptor) {
             throw new Error('WebRTCAdaptor not initialized. Call initialize() first.');
         }
 
-        // Clean and format the room ID and stream ID
-        this.roomId = roomId.replace(/[^a-zA-Z0-9]/g, '_');
-        const streamId = `${this.roomId}_${userName.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
+        // If already published, prevent republishing
+        if (this.isPublished) {
+            console.log('Already published in a room');
+            throw new Error('Already published in a room. Please leave the current room first.');
+        }
+
+        // If already publishing in this room, don't try to publish again
+        if (this.isPublishing && this.roomId === roomId) {
+            console.log('Already publishing in this room');
+            return this.currentStreamId!;
+        }
+
+        // Reset states for new room join
+        this.isPublishing = false;
+        this.currentStreamId = null;
+
+        // Clean and format IDs
+        const cleanRoomId = roomId.replace(/[^a-zA-Z0-9]/g, '_');
+        const cleanUserName = userName.replace(/[^a-zA-Z0-9]/g, '_');
+        this.roomId = cleanRoomId;
+
+        // Create a unique stream ID and name
+        const timestamp = Date.now();
+        const streamId = `${cleanRoomId}_${cleanUserName}_${timestamp}`;
+        const streamName = `${cleanUserName}_${timestamp}`; // Ensure stream name is unique
+        this.currentStreamId = streamId;
 
         try {
+            console.log('Joining room with streamId:', streamId, 'and streamName:', streamName);
+
             // Join the room first
-            await new Promise<void>((resolve, reject) => {
-                this.webRTCAdaptor!.joinRoom(this.roomId!, streamId, resolve);
-            });
+            this.webRTCAdaptor.joinRoom(this.roomId, streamId);
 
-            // Then publish the stream
-            await this.webRTCAdaptor.publish(streamId);
-
+            // Add a small delay to ensure room join is processed
+            await new Promise(resolve => setTimeout(resolve, 1000));
             // Get room info and play other streams
             const roomInfo = await new Promise<{ streams?: string[] }>((resolve) => {
                 this.webRTCAdaptor!.getRoomInfo(this.roomId!, resolve);
             });
 
+            console.log("Room info received:", roomInfo);
+
             if (roomInfo.streams) {
                 roomInfo.streams.forEach((otherStreamId: string) => {
                     if (otherStreamId !== streamId) {
-                        this.webRTCAdaptor?.play(otherStreamId);
+                        this.webRTCAdaptor?.play(otherStreamId, undefined, userName);
                     }
                 });
             }
 
             return streamId;
         } catch (error) {
-            throw new Error(`Failed to join room: ${error}`);
+            this.isPublishing = false;
+            this.currentStreamId = null;
+            console.error('Error joining room:', error);
+            throw error;
         }
     }
 
@@ -248,6 +335,9 @@ export class AntMediaService {
         this.webRTCAdaptor.leaveFromRoom(this.roomId);
         this.participants.clear();
         this.roomId = undefined;
+        this.isPublishing = false;
+        this.isPublished = false;
+        this.currentStreamId = null;
     }
 
     disconnect() {
@@ -255,6 +345,8 @@ export class AntMediaService {
             this.leaveRoom();
             this.webRTCAdaptor.closeWebSocket();
             this.webRTCAdaptor = null;
+            this.isPublishing = false;
+            this.currentStreamId = null;
         }
     }
 

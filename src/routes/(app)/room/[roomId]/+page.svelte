@@ -141,54 +141,76 @@
         try {
             console.log('Initializing AntMedia service...');
             
-            const serverUrl = PUBLIC_ANT_MEDIA_URL || 'test.antmedia.io:5443';
+            const serverUrl = PUBLIC_ANT_MEDIA_URL || '54.198.58.66:5080';
             
             console.log('Connecting to:', serverUrl);
             
-            await antMediaService.initialize(
-                serverUrl,
-                'localVideoId',
-                {
-                    onParticipantJoined: (participant) => {
-                        console.log('participant joined', participant);
-                        participants = [...participants, participant];
-                        loading = false;
-                    },
-                    onParticipantLeft: (streamId) => {
-                        console.log('participant left', streamId);
-                        participants = participants.filter(p => p.streamId !== streamId);
-                    },
-                    onLocalStream: (stream) => {
-                        const audioTracks = stream.getAudioTracks();
-                        if (audioTracks.length > 0) {
-                            audioTracks[0].enabled = !isMicMuted;
+            try {
+                await antMediaService.initialize(
+                    serverUrl,
+                    'localVideoId',
+                    {
+                        onParticipantJoined: (participant) => {
+                            console.log('Participant joined event triggered:', participant);
+                            participants = [...participants, participant];
+                            loading = false;
+                            toast.success(`${participant.name || 'A new participant'} joined the room`);
+                        },
+                        onParticipantLeft: (streamId) => {
+                            console.log('Participant left event triggered:', streamId);
+                            participants = participants.filter(p => p.streamId !== streamId);
+                            toast.info('A participant left the room');
+                        },
+                        onLocalStream: (stream) => {
+                            console.log('Local stream received:', stream);
+                            const audioTracks = stream.getAudioTracks();
+                            if (audioTracks.length > 0) {
+                                audioTracks[0].enabled = !isMicMuted;
+                            }
+                        },
+                        onError: (error, message) => {
+                            console.error('WebRTC Error:', error, message);
+                            toast.error(typeof message === 'string' ? message : 'Connection error');
+                        },
+                        onSuccess: async (message) => {
+                            try {
+                                toast.success(message);
+                                console.log('AntMedia service initialized successfully');
+                                
+                                const cleanName = name?.trim() || 'Guest';
+                                console.log('Attempting to create room:', roomName, 'with name:', cleanName);
+                                
+                                await antMediaService.createRoom(roomName, cleanName);
+                                console.log('Successfully created room');
+                                
+                                loading = false;
+                                toast.success(`Welcome to the room, ${cleanName}!`);
+                                
+                                console.log('Room created successfully');
+                                // console.log('Current participants:', antMediaService.getParticipants());
+                                // updateHostStatus();
+                            } catch (innerError) {
+                                console.error('Error in onSuccess callback:', innerError);
+                                toast.error('Failed to join room: ' + (innerError.message || 'Unknown error'));
+                            }
                         }
-                    },
-                    onError: (error, message) => {
-                        console.error('WebRTC Error:', error, message);
-                        toast.error(typeof message === 'string' ? message : 'Connection error');
-                    },
-                    onSuccess: (message) => {
-                        toast.success(message);
-                        console.log('AntMedia service initialized and joined room');
-                        
-                        console.log('participants',  antMediaService.getParticipants());
-                      
                     }
-                }
-            );
-
-            console.log('Joining room:', roomName);
-            const cleanName = name?.trim() || 'Guest';
-            await antMediaService.joinRoom(roomName, cleanName);
-            updateHostStatus();
-            
+                );
+            } catch (initError) {
+                console.error('Error initializing AntMedia service:', initError);
+                throw new Error('Failed to initialize video service: ' + (initError.message || 'Unknown error'));
+            }
         } catch (e) {
             console.error('Failed to join room:', e);
             toast.error(e.message || 'Failed to connect to the room');
             handleError();
         }
     };
+
+    // Add a reactive statement to log participants changes
+    $: if (participants) {
+        console.log('Current participants:', participants);
+    }
 
     onMount(() => {
         if (!browser) return;

@@ -98,7 +98,9 @@ export class AntMediaService {
             case "initialized":
                 console.log("WebRTC adaptor initialized");
                 this.isInitialized = true;
-                this.callbacks.onSuccess?.("Successfully connected to media server");
+                setTimeout(() => {
+                    this.callbacks.onSuccess?.("Successfully connected to media server");
+                }, 1000);
                 break;
 
             case "publish_started":
@@ -150,6 +152,13 @@ export class AntMediaService {
                 this.localStream = obj;
                 this.callbacks.onLocalStream?.(obj);
                 this.callbacks.onSuccess?.("Your camera and microphone are connected");
+                break;
+
+            case "iceCandidateError":
+                console.warn("ICE Candidate Error:", obj);
+                if (this.webRTCAdaptor && this.roomId && this.currentStreamId) {
+                    this.webRTCAdaptor.reconnect();
+                }
                 break;
         }
     }
@@ -259,12 +268,11 @@ export class AntMediaService {
     }
 
     async joinRoom(roomId: string, userName: string) {
-
         if (!this.webRTCAdaptor) {
             throw new Error('WebRTCAdaptor not initialized. Call initialize() first.');
         }
-        // Create a unique stream ID and name
-        const timestamp = Date.now();
+
+        this.roomId = roomId;
         const streamId = roomId;
         const streamName = userName;
         this.currentStreamId = streamId;
@@ -272,28 +280,13 @@ export class AntMediaService {
         try {
             console.log('Joining room with streamId:', streamId, 'and streamName:', streamName);
 
-            // Join the room first
-            this.webRTCAdaptor.joinRoom(this.roomId, streamName);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            this.webRTCAdaptor.joinRoom(roomId, streamName);
+            this.webRTCAdaptor.join(streamId);
             console.log('joined room', streamId);
 
-            // Add a small delay to ensure room join is processed
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // // Get room info and play other streams
-
-            // let roomInfo = await new Promise<{ streams?: string[] }>((resolve) => {
-            //     this.webRTCAdaptor!.getRoomInfo(this.roomId!, streamName);
-            // });
-
-
-            // console.log("Room info received:", roomInfo);
-
-            // if (roomInfo.streams) {
-            //     roomInfo.streams.forEach((otherStreamId: string) => {
-            //         if (otherStreamId !== streamId) {
-            //             this.webRTCAdaptor?.play(otherStreamId, undefined, userName);
-            //         }
-            //     });
-            // }
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
             return streamId;
         } catch (error) {

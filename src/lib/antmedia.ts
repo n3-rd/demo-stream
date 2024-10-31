@@ -259,60 +259,41 @@ export class AntMediaService {
     }
 
     async joinRoom(roomId: string, userName: string) {
-        console.log('Joining room:', roomId, 'with userName:', userName);
+
         if (!this.webRTCAdaptor) {
             throw new Error('WebRTCAdaptor not initialized. Call initialize() first.');
         }
-
-        // If already published, prevent republishing
-        if (this.isPublished) {
-            console.log('Already published in a room');
-            throw new Error('Already published in a room. Please leave the current room first.');
-        }
-
-        // If already publishing in this room, don't try to publish again
-        if (this.isPublishing && this.roomId === roomId) {
-            console.log('Already publishing in this room');
-            return this.currentStreamId!;
-        }
-
-        // Reset states for new room join
-        this.isPublishing = false;
-        this.currentStreamId = null;
-
-        // Clean and format IDs
-        const cleanRoomId = roomId.replace(/[^a-zA-Z0-9]/g, '_');
-        const cleanUserName = userName.replace(/[^a-zA-Z0-9]/g, '_');
-        this.roomId = cleanRoomId;
-
         // Create a unique stream ID and name
         const timestamp = Date.now();
-        const streamId = `${cleanRoomId}_${cleanUserName}_${timestamp}`;
-        const streamName = `${cleanUserName}_${timestamp}`; // Ensure stream name is unique
+        const streamId = roomId;
+        const streamName = userName;
         this.currentStreamId = streamId;
 
         try {
             console.log('Joining room with streamId:', streamId, 'and streamName:', streamName);
 
             // Join the room first
-            this.webRTCAdaptor.joinRoom(this.roomId, streamId);
+            this.webRTCAdaptor.joinRoom(this.roomId, streamName);
+            console.log('joined room', streamId);
 
             // Add a small delay to ensure room join is processed
             await new Promise(resolve => setTimeout(resolve, 1000));
-            // Get room info and play other streams
-            const roomInfo = await new Promise<{ streams?: string[] }>((resolve) => {
-                this.webRTCAdaptor!.getRoomInfo(this.roomId!, resolve);
-            });
+            // // Get room info and play other streams
 
-            console.log("Room info received:", roomInfo);
+            // let roomInfo = await new Promise<{ streams?: string[] }>((resolve) => {
+            //     this.webRTCAdaptor!.getRoomInfo(this.roomId!, streamName);
+            // });
 
-            if (roomInfo.streams) {
-                roomInfo.streams.forEach((otherStreamId: string) => {
-                    if (otherStreamId !== streamId) {
-                        this.webRTCAdaptor?.play(otherStreamId, undefined, userName);
-                    }
-                });
-            }
+
+            // console.log("Room info received:", roomInfo);
+
+            // if (roomInfo.streams) {
+            //     roomInfo.streams.forEach((otherStreamId: string) => {
+            //         if (otherStreamId !== streamId) {
+            //             this.webRTCAdaptor?.play(otherStreamId, undefined, userName);
+            //         }
+            //     });
+            // }
 
             return streamId;
         } catch (error) {

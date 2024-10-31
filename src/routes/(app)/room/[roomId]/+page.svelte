@@ -187,6 +187,9 @@
                                 toast.success(`Welcome to the room, ${cleanName}!`);
                                 
                                 console.log('Room created successfully');
+
+                                await antMediaService.joinRoom(roomName, cleanName);
+                                console.log('Successfully joined room');
                                 // console.log('Current participants:', antMediaService.getParticipants());
                                 // updateHostStatus();
                             } catch (innerError) {

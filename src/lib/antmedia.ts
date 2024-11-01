@@ -281,9 +281,7 @@ export class AntMediaService {
             console.log('Joining room with streamId:', streamId, 'and streamName:', streamName);
 
             await new Promise(resolve => setTimeout(resolve, 2000));
-
-            this.webRTCAdaptor.joinRoom(roomId, streamName);
-            this.webRTCAdaptor.join(streamId);
+            this.webRTCAdaptor.play(streamId);
             console.log('joined room', streamId);
 
             await new Promise(resolve => setTimeout(resolve, 2000));

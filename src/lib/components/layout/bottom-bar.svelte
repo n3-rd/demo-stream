@@ -1,8 +1,9 @@
 <script>
     export let roomIdentityName;
     export let isMicMuted;
+    export let isCameraOff;
     import { Button } from "$lib/components/ui/button";
-    import { Mic, MicOff, Settings } from "lucide-svelte";
+    import { Mic, MicOff, Settings, CameraOffIcon, CameraIcon } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
     const dispatch = createEventDispatcher();
 </script>
@@ -26,6 +27,16 @@
              />
          {:else}
              <Mic color="#fff" size={24} class="hover:text-black" />
+         {/if}
+     </button>
+     <button
+         class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
+         on:click={() => dispatch("toggleCamera")}
+     >
+         {#if isCameraOff}
+             <CameraOffIcon color="#fff" size={24} class="hover:text-black" />
+         {:else}
+             <CameraIcon color="#fff" size={24} class="hover:text-black" />
          {/if}
      </button>
      <button

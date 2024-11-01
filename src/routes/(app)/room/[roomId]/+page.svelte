@@ -37,6 +37,7 @@ import {
 } from "lucide-svelte";
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
+	import RightBar from '$lib/components/layout/right-bar.svelte';
 
 export let data;
 
@@ -242,9 +243,39 @@ function toggleMicrophone() {
     }
 }
 
+function turnOnCamera() {
+    webRTCAdaptor.turnOnLocalCamera();
+    isCameraOff = false;
+}
+
+function turnOffCamera() {
+    webRTCAdaptor.turnOffLocalCamera();
+    isCameraOff = true;
+}
+
+function toggleCamera() {
+    if (isCameraOff) {
+        turnOnCamera();
+    } else {
+        turnOffCamera();
+    }
+}
+
 const handleScheduleClose = () => {
     scheduleOpen = false;
 };
+
+function togglePanel(id) {
+        if (id === "chatPanel") {
+            document.getElementById("participantsPanel").style.width = "0px";
+        }
+        if (id === "participantsPanel") {
+            document.getElementById("chatPanel").style.width = "0px";
+        }
+        const panel = document.getElementById(id);
+        panel.style.width = panel.style.width === "30rem" ? "0px" : "30rem";
+}
+
 
 // Add these helper functions
 function handleMainTrackBroadcastObject(broadcastObject) {
@@ -336,6 +367,7 @@ function createRemoteVideo(trackLabel: string, kind: string) {
         <div class="flex items-center h-full pt-6 pb-24">
             <!-- left sidebar -->
              <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user.id} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+             <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
             <div class="container">
                 <header class="header clearfix">
                     <div class="row">
@@ -378,11 +410,19 @@ function createRemoteVideo(trackLabel: string, kind: string) {
                     </div>
                 </main>
             </div>
+            <div
+            class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel"
+            id="participantsPanel"
+        >
+            <!-- <Participants {participants} {isHost} {name} {users} /> -->
+        </div>
+        </div>
+        <RightBar on:toggleChat={() => togglePanel("chatPanel")} on:toggleParticipants={() => togglePanel("participantsPanel")} />
         </div>
     </div>
 
     <!-- Bottom controls bar -->
-    <BottomBar roomIdentityName={roomIdentity[0].associated_video_name} isMicMuted={isMicMuted} on:leaveRoom={leaveRoom} on:toggleMicrophone={toggleMicrophone} />
+    <BottomBar roomIdentityName={roomIdentity[0].associated_video_name} isMicMuted={isMicMuted} on:leaveRoom={leaveRoom} on:toggleMicrophone={toggleMicrophone} isCameraOff={isCameraOff} on:toggleCamera={toggleCamera} />
 </div>
 
 <style>

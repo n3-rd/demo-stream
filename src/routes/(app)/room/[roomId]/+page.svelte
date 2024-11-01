@@ -1,27 +1,42 @@
 <script lang="ts">
-	import { PUBLIC_ANT_MEDIA_URL } from '$env/static/public';
-import { WebRTCAdaptor } from "@antmedia/webrtc_adaptor";
-import { page } from "$app/stores";
-import { onMount } from "svelte";
-import { Button } from "$lib/components/ui/button";
-import { toast } from "svelte-sonner";
-import * as Dialog from "$lib/components/ui/dialog";
-import { goto } from "$app/navigation";
 import {
-        Calendar,
-        CircleUser,
-        Quote,
-        ShareIcon,
-        MicOff,
-        Settings,
-        Clapperboard,
-        MessageSquareDashed,
-        SendHorizontal,
-        UsersRound,
-        Mic,
-        Code,
-    } from "lucide-svelte";
-	import BottomBar from '$lib/components/layout/bottom-bar.svelte';
+    PUBLIC_ANT_MEDIA_URL
+} from '$env/static/public';
+import {
+    WebRTCAdaptor
+} from "@antmedia/webrtc_adaptor";
+import {
+    page
+} from "$app/stores";
+import {
+    onMount
+} from "svelte";
+import {
+    Button
+} from "$lib/components/ui/button";
+import {
+    toast
+} from "svelte-sonner";
+import * as Dialog from "$lib/components/ui/dialog";
+import {
+    goto
+} from "$app/navigation";
+import {
+    Calendar,
+    CircleUser,
+    Quote,
+    ShareIcon,
+    MicOff,
+    Settings,
+    Clapperboard,
+    MessageSquareDashed,
+    SendHorizontal,
+    UsersRound,
+    Mic,
+    Code,
+} from "lucide-svelte";
+import BottomBar from '$lib/components/layout/bottom-bar.svelte';
+	import LeftBar from '$lib/components/layout/left-bar.svelte';
 
 export let data;
 
@@ -37,6 +52,10 @@ let reconnecting = false;
 let publishReconnected = false;
 let playReconnected = false;
 let isNoStreamExist = false;
+const joinURL = $page.url.href;
+let scheduleOpen = false;
+
+
 
 // Room data
 const roomName = $page.url.pathname.split("/").pop();
@@ -57,7 +76,12 @@ const playOnly = false;
 
 // WebRTC configuration
 const mediaConstraints = {
-    video: !dcOnly ? { width: { min: 176, max: 360 } } : !dcOnly,
+    video: !dcOnly ? {
+        width: {
+            min: 176,
+            max: 360
+        }
+    } : !dcOnly,
     audio: !dcOnly
 };
 
@@ -99,7 +123,7 @@ function handleWebRTCCallback(info: string, obj: any) {
         case "broadcastObject":
             if (obj.broadcast === undefined) return;
             let broadcastObject = JSON.parse(obj.broadcast);
-            
+
             if (obj.streamId === roomName) {
                 handleMainTrackBroadcastObject(broadcastObject);
             } else {
@@ -133,7 +157,7 @@ function handleWebRTCCallback(info: string, obj: any) {
             console.log("Data Channel closed for stream id", obj);
             isDataChannelOpen = false;
             break;
-        // Add other cases as needed
+            // Add other cases as needed
     }
 }
 
@@ -180,7 +204,7 @@ function generateRandomString(length: number): string {
 function removeAllRemoteVideos() {
     const players = document.getElementById("players");
     if (!players) return;
-    
+
     const children = players.querySelectorAll('div');
     children.forEach((child, index) => {
         if (index !== 0) { // Skip local video
@@ -201,13 +225,13 @@ function handlePlayStarted() {
 }
 
 function muteLocalMic() {
-		webRTCAdaptor.muteLocalMic();
-		isMicMuted = true;
-	}
+    webRTCAdaptor.muteLocalMic();
+    isMicMuted = true;
+}
 
-	function unmuteLocalMic() {
-		webRTCAdaptor.unmuteLocalMic();
-		isMicMuted = false;
+function unmuteLocalMic() {
+    webRTCAdaptor.unmuteLocalMic();
+    isMicMuted = false;
 }
 
 function toggleMicrophone() {
@@ -218,6 +242,9 @@ function toggleMicrophone() {
     }
 }
 
+const handleScheduleClose = () => {
+    scheduleOpen = false;
+};
 
 // Add these helper functions
 function handleMainTrackBroadcastObject(broadcastObject) {
@@ -303,83 +330,85 @@ function createRemoteVideo(trackLabel: string, kind: string) {
     document.getElementById("players")?.appendChild(player);
 }
 
-// Add other necessary functions...
 </script>
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
+    <div class="h-full">
+        <div class="flex items-center h-full pt-6 pb-24">
+            <!-- left sidebar -->
+             <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user.id} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+            <div class="container">
+                <header class="header clearfix">
+                    <div class="row">
+                        <h3 class="col text-muted">WebRTC Conference</h3>
+                        <nav class="col align-self-center">
+                            <ul class="nav float-right">
+                                <li><a href="/">Home</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </header>
 
-<div class="container">
-    <header class="header clearfix">
-        <div class="row">
-            <h3 class="col text-muted">WebRTC Conference</h3>
-            <nav class="col align-self-center">
-                <ul class="nav float-right">
-                    <li><a href="/">Home</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+                <main class="conference-room">
+                    <div id="players" class="row">
+                        <div class="col-sm-3">
+                            <video id="localVideo" autoplay muted controls playsinline></video>
+                        </div>
+                    </div>
 
-    <main class="conference-room">
-        <div id="players" class="row">
-            <div class="col-sm-3">
-                <video id="localVideo" autoplay muted controls playsinline></video>
+                    <div class="controls row">
+                        <div class="col-sm-8 offset-sm-2">
+                            <div class="button-group">
+                                <button class="btn btn-primary" on:click={joinRoom}>
+                                    Join Room
+                                </button>
+                                <button class="btn btn-danger" on:click={leaveRoom}>
+                                    Leave Room
+                                </button>
+                            </div>
+
+                            <div class="media-controls">
+                                <button class="btn btn-outline-primary" on:click={() => webRTCAdaptor?.muteLocalMic()}>
+                                    {isMicMuted ? 'Unmute' : 'Mute'} Mic
+                                </button>
+                                <button class="btn btn-outline-primary" on:click={() => webRTCAdaptor?.turnOffLocalCamera()}>
+                                    {isCameraOff ? 'Turn On' : 'Turn Off'} Camera
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </main>
             </div>
         </div>
+    </div>
 
-        <div class="controls row">
-            <div class="col-sm-8 offset-sm-2">
-                <div class="button-group">
-                    <button class="btn btn-primary" on:click={joinRoom}>
-                        Join Room
-                    </button>
-                    <button class="btn btn-danger" on:click={leaveRoom}>
-                        Leave Room
-                    </button>
-                </div>
-
-                <div class="media-controls">
-                    <button class="btn btn-outline-primary" on:click={() => webRTCAdaptor?.muteLocalMic()}>
-                        {isMicMuted ? 'Unmute' : 'Mute'} Mic
-                    </button>
-                    <button class="btn btn-outline-primary" on:click={() => webRTCAdaptor?.turnOffLocalCamera()}>
-                        {isCameraOff ? 'Turn On' : 'Turn Off'} Camera
-                    </button>
-                </div>
-            </div>
-        </div>
-    </main>
+    <!-- Bottom controls bar -->
+    <BottomBar roomIdentityName={roomIdentity[0].associated_video_name} isMicMuted={isMicMuted} on:leaveRoom={leaveRoom} on:toggleMicrophone={toggleMicrophone} />
 </div>
-
- <!-- Bottom controls bar -->
-<BottomBar roomIdentityName={roomIdentity[0].associated_video_name} isMicMuted={isMicMuted} on:leaveRoom={leaveRoom} on:toggleMicrophone={toggleMicrophone} />
-</div>
-
-
 
 <style>
-    .conference-room {
-        padding: 20px;
-    }
+.conference-room {
+    padding: 20px;
+}
 
-    .controls {
-        margin-top: 20px;
-    }
+.controls {
+    margin-top: 20px;
+}
 
-    .button-group {
-        margin-bottom: 15px;
-    }
+.button-group {
+    margin-bottom: 15px;
+}
 
-    .media-controls {
-        display: flex;
-        gap: 10px;
-    }
+.media-controls {
+    display: flex;
+    gap: 10px;
+}
 
-    video {
-        width: 100%;
-        max-width: 320px;
-        height: 100%;
-        max-height: 240px;
-    }
+video {
+    width: 100%;
+    max-width: 320px;
+    height: 100%;
+    max-height: 240px;
+}
 
-    /* Keep your existing styles... */
+/* Keep your existing styles... */
 </style>

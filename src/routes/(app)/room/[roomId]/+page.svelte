@@ -38,6 +38,8 @@ import {
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
+	import { currentVideoUrl } from '$lib/callStores.js';
+    import { sendMessage } from '$lib/helpers/sendMessage';
 
 export let data;
 
@@ -56,6 +58,40 @@ let isNoStreamExist = false;
 const joinURL = $page.url.href;
 let scheduleOpen = false;
 
+// Add video state management
+let videoPlayer;
+let isVideoPlaying = false;
+let currentVideoTime = 0;
+
+// Add WebSocket state management
+let wsConnection = null;
+let isWsConnected = false;
+
+// Function to initialize WebSocket connection
+function initializeWebSocket() {
+    if (wsConnection) {
+        wsConnection.close();
+    }
+
+    wsConnection = new WebSocket(`${getWebSocketURL()}?target=origin`);
+    
+    wsConnection.onopen = () => {
+        console.log('WebSocket connected');
+        isWsConnected = true;
+    };
+    
+    wsConnection.onclose = () => {
+        console.log('WebSocket closed');
+        isWsConnected = false;
+        // Attempt to reconnect after a delay
+        setTimeout(initializeWebSocket, 3000);
+    };
+    
+    wsConnection.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        isWsConnected = false;
+    };
+}
 
 
 // Room data
@@ -67,7 +103,10 @@ const representatives = data.representatives;
 const users = data.users;
 const roomIdentity = data.roomId;
 const videoRepresentatives = data.videoRepresentativesInfo;
+let isHost = false;
 const host = $page.url.pathname.split("/").pop().split("-").pop();
+isHost = host === (user ? user.id : "");
+
 
 // Stream configuration
 let publishStreamId = null;
@@ -93,6 +132,7 @@ function getWebSocketURL() {
 
 onMount(() => {
     initializeWebRTC();
+    
     return () => {
         if (webRTCAdaptor) {
             webRTCAdaptor.stop(publishStreamId);
@@ -108,6 +148,7 @@ function initializeWebRTC() {
         localVideoId: "localVideo",
         isPlayMode: playOnly,
         onlyDataChannel: dcOnly,
+        dataChannelEnabled: true,
         debug: true,
         callback: handleWebRTCCallback,
         callbackError: handleWebRTCError
@@ -119,7 +160,6 @@ function handleWebRTCCallback(info: string, obj: any) {
         case "initialized":
             console.log("WebRTC initialized");
             joinRoom();
-
             break;
         case "broadcastObject":
             if (obj.broadcast === undefined) return;
@@ -153,10 +193,44 @@ function handleWebRTCCallback(info: string, obj: any) {
         case "data_channel_opened":
             console.log("Data Channel opened for stream id", obj);
             isDataChannelOpen = true;
+            // Initial sync when data channel opens
+            if (isHost && videoPlayer) {
+                setTimeout(handleVideoStateChange, 1000);
+            }
             break;
         case "data_channel_closed":
             console.log("Data Channel closed for stream id", obj);
             isDataChannelOpen = false;
+            break;
+        case "data_received":
+
+            try {
+                const data = JSON.parse(obj.data);
+                let messageBody;
+                if(data.messageBody) {
+                    messageBody = JSON.parse(data.messageBody);
+                }
+                
+                console.log('data', data);
+                if (messageBody && messageBody.eventType == 'video_sync') {
+                    console.log('Received video sync:', messageBody);
+                    handleVideoSync(messageBody);
+                }
+            } catch (e) {
+                console.error("Error parsing data message:", e);
+            }
+            break;
+        case "data_sent":
+            console.log("Data sent:", obj);
+            break;
+        case "connected":
+            console.log("Connected to", obj);
+            break;
+        case "peerconnection_created":
+            console.log("PeerConnection created for", obj);
+            break;
+        case "sdp_received":
+            console.log("SDP received for", obj);
             break;
             // Add other cases as needed
     }
@@ -221,7 +295,7 @@ function handlePublishStarted() {
 }
 
 function handlePlayStarted() {
-    console.log('Playing successfully');
+    console.log('Playing successfully66');
     isPlaying = true;
 }
 
@@ -261,6 +335,52 @@ function toggleCamera() {
     }
 }
 
+// Function to handle video state changes by host
+function handleVideoStateChange() {
+    if (!isHost || !videoPlayer) return;
+    
+    const videoState = {
+        streamId: roomName,
+        eventType: 'video_sync',
+        currentTime: videoPlayer.currentTime,
+        isPlaying: !videoPlayer.paused
+    };
+    
+    // Only send through WebRTC data channel
+    if (webRTCAdaptor && isDataChannelOpen) {
+        try {
+           sendMessage(videoState.streamId, videoState.currentTime, JSON.stringify(videoState), roomName);
+        } catch (error) {
+            console.error('Error sending video sync:', error);
+        }
+    } else {
+        console.log('WebRTC data channel not ready');
+    }
+}
+
+// Function to handle incoming video sync messages
+function handleVideoSync(data) {
+    if (isHost || !videoPlayer) return;
+
+    try {
+        // Sync video time if difference is more than 0.5 seconds
+        if (Math.abs(videoPlayer.currentTime - data.currentTime) > 0.5) {
+            videoPlayer.currentTime = data.currentTime;
+        }
+
+        // Sync play/pause state
+        if (data.isPlaying && videoPlayer.paused) {
+            videoPlayer.play();
+        } else if (!data.isPlaying && !videoPlayer.paused) {
+            videoPlayer.pause();
+        }
+    } catch (e) {
+        console.error("Error handling video sync data:", e);
+    }
+}
+
+
+
 const handleScheduleClose = () => {
     scheduleOpen = false;
 };
@@ -276,7 +396,7 @@ function togglePanel(id) {
         panel.style.width = panel.style.width === "30rem" ? "0px" : "30rem";
 }
 
-
+ 
 // Add these helper functions
 function handleMainTrackBroadcastObject(broadcastObject) {
     let participantIds = broadcastObject.subTrackStreamIds;
@@ -343,6 +463,8 @@ function playVideo(obj) {
     }
 }
 
+let videoURL;
+
 function createRemoteVideo(trackLabel: string, kind: string) {
     const player = document.createElement("div");
     player.className = "col-sm-3";
@@ -361,7 +483,55 @@ function createRemoteVideo(trackLabel: string, kind: string) {
     document.getElementById("players")?.appendChild(player);
 }
 
+let videoUrl = $currentVideoUrl || `${roomIdentity[0].associated_video}`;
+console.log("videoUrl", videoUrl);
+
+// Add timestamp for throttling
+let lastUpdate = 0;
+
 </script>
+{#if isHost}
+<div class="video-container">
+    <video
+        bind:this={videoPlayer}
+        src={videoUrl}
+        autoplay={false}
+        controls
+        playsinline
+        on:play={handleVideoStateChange}
+        on:pause={handleVideoStateChange}
+        on:seeked={handleVideoStateChange}
+        on:timeupdate={() => {
+            // Throttle timeupdate events to prevent overwhelming the connection
+            if (isHost && isDataChannelOpen) {
+                const now = Date.now();
+                if (!lastUpdate || now - lastUpdate > 1000) { // Update every second
+                    lastUpdate = now;
+                    handleVideoStateChange();
+                }
+            }
+        }}
+    >
+        <track kind="captions">
+        Your browser does not support the video element.
+ 
+</video>
+</div>
+{:else}
+<div class="video-container">
+    <video
+        bind:this={videoPlayer}
+        src={videoUrl}
+        autoplay={false}
+        controls={false}
+        playsinline
+    >
+        <track kind="captions">
+        Your browser does not support the video element.
+    </video>
+</div>
+{/if}
+
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
     <div class="h-full">
         <div class="flex items-center h-full pt-6 pb-24">
@@ -448,6 +618,23 @@ video {
     max-width: 320px;
     height: 100%;
     max-height: 240px;
+}
+
+.video-container {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    background: black;
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 /* Keep your existing styles... */

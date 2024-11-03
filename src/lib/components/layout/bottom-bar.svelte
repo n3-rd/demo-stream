@@ -3,8 +3,9 @@
     export let isMicMuted;
     export let isCameraOff;
     import { Button } from "$lib/components/ui/button";
-    import { Mic, MicOff, Settings, CameraOffIcon, CameraIcon } from "lucide-svelte";
+    import { Mic, MicOff, Settings, CameraOffIcon, CameraIcon, Monitor } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
+    export let isScreenSharing = false;
     const dispatch = createEventDispatcher();
 </script>
  <!-- Bottom controls bar -->
@@ -39,6 +40,14 @@
              <CameraIcon color="#fff" size={24} class="hover:text-black" />
          {/if}
      </button>
+     <Button
+    variant="ghost"
+    size="icon"
+    class="h-12 w-12"
+    on:click={() => dispatch('toggleScreenShare')}
+>
+    <Monitor class={isScreenSharing ? "text-red-500" : ""} />
+</Button>
      <button
          class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
      >

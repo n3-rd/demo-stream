@@ -116,12 +116,7 @@ const playOnly = false;
 
 // WebRTC configuration
 const mediaConstraints = {
-    video: !dcOnly ? {
-        width: {
-            min: 176,
-            max: 360
-        }
-    } : !dcOnly,
+    video: false,
     audio: !dcOnly
 };
 
@@ -435,22 +430,26 @@ function playVideo(obj) {
     const roomId = roomName;
     console.log("new track available with id: " + obj.trackId + " and kind: " + obj.track.kind + " on the room:" + roomId);
 
-    // trackId is ARDAMSv+STREAM_ID or ARDAMSa+STREAM_ID
+    // Only process audio tracks
+    if (obj.track.kind !== "audio") {
+        return;
+    }
+
     const incomingTrackId = obj.trackId.substring("ARDAMSx".length);
 
     if (incomingTrackId == roomId || incomingTrackId == publishStreamId) {
         return;
     }
 
-    let video = document.getElementById("remoteVideo" + incomingTrackId);
+    let audio = document.getElementById("remoteAudio" + incomingTrackId);
 
-    if (video == null) {
-        createRemoteVideo(incomingTrackId, obj.track.kind);
-        video = document.getElementById("remoteVideo" + incomingTrackId);
-        video.srcObject = new MediaStream();
+    if (audio == null) {
+        createRemoteAudio(incomingTrackId);
+        audio = document.getElementById("remoteAudio" + incomingTrackId);
+        audio.srcObject = new MediaStream();
     }
 
-    video.srcObject.addTrack(obj.track);
+    audio.srcObject.addTrack(obj.track);
 
     obj.track.onended = event => {
         console.log("track is ended with id: " + event.target.id);
@@ -459,29 +458,32 @@ function playVideo(obj) {
     obj.stream.onremovetrack = event => {
         console.log("track is removed with id: " + event.track.id);
         const removedTrackId = event.track.id.substring("ARDAMSx".length);
-        removeRemoteVideo(removedTrackId);
+        removeRemoteAudio(removedTrackId);
     }
 }
 
-let videoURL;
-
-function createRemoteVideo(trackLabel: string, kind: string) {
+function createRemoteAudio(trackLabel: string) {
     const player = document.createElement("div");
     player.className = "col-sm-3";
     player.id = "player" + trackLabel;
 
-    if (kind == "audio") {
-        player.style.display = "none";
-    }
-
     player.innerHTML = `
-        <video id="remoteVideo${trackLabel}" controls autoplay playsinline></video>
+        <audio id="remoteAudio${trackLabel}" controls autoplay></audio>
         <div id="overlay${trackLabel}" style="font-size: 10px;position: absolute; top: 5px; left: 50%; transform: translateX(-50%); color: white; background-color: rgba(0, 0, 0, 0.5); padding: 5px;">
             ${trackLabel}
         </div>`;
 
     document.getElementById("players")?.appendChild(player);
 }
+
+function removeRemoteAudio(trackLabel: string) {
+    const player = document.getElementById("player" + trackLabel);
+    if (player) {
+        player.remove();
+    }
+}
+
+let videoURL;
 
 let videoUrl = $currentVideoUrl || `${roomIdentity[0].associated_video}`;
 console.log("videoUrl", videoUrl);
@@ -490,14 +492,23 @@ console.log("videoUrl", videoUrl);
 let lastUpdate = 0;
 
 </script>
-{#if isHost}
-<div class="video-container">
+
+
+<div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
+    <div class="h-full">
+        <div class="flex items-center h-full pt-6 pb-24">
+            <!-- left sidebar -->
+             <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user.id} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+             <div class="flex-grow h-full bg-[#9d9d9f] relative flex flex-col gap-2">
+                {#if isHost}
+<div class="video-container h-full w-full">
     <video
         bind:this={videoPlayer}
         src={videoUrl}
         autoplay={false}
         controls
         playsinline
+        class="h-full w-full"
         on:play={handleVideoStateChange}
         on:pause={handleVideoStateChange}
         on:seeked={handleVideoStateChange}
@@ -531,14 +542,7 @@ let lastUpdate = 0;
     </video>
 </div>
 {/if}
-
-<div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
-    <div class="h-full">
-        <div class="flex items-center h-full pt-6 pb-24">
-            <!-- left sidebar -->
-             <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user.id} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
-             <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
-            <div class="container">
+            <div class="container invisible w-0 h-0">
                 <header class="header clearfix">
                     <div class="row">
                         <h3 class="col text-muted">WebRTC Conference</h3>
@@ -553,7 +557,7 @@ let lastUpdate = 0;
                 <main class="conference-room">
                     <div id="players" class="row">
                         <div class="col-sm-3">
-                            <video id="localVideo" autoplay muted controls playsinline></video>
+                            <audio id="localAudio" autoplay muted controls></audio>
                         </div>
                     </div>
 
@@ -572,16 +576,13 @@ let lastUpdate = 0;
                                 <button class="btn btn-outline-primary" on:click={() => webRTCAdaptor?.muteLocalMic()}>
                                     {isMicMuted ? 'Unmute' : 'Mute'} Mic
                                 </button>
-                                <button class="btn btn-outline-primary" on:click={() => webRTCAdaptor?.turnOffLocalCamera()}>
-                                    {isCameraOff ? 'Turn On' : 'Turn Off'} Camera
-                                </button>
                             </div>
                         </div>
                     </div>
                 </main>
             </div>
             <div
-            class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel"
+            class="w-0 bg-[#666669] h-0 overflow-y-auto flex flex-col panel"
             id="participantsPanel"
         >
             <!-- <Participants {participants} {isHost} {name} {users} /> -->
@@ -613,28 +614,21 @@ let lastUpdate = 0;
     gap: 10px;
 }
 
-video {
-    width: 100%;
-    max-width: 320px;
-    height: 100%;
-    max-height: 240px;
-}
-
 .video-container {
     width: 100%;
-    max-width: 1280px;
-    margin: 0 auto;
+    height: 100%;
     background: black;
-    aspect-ratio: 16 / 9;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
 }
 
 .video-container video {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
+    position: absolute;
 }
 
 /* Keep your existing styles... */

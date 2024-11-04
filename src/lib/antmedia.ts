@@ -272,11 +272,7 @@ export class AntMediaService {
             throw new Error('WebRTCAdaptor not initialized. Call initialize() first.');
         }
 
-        this.webRTCAdaptor.webSocketAdaptor?.send(roomId, JSON.stringify({
-            type: 'sync',
-            videoState: JSON.stringify(videoState)
-        }))
-
+        this.webRTCAdaptor.publish
         // receive sync
         this.webRTCAdaptor.webSocketAdaptor. = (event) => {
             console.log('received sync', event.data);

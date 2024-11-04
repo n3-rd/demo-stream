@@ -40,6 +40,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
 	import { currentVideoUrl } from '$lib/callStores.js';
     import { sendMessage } from '$lib/helpers/sendMessage';
+    import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 
 export let data;
 
@@ -50,6 +51,7 @@ let isDataChannelOpen = false;
 let isMicMuted = false;
 let isCameraOff = false;
 let allParticipants = {};
+let meetingParticipants = [];
 let isReconnectionInProgress = false;
 let reconnecting = false;
 let publishReconnected = false;
@@ -63,9 +65,14 @@ let videoPlayer;
 let isVideoPlaying = false;
 let currentVideoTime = 0;
 
+
 // Add WebSocket state management
 let wsConnection = null;
 let isWsConnected = false;
+
+$:{
+    console.log("meetingParticipants", meetingParticipants);
+}
 
 // Function to initialize WebSocket connection
 function initializeWebSocket() {
@@ -105,6 +112,7 @@ const roomIdentity = data.roomId;
 const videoRepresentatives = data.videoRepresentativesInfo;
 let isHost = false;
 const host = $page.url.pathname.split("/").pop().split("-").pop();
+console.log("host", host);
 isHost = host === (user ? user.id : "");
 
 
@@ -170,23 +178,19 @@ function handleWebRTCCallback(info: string, obj: any) {
             playVideo(obj);
             break;
         case "publish_started":
-            console.log("Published successfully");
             isPlaying = true;
             webRTCAdaptor.getBroadcastObject(roomName);
             break;
         case "play_started":
-            console.log("Playing successfully");
             isPlaying = true;
             isNoStreamExist = false;
             webRTCAdaptor.getBroadcastObject(roomName);
             break;
         case "play_finished":
-            console.log("Play finished for stream:" + obj.streamId);
             removeAllRemoteVideos();
             isPlaying = false;
             break;
         case "data_channel_opened":
-            console.log("Data Channel opened for stream id", obj);
             isDataChannelOpen = true;
             // Initial sync when data channel opens
             if (isHost && videoPlayer) {
@@ -194,11 +198,10 @@ function handleWebRTCCallback(info: string, obj: any) {
             }
             break;
         case "data_channel_closed":
-            console.log("Data Channel closed for stream id", obj);
             isDataChannelOpen = false;
             break;
         case "data_received":
-
+            // console.log("stream info", webRTCAdaptor.getStreamInfo(roomName));
             try {
                 const data = JSON.parse(obj.data);
                 let messageBody;
@@ -206,9 +209,7 @@ function handleWebRTCCallback(info: string, obj: any) {
                     messageBody = JSON.parse(data.messageBody);
                 }
                 
-                console.log('data', data);
                 if (messageBody && messageBody.eventType == 'video_sync') {
-                    console.log('Received video sync:', messageBody);
                     handleVideoSync(messageBody);
                 }
             } catch (e) {
@@ -217,7 +218,7 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
         case "data_sent":
             console.log("Data sent:", obj);
-            break;
+            break;            
         case "connected":
             console.log("Connected to", obj);
             break;
@@ -238,17 +239,17 @@ function handleWebRTCError(error: string, message: string) {
 
 function joinRoom() {
     if (!publishStreamId) {
-        publishStreamId = generateRandomString(12);
+        publishStreamId = generateRandomString(12);            
     }
 
     if (!playOnly) {
         console.log('starting publish');
         webRTCAdaptor.publish(
-            publishStreamId,
+            `${publishStreamId}-${name}`,
             null,
             null,
             null,
-            null,
+            name,
             roomIdentity[0].room_id
         );
     }
@@ -270,6 +271,12 @@ function leaveRoom() {
 function generateRandomString(length: number): string {
     return Math.random().toString(36).substring(2, length + 2);
 }
+
+setInterval(() => {
+    getStreamInfo(roomName).then(streamInfo => {
+        meetingParticipants = streamInfo.subTrackStreamIds;
+    });
+}, 5000);
 
 function removeAllRemoteVideos() {
     const players = document.getElementById("players");
@@ -588,7 +595,11 @@ let lastUpdate = 0;
             <!-- <Participants {participants} {isHost} {name} {users} /> -->
         </div>
         </div>
-        <RightBar on:toggleChat={() => togglePanel("chatPanel")} on:toggleParticipants={() => togglePanel("participantsPanel")} />
+        <RightBar 
+        isHost={isHost}
+        name={name}
+        participants={meetingParticipants.map(participant => participant.split("-").pop())}
+        on:toggleChat={() => togglePanel("chatPanel")} on:toggleParticipants={() => togglePanel("participantsPanel")} />
         </div>
     </div>
 

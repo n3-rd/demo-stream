@@ -14,6 +14,7 @@
     let roomUrl = '';
     let anonymousUserId: string | null = null;
     let form: HTMLFormElement;
+    
 
     function generateEmbedCode(meetingUrl: string) {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -73,17 +74,18 @@
             use:enhance={() => {
                 loading = true;
                 return async ({ result }) => {
-                    if (result.data?.room?.name) {
+                    if (result.type === 'success') {
                         currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
                         toast.success('Room created successfully');
-                        console.log('result.data.room.name', result.data.room.name);
-                        goto(`/room/${result.data.room.name}`);
-                    } else if (result.status === 400) {
-                        toast.error('Bad request');
-                    } else if (result.status === 500) {
-                        toast.error('Server error');
-                    } else {
-                        toast.error('Oops, something went wrong!');
+                        goto(`/room/${result.data.room.room_id}?anonymousUserId=${anonymousUserId}&hostUserId=${anonymousUserId}`);
+                    } else if (result.type === 'error') {
+                        if (result.status === 400) {
+                            toast.error('Bad request');
+                        } else if (result.status === 500) {
+                            toast.error('Server error');
+                        } else {
+                            toast.error('Oops, something went wrong!');
+                        }
                     }
                     loading = false;
                 };

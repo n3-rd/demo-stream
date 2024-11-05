@@ -69,7 +69,7 @@
         >
             <div class="w-full bg-transparent">
                 <ScheduleMeeting
-                    userId={userId}
+                    userId={userId || ''}
                     on:close={() => dispatch("closeSchedule")}
                 />
             </div>

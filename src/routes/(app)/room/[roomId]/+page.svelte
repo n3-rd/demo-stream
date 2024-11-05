@@ -46,6 +46,12 @@ export let data;
 
 // State management
 let webRTCAdaptor: any;
+let urlRepresentativeName: string;
+$: urlRepresentativeName = $page.url.searchParams.get('representativeName');
+let anonymousUserId: string;
+$: anonymousUserId = $page.url.searchParams.get('anonymousUserId');
+let hostUserId: string;
+$: hostUserId = $page.url.searchParams.get('hostUserId');
 let isPlaying = false;
 let isDataChannelOpen = false;
 let isMicMuted = false;
@@ -111,10 +117,16 @@ const users = data.users;
 const roomIdentity = data.roomId;
 const videoRepresentatives = data.videoRepresentativesInfo;
 let isHost = false;
-const host = $page.url.pathname.split("/").pop().split("-").pop();
+// ... existing code ...
+const host = $page.url.searchParams.get('hostUserId');
+$:{
+    isHost = host === (user ? user.id : "") || host === anonymousUserId;
+}
 console.log("host", host);
-isHost = host === (user ? user.id : "");
-
+ console.log("isHost", isHost);
+ console.log("anonymousUserId", anonymousUserId);
+ console.log('page url', $page.url);
+// ... existing code ...
 
 // Stream configuration
 let publishStreamId = null;
@@ -245,11 +257,11 @@ function joinRoom() {
     if (!playOnly) {
         console.log('starting publish');
         webRTCAdaptor.publish(
-            `${publishStreamId}-${name}`,
+            `${publishStreamId}-${name || anonymousUserId}`,
             null,
             null,
             null,
-            name,
+            name || anonymousUserId,
             roomIdentity[0].room_id
         );
     }
@@ -362,7 +374,7 @@ function handleVideoStateChange() {
 
 // Function to handle incoming video sync messages
 function handleVideoSync(data) {
-    if (isHost || !videoPlayer) return;
+    if (isHost || !videoPlayer) return;LeftBa
 
     try {
         // Sync video time if difference is more than 0.5 seconds
@@ -505,7 +517,7 @@ let lastUpdate = 0;
     <div class="h-full">
         <div class="flex items-center h-full pt-6 pb-24">
             <!-- left sidebar -->
-             <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user.id} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+             <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
              <div class="flex-grow h-full bg-[#9d9d9f] relative flex flex-col gap-2">
                 {#if isHost}
 <div class="video-container h-full w-full">

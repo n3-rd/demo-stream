@@ -7,12 +7,12 @@ const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
 const sanitizeAssociatedVideo = (videoRef: string) => {
     // Remove '/video/' prefix if present
     let sanitizedVideo = videoRef.startsWith('/video/') ? videoRef.slice(7) : videoRef;
-    
+
     // Remove the last '.mp4' if present
     if (sanitizedVideo.endsWith('.mp4')) {
         sanitizedVideo = sanitizedVideo.slice(0, -4);
     }
-    
+
     return sanitizedVideo;
 }
 
@@ -27,8 +27,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
         filter: 'representative = true',
     });
     const users = await locals.pb.collection('users').getFullList();
+    console.log('params', params.roomId.split('&')[0]);
     const roomId = await locals.pb.collection('rooms').getFullList({
-        filter: `room_id = "${params.roomId}"`
+        filter: `room_id = "${params.roomId.split('&')[0]}"`
     })
     const videoRepresentatives = await locals.pb.collection('room_videos_duplicate').getFirstListItem(`video_ref = "${sanitizeAssociatedVideo(roomId[0].associated_video)}"`).then((result) => {
         console.log('result', result);
@@ -50,7 +51,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 };
 
 export const actions: Actions = {
-    'create-room': async ({locals, fetch}) => {
+    'create-room': async ({ locals, fetch }) => {
         const user = locals.pb.authStore.model;
         const username = user.name;
         const exp = Math.round(Date.now() / 1000) + 60 * 60 * 24;
@@ -58,7 +59,7 @@ export const actions: Actions = {
             properties: {
                 exp,
                 userName: username,
-                enable_adaptive_simulcast : false,
+                enable_adaptive_simulcast: false,
             }
         };
 

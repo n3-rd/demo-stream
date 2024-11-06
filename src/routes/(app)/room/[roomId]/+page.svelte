@@ -118,9 +118,9 @@ const roomIdentity = data.roomId;
 const videoRepresentatives = data.videoRepresentativesInfo;
 let isHost = false;
 // ... existing code ...
-const host = $page.url.searchParams.get('hostUserId');
+const host = $page.url.pathname.split("/").pop().split("-").pop();
 $:{
-    isHost = host === (user ? user.id : "") || host === anonymousUserId;
+    isHost = host === (user ? user.id : "") 
 }
 console.log("host", host);
  console.log("isHost", isHost);
@@ -374,7 +374,7 @@ function handleVideoStateChange() {
 
 // Function to handle incoming video sync messages
 function handleVideoSync(data) {
-    if (isHost || !videoPlayer) return;LeftBa
+    if (isHost || !videoPlayer) return;
 
     try {
         // Sync video time if difference is more than 0.5 seconds

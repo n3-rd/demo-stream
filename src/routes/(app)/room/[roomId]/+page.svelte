@@ -259,7 +259,6 @@ function joinRoom() {
 function leaveRoom() {
     allParticipants = {};
     webRTCAdaptor.stop(roomName);
-    removeAllRemoteVideos();
     isPlaying = false;
     window.location.href = "/";
 
@@ -275,18 +274,6 @@ setInterval(() => {
         meetingParticipants = streamInfo.subTrackStreamIds;
     });
 }, 5000);
-
-function removeAllRemoteVideos() {
-    const players = document.getElementById("players");
-    if (!players) return;
-
-    const children = players.querySelectorAll('div');
-    children.forEach((child, index) => {
-        if (index !== 0) { // Skip local video
-            players.removeChild(child);
-        }
-    });
-}
 
 // Add these handler functions
 function handlePublishStarted() {

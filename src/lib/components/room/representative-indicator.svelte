@@ -3,60 +3,94 @@
     import { page } from '$app/stores';
     
     export let participants;
-    export let callObject;
-
-    let urlRepresentativeName: string;
-    let currentUserSessionId: string;
     
-    $: urlRepresentativeName = $page.url.searchParams.get('representativeName');
-
-    onMount(() => {
-        if (callObject) {
-            callObject.on('participant-updated', updateParticipantVideo);
-            currentUserSessionId = callObject.participants().local.session_id;
-        }
-    });
-
-    function updateParticipantVideo(event) {
-        const { participant } = event;
-        if (isRepresentative(participant) && shouldShowIndicator(participant)) {
-            const videoElement = document.getElementById(`video-${participant.session_id}`) as HTMLVideoElement;
-            if (videoElement && participant.tracks.video.state === 'playable') {
-                videoElement.srcObject = new MediaStream([participant.tracks.video.track]);
-            }
-        }
+    let urlRepresentativeName: string;
+    let videoElements = new Map();
+    
+    // Add the srcObject directive
+    function srcObject(node, stream) {
+        node.srcObject = stream;
+        return {
+            update(newStream) {
+                if (node.srcObject != newStream) {
+                    node.srcObject = newStream;
+                }
+            },
+        };
     }
 
     function isRepresentative(participant) {
-        return participant.user_name && participant.user_name.includes('(Representative)');
+        const participantName = participant.split('-').pop();
+        return participantName && participantName.includes('Representative');
+        
     }
 
     function shouldShowIndicator(participant) {
-        const representativeName = participant.user_name.replace(' (Representative)', '');
-        return representativeName !== urlRepresentativeName && 
-               participant.session_id !== currentUserSessionId;
+        const participantName = participant.split('-').pop();
+        const representativeName = participantName.replace('Representative', ' ');
+        return representativeName !== urlRepresentativeName;
     }
 
     $: visibleRepresentatives = participants.filter(p => isRepresentative(p) && shouldShowIndicator(p));
+
+    onMount(() => {
+        // Start camera for each representative
+        visibleRepresentatives.forEach(async (participant) => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoElements.set(participant, stream);
+                videoElements = videoElements; // Trigger Svelte reactivity
+            } catch (err) {
+                console.error('Error accessing camera for representative:', err);
+            }
+        });
+
+        return () => {
+            // Cleanup video streams when component is destroyed
+            videoElements.forEach(stream => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            });
+        };
+    });
 </script>
 
 {#if visibleRepresentatives.length > 0}
 <div class="absolute bottom-0 right-24 top-[37%] z-50 flex items-center gap-3 pointer-events-none">
     {#each visibleRepresentatives as participant}
     <div class="relative bg-red-500 h-32 w-52 rounded-lg overflow-hidden">
-        <video 
-            id={`video-${participant.session_id}`}
-            autoplay
-            playsinline
-            muted
-            class="w-full h-full object-cover object-center"
-        >
-            <track kind="captions" />
-        </video>
+        <div class="video-container h-full w-full">
+           
+                <video 
+                    autoplay
+                    playsinline
+                    use:srcObject={videoElements.get(participant)}
+                    class="w-full h-full object-cover"
+                >
+                    <track kind="captions" />
+                </video>
+            
+        </div>
         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2">
-            {participant.user_name || 'Unknown'}
+            {participant.split('-').pop().replace('Representative', ' (Representative)') || 'Unknown'}
         </div>
     </div>
     {/each}
 </div>
 {/if}
+
+<style>
+    .video-container {
+        position: relative;
+    }
+    
+    .video-container video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+</style>

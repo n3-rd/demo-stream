@@ -12,7 +12,7 @@
     let anonymousUser = $page.url.searchParams.get('anonymousUserId') !== null;
     console.log('anonymousUser', anonymousUser);
     let submitBtn: HTMLButtonElement;
-    export let room;
+    export let roomName;
 
   
     function handleSubmit() {
@@ -47,7 +47,7 @@
     <div class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
         <div class="bg-white rounded-lg shadow-lg w-11/12 max-w-md p-8">
             <div class="text-center">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-2">Join {room.associated_video_name}</h2>
+                <h2 class="text-2xl font-semibold text-gray-800 mb-2">Join {roomName}</h2>
                 <p class="text-gray-600 mb-6">Enter your name to join the video call</p>
                 <form on:submit|preventDefault={handleSubmit} class="space-y-6">
                     <div class="text-left">
@@ -64,7 +64,7 @@
                     <button 
                         type="submit" 
                         bind:this={submitBtn}
-                        disabled={!name.trim() || name.trim() == room.associated_video_name}
+                        disabled={!name.trim() || name.trim() == roomName}
                         class="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary/60 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">

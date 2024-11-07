@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { anonymousUser } from '$lib/stores/anonymousUser';
     import { enhance } from '$app/forms';
     import { goto } from '$app/navigation';
-	import { currentVideoUrl } from '$lib/callStores.js';
+	import { currentVideoUrl } from '$lib/callStores';
     import { Button } from '$lib/components/ui/button';
     import { toast } from 'svelte-sonner';
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
@@ -77,6 +78,7 @@
                     if (result.type === 'success') {
                         currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
                         toast.success('Room created successfully');
+                        anonymousUser.set(anonymousUserId)
                         goto(`/room/${result.data.room.room_id}?anonymousUserId=${anonymousUserId}&hostUserId=${anonymousUserId}`);
                     } else if (result.type === 'error') {
                         if (result.status === 400) {

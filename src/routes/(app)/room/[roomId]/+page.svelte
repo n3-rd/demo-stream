@@ -11,38 +11,17 @@ import {
 import {
     onMount
 } from "svelte";
-import {
-    Button
-} from "$lib/components/ui/button";
-import {
-    toast
-} from "svelte-sonner";
-import * as Dialog from "$lib/components/ui/dialog";
-import {
-    goto
-} from "$app/navigation";
-import {
-    Calendar,
-    CircleUser,
-    Quote,
-    ShareIcon,
-    MicOff,
-    Settings,
-    Clapperboard,
-    MessageSquareDashed,
-    SendHorizontal,
-    UsersRound,
-    Mic,
-    Code,
-} from "lucide-svelte";
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
 	import { currentVideoUrl } from '$lib/callStores.js';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
+	import { anonymousUser } from '$lib/stores/anonymousUser.js';
+	import NameInputModal from '$lib/components/name-input-modal.svelte';
 
 export let data;
+
 
 // State management
 let webRTCAdaptor: any;
@@ -127,6 +106,7 @@ console.log("host", host);
 
 // Stream configuration
 let publishStreamId = null;
+let showNameModal = !isAuthenticated;
 const streamName = roomIdentity[0]?.associated_video_name;
 const dcOnly = false;
 const playOnly = false;
@@ -143,7 +123,9 @@ function getWebSocketURL() {
 }
 
 onMount(() => {
-    initializeWebRTC();
+    if ($anonymousUser || isAuthenticated) {
+        initializeWebRTC();
+    }
     
     return () => {
         if (webRTCAdaptor) {
@@ -171,6 +153,7 @@ function handleWebRTCCallback(info: string, obj: any) {
     switch (info) {
         case "initialized":
             console.log("WebRTC initialized");
+            
             joinRoom();
             break;
         case "broadcastObject":
@@ -250,6 +233,8 @@ function joinRoom() {
     if (!publishStreamId) {
         publishStreamId = generateRandomString(12);            
     }
+
+
 
     // Sanitize the name by removing any URL parameters and special characters
     const sanitizedName = (name || anonymousUserId).split('&')[0].replace(/[^a-zA-Z0-9-_]/g, '');
@@ -514,7 +499,7 @@ let lastUpdate = 0;
 // Reactive declarations with immediate logging
 $: {
     urlRepresentativeName = $page.url.searchParams.get('representativeName');
-    anonymousUserId = $page.url.searchParams.get('anonymousUserId');
+    anonymousUserId = $anonymousUser;
     hostUserId = $page.url.searchParams.get('hostUserId');
     
     // Debug logging
@@ -527,9 +512,19 @@ $: {
     });
 }
 
+function handleNameSubmitted(event) {
+    const submittedName = event.detail;
+    console.log("submittedName", submittedName);
+    anonymousUser.set(submittedName);
+    // Initialize WebRTC after name is set
+    initializeWebRTC();
+}
+
 </script>
 
-
+{#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '')}
+    <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={roomIdentity[0].associated_video_name} />
+{:else}
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
     <div class="h-full">
         <div class="flex items-center h-full pt-6 pb-24">
@@ -635,6 +630,7 @@ $: {
     <!-- Bottom controls bar -->
     <BottomBar roomIdentityName={roomIdentity[0].associated_video_name} isMicMuted={isMicMuted} on:leaveRoom={leaveRoom} on:toggleMicrophone={toggleMicrophone} isCameraOff={isCameraOff} on:toggleCamera={toggleCamera} />
 </div>
+{/if}
 
 <style>
 .conference-room {

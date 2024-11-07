@@ -128,7 +128,7 @@ const playOnly = false;
 // WebRTC configuration
 const mediaConstraints = {
     video: true,
-    audio: !dcOnly
+    audio: true
 };
 
 function getWebSocketURL() {
@@ -458,7 +458,6 @@ function playVideo(obj) {
         if (audio == null) {
             createRemoteAudio(incomingTrackId);
             audio = document.getElementById("remoteAudio" + incomingTrackId);
-            audio.srcObject = new MediaStream();
         }
 
         if (audio) {
@@ -466,9 +465,9 @@ function playVideo(obj) {
                 audio.srcObject = new MediaStream();
             }
             audio.srcObject.addTrack(obj.track);
+            audio.play().catch(e => console.error("Error playing audio:", e));
         }
-    // Handle video tracks
-    else if (obj.track.kind === "video") {
+    } else if (obj.track.kind === "video") {
         let video = document.getElementById("remoteVideo" + incomingTrackId);
         
         if (video == null) {
@@ -503,21 +502,27 @@ function playVideo(obj) {
             }
         }
     };
-}
+
 
 function createRemoteAudio(trackLabel: string) {
+    // Create a container for audio elements if it doesn't exist
+    let playersContainer = document.getElementById("players");
+    if (!playersContainer) {
+        playersContainer = document.createElement("div");
+        playersContainer.id = "players";
+        document.body.appendChild(playersContainer);
+    }
+
     const player = document.createElement("div");
-    console.log("player", player);
-    player.className = "col-sm-3";
     player.id = "player" + trackLabel;
 
-    player.innerHTML = `
-        <audio id="remoteAudio${trackLabel}" controls autoplay></audio>
-        <div id="overlay${trackLabel}" style="font-size: 10px;position: absolute; top: 5px; left: 50%; transform: translateX(-50%); color: white; background-color: rgba(0, 0, 0, 0.5); padding: 5px;">
-            ${trackLabel}
-        </div>`;
+    const audio = document.createElement("audio");
+    audio.id = "remoteAudio" + trackLabel;
+    audio.autoplay = true;
+    audio.controls = true;  // Make controls visible for debugging
 
-    document.getElementById("players")?.appendChild(player);
+    player.appendChild(audio);
+    playersContainer.appendChild(player);
 }
 
 function removeRemoteAudio(trackLabel: string) {

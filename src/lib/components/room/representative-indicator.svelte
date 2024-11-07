@@ -50,13 +50,13 @@
 
     $: visibleRepresentatives = participants.filter(p => isRepresentative(p) && shouldShowIndicator(p));
 
-    $: {
-        console.log('Current videoElements:', videoElements);
-        console.log('Visible representatives:', visibleRepresentatives);
-        visibleRepresentatives.forEach(participant => {
-            console.log(`Stream for ${participant}:`, videoElements.get(participant));
-        });
-    }
+    // $: {
+    //     console.log('Current videoElements:', videoElements);
+    //     console.log('Visible representatives:', visibleRepresentatives);
+    //     visibleRepresentatives.forEach(participant => {
+    //         console.log(`Stream for ${participant}:`, videoElements.get(participant));
+    //     });
+    // }
 </script>
 
 {#if visibleRepresentatives.length > 0}

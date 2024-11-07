@@ -15,10 +15,10 @@
     const joinURL = $page.url.href;
 
 
-    console.log('users', users);
-    console.log('pageName', pageName);
-    console.log('hostUser', hostUser);
-    console.log('isHost', isHost);
+    // console.log('users', users);
+    // console.log('pageName', pageName);
+    // console.log('hostUser', hostUser);
+    // console.log('isHost', isHost);
 </script>
 <div class="flex justify-between items-center p-4 border-b bg-[#666669]">
     <h2 class="text-xl font-bold text-white">Participants</h2>

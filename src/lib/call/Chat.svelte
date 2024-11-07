@@ -10,11 +10,11 @@
     import { MessageSquareDashed } from 'lucide-svelte';
     import { Button } from '$lib/components/ui/button';
     import { SendHorizontal } from 'lucide-svelte';
+    import { sendMessage } from '$lib/helpers/sendMessage';
+    export let roomId: string;
 
     const dispatch = createEventDispatcher();
 
-    export let callObject;
-    export let hasNewNotification;
     let newText = '';
     let chatIsOpen = false;
     let messages = [];
@@ -31,20 +31,25 @@
         clearInterval(interval);
     });
 
-    $: {
-        if (hasNewNotification && chatIsOpen) {
-            dispatch('clear-notification');
-        }
-    }
 
-    const sendMessage = () => {
-        if (!callObject) return;
+    const sendNewMessage = () => {
+        if (!newText.trim()) return;
+        
         const local = callObject.participants().local.user_name || 'Guest';
         const newMessage = {
             name: local,
             text: newText
         };
-        callObject.sendAppMessage(newMessage);
+
+        // Send message using the sendMessage helper
+        sendMessage(
+            crypto.randomUUID(), // unique message ID
+            Date.now(), // current timestamp
+            JSON.stringify(newMessage),
+            callObject.roomId // room ID from the call object
+        );
+
+        // Update local messages store
         chatMessages.update(messages => [...messages, newMessage]);
         newText = '';
     };
@@ -52,21 +57,7 @@
     const toggleChat = () => (chatIsOpen = !chatIsOpen);
 </script>
 
-<Sheet.Root>
-    <Sheet.Trigger>
-        <button on:click={toggleChat} class="p-2">
-           <MessageSquareDashed class="w-6 h-6" color="#fff" />
-        </button>
-    </Sheet.Trigger>
-    <Sheet.Content>
-        <Sheet.Header>
-            <Sheet.Title class="text-xl font-bold">Chat</Sheet.Title>
-            <Sheet.Description>
-                {#if hasNewNotification}
-                    <span class="absolute top-0 right-0 bg-red-500 shadow-pulse-red rounded-full m-1 h-4 w-4 animate-pulse" />
-                {/if}
-            </Sheet.Description>
-        </Sheet.Header>
+
         <div class="flex flex-col w-full h-full">
             <div class="flex-grow flex flex-col p-4 overflow-y-scroll">
                 {#each messages as message}
@@ -82,8 +73,7 @@
                 </Button>
             </form>
         </div>
-    </Sheet.Content>
-</Sheet.Root>
+
 
 <style>
     .shadow-pulse-red {

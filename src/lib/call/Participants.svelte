@@ -56,16 +56,16 @@
 {#each participants as participant}
   <div class="flex items-center py-4">
     <img
-      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(participant)}&background=random`}
-      alt={`${participant}'s avatar`}
+      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(participant.split('-').pop())}&background=random`}
+      alt={`${participant.split('-').pop()}'s avatar`}
       class="w-8 h-8 rounded-full mr-2"
     />
     <div class="flex-grow flex flex-col">
       <span class="text-sm font-medium">
         {#if participant.includes('Representative')}
-          {participant.replace('Representative', '')} (Representative)
+          {participant.split('-').pop().replace('Representative', '')} (Representative)
         {:else}
-          {participant}
+          {participant.split('-').pop()}
         {/if}
         {#if participant === name}
           <span class="text-gray-400"> (You)</span>

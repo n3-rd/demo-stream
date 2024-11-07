@@ -46,12 +46,9 @@ export let data;
 
 // State management
 let webRTCAdaptor: any;
-let urlRepresentativeName: string;
-$: urlRepresentativeName = $page.url.searchParams.get('representativeName');
-let anonymousUserId: string;
-$: anonymousUserId = $page.url.searchParams.get('anonymousUserId');
-let hostUserId: string;
-$: hostUserId = $page.url.searchParams.get('hostUserId');
+let urlRepresentativeName: string = '';
+let anonymousUserId: string = '';
+let hostUserId: string = '';
 let isPlaying = false;
 let isDataChannelOpen = false;
 let isMicMuted = false;
@@ -108,7 +105,7 @@ function initializeWebSocket() {
 
 
 // Room data
-const roomName = $page.url.pathname.split("/").pop();
+const roomName = $page.url.pathname.split("/").pop().split("&")[0];
 const user = data.user;
 const isAuthenticated = !!user;
 const name = isAuthenticated ? user.name : "";
@@ -120,7 +117,7 @@ let isHost = false;
 // ... existing code ...
 const host = $page.url.pathname.split("/").pop().split("-").pop();
 $:{
-    isHost = host === (user ? user.id : "") 
+    isHost = host === (user ? user.id : "") || host == anonymousUserId
 }
 console.log("host", host);
  console.log("isHost", isHost);
@@ -254,20 +251,24 @@ function joinRoom() {
         publishStreamId = generateRandomString(12);            
     }
 
+    // Sanitize the name by removing any URL parameters and special characters
+    const sanitizedName = (name || anonymousUserId).split('&')[0].replace(/[^a-zA-Z0-9-_]/g, '');
+    const sanitizedRoomName = roomName.split('&')[0];
+
     if (!playOnly) {
         console.log('starting publish');
         webRTCAdaptor.publish(
-            `${publishStreamId}-${name || anonymousUserId}`,
+            `${publishStreamId}-${sanitizedName}`,
             null,
             null,
             null,
-            name || anonymousUserId,
+            sanitizedName,
             roomIdentity[0].room_id
         );
     }
 
     console.log('starting play');
-    webRTCAdaptor.play(roomName);
+    webRTCAdaptor.play(sanitizedRoomName);
 }
 
 function leaveRoom() {
@@ -509,6 +510,22 @@ console.log("videoUrl", videoUrl);
 
 // Add timestamp for throttling
 let lastUpdate = 0;
+
+// Reactive declarations with immediate logging
+$: {
+    urlRepresentativeName = $page.url.searchParams.get('representativeName');
+    anonymousUserId = $page.url.searchParams.get('anonymousUserId');
+    hostUserId = $page.url.searchParams.get('hostUserId');
+    
+    // Debug logging
+    console.log('URL Params updated:', {
+        urlRepresentativeName,
+        anonymousUserId,
+        hostUserId,
+        rawUrl: $page.url.toString(),
+        searchParams: Object.fromEntries($page.url.searchParams)
+    });
+}
 
 </script>
 

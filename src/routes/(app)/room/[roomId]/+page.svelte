@@ -24,6 +24,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     import { MessageSquareDashed, UsersRound } from 'lucide-svelte';
 	import Participants from '$lib/call/Participants.svelte';
 	import Chat from '$lib/call/Chat.svelte';
+	import { chatMessages } from '$lib/stores/chatMessages';
 
 export let data;
 
@@ -60,9 +61,9 @@ let isWsConnected = false;
 // Add this near the top of your script section with other state management variables
 let videoElements = new Map();
 
-$:{
-    console.log("meetingParticipants", meetingParticipants);
-}
+// $:{
+//     console.log("meetingParticipants", meetingParticipants);
+// }
 
 // Function to initialize WebSocket connection
 function initializeWebSocket() {
@@ -206,15 +207,18 @@ function handleWebRTCCallback(info: string, obj: any) {
             isDataChannelOpen = false;
             break;
         case "data_received":
-            // console.log("stream info", webRTCAdaptor.getStreamInfo(roomName));
             try {
                 const data = JSON.parse(obj.data);
                 let messageBody;
-                if(data.messageBody) {
+                if (data.messageBody) {
                     messageBody = JSON.parse(data.messageBody);
                 }
                 
-                if (messageBody && messageBody.eventType == 'video_sync') {
+                if (messageBody && messageBody.eventType === 'chat_message') {
+                    handleChatMessage(messageBody);
+                }
+                
+                if (messageBody && messageBody.eventType === 'video_sync') {
                     handleVideoSync(messageBody);
                 }
             } catch (e) {
@@ -245,6 +249,11 @@ function handleWebRTCError(error: string, message: string) {
 function joinRoom() {
     if (!publishStreamId) {
         publishStreamId = generateRandomString(12);            
+    }
+
+    function handleChatMessage(messageBody) {
+        console.log("messageBody", messageBody);
+        chatMessages.update(messages => [...messages, messageBody]);
     }
 
 
@@ -550,6 +559,30 @@ function handleNameSubmitted(event) {
     initializeWebRTC();
 }
 
+function handleChatMessage(messageBody) {
+    if (!messageBody || !messageBody.name || !messageBody.text) {
+        console.error("Invalid chat message format:", messageBody);
+        return;
+    }
+
+    // Check if this is a message from the current user
+    const isCurrentUser = messageBody.name === (name || $anonymousUser);
+
+    chatMessages.update(messages => {
+        // Check if message already exists
+        const isDuplicate = messages.some(msg => 
+            msg.name === messageBody.name && 
+            msg.text === messageBody.text
+        );
+
+        // Only add the message if it's not a duplicate and not from current user
+        if (!isDuplicate && !isCurrentUser) {
+            return [...messages, messageBody];
+        }
+        return messages;
+    });
+}
+
 </script>
 
 {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '')}
@@ -605,8 +638,8 @@ function handleNameSubmitted(event) {
 
                 <!-- Chat Panel -->
                 <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="chatPanel">
-                    <div class="flex justify-between items-center p-4 border-b bg-[#47484b]">
-                        <Chat roomId={roomName} />
+                    <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#47484b]">
+                        <Chat roomId={roomName} name={name} />
                     </div>
                     <!-- Add your chat content here -->
                 </div>

@@ -2,7 +2,7 @@
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
-    import { chatMessages } from '../../store';
+    import { chatMessages } from '$lib/stores/chatMessages';
     import chat from './assets/chat.svg';
     import close from './assets/x.svg';
     import send from './assets/send.svg';
@@ -11,7 +11,9 @@
     import { Button } from '$lib/components/ui/button';
     import { SendHorizontal } from 'lucide-svelte';
     import { sendMessage } from '$lib/helpers/sendMessage';
+	import { anonymousUser } from '$lib/stores/anonymousUser';
     export let roomId: string;
+    export let name: string | null = null;
 
     const dispatch = createEventDispatcher();
 
@@ -35,10 +37,11 @@
     const sendNewMessage = () => {
         if (!newText.trim()) return;
         
-        const local = callObject.participants().local.user_name || 'Guest';
+        const local = name || $anonymousUser;
         const newMessage = {
             name: local,
-            text: newText
+            text: newText,
+            eventType: 'chat_message'
         };
 
         // Send message using the sendMessage helper
@@ -46,11 +49,12 @@
             crypto.randomUUID(), // unique message ID
             Date.now(), // current timestamp
             JSON.stringify(newMessage),
-            callObject.roomId // room ID from the call object
+            roomId // room ID from the call object
         );
 
         // Update local messages store
         chatMessages.update(messages => [...messages, newMessage]);
+        console.log(newMessage);
         newText = '';
     };
 
@@ -59,16 +63,42 @@
 
 
         <div class="flex flex-col w-full h-full">
-            <div class="flex-grow flex flex-col p-4 overflow-y-scroll">
+            <div class="flex-grow flex flex-col gap-4 p-4 overflow-y-auto">
                 {#each messages as message}
-                    <p transition:slide={{ easing: quintOut }} class="message">
-                        <span class="text-gray-700 font-semibold">{message.name}</span>: {message.text}
-                    </p>
+                    <div 
+                        transition:slide={{ easing: quintOut }} 
+                        class="flex gap-2 {message.name === (name || $anonymousUser) ? 'flex-row-reverse' : 'flex-row'}"
+                    >
+                        <img 
+                            class="h-12 w-12 rounded-full" 
+                            src={`https://ui-avatars.com/api/?name=${message.name}`} 
+                            alt="avatar"
+                        />
+                        <div class="flex flex-col flex-1 gap-1">
+                            <div 
+                                class="flex flex-col rounded-xl text-sm {
+                                    message.name === (name || $anonymousUser) 
+                                        ? 'bg-[#d8e1ed] text-black' 
+                                        : 'bg-[#9d9d9f] text-white'
+                                } flex-1 px-2 py-2"
+                            >
+                                <div class="text-lg font-medium py-3">{message.name}</div>
+                                <div>
+                                    <p>{message.text}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {/each}
             </div>
-            <form on:submit|preventDefault={sendMessage} class="flex justify-between border-t border-gray-300 lg:p-4 py-4 space-x-3 w-full">
-                <input type="text" placeholder="Type a message..." bind:value={newText} class="flex-grow border-none py-2 px-1 lg:px-4" />
-                <Button type="submit" class="bg-primary border-none cursor-pointer ">
+            <form on:submit|preventDefault={sendNewMessage} class="flex justify-between border-t border-gray-300 py-4 w-full">
+                <input 
+                    type="text" 
+                    placeholder="Type a message..." 
+                    bind:value={newText} 
+                    class="flex-grow border-none py-2 px-1 lg:px-4 w-full" 
+                />
+                <Button type="submit" class="bg-primary border-none cursor-pointer">
                     <SendHorizontal class="w-6 h-6" />
                 </Button>
             </form>

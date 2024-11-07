@@ -23,6 +23,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     import { Button } from '$lib/components/ui/button';
     import { MessageSquareDashed, UsersRound } from 'lucide-svelte';
 	import Participants from '$lib/call/Participants.svelte';
+	import Chat from '$lib/call/Chat.svelte';
 
 export let data;
 
@@ -435,6 +436,7 @@ function playVideo(obj) {
     console.log("new track available with id: " + obj.trackId + " and kind: " + obj.track.kind + " on the room:" + roomId);
 
     const incomingTrackId = obj.trackId.substring("ARDAMSx".length);
+    const streamId = obj.stream.id;
 
     if (incomingTrackId == roomId || incomingTrackId == publishStreamId) {
         return;
@@ -450,8 +452,12 @@ function playVideo(obj) {
             audio.srcObject = new MediaStream();
         }
 
-        audio.srcObject.addTrack(obj.track);
-    }
+        if (audio) {
+            if (!audio.srcObject) {
+                audio.srcObject = new MediaStream();
+            }
+            audio.srcObject.addTrack(obj.track);
+        }
     // Handle video tracks
     else if (obj.track.kind === "video") {
         let video = document.getElementById("remoteVideo" + incomingTrackId);
@@ -485,12 +491,14 @@ function playVideo(obj) {
         // Also remove video elements
         if (videoElements.has(removedTrackId)) {
             videoElements.delete(removedTrackId);
+            }
         }
-    }
+    };
 }
 
 function createRemoteAudio(trackLabel: string) {
     const player = document.createElement("div");
+    console.log("player", player);
     player.className = "col-sm-3";
     player.id = "player" + trackLabel;
 
@@ -598,7 +606,7 @@ function handleNameSubmitted(event) {
                 <!-- Chat Panel -->
                 <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="chatPanel">
                     <div class="flex justify-between items-center p-4 border-b bg-[#47484b]">
-                        <h2 class="text-xl font-bold text-white">Chat</h2>
+                        <Chat roomId={roomName} />
                     </div>
                     <!-- Add your chat content here -->
                 </div>

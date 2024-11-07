@@ -19,6 +19,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
 	import NameInputModal from '$lib/components/name-input-modal.svelte';
+	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
 
 export let data;
 
@@ -51,6 +52,9 @@ let currentVideoTime = 0;
 // Add WebSocket state management
 let wsConnection = null;
 let isWsConnected = false;
+
+// Add this near the top of your script section with other state management variables
+let videoElements = new Map();
 
 $:{
     console.log("meetingParticipants", meetingParticipants);
@@ -118,7 +122,7 @@ const playOnly = false;
 
 // WebRTC configuration
 const mediaConstraints = {
-    video: false,
+    video: true,
     audio: !dcOnly
 };
 
@@ -427,26 +431,45 @@ function playVideo(obj) {
     const roomId = roomName;
     console.log("new track available with id: " + obj.trackId + " and kind: " + obj.track.kind + " on the room:" + roomId);
 
-    // Only process audio tracks
-    if (obj.track.kind !== "audio") {
-        return;
-    }
-
     const incomingTrackId = obj.trackId.substring("ARDAMSx".length);
 
     if (incomingTrackId == roomId || incomingTrackId == publishStreamId) {
         return;
     }
 
-    let audio = document.getElementById("remoteAudio" + incomingTrackId);
+    // Handle audio tracks
+    if (obj.track.kind === "audio") {
+        let audio = document.getElementById("remoteAudio" + incomingTrackId);
 
-    if (audio == null) {
-        createRemoteAudio(incomingTrackId);
-        audio = document.getElementById("remoteAudio" + incomingTrackId);
-        audio.srcObject = new MediaStream();
+        if (audio == null) {
+            createRemoteAudio(incomingTrackId);
+            audio = document.getElementById("remoteAudio" + incomingTrackId);
+            audio.srcObject = new MediaStream();
+        }
+
+        audio.srcObject.addTrack(obj.track);
     }
+    // Handle video tracks
+    else if (obj.track.kind === "video") {
+        let video = document.getElementById("remoteVideo" + incomingTrackId);
+        
+        if (video == null) {
+            video = document.createElement('video');
+            video.id = "remoteVideo" + incomingTrackId;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.style.width = '100%';
+            video.style.height = '100%';
+            video.style.objectFit = 'cover';
+            video.srcObject = new MediaStream();
+        }
 
-    audio.srcObject.addTrack(obj.track);
+        video.srcObject.addTrack(obj.track);
+        
+        // Store the video element reference for the representative indicator
+        videoElements.set(incomingTrackId, video);
+        console.log("Video element stored for", incomingTrackId);
+    }
 
     obj.track.onended = event => {
         console.log("track is ended with id: " + event.target.id);
@@ -456,6 +479,10 @@ function playVideo(obj) {
         console.log("track is removed with id: " + event.track.id);
         const removedTrackId = event.track.id.substring("ARDAMSx".length);
         removeRemoteAudio(removedTrackId);
+        // Also remove video elements
+        if (videoElements.has(removedTrackId)) {
+            videoElements.delete(removedTrackId);
+        }
     }
 }
 
@@ -611,6 +638,9 @@ function handleNameSubmitted(event) {
             <!-- <Participants {participants} {isHost} {name} {users} /> -->
         </div>
         </div>
+        <RepresentativeIndicator 
+            participants={meetingParticipants} 
+        />
         <RightBar 
         isHost={isHost}
         name={name}

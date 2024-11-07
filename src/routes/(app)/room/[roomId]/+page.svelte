@@ -98,6 +98,11 @@ const host = $page.url.pathname.split("/").pop().split("-").pop();
 $:{
     isHost = host === (user ? user.id : "") || host == anonymousUserId
 }
+let isRepresentative = false;
+$:{
+    isRepresentative = $page.url.searchParams.get('representativeName') !== null;
+}
+
 console.log("host", host);
  console.log("isHost", isHost);
  console.log("anonymousUserId", anonymousUserId);
@@ -518,7 +523,7 @@ function handleNameSubmitted(event) {
             <!-- left sidebar -->
              <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
              <div class="flex-grow h-full bg-[#9d9d9f] relative flex flex-col gap-2">
-                {#if isHost}
+                {#if isHost || isRepresentative}
 <div class="video-container h-full w-full">
     <video
         bind:this={videoPlayer}

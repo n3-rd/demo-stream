@@ -62,7 +62,11 @@
     />
     <div class="flex-grow flex flex-col">
       <span class="text-sm font-medium">
-        {participant}
+        {#if participant.includes('Representative')}
+          {participant.replace('Representative', '')} (Representative)
+        {:else}
+          {participant}
+        {/if}
         {#if participant === name}
           <span class="text-gray-400"> (You)</span>
         {/if}

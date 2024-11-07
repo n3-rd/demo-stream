@@ -20,6 +20,9 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
 	import NameInputModal from '$lib/components/name-input-modal.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
+    import { Button } from '$lib/components/ui/button';
+    import { MessageSquareDashed, UsersRound } from 'lucide-svelte';
+	import Participants from '$lib/call/Participants.svelte';
 
 export let data;
 
@@ -549,95 +552,89 @@ function handleNameSubmitted(event) {
         <div class="flex items-center h-full pt-6 pb-24">
             <!-- left sidebar -->
              <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
-             <div class="flex-grow h-full bg-[#9d9d9f] relative flex flex-col gap-2">
+             <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
                 {#if isHost || isRepresentative}
-<div class="video-container h-full w-full">
-    <video
-        bind:this={videoPlayer}
-        src={videoUrl}
-        autoplay={false}
-        controls
-        playsinline
-        class="h-full w-full"
-        on:play={handleVideoStateChange}
-        on:pause={handleVideoStateChange}
-        on:seeked={handleVideoStateChange}
-        on:timeupdate={() => {
-            // Throttle timeupdate events to prevent overwhelming the connection
-            if (isHost && isDataChannelOpen) {
-                const now = Date.now();
-                if (!lastUpdate || now - lastUpdate > 1000) { // Update every second
-                    lastUpdate = now;
-                    handleVideoStateChange();
-                }
-            }
-        }}
-    >
-        <track kind="captions">
-        Your browser does not support the video element.
- 
-</video>
-</div>
-{:else}
-<div class="video-container">
-    <video
-        bind:this={videoPlayer}
-        src={videoUrl}
-        autoplay={false}
-        controls={false}
-        playsinline
-    >
-        <track kind="captions">
-        Your browser does not support the video element.
-    </video>
-</div>
-{/if}
-            <div class="container invisible w-0 h-0">
-                <header class="header clearfix">
-                    <div class="row">
-                        <h3 class="col text-muted">WebRTC Conference</h3>
-                        <nav class="col align-self-center">
-                            <ul class="nav float-right">
-                                <li><a href="/">Home</a></li>
-                            </ul>
-                        </nav>
+                    <div class="video-container h-full w-full">
+                        <video
+                            bind:this={videoPlayer}
+                            src={videoUrl}
+                            autoplay={false}
+                            controls
+                            playsinline
+                            class="h-full w-full"
+                            on:play={handleVideoStateChange}
+                            on:pause={handleVideoStateChange}
+                            on:seeked={handleVideoStateChange}
+                            on:timeupdate={() => {
+                                if (isHost && isDataChannelOpen) {
+                                    const now = Date.now();
+                                    if (!lastUpdate || now - lastUpdate > 1000) {
+                                        lastUpdate = now;
+                                        handleVideoStateChange();
+                                    }
+                                }
+                            }}
+                        >
+                            <track kind="captions">
+                            Your browser does not support the video element.
+                        </video>
                     </div>
-                </header>
-
-                <main class="conference-room">
-                    <div id="players" class="row">
-                        <div class="col-sm-3">
-                            <audio id="localAudio" autoplay muted controls></audio>
-                        </div>
+                {:else}
+                    <div class="video-container h-full w-full">
+                        <video
+                            bind:this={videoPlayer}
+                            src={videoUrl}
+                            autoplay={false}
+                            controls={false}
+                            playsinline
+                            class="h-full w-full"
+                        >
+                            <track kind="captions">
+                            Your browser does not support the video element.
+                        </video>
                     </div>
+                {/if}
 
-                    <div class="controls row">
-                        <div class="col-sm-8 offset-sm-2">
-                            <div class="button-group">
-                                <button class="btn btn-primary" on:click={joinRoom}>
-                                    Join Room
-                                </button>
-                                <button class="btn btn-danger" on:click={leaveRoom}>
-                                    Leave Room
-                                </button>
-                            </div>
-
-                            <div class="media-controls">
-                                <button class="btn btn-outline-primary" on:click={() => webRTCAdaptor?.muteLocalMic()}>
-                                    {isMicMuted ? 'Unmute' : 'Mute'} Mic
-                                </button>
-                            </div>
-                        </div>
+                <!-- Chat Panel -->
+                <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="chatPanel">
+                    <div class="flex justify-between items-center p-4 border-b bg-[#47484b]">
+                        <h2 class="text-xl font-bold text-white">Chat</h2>
                     </div>
-                </main>
+                    <!-- Add your chat content here -->
+                </div>
+
+                <!-- Participants Panel -->
+                <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="participantsPanel">
+                    <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} />
+                </div>
             </div>
-            <div
-            class="w-0 bg-[#666669] h-0 overflow-y-auto flex flex-col panel"
-            id="participantsPanel"
-        >
-            <!-- <Participants {participants} {isHost} {name} {users} /> -->
+
+            <!-- Right sidebar controls -->
+            <div class="flex flex-col gap-3 h-full justify-end">
+                <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        class="w-full hover:bg-red-700"
+                        on:click={() => togglePanel("chatPanel")}
+                    >
+                        <MessageSquareDashed scale={1.3} color="#fff" />
+                    </Button>
+                </div>
+
+                <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        class="w-full hover:bg-red-700"
+                        on:click={() => togglePanel("participantsPanel")}
+                    >
+                        <UsersRound scale={1.3} color="#fff" />
+                    </Button>
+                </div>
+            </div>
         </div>
-        </div>
+
         <RepresentativeIndicator 
             participants={meetingParticipants} 
         />
@@ -651,7 +648,7 @@ function handleNameSubmitted(event) {
 
     <!-- Bottom controls bar -->
     <BottomBar roomIdentityName={roomIdentity[0].associated_video_name} isMicMuted={isMicMuted} on:leaveRoom={leaveRoom} on:toggleMicrophone={toggleMicrophone} isCameraOff={isCameraOff} on:toggleCamera={toggleCamera} />
-</div>
+ 
 {/if}
 
 <style>
@@ -690,4 +687,17 @@ function handleNameSubmitted(event) {
 }
 
 /* Keep your existing styles... */
+
+.panel {
+    transition: width 0.3s ease-in-out;
+}
+.hover\:bg-red-700:hover {
+    background-color: #b91c1c;
+}
+.hover\:bg-white:hover {
+    background-color: #ffffff;
+}
+.hover\:text-black:hover {
+    color: #000000
+}
 </style>

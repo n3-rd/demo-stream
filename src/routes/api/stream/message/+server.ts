@@ -7,7 +7,7 @@ export const POST: RequestHandler = async ({ request }) => {
         const { messageId, messageDate, messageBody, roomId } = await request.json();
 
         // Define the target URL
-        const url = `http://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/rest/v2/broadcasts/${roomId}/data`;
+        const url = `https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/rest/v2/broadcasts/${roomId}/data`;
 
         // Send the POST request
         const response = await fetch(url, {

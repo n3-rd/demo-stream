@@ -65,7 +65,7 @@
     <div class="relative h-32 w-52 rounded-lg overflow-hidden bg-black">
         <div class="video-container h-full w-full">
           
-            <iframe class="w-full h-full" src={`http://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant}`} frameborder="0" allowfullscreen></iframe>
+            <iframe class="w-full h-full" src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant}`} frameborder="0" allowfullscreen></iframe>
         
         </div>
         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 text-sm">

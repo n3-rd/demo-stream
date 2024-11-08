@@ -133,7 +133,7 @@ const mediaConstraints = {
 
 function getWebSocketURL() {
     // Implement your WebSocket URL logic here
-    return `ws://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`
+    return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`
 }
 
 onMount(() => {
@@ -520,6 +520,7 @@ function createRemoteAudio(trackLabel: string) {
     audio.id = "remoteAudio" + trackLabel;
     audio.autoplay = true;
     audio.controls = true;  // Make controls visible for debugging
+    audio.style.visibility = "hidden";
 
     player.appendChild(audio);
     playersContainer.appendChild(player);
@@ -608,6 +609,7 @@ function handleChatMessage(messageBody) {
                             controls
                             playsinline
                             class="h-full w-full"
+                            loop
                             on:play={handleVideoStateChange}
                             on:pause={handleVideoStateChange}
                             on:seeked={handleVideoStateChange}

@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ url }) => {
         });
     }
 
-    const apiUrl = `http://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/rest/v2/broadcasts/${roomId}`;
+    const apiUrl = `https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/rest/v2/broadcasts/${roomId}`;
 
     try {
         const response = await fetch(apiUrl);

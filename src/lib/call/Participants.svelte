@@ -63,7 +63,7 @@
     <div class="flex-grow flex flex-col">
       <span class="text-sm font-medium capitalize">
         {#if participant.includes('Representative')}
-          {participant.split('-').pop().replace('Representative', '')} (Representative)
+          {participant.split('-').pop().replace('Representative', '').replace(/_/g, ' ')} (Representative)
         {:else}
           {participant.split('-').pop().replace(/_/g, ' ')}
         {/if}

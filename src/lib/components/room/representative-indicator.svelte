@@ -69,7 +69,7 @@
         
         </div>
         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 text-sm">
-            {participant.split('-').pop().replace('Representative', ' (Representative)') || 'Unknown'}
+            {participant.split('-').pop().replace('Representative', ' (Representative)').replace(/_/g, ' ') || 'Unknown'}
         </div>
     </div>
     {/each}

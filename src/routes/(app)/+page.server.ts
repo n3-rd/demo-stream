@@ -13,6 +13,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 
+function sanitizeStreamName(name: string): string {
+    if (!name) return '';
+    // First decode any URL encoded characters
+    const decodedName = decodeURIComponent(name);
+    // Then replace any spaces or special characters with underscores
+    return decodedName.replace(/[^a-zA-Z0-9-]/g, '_');
+}
+
+
 export const actions: Actions = {
     'create-room': async ({ locals, request }) => {
         const formData = await request.formData();
@@ -24,7 +33,9 @@ export const actions: Actions = {
             ? locals.pb.authStore.model.id
             : anonymousUserId;
 
-        const roomId = `room-${Math.random().toString(36).substring(2, 7)}-${userId}`;
+        // Sanitize the userId/anonymousUserId before creating room ID
+        const sanitizedUserId = sanitizeStreamName(userId);
+        const roomId = `room-${Math.random().toString(36).substring(2, 7)}-${sanitizedUserId}`;
 
         try {
             const room = await locals.pb.collection('rooms').create({

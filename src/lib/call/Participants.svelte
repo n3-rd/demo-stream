@@ -65,7 +65,7 @@
         {#if participant.includes('Representative')}
           {participant.split('-').pop().replace('Representative', '')} (Representative)
         {:else}
-          {participant.split('-').pop()}
+          {participant.split('-').pop().replace(/_/g, ' ')}
         {/if}
         {#if participant === name}
           <span class="text-gray-400"> (You)</span>

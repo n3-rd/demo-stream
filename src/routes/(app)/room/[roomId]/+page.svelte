@@ -246,26 +246,30 @@ function handleWebRTCError(error: string, message: string) {
     // Implement error handling
 }
 
+function sanitizeStreamName(name: string): string {
+    if (!name) return '';
+    // First decode any URL encoded characters
+    const decodedName = decodeURIComponent(name);
+    // Then replace any spaces or special characters with underscores
+    return decodedName.replace(/[^a-zA-Z0-9-]/g, '_');
+}
+
 function joinRoom() {
     if (!publishStreamId) {
         publishStreamId = generateRandomString(12);            
     }
 
-    function handleChatMessage(messageBody) {
-        console.log("messageBody", messageBody);
-        chatMessages.update(messages => [...messages, messageBody]);
-    }
-
-
-
-    // Sanitize the name by removing any URL parameters and special characters
-    const sanitizedName = (name || anonymousUserId).split('&')[0].replace(/[^a-zA-Z0-9-_]/g, '');
-    const sanitizedRoomName = roomName.split('&')[0];
+    // Sanitize both the name and roomName
+    const sanitizedName = sanitizeStreamName(name || anonymousUserId);
+    // Make sure to sanitize the full roomName before splitting
+    const sanitizedRoomName = sanitizeStreamName(roomName);
 
     if (!playOnly) {
-        console.log('starting publish');
+        const streamId = `${publishStreamId}-${sanitizedName}`;
+        console.log('starting publish with streamId:', streamId);
+        
         webRTCAdaptor.publish(
-            `${publishStreamId}-${sanitizedName}`,
+            streamId,
             null,
             null,
             null,
@@ -274,7 +278,7 @@ function joinRoom() {
         );
     }
 
-    console.log('starting play');
+    console.log('starting play with roomName:', sanitizedRoomName);
     webRTCAdaptor.play(sanitizedRoomName);
 }
 

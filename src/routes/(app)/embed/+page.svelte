@@ -17,6 +17,10 @@
     let form: HTMLFormElement;
     
 
+    function sanitizeStreamName(name: string): string {
+        return name.replace(/%20/g, '_').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9-_]/g, '_');
+    }
+
     function generateEmbedCode(meetingUrl: string) {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
         return `<iframe src="${origin}/room/${meetingUrl.split('/').pop()}/embed" width="100%" height="600" allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read" style="border: none;"></iframe>`;
@@ -78,8 +82,10 @@
                     if (result.type === 'success') {
                         currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
                         toast.success('Room created successfully');
-                        anonymousUser.set(anonymousUserId)
-                        goto(`/room/${result.data.room.room_id}?anonymousUserId=${anonymousUserId}&hostUserId=${anonymousUserId}`);
+                        const sanitizedName = sanitizeStreamName(anonymousUserId);
+                        const sanitizedRoomId = sanitizeStreamName(result.data.room.room_id);
+                        anonymousUser.set(sanitizedName);
+                        goto(`/room/${sanitizedRoomId}?anonymousUserId=${sanitizedName}&hostUserId=${sanitizedName}`);
                     } else if (result.type === 'error') {
                         if (result.status === 400) {
                             toast.error('Bad request');

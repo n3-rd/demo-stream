@@ -127,7 +127,7 @@ const playOnly = false;
 
 // WebRTC configuration
 const mediaConstraints = {
-    video: true,
+    video: false,
     audio: true
 };
 
@@ -138,6 +138,10 @@ function getWebSocketURL() {
 
 onMount(() => {
     if ($anonymousUser || isAuthenticated) {
+        // Start with camera on for representatives, off for others
+        isCameraOff = !isRepresentative;
+        mediaConstraints.video = isRepresentative;
+        
         initializeWebRTC();
     }
     
@@ -159,7 +163,9 @@ function initializeWebRTC() {
         dataChannelEnabled: true,
         debug: true,
         callback: handleWebRTCCallback,
-        callbackError: handleWebRTCError
+        callbackError: handleWebRTCError,
+        bandwidth: 900, // Reduce bandwidth since video is optional
+        publishMode: "camera" // This ensures basic camera/mic publishing
     });
 }
 
@@ -259,19 +265,22 @@ function joinRoom() {
         publishStreamId = generateRandomString(12);            
     }
 
-    // Sanitize both the name and roomName
     const sanitizedName = sanitizeStreamName(name || anonymousUserId);
-    // Make sure to sanitize the full roomName before splitting
     const sanitizedRoomName = sanitizeStreamName(roomName);
 
     if (!playOnly) {
         const streamId = `${publishStreamId}-${sanitizedName}`;
         console.log('starting publish with streamId:', streamId);
         
+        const metadata = JSON.stringify({
+            isCameraOff,
+            isMicMuted
+        });
+        
         webRTCAdaptor.publish(
             streamId,
             null,
-            null,
+            metadata,
             null,
             sanitizedName,
             roomIdentity[0].room_id
@@ -331,13 +340,56 @@ function toggleMicrophone() {
 }
 
 function turnOnCamera() {
-    webRTCAdaptor.turnOnLocalCamera();
-    isCameraOff = false;
+    if (!webRTCAdaptor) return;
+    
+    // Update media constraints to include video
+    mediaConstraints.video = true;
+    
+    // Stop current connection
+    webRTCAdaptor.stop(publishStreamId);
+    
+    // Reinitialize with new constraints
+    setTimeout(() => {
+        webRTCAdaptor.turnOnLocalCamera();
+        isCameraOff = false;
+        
+        // Republish stream with camera
+        const streamId = `${publishStreamId}-${sanitizeStreamName(name || anonymousUserId)}`;
+        const metadata = JSON.stringify({
+            isCameraOff: false,
+            isMicMuted
+        });
+        
+        webRTCAdaptor.publish(
+            streamId,
+            null,
+            metadata,
+            null,
+            sanitizeStreamName(name || anonymousUserId),
+            roomIdentity[0].room_id
+        );
+    }, 500);
 }
 
 function turnOffCamera() {
+    if (!webRTCAdaptor) return;
+    
+    // Update media constraints to disable video
+    mediaConstraints.video = false;
+    
+    // Stop video track
     webRTCAdaptor.turnOffLocalCamera();
     isCameraOff = true;
+    
+    // Update stream metadata
+    const streamId = `${publishStreamId}-${sanitizeStreamName(name || anonymousUserId)}`;
+    const metadata = JSON.stringify({
+        isCameraOff: true,
+        isMicMuted
+    });
+    
+    // Republish with updated metadata
+    webRTCAdaptor.updateMetadata(streamId, metadata);
 }
 
 function toggleCamera() {

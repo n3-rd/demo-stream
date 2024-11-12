@@ -109,7 +109,9 @@ $:{
 }
 let isRepresentative = false;
 $:{
-    isRepresentative = $page.url.searchParams.get('representativeName') !== null;
+    const urlRepName = $page.url.searchParams.get('representativeName');
+    isRepresentative = urlRepName !== null && urlRepName !== '';
+    console.log('isRepresentative:', isRepresentative); // Debug log
 }
 
 console.log("host", host);
@@ -143,6 +145,13 @@ onMount(() => {
         mediaConstraints.video = isRepresentative;
         
         initializeWebRTC();
+        
+        // Initialize sync source based on role
+        if (isHost) {
+            syncSource = 'host'; // Default to host sync for host
+        } else if (isRepresentative) {
+            syncSource = 'representative'; // Default to representative sync for representatives
+        }
     }
     
     return () => {
@@ -203,10 +212,25 @@ function handleWebRTCCallback(info: string, obj: any) {
             isPlaying = false;
             break;
         case "data_channel_opened":
+            console.log('Data channel opened'); // Debug log
             isDataChannelOpen = true;
-            // Initial sync when data channel opens
-            if (isHost && videoPlayer) {
-                setTimeout(handleVideoStateChange, 1000);
+            
+            // If we're not the host, request the current sync source
+            if (!isHost) {
+                const syncSourceRequest = {
+                    streamId: roomName,
+                    eventType: 'sync_source_request'
+                };
+                try {
+                    sendMessage(
+                        syncSourceRequest.streamId,
+                        Date.now(),
+                        JSON.stringify(syncSourceRequest),
+                        roomName
+                    );
+                } catch (error) {
+                    console.error('Error requesting sync source:', error);
+                }
             }
             break;
         case "data_channel_closed":
@@ -220,12 +244,22 @@ function handleWebRTCCallback(info: string, obj: any) {
                     messageBody = JSON.parse(data.messageBody);
                 }
                 
-                if (messageBody && messageBody.eventType === 'chat_message') {
-                    handleChatMessage(messageBody);
-                }
+                console.log('Received data message:', messageBody); // Debug log
                 
-                if (messageBody && messageBody.eventType === 'video_sync') {
-                    handleVideoSync(messageBody);
+                switch (messageBody?.eventType) {
+                    case 'chat_message':
+                        handleChatMessage(messageBody);
+                        break;
+                    case 'video_sync':
+                        handleVideoSync(messageBody);
+                        break;
+                    case 'sync_source_change':
+                        // Only non-host participants should update their sync source
+                        if (!isHost) {
+                            console.log('Updating sync source to:', messageBody.syncSource);
+                            syncSource = messageBody.syncSource;
+                        }
+                        break;
                 }
             } catch (e) {
                 console.error("Error parsing data message:", e);
@@ -402,42 +436,76 @@ function toggleCamera() {
 
 // Function to handle video state changes by host
 function handleVideoStateChange() {
-    if (!isHost || !videoPlayer) return;
+    if (!videoPlayer) return;
     
-    const videoState = {
-        streamId: roomName,
-        eventType: 'video_sync',
-        currentTime: videoPlayer.currentTime,
-        isPlaying: !videoPlayer.paused
-    };
+    // Only send sync messages if we're the current sync source
+    const shouldSendSync = (isHost && syncSource === 'host') || 
+                         (isRepresentative && syncSource === 'representative');
     
-    // Only send through WebRTC data channel
-    if (webRTCAdaptor && isDataChannelOpen) {
-        try {
-           sendMessage(videoState.streamId, videoState.currentTime, JSON.stringify(videoState), roomName);
-        } catch (error) {
-            console.error('Error sending video sync:', error);
+    console.log('Sync conditions:', { 
+        isHost, 
+        isRepresentative, 
+        syncSource, 
+        shouldSendSync 
+    }); // Debug log
+    
+    if (shouldSendSync) {
+        const videoState = {
+            streamId: roomName,
+            eventType: 'video_sync',
+            currentTime: videoPlayer.currentTime,
+            isPlaying: !videoPlayer.paused,
+            syncSource: syncSource
+        };
+        
+        if (webRTCAdaptor && isDataChannelOpen) {
+            try {
+                console.log('Sending sync message:', videoState); // Debug log
+                sendMessage(
+                    videoState.streamId,
+                    videoState.currentTime,
+                    JSON.stringify(videoState),
+                    roomName
+                );
+            } catch (error) {
+                console.error('Error sending video sync:', error);
+            }
+        } else {
+            console.log('WebRTC data channel not ready:', { 
+                webRTCAdaptor: !!webRTCAdaptor, 
+                isDataChannelOpen 
+            });
         }
-    } else {
-        console.log('WebRTC data channel not ready');
     }
 }
 
 // Function to handle incoming video sync messages
 function handleVideoSync(data) {
-    if (isHost || !videoPlayer) return;
+    if (!videoPlayer) return;
+
+    // Don't process our own sync messages
+    const isOwnMessage = (isHost && data.syncSource === 'host') || 
+                        (isRepresentative && data.syncSource === 'representative');
+    if (isOwnMessage) return;
 
     try {
-        // Sync video time if difference is more than 0.5 seconds
-        if (Math.abs(videoPlayer.currentTime - data.currentTime) > 0.5) {
-            videoPlayer.currentTime = data.currentTime;
-        }
+        // Always sync if we're not the current sync source
+        const shouldSync = (isHost && syncSource !== 'host') || 
+                         (isRepresentative && syncSource !== 'representative') || 
+                         (!isHost && !isRepresentative);
 
-        // Sync play/pause state
-        if (data.isPlaying && videoPlayer.paused) {
-            videoPlayer.play();
-        } else if (!data.isPlaying && !videoPlayer.paused) {
-            videoPlayer.pause();
+        if (shouldSync) {
+            // Sync video time if difference is more than 0.5 seconds
+            if (Math.abs(videoPlayer.currentTime - data.currentTime) > 0.5) {
+                videoPlayer.currentTime = data.currentTime;
+            }
+
+            // Sync play/pause state
+            if (data.isPlaying && videoPlayer.paused) {
+                videoPlayer.play();
+            } else if (!data.isPlaying && !videoPlayer.paused) {
+                videoPlayer.pause();
+            }
         }
     } catch (e) {
         console.error("Error handling video sync data:", e);
@@ -476,7 +544,7 @@ function handleMainTrackBroadcastObject(broadcastObject) {
     });
 
     // Request broadcast object for new tracks
-    participantIds.forEach(pid => {
+    participantIds.forEach(pid => {// Update the sync source buttons to use the new function
         if (allParticipants[pid] === undefined) {
             webRTCAdaptor.getBroadcastObject(pid);
         }
@@ -645,7 +713,38 @@ function handleChatMessage(messageBody) {
     });
 }
 
+// Add near other state management variables (around line 32-54)
+let syncSource = 'host'; // Can be 'host' or 'representative'
+
+// Add a new message type for sync source changes
+function updateSyncSource(newSource: 'host' | 'representative') {
+    syncSource = newSource;
+    
+    // Broadcast the sync source change to all participants
+    if (isHost && webRTCAdaptor && isDataChannelOpen) {
+        const syncSourceUpdate = {
+            streamId: roomName,
+            eventType: 'sync_source_change',
+            syncSource: newSource
+        };
+        
+        try {
+            sendMessage(
+                syncSourceUpdate.streamId,
+                Date.now(),
+                JSON.stringify(syncSourceUpdate),
+                roomName
+            );
+        } catch (error) {
+            console.error('Error sending sync source update:', error);
+        }
+    }
+}
+
+
+
 </script>
+
 
 {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '')}
     <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={roomIdentity[0].associated_video_name} />
@@ -658,19 +757,51 @@ function handleChatMessage(messageBody) {
              <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
                 {#if isHost || isRepresentative}
                     <div class="video-container h-full w-full">
+                        {#if isHost}
+                            <div class="absolute top-4 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
+                                <Button
+                                    variant={syncSource === 'host' ? 'default' : 'secondary'}
+                                    size="sm"
+                                    on:click={() => updateSyncSource('host')}
+                                >
+                                    Sync My Video
+                                </Button>
+                                <Button
+                                    variant={syncSource === 'representative' ? 'default' : 'secondary'}
+                                    size="sm"
+                                    on:click={() => updateSyncSource('representative')}
+                                >
+                                    Sync Representative Video
+                                </Button>
+                            </div>
+                        {/if}
                         <video
                             bind:this={videoPlayer}
                             src={videoUrl}
                             autoplay={false}
-                            controls
+                            controls={isHost || isRepresentative}
                             playsinline
                             class="h-full w-full"
                             loop
-                            on:play={handleVideoStateChange}
-                            on:pause={handleVideoStateChange}
-                            on:seeked={handleVideoStateChange}
+                            on:play={() => {
+                                console.log('Video play event:', { isRepresentative, syncSource }); // Debug log
+                                if (videoPlayer) handleVideoStateChange();
+                            }}
+                            on:pause={() => {
+                                console.log('Video pause event:', { isRepresentative, syncSource }); // Debug log
+                                if (videoPlayer) handleVideoStateChange();
+                            }}
+                            on:seeked={() => {
+                                console.log('Video seek event:', { isRepresentative, syncSource }); // Debug log
+                                if (videoPlayer) handleVideoStateChange();
+                            }}
                             on:timeupdate={() => {
-                                if (isHost && isDataChannelOpen) {
+                                if (!videoPlayer) return;
+                                
+                                const shouldSendSync = (isHost && syncSource === 'host') || 
+                                                     (isRepresentative && syncSource === 'representative');
+                                
+                                if (shouldSendSync) {
                                     const now = Date.now();
                                     if (!lastUpdate || now - lastUpdate > 1000) {
                                         lastUpdate = now;

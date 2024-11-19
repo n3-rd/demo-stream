@@ -1,5 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_ANT_MEDIA_URL } from '$env/static/public';
+export const prerender = true;
 
 export const GET: RequestHandler = async ({ url }) => {
     const roomId = url.searchParams.get('roomId');

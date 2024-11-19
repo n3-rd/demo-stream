@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">demo stream</string>
+    <string name="title_activity_main">demo stream</string>
+    <string name="package_name">com.blop.demostream</string>
+    <string name="custom_url_scheme">com.blop.demostream</string>
+</resources>

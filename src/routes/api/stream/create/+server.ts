@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { PUBLIC_ANT_MEDIA_URL } from '$env/static/public';
-
+export const prerender = true;
 interface EncoderSettings {
     height: number;
     videoBitrate: number;

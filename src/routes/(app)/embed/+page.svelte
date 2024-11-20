@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { anonymousUser } from '$lib/stores/anonymousUser';
     import { enhance } from '$app/forms';
     import { goto } from '$app/navigation';
-	import { currentVideoUrl } from '$lib/callStores.js';
+	import { currentVideoUrl } from '$lib/callStores';
     import { Button } from '$lib/components/ui/button';
     import { toast } from 'svelte-sonner';
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
@@ -14,6 +15,11 @@
     let roomUrl = '';
     let anonymousUserId: string | null = null;
     let form: HTMLFormElement;
+    
+
+    function sanitizeStreamName(name: string): string {
+        return name.replace(/%20/g, '_').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9-_]/g, '_');
+    }
 
     function generateEmbedCode(meetingUrl: string) {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -73,17 +79,21 @@
             use:enhance={() => {
                 loading = true;
                 return async ({ result }) => {
-                    if (result.data?.room?.name) {
+                    if (result.type === 'success') {
                         currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
                         toast.success('Room created successfully');
-                        console.log('result.data.room.name', result.data.room.name);
-                        goto(`/room/${result.data.room.name}`);
-                    } else if (result.status === 400) {
-                        toast.error('Bad request');
-                    } else if (result.status === 500) {
-                        toast.error('Server error');
-                    } else {
-                        toast.error('Oops, something went wrong!');
+                        const sanitizedName = sanitizeStreamName(anonymousUserId);
+                        const sanitizedRoomId = sanitizeStreamName(result.data.room.room_id);
+                        anonymousUser.set(sanitizedName);
+                        goto(`/room/${sanitizedRoomId}?anonymousUserId=${sanitizedName}&hostUserId=${sanitizedName}`);
+                    } else if (result.type === 'error') {
+                        if (result.status === 400) {
+                            toast.error('Bad request');
+                        } else if (result.status === 500) {
+                            toast.error('Server error');
+                        } else {
+                            toast.error('Oops, something went wrong!');
+                        }
                     }
                     loading = false;
                 };

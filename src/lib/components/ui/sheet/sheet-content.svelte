@@ -33,7 +33,7 @@
 		{inTransitionConfig}
 		{outTransition}
 		{outTransitionConfig}
-		class={cn(sheetVariants({ side }), className)}
+		class={cn(`border-0`, sheetVariants({ side }), className)}
 		{...$$restProps}
 	>
 		<slot />

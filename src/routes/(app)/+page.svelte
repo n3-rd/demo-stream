@@ -64,16 +64,18 @@
                             use:enhance={() => {
                                 loading = true;
                                 return async ({ result }) => {
-                                    if (result.data?.room?.name) {
+                                    if (result.type === 'success') {
                                         currentVideoUrl.set(`/video/${video.video_ref}.mp4`);
                                         toast.success('Room created successfully');
-                                        goto(`/room/${result.data.room.name}`);
-                                    } else if (result.status === 400) {
-                                        toast.error('Bad request');
-                                    } else if (result.status === 500) {
-                                        toast.error('Server error');
-                                    } else {
-                                        toast.error('Oops, something went wrong!');
+                                        goto(`/room/${result.data.room.room_id}`);
+                                    } else if (result.type === 'error') {
+                                        if (result.status === 400) {
+                                            toast.error('Bad request');
+                                        } else if (result.status === 500) {
+                                            toast.error('Server error');
+                                        } else {
+                                            toast.error('Oops, something went wrong!');
+                                        }
                                     }
                                     loading = false;
                                 };

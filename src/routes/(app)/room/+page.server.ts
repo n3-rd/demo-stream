@@ -20,6 +20,14 @@ export const load = async ({ locals }) => {
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
 
+
+function sanitizeStreamName(name: string): string {
+    if (!name) return '';
+    // First decode any URL encoded characters
+    const decodedName = decodeURIComponent(name);
+    // Then replace any spaces or special characters with underscores
+    return decodedName.replace(/[^a-zA-Z0-9-]/g, '_');
+}
 export const actions = {
     'create-room': async ({ fetch, locals, request }) => {
         const formData = await request.formData();
@@ -27,10 +35,12 @@ export const actions = {
         const videoName = formData.get('videoName') as string;
         const anonymousName = formData.get('anonymousName') as string;
 
-        console.log('Create room action called');
         const userId = locals.pb.authStore.isValid ? locals.pb.authStore.model.id : 'anonymous';
         const exp = Math.round(Date.now() / 1000) + 60 * 60;
-        const meetingName = `meet-${Math.random().toString(36).substring(2, 7)}-${userId}`;
+
+        // Sanitize the userId/anonymousName before creating meeting name
+        const sanitizedName = sanitizeStreamName(anonymousName || userId);
+        const meetingName = `room-${Math.random().toString(36).substring(2, 7)}-${sanitizedName}`;
         const options = {
             name: meetingName,
             properties: {

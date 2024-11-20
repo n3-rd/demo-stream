@@ -8,6 +8,19 @@ export const handle: Handle = async ({ event, resolve }) => {
     const request = event.request;
     const cookies = cookie.parse(request.headers.get('cookie') || '');
 
+    // Add CORS handling for API routes
+    if (event.url.pathname.startsWith('/api')) {
+        if (event.request.method === 'OPTIONS') {
+            return new Response(null, {
+                headers: {
+                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': '*',
+                }
+            });
+        }
+    }
+
     // Initialize PocketBase and load auth store from cookies
     event.locals.pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
     event.locals.pb.authStore.loadFromCookie(request.headers.get('cookie') || '');
@@ -38,6 +51,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     // TODO: secure before deployment
     response.headers.append('set-cookie', event.locals.pb.authStore.exportToCookie({ secure: false, maxAge: 1800 }));
+
+    // Add CORS headers to API responses
+    if (event.url.pathname.startsWith('/api')) {
+        response.headers.append('Access-Control-Allow-Origin', '*');
+    }
 
     return response;
 };

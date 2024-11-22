@@ -63,8 +63,8 @@
 {#if !showRepresentativeList}
     <!-- First Modal -->
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white p-6  w-full">
-            <h2 class="text-lg font-semibold mb-4">Speak to Representative</h2>
+        <div class="bg-white p-6  w-full text-gray-400">
+            <h2 class="text-lg font-semibold mb-4 text-[#464646]">Speak to Representative</h2>
             <p class="text-sm mb-6">
                 Speak to a representative, you're gaining direct access to an expert who specializes in our services. They're here to guide you, answer your questions, and provide personalized assistance. Whether you're seeking advice, information, or a step-by-step walkthrough, our representatives are ready to help you. Click the 'CONTINUE' to start a conversation.
             </p>
@@ -95,7 +95,7 @@
                     >
                     <div class={`w-24 h-24 rounded-full border-4 ${selectedRepresentative === representative ? 'border-green-500' : 'border-transparent'} absolute top-0`}>
                     </div>
-                    <span class="mt-2 text-center">{representative.name}</span>
+                    <span class="mt-2 text-center text-[#464646]">{representative.name}</span>
                 </div>
                 {/each}
             </div>

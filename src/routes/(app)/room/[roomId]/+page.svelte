@@ -25,6 +25,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import Participants from '$lib/call/Participants.svelte';
 	import Chat from '$lib/call/Chat.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
+    import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
 
 export let data;
 
@@ -741,7 +742,10 @@ function updateSyncSource(newSource: 'host' | 'representative') {
     }
 }
 
-
+function handlePanelToggle(event) {
+    const { id } = event.detail;
+    togglePanel(id);
+}
 
 </script>
 
@@ -753,10 +757,12 @@ function updateSyncSource(newSource: 'host' | 'representative') {
     <div class="h-full">
         <div class="flex items-center h-full pt-6 pb-24">
             <!-- left sidebar -->
+             <div class="hidden lg:flex">
              <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
-             <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
+             </div>
+             <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
                 {#if isHost || isRepresentative}
-                    <div class="video-container h-full w-full">
+                    <div class="video-container bg-transparent h-full w-full">
                         {#if isHost}
                             <div class="absolute top-4 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
                                 <Button
@@ -781,7 +787,7 @@ function updateSyncSource(newSource: 'host' | 'representative') {
                             autoplay={false}
                             controls={isHost || isRepresentative}
                             playsinline
-                            class="h-full w-full"
+                            class="h-[91%] md:h-full w-full px-3 bg-[#9d9d9f] object-contain md:object-cover"
                             loop
                             on:play={() => {
                                 console.log('Video play event:', { isRepresentative, syncSource }); // Debug log
@@ -815,14 +821,14 @@ function updateSyncSource(newSource: 'host' | 'representative') {
                         </video>
                     </div>
                 {:else}
-                    <div class="video-container h-full w-full">
+                    <div class="video-container bg-transparent h-full w-full">
                         <video
                             bind:this={videoPlayer}
                             src={videoUrl}
                             autoplay={false}
                             controls={false}
                             playsinline
-                            class="h-full w-full"
+                            class="h-[91%] md:h-full w-full px-3 bg-[#9d9d9f] object-contain md:object-cover"
                         >
                             <track kind="captions">
                             Your browser does not support the video element.
@@ -845,7 +851,7 @@ function updateSyncSource(newSource: 'host' | 'representative') {
             </div>
 
             <!-- Right sidebar controls -->
-            <div class="flex flex-col gap-3 h-full justify-end">
+            <div class=" flex-col gap-3 h-full justify-end hidden lg:flex">
                 <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
                     <Button
                         variant="ghost"
@@ -873,16 +879,42 @@ function updateSyncSource(newSource: 'host' | 'representative') {
         <RepresentativeIndicator 
             participants={meetingParticipants} 
         />
+     
         <RightBar 
         isHost={isHost}
         name={name}
         participants={meetingParticipants.map(participant => participant.split("-").pop())}
         on:toggleChat={() => togglePanel("chatPanel")} on:toggleParticipants={() => togglePanel("participantsPanel")} />
+      
         </div>
     </div>
 
-    <!-- Bottom controls bar -->
-    <BottomBar roomIdentityName={roomIdentity[0].associated_video_name} isMicMuted={isMicMuted} on:leaveRoom={leaveRoom} on:toggleMicrophone={toggleMicrophone} isCameraOff={isCameraOff} on:toggleCamera={toggleCamera} />
+    <!-- Desktop Bottom Bar -->
+    <div class="hidden lg:block">
+        <BottomBar 
+            roomIdentityName={roomIdentity[0].associated_video_name} 
+            {isMicMuted} 
+            on:leaveRoom={leaveRoom} 
+            on:toggleMicrophone={toggleMicrophone} 
+            {isCameraOff} 
+            on:toggleCamera={toggleCamera} 
+        />
+    </div>
+
+    <!-- Mobile Bottom Bar -->
+    <MobileBottomBar 
+        roomIdentityName={roomIdentity[0].associated_video_name}
+        videoRepresentatives={videoRepresentatives}
+        scheduleOpen={scheduleOpen}
+        userId={user?.id || ''}
+        joinURL={joinURL}
+        {isMicMuted}
+        {isCameraOff}
+        on:leaveRoom={leaveRoom}
+        on:toggleMicrophone={toggleMicrophone}
+        on:toggleCamera={toggleCamera}
+        on:togglePanel={handlePanelToggle}
+    />
  
 {/if}
 
@@ -907,7 +939,6 @@ function updateSyncSource(newSource: 'host' | 'representative') {
 .video-container {
     width: 100%;
     height: 100%;
-    background: black;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -915,8 +946,6 @@ function updateSyncSource(newSource: 'host' | 'representative') {
 }
 
 .video-container video {
-    width: 100%;
-    height: 100%;
     object-fit: cover;
     position: absolute;
 }

@@ -10,7 +10,7 @@
     export let representativeId: string = '';
     import { page } from '$app/stores';
 </script>
-<div class="w-full rounded-lg  p-6 ">
+<div class="md:w-full rounded-lg  p-6 ">
     <!-- Dialog content styled to match the provided image -->
 
     <div class="mb-4 flex items-center justify-between">

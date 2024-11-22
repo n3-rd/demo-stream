@@ -21,7 +21,7 @@
 </script>
 
 <div class="max-w-md p-6 bg-white rounded-lg shadow-lg">
-    <h2 class="text-2xl font-semibold mb-2">Request a Quote</h2>
+    <h2 class="text-2xl font-semibold mb-2 text-[#464646]">Request a Quote</h2>
     <p class="text-gray-600 mb-4">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
     </p>

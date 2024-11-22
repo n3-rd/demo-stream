@@ -10,10 +10,10 @@
     export let representativeId: string = '';
     import { page } from '$app/stores';
 </script>
-<div class="w-full rounded-lg  p-6 ">
+<div class="w-full rounded-lg p-6">
     <!-- Dialog content styled to match the provided image -->
 
-    <div class="mb-4 flex items-center justify-between">
+    <div class="mb-4 flex items-center justify-between text-[#464646]">
         <h2 class="text-lg font-semibold">Invite <span>
             {representative ? 'Representative': 'People'}
         </span></h2>
@@ -26,17 +26,17 @@
                 {representative ? 'Direct meeting link' : 'One time link'}
             </span>
         </label>
-        <div class="flex items-center rounded-lg bg-gray-100 p-2">
+        <div class="flex items-center rounded-lg bg-gray-100 p-2 w-full">
             <input
                 type="text"
                 value={
                      joinURL.replace(/\?anonymousUserId=[^&]+/, '').replace(/\?representativeId=[^&]+&representativeName=[^&]+/, '')
                 }
-                class="flex-1 border-none bg-transparent text-gray-700 outline-none"
+                class="flex-1 border-none bg-transparent text-gray-700 outline-none text-sm overflow-x-auto"
                 disabled
             />
             <Button
-                class="ml-2"
+                class="ml-2 shrink-0"
                 on:click={() => {
                     try {
                         if(representative){
@@ -61,13 +61,13 @@
     {#if !representative}
 
     <!-- Email/SMS Tabs -->
-    <div class="mb-4 flex border-b">
+    <!-- <div class="mb-4 flex border-b">
         <button class="flex-1 border-b-2 border-primary py-2 text-center text-gray-700"
             >Email</button
         >
-    </div>
+    </div> -->
 
-    <!-- Email Form -->
+    <!-- Email Form
     <form class="space-y-4"
     action="?/send-email"
     method="POST"
@@ -111,6 +111,6 @@
     <Button class="w-full rounded-lg bg-primary py-2 text-white"
     type="submit"
     >Invite</Button>
-</form>
+</form> -->
 {/if}
 </div>

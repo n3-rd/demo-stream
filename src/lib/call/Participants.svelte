@@ -20,17 +20,17 @@
     // console.log('hostUser', hostUser);
     // console.log('isHost', isHost);
 </script>
-<div class="flex justify-between items-center p-4 border-b bg-[#666669]">
+<div class="flex justify-between items-center p-4 border-b bg-[#666669] hidden">
     <h2 class="text-xl font-bold text-white">Participants</h2>
 </div>
 
-<div class="max-h-full overflow-y-auto py-4 w-full flex flex-col justify-center px-4 text-white">
+<div class="max-h-full overflow-y-auto py-4 w-full flex flex-col justify-center px-4 text-white bg-[#47484b]">
 
 {#if isHost}
     <Dialog.Root>
       <Dialog.Trigger>
           
-    <Button class="bg-[#47484b] text-white mx-auto flex flex-row gap-2">
+    <Button class="bg-[#9e9ba0] text-white mx-auto flex flex-row gap-2">
       <UserRoundPlus size={16} class="" />
         Invite People
     </Button>
@@ -47,8 +47,8 @@
 
 <div class="space-y-2">
 
-<div class="border border-[#47484b] rounded-md ">
-    <div class="w-full flex justify-between p-2 border-b border-[#47484b]">
+<div class="border border-[#9e9ba0] rounded-md ">
+    <div class="w-full flex justify-between p-2 border-b border-[#9e9ba0]">
         <h3>All participants</h3>
         <span>({participants.length})</span>
     </div>

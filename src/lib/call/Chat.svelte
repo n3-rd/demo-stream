@@ -62,7 +62,7 @@
 </script>
 
 
-        <div class="flex flex-col w-full h-full">
+        <div class="flex flex-col w-full h-full bg-[#47484b]">
             <div class="flex-grow flex flex-col gap-4 p-4 overflow-y-auto">
                 {#each messages as message}
                     <div 
@@ -91,7 +91,7 @@
                     </div>
                 {/each}
             </div>
-            <form on:submit|preventDefault={sendNewMessage} class="flex justify-between border-t border-gray-300 py-4 w-full">
+            <form on:submit|preventDefault={sendNewMessage} class="flex justify-between border-t border-gray-300 py-4 w-full px-2">
                 <input 
                     type="text" 
                     placeholder="Type a message..." 

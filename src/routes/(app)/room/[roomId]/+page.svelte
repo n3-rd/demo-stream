@@ -21,10 +21,11 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import NameInputModal from '$lib/components/name-input-modal.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
     import { Button } from '$lib/components/ui/button';
-    import { MessageSquareDashed, UsersRound } from 'lucide-svelte';
+    import { MessageSquareDashed, UsersRound, X } from 'lucide-svelte';
 	import Participants from '$lib/call/Participants.svelte';
 	import Chat from '$lib/call/Chat.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
+    import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
 
 export let data;
 
@@ -519,14 +520,34 @@ const handleScheduleClose = () => {
 };
 
 function togglePanel(id) {
-        if (id === "chatPanel") {
-            document.getElementById("participantsPanel").style.width = "0px";
+    const chatPanel = document.getElementById("chatPanel");
+    const participantsPanel = document.getElementById("participantsPanel");
+    const isMobile = window.innerWidth < 1024;
+    
+    // Close the other panel first
+    if (id === "chatPanel") {
+        participantsPanel.style.transform = "translateX(100%)";
+        participantsPanel.style.width = "0px";
+    } else {
+        chatPanel.style.transform = "translateX(100%)";
+        chatPanel.style.width = "0px";
+    }
+    
+    // Toggle the selected panel
+    const panel = document.getElementById(id);
+    
+    if (isMobile) {
+        panel.style.width = "100vw";
+        panel.style.transform = panel.style.transform === "translateX(0%)" ? "translateX(100%)" : "translateX(0%)";
+    } else {
+        if (panel.style.width === "30rem") {
+            panel.style.width = "0px";
+            panel.style.transform = "translateX(100%)";
+        } else {
+            panel.style.width = "30rem";
+            panel.style.transform = "translateX(0%)";
         }
-        if (id === "participantsPanel") {
-            document.getElementById("chatPanel").style.width = "0px";
-        }
-        const panel = document.getElementById(id);
-        panel.style.width = panel.style.width === "30rem" ? "0px" : "30rem";
+    }
 }
 
  
@@ -741,7 +762,10 @@ function updateSyncSource(newSource: 'host' | 'representative') {
     }
 }
 
-
+function handlePanelToggle(event) {
+    const { id } = event.detail;
+    togglePanel(id);
+}
 
 </script>
 
@@ -753,10 +777,12 @@ function updateSyncSource(newSource: 'host' | 'representative') {
     <div class="h-full">
         <div class="flex items-center h-full pt-6 pb-24">
             <!-- left sidebar -->
+             <div class="hidden lg:flex">
              <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
-             <div class="flex-grow h-full bg-[#9d9d9f] relative flex gap-2">
+             </div>
+             <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
                 {#if isHost || isRepresentative}
-                    <div class="video-container h-full w-full">
+                    <div class="video-container bg-transparent h-full w-full">
                         {#if isHost}
                             <div class="absolute top-4 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
                                 <Button
@@ -781,7 +807,7 @@ function updateSyncSource(newSource: 'host' | 'representative') {
                             autoplay={false}
                             controls={isHost || isRepresentative}
                             playsinline
-                            class="h-full w-full"
+                            class="h-[91%] md:h-full w-full px-3 bg-[#9d9d9f] object-contain md:object-cover"
                             loop
                             on:play={() => {
                                 console.log('Video play event:', { isRepresentative, syncSource }); // Debug log
@@ -815,14 +841,14 @@ function updateSyncSource(newSource: 'host' | 'representative') {
                         </video>
                     </div>
                 {:else}
-                    <div class="video-container h-full w-full">
+                    <div class="video-container bg-transparent h-full w-full">
                         <video
                             bind:this={videoPlayer}
                             src={videoUrl}
                             autoplay={false}
                             controls={false}
                             playsinline
-                            class="h-full w-full"
+                            class="h-[91%] md:h-full w-full px-3 bg-[#9d9d9f] object-contain md:object-cover"
                         >
                             <track kind="captions">
                             Your browser does not support the video element.
@@ -831,21 +857,42 @@ function updateSyncSource(newSource: 'host' | 'representative') {
                 {/if}
 
                 <!-- Chat Panel -->
-                <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="chatPanel">
-                    <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#47484b]">
+                <div 
+                    class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
+                    id="chatPanel"
+                    style="transform: translateX(100%)"
+                >
+                    <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
+                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
+                            <div class="text-white text-lg font-semibold">Chat message</div>
+                            <Button variant="ghost" size="icon" on:click={() => togglePanel("chatPanel")}>
+                                <X scale={1.3} color="#fff" />
+                            </Button>
+                        </div>
                         <Chat roomId={roomName} name={name} />
                     </div>
-                    <!-- Add your chat content here -->
                 </div>
 
                 <!-- Participants Panel -->
-                <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="participantsPanel">
-                    <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} />
+                <div 
+                    class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
+                    id="participantsPanel"
+                    style="transform: translateX(100%)"
+                >
+                    <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
+                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden ">
+                            <div class="text-white text-lg font-semibold">Participants</div>
+                            <Button variant="ghost" size="icon" on:click={() => togglePanel("participantsPanel")}>
+                                <X scale={1.3} color="#fff" />
+                            </Button>
+                        </div>
+                        <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} />
+                    </div>
                 </div>
             </div>
 
             <!-- Right sidebar controls -->
-            <div class="flex flex-col gap-3 h-full justify-end">
+            <div class=" flex-col gap-3 h-full justify-end hidden lg:flex">
                 <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
                     <Button
                         variant="ghost"
@@ -873,16 +920,42 @@ function updateSyncSource(newSource: 'host' | 'representative') {
         <RepresentativeIndicator 
             participants={meetingParticipants} 
         />
+     
         <RightBar 
         isHost={isHost}
         name={name}
         participants={meetingParticipants.map(participant => participant.split("-").pop())}
         on:toggleChat={() => togglePanel("chatPanel")} on:toggleParticipants={() => togglePanel("participantsPanel")} />
+      
         </div>
     </div>
 
-    <!-- Bottom controls bar -->
-    <BottomBar roomIdentityName={roomIdentity[0].associated_video_name} isMicMuted={isMicMuted} on:leaveRoom={leaveRoom} on:toggleMicrophone={toggleMicrophone} isCameraOff={isCameraOff} on:toggleCamera={toggleCamera} />
+    <!-- Desktop Bottom Bar -->
+    <div class="hidden lg:block">
+        <BottomBar 
+            roomIdentityName={roomIdentity[0].associated_video_name} 
+            {isMicMuted} 
+            on:leaveRoom={leaveRoom} 
+            on:toggleMicrophone={toggleMicrophone} 
+            {isCameraOff} 
+            on:toggleCamera={toggleCamera} 
+        />
+    </div>
+
+    <!-- Mobile Bottom Bar -->
+    <MobileBottomBar 
+        roomIdentityName={roomIdentity[0].associated_video_name}
+        videoRepresentatives={videoRepresentatives}
+        scheduleOpen={scheduleOpen}
+        userId={user?.id || ''}
+        joinURL={joinURL}
+        {isMicMuted}
+        {isCameraOff}
+        on:leaveRoom={leaveRoom}
+        on:toggleMicrophone={toggleMicrophone}
+        on:toggleCamera={toggleCamera}
+        on:togglePanel={handlePanelToggle}
+    />
  
 {/if}
 
@@ -907,7 +980,6 @@ function updateSyncSource(newSource: 'host' | 'representative') {
 .video-container {
     width: 100%;
     height: 100%;
-    background: black;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -915,8 +987,6 @@ function updateSyncSource(newSource: 'host' | 'representative') {
 }
 
 .video-container video {
-    width: 100%;
-    height: 100%;
     object-fit: cover;
     position: absolute;
 }
@@ -924,8 +994,18 @@ function updateSyncSource(newSource: 'host' | 'representative') {
 /* Keep your existing styles... */
 
 .panel {
-    transition: width 0.3s ease-in-out;
+    transition: all 0.3s ease-in-out;
 }
+
+@media (max-width: 1024px) {
+    .panel {
+        transform: translateX(100%);
+    }
+    .panel[style*="width: 100%"] {
+        transform: translateX(0);
+    }
+}
+
 .hover\:bg-red-700:hover {
     background-color: #b91c1c;
 }
@@ -934,5 +1014,14 @@ function updateSyncSource(newSource: 'host' | 'representative') {
 }
 .hover\:text-black:hover {
     color: #000000
+}
+
+/* Remove any panel-specific transitions from here as we're handling them inline */
+@media (max-width: 1024px) {
+    :global(#chatPanel), :global(#participantsPanel) {
+        height: 100vh !important;
+        top: 0;
+        right: 0;
+    }
 }
 </style>

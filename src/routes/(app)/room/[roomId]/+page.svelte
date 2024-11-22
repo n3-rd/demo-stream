@@ -520,14 +520,27 @@ const handleScheduleClose = () => {
 };
 
 function togglePanel(id) {
-        if (id === "chatPanel") {
-            document.getElementById("participantsPanel").style.width = "0px";
+    if (id === "chatPanel") {
+        document.getElementById("participantsPanel").style.transform = "translateX(100%)";
+    }
+    if (id === "participantsPanel") {
+        document.getElementById("chatPanel").style.transform = "translateX(100%)";
+    }
+    
+    const panel = document.getElementById(id);
+    const isMobile = window.innerWidth < 1024; // 1024px is the lg breakpoint in Tailwind
+    
+    if (isMobile) {
+        panel.style.width = "100vw";
+        panel.style.transform = panel.style.transform === "translateX(0%)" ? "translateX(100%)" : "translateX(0%)";
+    } else {
+        if (panel.style.width === "30rem") {
+            panel.style.width = "0px";
+        } else {
+            panel.style.width = "30rem";
+            panel.style.transform = "translateX(0%)";
         }
-        if (id === "participantsPanel") {
-            document.getElementById("chatPanel").style.width = "0px";
-        }
-        const panel = document.getElementById(id);
-        panel.style.width = panel.style.width === "30rem" ? "0px" : "30rem";
+    }
 }
 
  
@@ -837,11 +850,14 @@ function handlePanelToggle(event) {
                 {/if}
 
                 <!-- Chat Panel -->
-                <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="chatPanel">
+                <div 
+                    class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
+                    id="chatPanel"
+                    style="transform: translateX(100%)"
+                >
                     <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#47484b]">
                         <Chat roomId={roomName} name={name} />
                     </div>
-                    <!-- Add your chat content here -->
                 </div>
 
                 <!-- Participants Panel -->
@@ -953,8 +969,18 @@ function handlePanelToggle(event) {
 /* Keep your existing styles... */
 
 .panel {
-    transition: width 0.3s ease-in-out;
+    transition: all 0.3s ease-in-out;
 }
+
+@media (max-width: 1024px) {
+    .panel {
+        transform: translateX(100%);
+    }
+    .panel[style*="width: 100%"] {
+        transform: translateX(0);
+    }
+}
+
 .hover\:bg-red-700:hover {
     background-color: #b91c1c;
 }
@@ -963,5 +989,14 @@ function handlePanelToggle(event) {
 }
 .hover\:text-black:hover {
     color: #000000
+}
+
+/* Remove any panel-specific transitions from here as we're handling them inline */
+@media (max-width: 1024px) {
+    :global(#chatPanel), :global(#participantsPanel) {
+        height: 100vh !important;
+        top: 0;
+        right: 0;
+    }
 }
 </style>

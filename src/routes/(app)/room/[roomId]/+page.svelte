@@ -21,7 +21,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import NameInputModal from '$lib/components/name-input-modal.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
     import { Button } from '$lib/components/ui/button';
-    import { MessageSquareDashed, UsersRound } from 'lucide-svelte';
+    import { MessageSquareDashed, UsersRound, X } from 'lucide-svelte';
 	import Participants from '$lib/call/Participants.svelte';
 	import Chat from '$lib/call/Chat.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
@@ -520,15 +520,21 @@ const handleScheduleClose = () => {
 };
 
 function togglePanel(id) {
+    const chatPanel = document.getElementById("chatPanel");
+    const participantsPanel = document.getElementById("participantsPanel");
+    const isMobile = window.innerWidth < 1024;
+    
+    // Close the other panel first
     if (id === "chatPanel") {
-        document.getElementById("participantsPanel").style.transform = "translateX(100%)";
-    }
-    if (id === "participantsPanel") {
-        document.getElementById("chatPanel").style.transform = "translateX(100%)";
+        participantsPanel.style.transform = "translateX(100%)";
+        participantsPanel.style.width = "0px";
+    } else {
+        chatPanel.style.transform = "translateX(100%)";
+        chatPanel.style.width = "0px";
     }
     
+    // Toggle the selected panel
     const panel = document.getElementById(id);
-    const isMobile = window.innerWidth < 1024; // 1024px is the lg breakpoint in Tailwind
     
     if (isMobile) {
         panel.style.width = "100vw";
@@ -536,6 +542,7 @@ function togglePanel(id) {
     } else {
         if (panel.style.width === "30rem") {
             panel.style.width = "0px";
+            panel.style.transform = "translateX(100%)";
         } else {
             panel.style.width = "30rem";
             panel.style.transform = "translateX(0%)";
@@ -855,14 +862,32 @@ function handlePanelToggle(event) {
                     id="chatPanel"
                     style="transform: translateX(100%)"
                 >
-                    <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#47484b]">
+                    <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
+                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
+                            <div class="text-white text-lg font-semibold">Chat message</div>
+                            <Button variant="ghost" size="icon" on:click={() => togglePanel("chatPanel")}>
+                                <X scale={1.3} color="#fff" />
+                            </Button>
+                        </div>
                         <Chat roomId={roomName} name={name} />
                     </div>
                 </div>
 
                 <!-- Participants Panel -->
-                <div class="w-0 bg-[#666669] h-full overflow-y-auto flex flex-col panel" id="participantsPanel">
-                    <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} />
+                <div 
+                    class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
+                    id="participantsPanel"
+                    style="transform: translateX(100%)"
+                >
+                    <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
+                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden ">
+                            <div class="text-white text-lg font-semibold">Participants</div>
+                            <Button variant="ghost" size="icon" on:click={() => togglePanel("participantsPanel")}>
+                                <X scale={1.3} color="#fff" />
+                            </Button>
+                        </div>
+                        <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} />
+                    </div>
                 </div>
             </div>
 

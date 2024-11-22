@@ -28,8 +28,8 @@
 
   <div class="flex-1 flex flex-col overflow-hidden">
     <header class="bg-white shadow-sm z-10">
-      <div class=" mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-700">Dashboard</h1>
+      <div class="mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-700 ml-12 lg:ml-0">Dashboard</h1>
         {#if superUser}
           <Button href="/upload" class="bg-primary hover:bg-primary/90 text-white">
             Upload a Video
@@ -38,8 +38,8 @@
       </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto p-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         {#each roomVideos as video}
           <div class="bg-white rounded-lg shadow-md overflow-hidden relative">
             <div class="relative aspect-video bg-gray-200">
@@ -58,8 +58,8 @@
                     <Dialog.Description>
                       <video src={`/video/${video.video_ref}.mp4`} class="w-full rounded-lg" controls />
                     </Dialog.Description>
-                    <Dialog.Footer class="flex justify-between mt-4">
-                      <div class="">
+                    <Dialog.Footer class="flex justify-between mt-4 {loading ? 'opacity-50 pointer-events-none' : ''}">
+                      <div class="flex gap-2 items-center">
                         <form 
                             use:enhance={() => {
                                 loading = true;

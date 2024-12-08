@@ -60,7 +60,7 @@
 </script>
 
 {#if visibleRepresentatives.length > 0}
-<div class="absolute bottom-0 right-24 top-[37%] z-50 flex items-center gap-3 pointer-events-none">
+<div class="absolute bottom-0 right-10 top-[37%] md:right-24 md:top-[37%] z-50 flex items-center gap-3 pointer-events-none">
     {#each visibleRepresentatives as participant}
     <div class="relative h-32 w-52 rounded-lg overflow-hidden bg-black">
         <div class="video-container h-full w-full">

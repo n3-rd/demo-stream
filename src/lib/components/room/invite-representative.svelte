@@ -77,8 +77,8 @@
 {:else}
     <!-- Second Modal -->
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white lg:p-6 w-full">
-            <h2 class="text-lg font-semibold mb-4 text-center">Innovated Building Group Representative</h2>
+        <div class="bg-white p-6 w-full ">
+            <h2 class="text-lg font-semibold mb-4 text-center text-[#464646]">Innovated Building Group Representative</h2>
             <div class="flex space-x-4 mb-6 justify-center flex-wrap">
                 <!-- Representatives -->
                 {#each representatives as representative}
@@ -99,7 +99,7 @@
                 </div>
                 {/each}
             </div>
-            <p class="text-sm mb-4 text-center">
+            <p class="text-sm mb-4 text-center text-[#464646]">
                 Welcome to Speak to a Representative. Choosing the right representative can make all the difference in getting the information and guidance you need.
                 <span class="block mt-2 text-xs text-gray-500">Note: Please Choose a Representative</span>
             </p>

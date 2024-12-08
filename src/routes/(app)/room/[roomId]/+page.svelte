@@ -775,7 +775,7 @@ function handlePanelToggle(event) {
 {:else}
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
     <div class="h-full">
-        <div class="flex items-center h-full pt-6 pb-24">
+        <div class="flex items-center md:items-start h-full pt-6 pb-24">
             <!-- left sidebar -->
              <div class="hidden lg:flex">
              <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
@@ -987,7 +987,6 @@ function handlePanelToggle(event) {
 }
 
 .video-container video {
-    object-fit: cover;
     position: absolute;
 }
 

@@ -28,28 +28,28 @@
 	}
 </script>
 
-<div class="flex min-h-screen bg-[#3583c6]">
+<div class="flex min-h-screen flex-col lg:flex-row bg-[#3583c6]">
 	<!-- Left side -->
-	<div class="flex-1 flex flex-col gap-6 px-12 justify-center items-center text-white bg-[url('/img/bg.png')] bg-cover bg-center bg-opacity-50">
-		<div class="flex flex-col gap-2 items-center">
-			<h2 class="text-xl font-medium mb-4">Hello! Welcome</h2>
-			<h1 class="text-4xl font-semibold ">Create Your Demo Room</h1>
+	<div class="flex-1 flex flex-col gap-6 px-4 lg:px-12 py-8 lg:py-0 justify-center items-center text-white bg-[url('/img/bg.png')] bg-cover bg-center bg-opacity-50">
+		<div class="flex flex-col gap-2 items-center text-center">
+			<h2 class="text-lg lg:text-xl font-medium mb-4">Hello! Welcome</h2>
+			<h1 class="text-2xl lg:text-4xl font-semibold">Create Your Demo Room</h1>
 		</div>
 
-		<div class="w-[89px] h-2 bg-white"></div>
+		<div class="w-[60px] lg:w-[89px] h-2 bg-white"></div>
 
-		<div class="text-lg text-center font-light ">
+		<div class="text-base lg:text-lg text-center font-light px-4 lg:px-0 max-w-md">
 			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et
 			dolore aliqua. Ut enim ad minim veniam, quis nostrud laboris.
 		</div>
 	</div>
 
 	<!-- Right side -->
-	<div class="flex-1 bg-white flex items-center justify-center">
-		<div class="w-96">
+	<div class="flex-1 bg-white flex items-center justify-center p-4 lg:p-0">
+		<div class="w-full max-w-[380px] lg:w-96">
 			<div class="mb-6">
-				<h2 class="text-2xl text-primary text-center font-semibold mb-2">Login Account</h2>
-				<p class="text-gray-600 text-sm font-light text-center">
+				<h2 class="text-xl lg:text-2xl text-primary text-center font-semibold mb-2">Login Account</h2>
+				<p class="text-gray-600 text-xs lg:text-sm font-light text-center">
 					Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
 					labore et dolore aliqua. Ut enim ad minim veniam, quis nostrud laboris.
 				</p>
@@ -65,7 +65,7 @@
 						handleLogin(result);
 					};
 				}}
-				class="space-y-4"
+				class="space-y-4 px-4 lg:px-0"
 			>
 				<div class="flex gap-1 items-center h-11">
 					<div class="h-full w-[6px] bg-primary"></div>
@@ -106,12 +106,12 @@
 					<Hint for="password" on="required"><HintValidate>Password is required</HintValidate></Hint>
 				</div>
 				
-				<div class="flex items-center justify-between">
+				<div class="flex items-center justify-between text-sm">
 					<div class="flex items-center space-x-2">
 						<input type="checkbox" id="keep-logged-in" class="rounded border-gray-300 text-primary focus:ring-primary" />
-						<label for="keep-logged-in" class="text-sm text-gray-600">Keep me logged in</label>
+						<label for="keep-logged-in" class="text-xs lg:text-sm text-gray-600">Keep me logged in</label>
 					</div>
-					<a href="/admin/reset-password" class="text-sm text-primary hover:underline">
+					<a href="/admin/reset-password" class="text-xs lg:text-sm text-primary hover:underline">
 						Forgot password?
 					</a>
 				</div>
@@ -143,7 +143,7 @@
 					{/if}
 				</Button>
 			</form>
-			<div class="mt-4 text-center text-sm">
+			<div class="mt-4 text-center text-xs lg:text-sm">
 				Don't have an account?
 				<a href="/register" class="underline">Sign up</a>
 			</div>

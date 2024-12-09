@@ -38,7 +38,16 @@ export class AntMediaService {
             websocket_url: wsUrl,
             mediaConstraints: {
                 video: false,
-                audio: true,
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    channelCount: 1,
+                    sampleRate: 48000,
+                    sampleSize: 16,
+                    volume: 1.0,
+                    latency: 0,
+                }
             },
             peerconnection_config: {
                 'iceServers': [

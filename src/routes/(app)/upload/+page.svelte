@@ -1,24 +1,39 @@
 <script lang="ts">
-    import { Button } from '$lib/components/ui/button';
-    import { Checkbox } from '$lib/components/ui/checkbox';
-    import * as Dialog from '$lib/components/ui/dialog';
-    import * as Table from "$lib/components/ui/table";
-    import { toast } from 'svelte-sonner';
-    import { Loader2 } from 'lucide-svelte';
-    import { goto } from '$app/navigation';
-	import Sidenav from '$lib/components/layout/sidenav.svelte';
-    
-    export let data;
-    const { user } = data;
-    let representatives = data.representatives;
+    import { Button } from "$lib/components/ui/button";
+    import { Input } from "$lib/components/ui/input";
+    import { Label } from "$lib/components/ui/label";
+    import { Textarea } from "$lib/components/ui/textarea";
+    import * as Select from "$lib/components/ui/select";
+    import { toast } from "svelte-sonner";
+    import { goto } from "$app/navigation";
+    import { enhance } from "$app/forms";
+    import { Loader2 } from "lucide-svelte";
 
-    let videoFile: File | null = null;
+    export let data;
+    const { user, representatives } = data;
+
+    let loading = false;
+    let selectedType = 'video';
+    let selectedFile: File | null = null;
     let thumbnailFile: File | null = null;
-    let isUploadingVideo = false;
+    let selectedRepresentatives: string[] = [];
+    let isUploading = false;
     let uploadProgress = 0;
     let uploadedChunks: Set<number> = new Set();
 
     const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+
+    const contentTypes = [
+        { value: 'video', label: 'Video' },
+        { value: 'pdf', label: 'PDF' },
+        { value: 'document', label: 'Document' }
+    ];
+
+    const allowedFileTypes = {
+        video: 'video/*',
+        pdf: 'application/pdf',
+        document: '.doc,.docx,.xls,.xlsx'
+    };
 
     async function uploadChunk(chunk: Blob, index: number, filename: string, totalChunks: number) {
         const formData = new FormData();
@@ -40,7 +55,7 @@
         uploadProgress = (uploadedChunks.size / totalChunks) * 100;
     }
 
-    async function uploadVideo(file: File) {
+    async function uploadFile(file: File) {
         const filename = `${Date.now()}-${file.name}`;
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
@@ -54,28 +69,59 @@
         return filename;
     }
 
+    function handleFileChange(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files[0]) {
+            selectedFile = input.files[0];
+        }
+    }
+
+    function handleThumbnailChange(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files[0]) {
+            thumbnailFile = input.files[0];
+        }
+    }
+
+    function handleTypeChange(value: string) {
+        selectedType = value;
+        selectedFile = null;
+        // Reset file input
+        const fileInput = document.getElementById('file') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+    }
+
+    function handleRepresentativeChange(value: string) {
+        const repId = value;
+        if (selectedRepresentatives.includes(repId)) {
+            selectedRepresentatives = selectedRepresentatives.filter(id => id !== repId);
+        } else {
+            selectedRepresentatives = [...selectedRepresentatives, repId];
+        }
+    }
+
     async function handleSubmit(event: Event) {
         event.preventDefault();
-        if (!videoFile) {
-            toast.error('Please select a video file');
+        if (!selectedFile) {
+            toast.error('Please select a file');
             return;
         }
 
-        isUploadingVideo = true;
+        isUploading = true;
         uploadProgress = 0;
         uploadedChunks.clear();
 
         try {
-            const videoFilename = await uploadVideo(videoFile);
+            const filename = await uploadFile(selectedFile);
 
             const formData = new FormData(event.target as HTMLFormElement);
-            formData.append('video_ref', videoFilename);
+            formData.append('file_ref', filename);
 
             if (thumbnailFile) {
                 formData.append('thumbnail', thumbnailFile);
             }
 
-            const response = await fetch('?/uploadVideo', {
+            const response = await fetch('?/uploadContent', {
                 method: 'POST',
                 body: formData
             });
@@ -83,220 +129,137 @@
             const result = await response.json();
 
             if (result.status === 200) {
-                toast.success('Successfully uploaded video');
-                goto('/');
+                toast.success('Successfully uploaded content');
+                goto('/content-library');
             } else {
-                toast.error('Error creating video entry');
+                toast.error('Error creating content entry');
             }
         } catch (error) {
             console.error('Upload error:', error);
-            toast.error('Error uploading video');
+            toast.error('Error uploading content');
         } finally {
-            isUploadingVideo = false;
+            isUploading = false;
         }
     }
-
-    function handleFileInput(event: Event, type: 'video' | 'thumbnail') {
-        const input = event.target as HTMLInputElement;
-        const files = input.files;
-        if (files && files.length > 0) {
-            if (type === 'video') {
-                videoFile = files[0];
-            } else {
-                thumbnailFile = files[0];
-            }
-        }
-    }
-
-    let selectedRepresentatives: string[] = [];
-    let isRepresentativeModalOpen = false;
-
-    function toggleRepresentative(id: string) {
-        if (selectedRepresentatives.includes(id)) {
-            selectedRepresentatives = selectedRepresentatives.filter(repId => repId !== id);
-        } else {
-            selectedRepresentatives = [...selectedRepresentatives, id];
-        }
-    }
-
-    function openRepresentativeModal() {
-        isRepresentativeModalOpen = true;
-    }
-
-    function closeRepresentativeModal() {
-        isRepresentativeModalOpen = false;
-    }
-
-    function confirmRepresentatives() {
-        closeRepresentativeModal();
-    }
-
-    function getSelectedRepresentativesDetails() {
-        return representatives.filter(rep => selectedRepresentatives.includes(rep.id));
-    }
-
-    $: console.log(selectedRepresentatives);
 </script>
 
-<div class="flex bg-gray-100">
-    <!-- Sidebar (fixed) -->
-    <Sidenav activePage="upload"/>
-    <!-- Main content area (scrollable) -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Header (fixed) -->
-        <header class="bg-white shadow-sm z-10">
-            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-                <h1 class="text-3xl font-bold text-gray-800">Upload a Video</h1>
+<div class="container mx-auto p-6 max-w-2xl">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">Upload Content</h1>
+
+        <form
+            on:submit={handleSubmit}
+            enctype="multipart/form-data"
+            class="space-y-6"
+        >
+            <!-- Content Type -->
+            <div class="space-y-2">
+                <Label for="type">Content Type</Label>
+                <Select.Root>
+                    <Select.Trigger class="w-full">
+                        <Select.Value>{contentTypes.find(t => t.value === selectedType)?.label || "Select content type"}</Select.Value>
+                    </Select.Trigger>
+                    <Select.Content>
+                        {#each contentTypes as type}
+                            <Select.Item 
+                                value={type.value}
+                                on:click={() => handleTypeChange(type.value)}
+                            >
+                                {type.label}
+                            </Select.Item>
+                        {/each}
+                    </Select.Content>
+                    <Select.Input name="type" value={selectedType} />
+                </Select.Root>
             </div>
-        </header>
 
-        <!-- Scrollable content -->
-        <main class="flex-1 overflow-y-auto p-6">
-            <div class="max-w-7xl mx-auto">
-                <div class="bg-white p-6 rounded-lg shadow">
-                    <!-- Form Section -->
-                    <form on:submit={handleSubmit} enctype="multipart/form-data">
-                        <div class="space-y-6">
-                            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                <div class="flex flex-col gap-2">
-                                    <label for="title" class="text-sm font-medium text-gray-700">Title</label>
-                                    <input type="text" id="title" name="title" class="w-full border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"/>
-                                </div>
-                            </div>
-                            <div class="flex flex-col gap-2">
-                                <label for="description" class="text-sm font-medium text-gray-700">Brief Description</label>
-                                <textarea id="description" name="desc" rows="4" class="w-full border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"></textarea>
-                            </div>
-                            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                <div class="flex flex-col gap-2">
-                                    <label for="video" class="text-sm font-medium text-gray-700">Upload a Video</label>
-                                    <input 
-                                        type="file" 
-                                        id="video" 
-                                        accept="video/*" 
-                                        on:change={(e) => handleFileInput(e, 'video')}
-                                        class="border border-gray-300 rounded-md p-2"
-                                    />
-                                </div>
-                                <div class="flex flex-col gap-2">
-                                    <label for="thumbnail" class="text-sm font-medium text-gray-700">Video Thumbnail</label>
-                                    <input 
-                                        type="file" 
-                                        id="thumbnail" 
-                                        accept="image/*" 
-                                        on:change={(e) => handleFileInput(e, 'thumbnail')}
-                                        class="border border-gray-300 rounded-md p-2"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+            <!-- Title -->
+            <div class="space-y-2">
+                <Label for="title">Title</Label>
+                <Input type="text" id="title" name="title" required />
+            </div>
 
-                        <!-- Representatives Section -->
-                        <div class="mt-8">
-                            <h2 class="text-lg font-bold text-gray-700 mb-4">Choose Representatives</h2>
-                            <Button on:click={openRepresentativeModal}>Select Representatives</Button>
-                            {#if selectedRepresentatives.length > 0}
-                                <div class="mt-4">
-                                    <Table.Root>
-                                        <Table.Caption>Selected Representatives</Table.Caption>
-                                        <Table.Header>
-                                            <Table.Row>
-                                                <Table.Head class="w-[50px]">Avatar</Table.Head>
-                                                <Table.Head>Name</Table.Head>
-                                                <Table.Head>Phone</Table.Head>
-                                                <Table.Head>Email</Table.Head>
-                                                <Table.Head class="text-right">Action</Table.Head>
-                                            </Table.Row>
-                                        </Table.Header>
-                                        <Table.Body>
-                                            {#each selectedRepresentatives as repId}
-                                                {#each representatives as rep}
-                                                    {#if rep.id === repId}
-                                                        <Table.Row>
-                                                            <Table.Cell>
-                                                                <div class="w-10 h-10 bg-gray-200 rounded-full"></div>
-                                                            </Table.Cell>
-                                                            <Table.Cell class="font-medium">{rep.name}</Table.Cell>
-                                                            <Table.Cell>{rep.phone || 'N/A'}</Table.Cell>
-                                                            <Table.Cell>{rep.email}</Table.Cell>
-                                                            <Table.Cell class="text-right">
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    size="sm" 
-                                                                    on:click={() => toggleRepresentative(rep.id)}
-                                                                >
-                                                                    Remove
-                                                                </Button>
-                                                            </Table.Cell>
-                                                        </Table.Row>
-                                                    {/if}
-                                                {/each}
-                                            {/each}
-                                        </Table.Body>
-                                    </Table.Root>
-                                </div>
-                            {:else}
-                                <p class="mt-2 text-sm text-gray-600">No representatives selected</p>
-                            {/if}
-                        </div>
+            <!-- Description -->
+            <div class="space-y-2">
+                <Label for="description">Description</Label>
+                <Textarea id="description" name="description" />
+            </div>
 
-                        <input type="hidden" name="representatives" value={selectedRepresentatives.join(',')} />
+            <!-- File Upload -->
+            <div class="space-y-2">
+                <Label for="file">File</Label>
+                <Input 
+                    type="file" 
+                    id="file" 
+                    name="file" 
+                    accept={allowedFileTypes[selectedType]} 
+                    on:change={handleFileChange}
+                    required 
+                />
+                <p class="text-sm text-gray-500">
+                    {#if selectedType === 'video'}
+                        Supported formats: MP4, WebM
+                    {:else if selectedType === 'pdf'}
+                        Supported format: PDF
+                    {:else}
+                        Supported formats: DOC, DOCX, XLS, XLSX
+                    {/if}
+                </p>
+            </div>
 
-                        <div class="mt-6">
-                            <Button type="submit" variant="default" disabled={isUploadingVideo}>
-                                {#if isUploadingVideo}
-                                    <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                                    Uploading Video... {uploadProgress.toFixed(2)}%
-                                {:else}
-                                    Upload Video
-                                {/if}
-                            </Button>
-                        </div>
-                    </form>
+            <!-- Thumbnail (for videos only) -->
+            {#if selectedType === 'video'}
+                <div class="space-y-2">
+                    <Label for="thumbnail">Thumbnail (optional)</Label>
+                    <Input 
+                        type="file" 
+                        id="thumbnail" 
+                        name="thumbnail" 
+                        accept="image/*"
+                        on:change={handleThumbnailChange}
+                    />
+                    <p class="text-sm text-gray-500">Supported formats: JPG, PNG, WebP</p>
                 </div>
+            {/if}
+
+            <!-- Share with Representatives -->
+            <div class="space-y-2">
+                <Label>Share with Representatives</Label>
+                <Select.Root multiple>
+                    <Select.Trigger class="w-full">
+                        <Select.Value placeholder="Select representatives" />
+                    </Select.Trigger>
+                    <Select.Content>
+                        {#each representatives as rep}
+                            <Select.Item 
+                                value={rep.id}
+                                on:click={() => handleRepresentativeChange(rep.id)}
+                            >
+                                {rep.name}
+                            </Select.Item>
+                        {/each}
+                    </Select.Content>
+                </Select.Root>
+                <input type="hidden" name="representatives" value={selectedRepresentatives.join(',')} />
             </div>
-        </main>
+
+            <div class="flex justify-end space-x-4">
+                <Button
+                    type="button"
+                    variant="outline"
+                    on:click={() => goto('/content-library')}
+                >
+                    Cancel
+                </Button>
+                <Button type="submit" disabled={isUploading || !selectedFile}>
+                    {#if isUploading}
+                        <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                        Uploading... {uploadProgress.toFixed(2)}%
+                    {:else}
+                        Upload
+                    {/if}
+                </Button>
+            </div>
+        </form>
     </div>
 </div>
-
-<!-- Representative Selection Modal -->
-<Dialog.Root bind:open={isRepresentativeModalOpen}>
-    <Dialog.Content class="sm:max-w-[425px]">
-        <Dialog.Header>
-            <Dialog.Title>Select Representatives</Dialog.Title>
-            <Dialog.Description>
-                Choose the representatives for this video.
-            </Dialog.Description>
-        </Dialog.Header>
-        <div class="grid gap-4 py-4">
-            {#each representatives as rep}
-                <div class="flex items-center space-x-2">
-                    <Checkbox
-                        id={rep.id}
-                        checked={selectedRepresentatives.includes(rep.id)}
-                        onCheckedChange={() => toggleRepresentative(rep.id)}
-                    />
-                    <label
-                        for={rep.id}
-                        class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                        <p class="font-medium text-gray-900">{rep.name}</p>
-                        <p class="text-sm text-gray-600">{rep.email}</p>
-                    </label>
-                </div>
-            {/each}
-        </div>
-        <Dialog.Footer>
-            <Button type="button" variant="outline" on:click={closeRepresentativeModal}>
-                Cancel
-            </Button>
-            <Button type="button" on:click={confirmRepresentatives}>
-                Confirm
-            </Button>
-        </Dialog.Footer>
-    </Dialog.Content>
-</Dialog.Root>
-
-<style>
-    /* No styles needed here now */
-</style>

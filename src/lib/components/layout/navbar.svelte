@@ -29,23 +29,7 @@
         // isInMeeting = pageRoute.pathname.includes('room');
     }
 
-    async function fetchRepresentatives() {
-        try {
-            const response = await fetch('/api/representatives');
-            if (response.ok) {
-                const data = await response.json();
-                representatives = data.representatives;
-            } else {
-                console.error('Failed to fetch representatives');
-            }
-        } catch (error) {
-            console.error('Error fetching representatives:', error);
-        }
-    }
 
-    onMount(() => {
-        fetchRepresentatives();
-    });
 
 
     function toggleMenu() {

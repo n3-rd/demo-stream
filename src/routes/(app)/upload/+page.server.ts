@@ -41,15 +41,16 @@ export const actions: Actions = {
             const title = formData.get('title') as string;
             const description = formData.get('description') as string;
             const file = formData.get('file') as File;
+            const libraryType = formData.get('library_type') as string;
             const representatives = formData.get('representatives') as string;
             const repIds = representatives ? representatives.split(',') : [];
 
-            const data: Record<string, any> = {
+            // Base content data
+            const contentData: Record<string, any> = {
                 title,
                 description,
                 type,
                 owner_company: user.id,
-                shared_with: repIds,
                 file
             };
 
@@ -57,33 +58,67 @@ export const actions: Actions = {
             if (type === 'video') {
                 const thumbnail = formData.get('thumbnail') as File;
                 if (thumbnail) {
-                    data.thumbnail = thumbnail;
+                    contentData.thumbnail = thumbnail;
                 }
             }
 
-            // Create the content first
-            const record = await locals.pb.collection('content_library').create(data);
+            // Create content based on library type
+            if (libraryType === 'host') {
+                // Create in host library
+                contentData.library_type = 'host';
+                await locals.pb.collection('content_library').create(contentData);
+            } else if (libraryType === 'representative') {
+                // Create in representative library
+                contentData.library_type = 'representative';
+                const record = await locals.pb.collection('content_library').create(contentData);
 
-            // Update each representative's connected_content
-            for (const repId of repIds) {
-                // Get current representative data
-                const rep = await locals.pb.collection('representatives').getOne(repId);
-                
-                // Create a new array with existing content plus the new one
-                const connectedContent = Array.isArray(rep.connected_content) 
-                    ? [...rep.connected_content, record.id]
-                    : [record.id];
-                
-                // Update the representative with the full data structure
-                await locals.pb.collection('representatives').update(repId, {
-                    "name": rep.name,
-                    "email": rep.email,
-                    "phone": rep.phone,
-                    "company": rep.company,
-                    "is_active": rep.is_active,
-                    "schedule": rep.schedule,
-                    "connected_content": connectedContent
-                });
+                // Update each selected representative
+                for (const repId of repIds) {
+                    // Get current representative data
+                    const rep = await locals.pb.collection('representatives').getOne(repId);
+                    
+                    // Create a new array with existing content plus the new one
+                    const connectedContent = Array.isArray(rep.connected_content) 
+                        ? [...rep.connected_content, record.id]
+                        : [record.id];
+                    
+                    // Update the representative with the full data structure
+                    await locals.pb.collection('representatives').update(repId, {
+                        "name": rep.name,
+                        "email": rep.email,
+                        "phone": rep.phone,
+                        "company": rep.company,
+                        "is_active": rep.is_active,
+                        "schedule": rep.schedule,
+                        "connected_content": connectedContent
+                    });
+                }
+            } else if (libraryType === 'both') {
+                // Create single entry with both types
+                contentData.library_type = ['host', 'representative'];
+                const record = await locals.pb.collection('content_library').create(contentData);
+
+                // Update each selected representative
+                for (const repId of repIds) {
+                    // Get current representative data
+                    const rep = await locals.pb.collection('representatives').getOne(repId);
+                    
+                    // Create a new array with existing content plus the new one
+                    const connectedContent = Array.isArray(rep.connected_content) 
+                        ? [...rep.connected_content, record.id]
+                        : [record.id];
+                    
+                    // Update the representative with the full data structure
+                    await locals.pb.collection('representatives').update(repId, {
+                        "name": rep.name,
+                        "email": rep.email,
+                        "phone": rep.phone,
+                        "company": rep.company,
+                        "is_active": rep.is_active,
+                        "schedule": rep.schedule,
+                        "connected_content": connectedContent
+                    });
+                }
             }
 
             return {

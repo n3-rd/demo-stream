@@ -14,6 +14,7 @@
 
     let loading = false;
     let selectedType = 'video';
+    let selectedLibraryType: string | null = null;
     let selectedFile: File | null = null;
     let thumbnailFile: File | null = null;
     let selectedRepresentatives: string[] = [];
@@ -29,11 +30,52 @@
         { value: 'document', label: 'Document' }
     ];
 
+    const libraryTypes = [
+        { value: 'host', label: 'Host Library' },
+        { value: 'representative', label: 'Representative Library' },
+        { value: 'both', label: 'Both' }
+    ];
+
     const allowedFileTypes = {
         video: 'video/*',
         pdf: 'application/pdf',
         document: '.doc,.docx,.xls,.xlsx'
     };
+
+    function handleFileChange(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files[0]) {
+            selectedFile = input.files[0];
+        }
+    }
+
+    function handleThumbnailChange(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files[0]) {
+            thumbnailFile = input.files[0];
+        }
+    }
+
+    function handleTypeChange(value: string) {
+        selectedType = value;
+        selectedFile = null;
+        // Reset file input
+        const fileInput = document.getElementById('file') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+    }
+
+    function handleLibraryTypeSelect(event: CustomEvent<string>) {
+        selectedLibraryType = event.detail;
+    }
+
+    function handleRepresentativeChange(value: string) {
+        const repId = value;
+        if (selectedRepresentatives.includes(repId)) {
+            selectedRepresentatives = selectedRepresentatives.filter(id => id !== repId);
+        } else {
+            selectedRepresentatives = [...selectedRepresentatives, repId];
+        }
+    }
 
     async function uploadChunk(chunk: Blob, index: number, filename: string, totalChunks: number) {
         const formData = new FormData();
@@ -67,37 +109,6 @@
         }
 
         return filename;
-    }
-
-    function handleFileChange(event: Event) {
-        const input = event.target as HTMLInputElement;
-        if (input.files && input.files[0]) {
-            selectedFile = input.files[0];
-        }
-    }
-
-    function handleThumbnailChange(event: Event) {
-        const input = event.target as HTMLInputElement;
-        if (input.files && input.files[0]) {
-            thumbnailFile = input.files[0];
-        }
-    }
-
-    function handleTypeChange(value: string) {
-        selectedType = value;
-        selectedFile = null;
-        // Reset file input
-        const fileInput = document.getElementById('file') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
-    }
-
-    function handleRepresentativeChange(value: string) {
-        const repId = value;
-        if (selectedRepresentatives.includes(repId)) {
-            selectedRepresentatives = selectedRepresentatives.filter(id => id !== repId);
-        } else {
-            selectedRepresentatives = [...selectedRepresentatives, repId];
-        }
     }
 
     async function handleSubmit(event: Event) {
@@ -173,6 +184,24 @@
                 </Select.Root>
             </div>
 
+            <!-- Library Type -->
+            <div class="space-y-2">
+                <Label>Library Type</Label>
+                <Select.Root on:select={handleLibraryTypeSelect}>
+                    <Select.Trigger class="w-full">
+                        <Select.Value placeholder="Select library type" />
+                    </Select.Trigger>
+                    <Select.Content>
+                        {#each libraryTypes as type}
+                            <Select.Item 
+                            on:click={() => selectedLibraryType = type.value}
+                            value={type.value}>{type.label}</Select.Item>
+                        {/each}
+                    </Select.Content>
+                </Select.Root>
+                <input type="hidden" name="library_type" value={selectedLibraryType} />
+            </div>
+
             <!-- Title -->
             <div class="space-y-2">
                 <Label for="title">Title</Label>
@@ -240,7 +269,7 @@
                         {/each}
                     </Select.Content>
                 </Select.Root>
-                <input type="hidden" name="representatives" value={selectedRepresentatives.join(',')} />
+                <input type="hidden" name="shared_with" value={selectedRepresentatives.join(',')} />
             </div>
 
             <div class="flex justify-end space-x-4">
@@ -251,7 +280,7 @@
                 >
                     Cancel
                 </Button>
-                <Button type="submit" disabled={isUploading || !selectedFile}>
+                <Button type="submit" disabled={isUploading || !selectedFile || !selectedLibraryType}>
                     {#if isUploading}
                         <Loader2 class="mr-2 h-4 w-4 animate-spin" />
                         Uploading... {uploadProgress.toFixed(2)}%

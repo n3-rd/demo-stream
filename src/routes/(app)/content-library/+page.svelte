@@ -10,11 +10,26 @@
     export let data;
     const { content } = data;
 
-    let selectedTab = "all";
+    let selectedTab = 'host';
+    let selectedContentType = 'all';
 
-    $: filteredContent = selectedTab === "all" 
-        ? content 
-        : content.filter(item => item.type === selectedTab);
+    function handleTabChange(tab: string) {
+        selectedTab = tab;
+    }
+
+    function handleContentTypeChange(type: string) {
+        selectedContentType = type;
+    }
+
+    $: filteredContent = content.filter(item => {
+        const libraryTypeMatch = selectedTab === 'host'
+            ? item.library_type === 'host' || (Array.isArray(item.library_type) && item.library_type.includes('host'))
+            : item.library_type === 'representative' || (Array.isArray(item.library_type) && item.library_type.includes('representative'));
+
+        const contentTypeMatch = selectedContentType === 'all' || item.type === selectedContentType;
+
+        return libraryTypeMatch && contentTypeMatch;
+    });
 
     function getIcon(type: string) {
         switch (type) {
@@ -45,66 +60,99 @@
     <div class="flex-1 overflow-auto">
         <div class="container mx-auto p-6">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-3xl font-bold">Content Library</h1>
-                <Button on:click={() => goto('/upload')}>Upload Content</Button>
+                <div class="flex space-x-4">
+                    <button 
+                        class="px-4 py-2 text-sm font-medium {selectedTab === 'host' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+                        on:click={() => handleTabChange('host')}
+                    >
+                        Host Content
+                    </button>
+                    <button 
+                        class="px-4 py-2 text-sm font-medium {selectedTab === 'representative' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+                        on:click={() => handleTabChange('representative')}
+                    >
+                        Representative Content
+                    </button>
+                </div>
+                <Button on:click={() => goto('/upload')}>Upload a Content</Button>
             </div>
 
-            <Tabs value={selectedTab} onValueChange={(value) => selectedTab = value} class="w-full">
-                <TabsList class="grid w-full grid-cols-4 lg:w-[400px]">
-                    <TabsTrigger value="all">All</TabsTrigger>
-                    <TabsTrigger value="video">Videos</TabsTrigger>
-                    <TabsTrigger value="pdf">PDFs</TabsTrigger>
-                    <TabsTrigger value="document">Documents</TabsTrigger>
-                </TabsList>
+            <div class="mb-6">
+                <div class="border-b">
+                    <div class="flex space-x-8">
+                        <button 
+                            class="px-4 py-2 text-sm font-medium {selectedContentType === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+                            on:click={() => handleContentTypeChange('all')}
+                        >
+                            All
+                        </button>
+                        <button 
+                            class="px-4 py-2 text-sm font-medium {selectedContentType === 'video' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+                            on:click={() => handleContentTypeChange('video')}
+                        >
+                            Videos
+                        </button>
+                        <button 
+                            class="px-4 py-2 text-sm font-medium {selectedContentType === 'pdf' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+                            on:click={() => handleContentTypeChange('pdf')}
+                        >
+                            PDFs
+                        </button>
+                        <button 
+                            class="px-4 py-2 text-sm font-medium {selectedContentType === 'document' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}"
+                            on:click={() => handleContentTypeChange('document')}
+                        >
+                            Documents
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-                <TabsContent value={selectedTab} class="mt-6">
-                    {#if filteredContent.length === 0}
-                        <div class="text-center py-12">
-                            <p class="text-gray-500">No content found in this category</p>
-                        </div>
-                    {:else}
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {#each filteredContent as item}
-                                <Card class="overflow-hidden">
-                                    <CardHeader>
-                                        <div class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                                            {#if item.type === 'video' && item.thumbnail}
-                                                <img
-                                                    src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${item.id}/${item.thumbnail}`}
-                                                    alt={item.title}
-                                                    class="w-full h-full object-cover"
-                                                />
-                                            {:else}
-                                                <svelte:component 
-                                                    this={getIcon(item.type)} 
-                                                    class="w-12 h-12 text-gray-400"
-                                                />
-                                            {/if}
-                                        </div>
-                                        <CardTitle>{item.title}</CardTitle>
-                                        <CardDescription class="line-clamp-2">{item.description}</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p class="text-sm text-gray-500 capitalize">Type: {item.type}</p>
-                                        {#if item.shared_with?.length > 0}
-                                            <p class="text-sm text-gray-500">Shared with {item.shared_with.length} representatives</p>
-                                        {/if}
-                                    </CardContent>
-                                    <CardFooter>
-                                        <Button 
-                                            variant="secondary" 
-                                            class="w-full"
-                                            on:click={() => handleContentClick(item)}
-                                        >
-                                            {item.type === 'video' ? 'Watch Video' : 'Open File'}
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-                            {/each}
-                        </div>
-                    {/if}
-                </TabsContent>
-            </Tabs>
+            {#if filteredContent.length === 0}
+                <div class="text-center py-12">
+                    <p class="text-gray-500">No content found in this category</p>
+                </div>
+            {:else}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {#each filteredContent as item}
+                        <Card class="overflow-hidden">
+                            <CardHeader>
+                                <div class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+                                    {#if item.type === 'video' && item.thumbnail}
+                                        <img
+                                            src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${item.id}/${item.thumbnail}`}
+                                            alt={item.title}
+                                            class="w-full h-full object-cover"
+                                        />
+                                    {:else}
+                                        <svelte:component 
+                                            this={getIcon(item.type)} 
+                                            class="w-12 h-12 text-gray-400"
+                                        />
+                                    {/if}
+                                </div>
+                                <CardTitle>{item.title}</CardTitle>
+                                <CardDescription class="line-clamp-2">{item.description}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p class="text-sm text-gray-500 capitalize">Type: {item.type}</p>
+                                {#if item.shared_with?.length > 0}
+                                    <p class="text-sm text-gray-500">Shared with {item.shared_with.length} representatives</p>
+                                {/if}
+                            </CardContent>
+                            <CardFooter>
+                                <Button 
+                                    variant="secondary" 
+                                    class="w-full"
+                                    on:click={() => handleContentClick(item)}
+                                >
+                                    {item.type === 'video' ? 'Watch Video' : 'Open File'}
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    {/each}
+                </div>
+            {/if}
         </div>
     </div>
 </div> 

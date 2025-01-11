@@ -22,14 +22,13 @@
 	<div class="flex-1 flex flex-col gap-6 px-12 justify-center items-center text-white bg-[url('/img/bg.png')] bg-cover bg-center bg-opacity-50">
 		<div class="flex flex-col gap-2 items-center">
 			<h2 class="text-xl font-medium mb-4">Hello! Welcome</h2>
-			<h1 class="text-4xl font-semibold ">Create Your Demo Room</h1>
+			<h1 class="text-4xl font-semibold ">Create Your Company Account</h1>
 		</div>
 
 		<div class="w-[89px] h-2 bg-white"></div>
 
 		<div class="text-lg text-center font-light ">
-			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et
-			dolore aliqua. Ut enim ad minim veniam, quis nostrud laboris.
+			Create your company account to manage your representatives and content library. Start showcasing your products and services today.
 		</div>
 	</div>
 
@@ -37,10 +36,9 @@
 	<div class="flex-1 bg-white flex items-center justify-center">
 		<div class="w-96">
 			<div class="mb-6">
-				<h2 class="text-2xl text-primary text-center font-semibold mb-2">Create Account</h2>
+				<h2 class="text-2xl text-primary text-center font-semibold mb-2">Create Company Account</h2>
 				<p class="text-gray-600 text-sm font-light text-center">
-					Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-					labore et dolore aliqua. Ut enim ad minim veniam, quis nostrud laboris.
+					Fill in your company details to get started. You can add representatives and content after registration.
 				</p>
 			</div>
 			<form
@@ -56,33 +54,59 @@
 							toast.success('Successfully registered');
 							goto('/');
 						} else {
-							toast.error('Error occurred while registering user');
+							toast.error('Error occurred while registering company');
 						}
 					};
 				}}
 				class="space-y-4"
 			>
-				<!-- Name input -->
+				<!-- Company Name input -->
 				<div class="flex gap-1 items-center h-11">
 					<div class="h-full w-[6px] bg-primary"></div>
 					<div class="w-full">
 						<input
 							id="name"
 							name="name"
-							placeholder="Your name"
+							placeholder="Company name"
 							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 							required
-							use:validators={[required, minLength(3), maxLength(20)]}
+							use:validators={[required, minLength(2), maxLength(50)]}
 						/>
 					</div>
 				</div>
 				<HintGroup for="name">
 					<div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-						<Hint on="required"><HintValidate>Name is required</HintValidate></Hint>
-						<Hint on="minLength"><HintValidate>Name must be at least 3 characters</HintValidate></Hint>
-						<Hint on="maxLength"><HintValidate>Name must be at most 20 characters</HintValidate></Hint>
+						<Hint on="required"><HintValidate>Company name is required</HintValidate></Hint>
+						<Hint on="minLength"><HintValidate>Company name must be at least 2 characters</HintValidate></Hint>
+						<Hint on="maxLength"><HintValidate>Company name must be at most 50 characters</HintValidate></Hint>
 					</div>
 				</HintGroup>
+
+				<!-- Company Phone -->
+				<div class="flex gap-1 items-center h-11">
+					<div class="h-full w-[6px] bg-primary"></div>
+					<div class="w-full">
+						<input
+							id="phone"
+							name="phone"
+							placeholder="Company phone (optional)"
+							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+						/>
+					</div>
+				</div>
+
+				<!-- Company Website -->
+				<div class="flex gap-1 items-center h-11">
+					<div class="h-full w-[6px] bg-primary"></div>
+					<div class="w-full">
+						<input
+							id="website"
+							name="website"
+							placeholder="Company website (optional)"
+							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+						/>
+					</div>
+				</div>
 
 				<!-- Email input -->
 				<div class="flex gap-1 items-center h-11">
@@ -92,10 +116,10 @@
 							id="email"
 							type="email"
 							name="email"
-							placeholder="m@example.com"
+							placeholder="company@example.com"
 							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 							required
-							use:validators={[required, email]}
+								use:validators={[required, email]}
 						/>
 					</div>
 				</div>
@@ -170,7 +194,7 @@
 						</svg>
 						<span>Registering...</span>
 					{:else}
-						<span>Register</span>
+						<span>Register Company</span>
 					{/if}
 				</Button>
 			</form>

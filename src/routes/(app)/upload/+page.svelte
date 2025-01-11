@@ -8,6 +8,7 @@
     import { goto } from "$app/navigation";
     import { enhance } from "$app/forms";
     import { Loader2 } from "lucide-svelte";
+    import { onDestroy } from "svelte";
 
     export let data;
     const { user, representatives } = data;
@@ -21,6 +22,7 @@
     let isUploading = false;
     let uploadProgress = 0;
     let uploadedChunks: Set<number> = new Set();
+    let thumbnailPreviewUrl: string | null = null;
 
     const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
 
@@ -53,13 +55,22 @@
         const input = event.target as HTMLInputElement;
         if (input.files && input.files[0]) {
             thumbnailFile = input.files[0];
+            thumbnailPreviewUrl = URL.createObjectURL(input.files[0]);
+        }
+    }
+
+    function resetThumbnail() {
+        thumbnailPreviewUrl = null;
+        thumbnailFile = null;
+        const input = document.getElementById('thumbnail');
+        if (input instanceof HTMLInputElement) {
+            input.value = '';
         }
     }
 
     function handleTypeChange(value: string) {
         selectedType = value;
         selectedFile = null;
-        // Reset file input
         const fileInput = document.getElementById('file') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
     }
@@ -152,6 +163,12 @@
             isUploading = false;
         }
     }
+
+    onDestroy(() => {
+        if (thumbnailPreviewUrl) {
+            URL.revokeObjectURL(thumbnailPreviewUrl);
+        }
+    });
 </script>
 
 <div class="container mx-auto p-6 max-w-2xl">
@@ -194,8 +211,11 @@
                     <Select.Content>
                         {#each libraryTypes as type}
                             <Select.Item 
-                            on:click={() => selectedLibraryType = type.value}
-                            value={type.value}>{type.label}</Select.Item>
+                                value={type.value}
+                                on:click={() => selectedLibraryType = type.value}
+                            >
+                                {type.label}
+                            </Select.Item>
                         {/each}
                     </Select.Content>
                 </Select.Root>
@@ -236,20 +256,39 @@
                 </p>
             </div>
 
-            <!-- Thumbnail (for videos only) -->
-            {#if selectedType === 'video'}
+        
                 <div class="space-y-2">
                     <Label for="thumbnail">Thumbnail (optional)</Label>
-                    <Input 
-                        type="file" 
-                        id="thumbnail" 
-                        name="thumbnail" 
-                        accept="image/*"
-                        on:change={handleThumbnailChange}
-                    />
-                    <p class="text-sm text-gray-500">Supported formats: JPG, PNG, WebP</p>
+                    <div class="space-y-4">
+                        {#if thumbnailPreviewUrl}
+                            <div class="relative aspect-video w-full max-w-md mx-auto">
+                                <img 
+                                    src={thumbnailPreviewUrl} 
+                                    alt="Thumbnail preview" 
+                                    class="rounded-lg object-cover w-full h-full"
+                                />
+                                <button
+                                    type="button"
+                                    class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                    on:click={resetThumbnail}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        {/if}
+                        <Input 
+                            type="file" 
+                            id="thumbnail" 
+                            name="thumbnail" 
+                            accept="image/*"
+                            on:change={handleThumbnailChange}
+                        />
+                        <p class="text-sm text-gray-500">Supported formats: JPG, PNG, WebP</p>
+                    </div>
                 </div>
-            {/if}
+            
 
             <!-- Share with Representatives -->
             <div class="space-y-2">

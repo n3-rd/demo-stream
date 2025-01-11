@@ -43,6 +43,7 @@ export const actions: Actions = {
             const file = formData.get('file') as File;
             const libraryType = formData.get('library_type') as string;
             const representatives = formData.get('representatives') as string;
+            const thumbnail = formData.get('thumbnail') as File;
             const repIds = representatives ? representatives.split(',') : [];
 
             // Base content data
@@ -50,17 +51,11 @@ export const actions: Actions = {
                 title,
                 description,
                 type,
+                thumbnail,
                 owner_company: user.id,
                 file
             };
 
-            // If it's a video and has a thumbnail, add it
-            if (type === 'video') {
-                const thumbnail = formData.get('thumbnail') as File;
-                if (thumbnail) {
-                    contentData.thumbnail = thumbnail;
-                }
-            }
 
             // Create content based on library type
             if (libraryType === 'host') {

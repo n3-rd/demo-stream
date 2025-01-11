@@ -5,7 +5,12 @@ import { browser } from '$app/environment';
 
 export const load: PageServerLoad = async ({ locals }) => {
     const user = locals.pb.authStore.isValid ? locals.pb.authStore.model : null;
-    const roomVideos = await locals.pb.collection('room_videos_duplicate').getFullList();
+    
+    // Only fetch videos owned by the current company
+    const roomVideos = await locals.pb.collection('room_videos_duplicate').getFullList({
+        filter: user ? `owner_company = "${user.id}"` : ''
+    });
+    
     return {
         user,
         roomVideos

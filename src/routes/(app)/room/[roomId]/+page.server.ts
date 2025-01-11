@@ -17,33 +17,41 @@ const sanitizeAssociatedVideo = (videoRef: string) => {
 }
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-    // if (!locals.pb.authStore.isValid) {
-    //     throw redirect(302, '/login');
-    // }
-
     const user = locals.pb.authStore.model;
+    
+    // Get the room
+    const roomId = await locals.pb.collection('rooms').getFullList({
+        filter: `room_id = "${params.roomId.split('&')[0]}"`
+    });
+
+    // If no room found, or if the room doesn't belong to the company and user is not a representative
+    if (!roomId.length || (roomId[0].owner_company !== user?.id && !user?.representative)) {
+        throw redirect(302, '/');
+    }
+
     let videoRepresentativesInfo = [];
     const representatives = await locals.pb.collection('users').getFullList({
         filter: 'representative = true',
     });
-    const users = await locals.pb.collection('users').getFullList();
-    console.log('params', params.roomId.split('&')[0]);
-    const roomId = await locals.pb.collection('rooms').getFullList({
-        filter: `room_id = "${params.roomId.split('&')[0]}"`
-    })
-    const videoRepresentatives = await locals.pb.collection('room_videos_duplicate').getFirstListItem(`video_ref = "${sanitizeAssociatedVideo(roomId[0].associated_video)}"`).then((result) => {
-        console.log('result', result);
-        return result.representatives;
-    })
+
+    const videoRepresentatives = await locals.pb.collection('room_videos_duplicate')
+        .getFirstListItem(`video_ref = "${sanitizeAssociatedVideo(roomId[0].associated_video)}"`)
+        .then((result) => {
+            console.log('result', result);
+            // Check if the video belongs to the company
+            if (result.owner_company !== user?.id && !user?.representative) {
+                throw redirect(302, '/');
+            }
+            return result.representatives;
+        });
+
     videoRepresentatives.forEach((rep) => {
         videoRepresentativesInfo.push(representatives.find((repInfo) => repInfo.id === rep));
-    })
-    console.log('videoRepresentativesInfo', videoRepresentativesInfo);
+    });
 
     return {
         user,
         representatives,
-        users,
         roomId,
         videoRepresentatives,
         videoRepresentativesInfo

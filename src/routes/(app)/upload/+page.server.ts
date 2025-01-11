@@ -14,9 +14,9 @@ export const load = async ({ locals }) => {
         throw redirect(302, '/login');
     }
 
-    if (!user.superuser) {
-        throw redirect(302, '/dashboard');
-    }
+    // if (!user.superuser) {
+    //     throw redirect(302, '/dashboard');
+    // }
 
     return { user, representatives };
 };
@@ -67,7 +67,10 @@ export const actions: Actions = {
             await rename(tempPath, finalPath);
 
             // Create the database record
-            const record = await locals.pb.collection('room_videos_duplicate').create(data);
+            const record = await locals.pb.collection('room_videos_duplicate').create({
+                ...Object.fromEntries(data),
+                owner_company: locals.pb.authStore.model.id
+            });
 
             return { success: true, videoId: record.id, status: 200 };
         } catch (err) {

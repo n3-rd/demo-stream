@@ -67,7 +67,8 @@ export const actions = {
                     room_id: meetingName,
                     associated_video: videoUrl,
                     associated_video_name: videoName,
-                    created_by: userId
+                    created_by: userId,
+                    owner_company: locals.pb.authStore.model.id
                 });
                 return {
                     success: true,

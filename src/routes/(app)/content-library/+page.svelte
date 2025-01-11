@@ -117,13 +117,16 @@
                     {#each filteredContent as item}
                         <Card class="overflow-hidden">
                             <CardHeader>
-                                <div class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                                    {#if item.type === 'video' && item.thumbnail}
+                                <div class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4 w-full h-full relative">
+                                    {#if item.thumbnail}
                                         <img
                                             src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${item.id}/${item.thumbnail}`}
                                             alt={item.title}
-                                            class="w-full h-full object-cover"
+                                            class="w-full h-full object-cover object-center"
                                         />
+                                        <div class="absolute bottom-3 right-3 text-white text-xs font-bold">
+                                           {item.type}
+                                        </div>
                                     {:else}
                                         <svelte:component 
                                             this={getIcon(item.type)} 

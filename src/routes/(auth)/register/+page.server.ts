@@ -9,7 +9,19 @@ export const actions = {
 		const username = generateUserName(body.name.split(' ').join('')).toLowerCase();
 
 		try {
-			await locals.pb.collection('users').create({ username, ...body });
+			// Create the company account
+			const company = await locals.pb.collection('users').create({ 
+				username, 
+				company_name: body.name,
+				email: body.email,
+				password: body.password,
+				passwordConfirm: body.passwordConfirm,
+				phone: body.phone || '',
+				website: body.website || '',
+			});
+
+			// Auto-login after registration
+			await locals.pb.collection('users').authWithPassword(body.email, body.password);
 		} catch (err) {
 			console.log('Error: ', err);
 			return { success: false, message: 'Something went wrong while registering' };

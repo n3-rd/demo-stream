@@ -32,15 +32,14 @@
 	<!-- Left side -->
 	<div class="flex-1 flex flex-col gap-6 px-4 lg:px-12 py-8 lg:py-0 justify-center items-center text-white bg-[url('/img/bg.png')] bg-cover bg-center bg-opacity-50">
 		<div class="flex flex-col gap-2 items-center text-center">
-			<h2 class="text-lg lg:text-xl font-medium mb-4">Hello! Welcome</h2>
-			<h1 class="text-2xl lg:text-4xl font-semibold">Create Your Demo Room</h1>
+			<h2 class="text-lg lg:text-xl font-medium mb-4">Welcome Back!</h2>
+			<h1 class="text-2xl lg:text-4xl font-semibold">Access Your Company Portal</h1>
 		</div>
 
 		<div class="w-[60px] lg:w-[89px] h-2 bg-white"></div>
 
 		<div class="text-base lg:text-lg text-center font-light px-4 lg:px-0 max-w-md">
-			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et
-			dolore aliqua. Ut enim ad minim veniam, quis nostrud laboris.
+			Sign in to manage your representatives, content library, and demo rooms. Your business tools are just a click away.
 		</div>
 	</div>
 
@@ -48,10 +47,9 @@
 	<div class="flex-1 bg-white flex items-center justify-center p-4 lg:p-0">
 		<div class="w-full max-w-[380px] lg:w-96">
 			<div class="mb-6">
-				<h2 class="text-xl lg:text-2xl text-primary text-center font-semibold mb-2">Login Account</h2>
+				<h2 class="text-xl lg:text-2xl text-primary text-center font-semibold mb-2">Company Login</h2>
 				<p class="text-gray-600 text-xs lg:text-sm font-light text-center">
-					Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-					labore et dolore aliqua. Ut enim ad minim veniam, quis nostrud laboris.
+					Enter your company email and password to access your account. If you're a representative, please use your assigned credentials.
 				</p>
 			</div>
 			<form
@@ -74,7 +72,7 @@
 							id="email"
 							type="email"
 							name="email"
-							placeholder="m@example.com"
+							placeholder="company@example.com"
 							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 							required
 							use:validators={[required, email]}
@@ -139,13 +137,13 @@
 						</svg>
 						<span>Logging in...</span>
 					{:else}
-						<span>Login</span>
+						<span>Sign In</span>
 					{/if}
 				</Button>
 			</form>
 			<div class="mt-4 text-center text-xs lg:text-sm">
-				Don't have an account?
-				<a href="/register" class="underline">Sign up</a>
+				Don't have a company account?
+				<a href="/register" class="underline">Register now</a>
 			</div>
 		</div>
 	</div>

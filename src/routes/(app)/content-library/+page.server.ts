@@ -1,37 +1,39 @@
-import { redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
     if (!locals.pb.authStore.isValid) {
-        throw redirect(302, '/login');
+        throw error(401, 'Unauthorized');
     }
 
     const user = locals.pb.authStore.model;
-    
+
     try {
-        // Fetch videos owned by the company
-        const videos = await locals.pb.collection('room_videos_duplicate').getFullList({
-            filter: `owner_company = "${user.id}"`,
-            sort: '-created'
-        });
-
-        // Fetch videos shared with representatives of this company
-        const sharedVideos = user.representative ? 
-            await locals.pb.collection('room_videos_duplicate').getFullList({
-                filter: `representatives ?~ "${user.id}"`
-            }) : [];
+        let content;
+        if (user.representative) {
+            // For representatives, fetch content shared with them
+            content = await locals.pb.collection('content_library').getFullList({
+                filter: `shared_with ?~ "${user.id}"`,
+                sort: '-created',
+                expand: 'owner_company'
+            });
+        } else {
+            // For companies, fetch their own content
+            content = await locals.pb.collection('content_library').getFullList({
+                filter: `owner_company = "${user.id}"`,
+                sort: '-created'
+            });
+        }
 
         return {
             user,
-            videos,
-            sharedVideos
+            content
         };
-    } catch (error) {
-        console.error('Error loading content library:', error);
+    } catch (err) {
+        console.error('Error fetching content:', err);
         return {
             user,
-            videos: [],
-            sharedVideos: []
+            content: []
         };
     }
 }; 

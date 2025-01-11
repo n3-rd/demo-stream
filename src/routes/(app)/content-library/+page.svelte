@@ -1,26 +1,41 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
-    import { Card } from "$lib/components/ui/card";
-    import { Pencil, Video, Image as ImageIcon, FileText, Play, Plus } from 'lucide-svelte';
-    import Sidenav from '$lib/components/layout/sidenav.svelte';
+    import { Tabs, TabsContent, TabsList, TabsTrigger } from "$lib/components/ui/tabs";
+    import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "$lib/components/ui/card";
     import { goto } from "$app/navigation";
-    import { Dialog } from "$lib/components/ui/dialog";
-    import { toast } from "svelte-sonner";
-    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
+    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
+    import { FileVideo, FileText, FilePen } from "lucide-svelte";
+    import Sidenav from '$lib/components/layout/sidenav.svelte';
 
     export let data;
-    const { user, videos, sharedVideos } = data;
+    const { content } = data;
 
-    function formatDate(dateString: string) {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+    let selectedTab = "all";
+
+    $: filteredContent = selectedTab === "all" 
+        ? content 
+        : content.filter(item => item.type === selectedTab);
+
+    function getIcon(type: string) {
+        switch (type) {
+            case 'video':
+                return FileVideo;
+            case 'pdf':
+                return FilePen;
+            case 'document':
+                return FileText;
+            default:
+                return FileText;
+        }
     }
 
-    function handleVideoClick(video: any) {
-        goto(`/room?video=${video.id}`);
+    function handleContentClick(item) {
+        if (item.type === 'video') {
+            goto(`/content-library/video/${item.id}`);
+        } else {
+            // For PDFs and documents, open in a new tab
+            window.open(`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${item.id}/${item.file}`, '_blank');
+        }
     }
 </script>
 
@@ -28,117 +43,68 @@
     <Sidenav activePage="content-library" />
     
     <div class="flex-1 overflow-auto">
-        <div class="container mx-auto p-6 space-y-8">
-            <!-- Company Content Library -->
-            <section>
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-bold">Company Content Library</h2>
-                    {#if !user.representative}
-                        <Button href="/upload" class="bg-primary hover:bg-primary/90 text-white">
-                            <Plus class="h-4 w-4 mr-2" />
-                            Add Content
-                        </Button>
-                    {/if}
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {#each videos as video}
-                        <Card class="relative overflow-hidden group">
-                            <!-- Thumbnail -->
-                            <div class="aspect-video relative">
-                                <img 
-                                    src={video.thumbnail ? `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.thumbnail}` : '/placeholder-video.jpg'} 
-                                    alt={video.title}
-                                    class="w-full h-full object-cover"
-                                />
-                                <div class="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon"
-                                        class="text-white hover:text-primary"
-                                        on:click={() => handleVideoClick(video)}
-                                    >
-                                        <Play class="h-12 w-12" />
-                                    </Button>
-                                </div>
-                            </div>
+        <div class="container mx-auto p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold">Content Library</h1>
+                <Button on:click={() => goto('/upload')}>Upload Content</Button>
+            </div>
 
-                            <!-- Video Info -->
-                            <div class="p-4">
-                                <h3 class="font-semibold truncate">{video.title}</h3>
-                                <p class="text-sm text-gray-500 mt-1">{formatDate(video.created)}</p>
-                                {#if video.desc}
-                                    <p class="text-sm text-gray-600 mt-2 line-clamp-2">{video.desc}</p>
-                                {/if}
-                            </div>
-                        </Card>
-                    {/each}
-                </div>
+            <Tabs value={selectedTab} onValueChange={(value) => selectedTab = value} class="w-full">
+                <TabsList class="grid w-full grid-cols-4 lg:w-[400px]">
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="video">Videos</TabsTrigger>
+                    <TabsTrigger value="pdf">PDFs</TabsTrigger>
+                    <TabsTrigger value="document">Documents</TabsTrigger>
+                </TabsList>
 
-                {#if videos.length === 0}
-                    <div class="text-center py-12 bg-white rounded-lg shadow-sm">
-                        <Video class="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                        <h3 class="text-lg font-medium text-gray-900">No videos yet</h3>
-                        <p class="mt-2 text-sm text-gray-500">
-                            {#if !user.representative}
-                                Get started by uploading your first video.
-                            {:else}
-                                No videos have been shared with you yet.
-                            {/if}
-                        </p>
-                        {#if !user.representative}
-                            <Button href="/upload" class="mt-4 bg-primary hover:bg-primary/90 text-white">
-                                <Plus class="h-4 w-4 mr-2" />
-                                Add First Video
-                            </Button>
-                        {/if}
-                    </div>
-                {/if}
-            </section>
-
-            <!-- Shared Content (for representatives) -->
-            {#if user.representative && sharedVideos.length > 0}
-                <section class="mt-8">
-                    <h2 class="text-2xl font-bold mb-4">Shared With Me</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {#each sharedVideos as video}
-                            <Card class="relative overflow-hidden group">
-                                <!-- Thumbnail -->
-                                <div class="aspect-video relative">
-                                    <img 
-                                        src={video.thumbnail ? `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.thumbnail}` : '/placeholder-video.jpg'} 
-                                        alt={video.title}
-                                        class="w-full h-full object-cover"
-                                    />
-                                    <div class="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <TabsContent value={selectedTab} class="mt-6">
+                    {#if filteredContent.length === 0}
+                        <div class="text-center py-12">
+                            <p class="text-gray-500">No content found in this category</p>
+                        </div>
+                    {:else}
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {#each filteredContent as item}
+                                <Card class="overflow-hidden">
+                                    <CardHeader>
+                                        <div class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center mb-4">
+                                            {#if item.type === 'video' && item.thumbnail}
+                                                <img
+                                                    src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${item.id}/${item.thumbnail}`}
+                                                    alt={item.title}
+                                                    class="w-full h-full object-cover"
+                                                />
+                                            {:else}
+                                                <svelte:component 
+                                                    this={getIcon(item.type)} 
+                                                    class="w-12 h-12 text-gray-400"
+                                                />
+                                            {/if}
+                                        </div>
+                                        <CardTitle>{item.title}</CardTitle>
+                                        <CardDescription class="line-clamp-2">{item.description}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p class="text-sm text-gray-500 capitalize">Type: {item.type}</p>
+                                        {#if item.shared_with?.length > 0}
+                                            <p class="text-sm text-gray-500">Shared with {item.shared_with.length} representatives</p>
+                                        {/if}
+                                    </CardContent>
+                                    <CardFooter>
                                         <Button 
-                                            variant="ghost" 
-                                            size="icon"
-                                            class="text-white hover:text-primary"
-                                            on:click={() => handleVideoClick(video)}
+                                            variant="secondary" 
+                                            class="w-full"
+                                            on:click={() => handleContentClick(item)}
                                         >
-                                            <Play class="h-12 w-12" />
+                                            {item.type === 'video' ? 'Watch Video' : 'Open File'}
                                         </Button>
-                                    </div>
-                                </div>
-
-                                <!-- Video Info -->
-                                <div class="p-4">
-                                    <h3 class="font-semibold truncate">{video.title}</h3>
-                                    <p class="text-sm text-gray-500 mt-1">{formatDate(video.created)}</p>
-                                    {#if video.desc}
-                                        <p class="text-sm text-gray-600 mt-2 line-clamp-2">{video.desc}</p>
-                                    {/if}
-                                </div>
-                            </Card>
-                        {/each}
-                    </div>
-                </section>
-            {/if}
+                                    </CardFooter>
+                                </Card>
+                            {/each}
+                        </div>
+                    {/if}
+                </TabsContent>
+            </Tabs>
         </div>
     </div>
-</div>
-
-<style>
-    /* Add any custom styles here if needed */
-</style> 
+</div> 

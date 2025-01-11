@@ -1,119 +1,335 @@
 <script lang="ts">
+
+    import { Button } from "$lib/components/ui/button";
+    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
+    import { Dialog, DialogContent, DialogHeader, DialogTitle } from "$lib/components/ui/dialog";
+    import { Input } from "$lib/components/ui/input";
+    import { Label } from "$lib/components/ui/label";
+    import { toast } from "svelte-sonner";
+    import { enhance } from "$app/forms";
+    import { ChevronDown, ChevronUp, MoreHorizontal } from "lucide-svelte";
+    import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
-    import { Button } from '$lib/components/ui/button';
-    import { Checkbox } from '$lib/components/ui/checkbox';
-    import * as Table from "$lib/components/ui/table";
-    import * as Dialog from "$lib/components/ui/dialog";
-    import { enhance } from '$app/forms';
-    import { invalidateAll } from '$app/navigation';
-    import { toast } from 'svelte-sonner';
-	import RepresentativesTable from '$lib/components/layout/representatives-table.svelte';
 
     export let data;
-    let allUsers = data.users;
-    let users;
-    $: users = data.users;
-    let user = data.user;
-    let superUser = user.superuser;
-    let loading = false;
-    let isDialogOpen = false;
-    let selectedUser = null;
+    const { representatives } = data;
 
-    $: representatives = allUsers.filter(user => user.representative);
+    let showAddDialog = false;
+    let editingRep: any = null;
+    let expandedRep: string | null = null;
 
-    let selectedRepresentatives = new Set();
-
-    function openDialog(user) {
-        selectedUser = user;
-        isDialogOpen = true;
-    }
-
-    function toggleRepresentative(userId: string) {
-        if (selectedRepresentatives.has(userId)) {
-            selectedRepresentatives.delete(userId);
-        } else {
-            selectedRepresentatives.add(userId);
-        }
-        selectedRepresentatives = selectedRepresentatives; // trigger reactivity
-    }
-
-    async function confirmRepresentatives() {
-        // Implement the logic to update representatives based on selectedRepresentatives
-        // This might involve multiple API calls to add/remove representatives
-        for (const userId of selectedRepresentatives) {
-            const response = await fetch('/api/toggle-representative', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ userId, makeRepresentative: true }),
-            });
-            if (!response.ok) {
-                toast.error('Failed to update representative status');
-            }
-        }
-        
-        isDialogOpen = false;
-        await invalidateAll();
+    function toggleExpand(id: string) {
+        expandedRep = expandedRep === id ? null : id;
     }
 </script>
 
-<div class="flex  bg-gray-100">
+<div class="flex h-screen bg-gray-100">
     <Sidenav activePage="representatives" />
-
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white shadow-sm z-10">
-            <div class="mx-auto py-4 px-4 sm:px-6 lg:px-8">
-                <h1 class="text-3xl font-bold text-gray-700">Representatives</h1>
+    
+    <div class="flex-1 overflow-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-medium text-gray-700">Representatives</h1>
+                <Button 
+                    class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white"
+                    on:click={() => {
+                        editingRep = null;
+                        showAddDialog = true;
+                    }}
+                >
+                    Add Representative
+                </Button>
             </div>
-        </header>
 
-        <main class="flex-1 overflow-y-auto p-6">
-          <RepresentativesTable {users} {superUser} />
-            {#if superUser}
-                <div class="mt-4">
-                    <Button on:click={() => openDialog(null)}>Add Representative</Button>
+            <div class="bg-white rounded-lg shadow">
+                <!-- Table Header -->
+                <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 border-b text-sm font-medium text-gray-600">
+                    <div>Icon</div>
+                    <div>Name</div>
+                    <div>Phone</div>
+                    <div>Email</div>
+                    <div>Location</div>
+                    <div></div>
                 </div>
-            {/if}
-        </main>
+
+                <!-- Table Body -->
+                {#each representatives as rep}
+                    <div class="border-b last:border-b-0">
+                        <!-- Main Row -->
+                        <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 items-center">
+                            <div>
+                                {#if rep.avatar}
+                                    <img
+                                        src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/representatives/${rep.id}/${rep.avatar}`}
+                                        alt={rep.name}
+                                        class="w-10 h-10 rounded-full object-cover"
+                                    />
+                                {:else}
+                                    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                        <span class="text-lg font-semibold text-gray-600">
+                                            {rep.name[0].toUpperCase()}
+                                        </span>
+                                    </div>
+                                {/if}
+                            </div>
+                            <div class="text-gray-900">{rep.name}</div>
+                            <div class="text-gray-600">{rep.phone}</div>
+                            <div class="text-gray-600">{rep.email}</div>
+                            <div class="text-gray-600">{rep.location || '-'}</div>
+                            <div class="flex items-center justify-end gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    class="h-8 w-8 p-0"
+                                    on:click={() => toggleExpand(rep.id)}
+                                >
+                                    {#if expandedRep === rep.id}
+                                        <ChevronUp class="h-4 w-4" />
+                                    {:else}
+                                        <ChevronDown class="h-4 w-4" />
+                                    {/if}
+                                </Button>
+                                <DropdownMenu.Root>
+                                    <DropdownMenu.Trigger asChild let:builder>
+                                        <Button 
+                                            variant="ghost"
+                                            size="sm"
+                                            class="h-8 w-8 p-0"
+                                            builders={[builder]}
+                                        >
+                                            <MoreHorizontal class="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenu.Trigger>
+                                    <DropdownMenu.Content>
+                                        <DropdownMenu.Item on:click={() => {
+                                            editingRep = rep;
+                                            showAddDialog = true;
+                                        }}>
+                                            Edit
+                                        </DropdownMenu.Item>
+                                    </DropdownMenu.Content>
+                                </DropdownMenu.Root>
+                            </div>
+                        </div>
+
+                        <!-- Expanded Content -->
+                        {#if expandedRep === rep.id}
+                            <div class="px-4 pb-4">
+                                <div class="grid grid-cols-2 gap-6">
+                                    <!-- Connected Content -->
+                                    <div>
+                                        <h3 class="font-medium mb-2">Connected to Content ID</h3>
+                                        <div class="bg-[#F8F9FC] rounded p-4">
+                                            <div class="grid grid-cols-4 gap-4 text-sm">
+                                                <div>Image</div>
+                                                <div>Video</div>
+                                                <div>PDF</div>
+                                                <div>Word</div>
+                                            </div>
+                                            {#if rep.expand?.connected_content?.length}
+                                                <div class="grid grid-cols-4 gap-4 mt-2">
+                                                    <!-- Images -->
+                                                    <div class="text-sm">
+                                                        {#each rep.expand.connected_content.filter(c => c.type === 'image') as content}
+                                                            <div>
+                                                                <div class="text-gray-600">Title {content.title || content.id}</div>
+                                                                <div class="font-medium">id{content.id}</div>
+                                                            </div>
+                                                        {/each}
+                                                    </div>
+                                                    <!-- Videos -->
+                                                    <div class="text-sm">
+                                                        {#each rep.expand.connected_content.filter(c => c.type === 'video') as content}
+                                                            <div>
+                                                                <div class="text-gray-600">Title {content.title || content.id}</div>
+                                                                <div class="font-medium">id{content.id}</div>
+                                                            </div>
+                                                        {/each}
+                                                    </div>
+                                                    <!-- PDFs -->
+                                                    <div class="text-sm">
+                                                        {#each rep.expand.connected_content.filter(c => c.type === 'pdf') as content}
+                                                            <div>
+                                                                <div class="text-gray-600">Title {content.title || content.id}</div>
+                                                                <div class="font-medium">id{content.id}</div>
+                                                            </div>
+                                                        {/each}
+                                                    </div>
+                                                    <!-- Documents -->
+                                                    <div class="text-sm">
+                                                        {#each rep.expand.connected_content.filter(c => c.type === 'document') as content}
+                                                            <div>
+                                                                <div class="text-gray-600">Title {content.title || content.id}</div>
+                                                                <div class="font-medium">id{content.id}</div>
+                                                            </div>
+                                                        {/each}
+                                                    </div>
+                                                </div>
+                                            {/if}
+                                        </div>
+                                    </div>
+
+                                    <!-- Schedule -->
+                                    <div>
+                                        <h3 class="font-medium mb-2">Schedule</h3>
+                                        <div class="bg-[#F8F9FC] rounded p-4">
+                                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                                <div>
+                                                    <div class="text-gray-600">Monday</div>
+                                                    <div class="font-medium">{rep.schedule?.monday || '8:00AM - 5:00PM'}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-gray-600">Tuesday</div>
+                                                    <div class="font-medium">{rep.schedule?.tuesday || '8:00AM - 5:00PM'}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-gray-600">Friday</div>
+                                                    <div class="font-medium">{rep.schedule?.friday || '8:00AM - 5:00PM'}</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-gray-600">Saturday</div>
+                                                    <div class="font-medium">{rep.schedule?.saturday || '9:00AM - 3:00PM'}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
+                {/each}
+            </div>
+        </div>
     </div>
 </div>
 
-<Dialog.Root bind:open={isDialogOpen}>
-    <Dialog.Content class="w-full max-w-md">
-        <div class="py-4 max-h-[60vh] overflow-y-auto">
-            {#each allUsers as user}
-                <div class="flex items-center space-x-2 py-2 border-b border-gray-200 last:border-b-0">
-                    <Checkbox
-                        id={user.id}
-                        checked={selectedRepresentatives.has(user.id)}
-                        onCheckedChange={() => toggleRepresentative(user.id)}
-                    />
-                    <label for={user.id} class="flex-grow">
-                        <div class="font-semibold">{user.name}</div>
-                        <div class="text-sm text-gray-500">{user.email}</div>
-                    </label>
+<Dialog bind:open={showAddDialog}>
+    <DialogContent>
+        <DialogHeader>
+            <DialogTitle>{editingRep ? 'Edit' : 'Add'} Representative</DialogTitle>
+        </DialogHeader>
+        <form
+            action={editingRep ? '?/updateRepresentative' : '?/addRepresentative'}
+            method="POST"
+            enctype="multipart/form-data"
+            use:enhance={() => {
+                return async ({ result }) => {
+                    if (result.type === 'success') {
+                        showAddDialog = false;
+                        toast.success(editingRep ? 'Representative updated' : 'Representative added');
+                    } else {
+                        toast.error('Error occurred');
+                    }
+                };
+            }}
+            class="space-y-4"
+        >
+            {#if editingRep}
+                <input type="hidden" name="id" value={editingRep.id} />
+            {/if}
+            
+            <div class="space-y-2">
+                <Label for="name">Name</Label>
+                <Input 
+                    type="text" 
+                    id="name" 
+                    name="name" 
+                    value={editingRep?.name || ''} 
+                    required 
+                />
+            </div>
+
+            <div class="space-y-2">
+                <Label for="email">Email</Label>
+                <Input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    value={editingRep?.email || ''} 
+                    required 
+                />
+            </div>
+
+            <div class="space-y-2">
+                <Label for="phone">Phone</Label>
+                <Input 
+                    type="tel" 
+                    id="phone" 
+                    name="phone" 
+                    value={editingRep?.phone || ''} 
+                />
+            </div>
+
+            <div class="space-y-2">
+                <Label for="location">Location</Label>
+                <Input 
+                    type="text" 
+                    id="location" 
+                    name="location" 
+                    value={editingRep?.location || ''} 
+                />
+            </div>
+
+            <div class="space-y-2">
+                <Label for="avatar">Avatar</Label>
+                <Input 
+                    type="file" 
+                    id="avatar" 
+                    name="avatar" 
+                    accept="image/*" 
+                />
+            </div>
+
+            <div class="space-y-2">
+                <Label>Schedule</Label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label for="monday">Monday</Label>
+                        <Input 
+                            type="text" 
+                            id="monday" 
+                            name="monday" 
+                            value={editingRep?.schedule?.monday || '8:00AM - 5:00PM'} 
+                        />
+                    </div>
+                    <div>
+                        <Label for="tuesday">Tuesday</Label>
+                        <Input 
+                            type="text" 
+                            id="tuesday" 
+                            name="tuesday" 
+                            value={editingRep?.schedule?.tuesday || '8:00AM - 5:00PM'} 
+                        />
+                    </div>
+                    <div>
+                        <Label for="friday">Friday</Label>
+                        <Input 
+                            type="text" 
+                            id="friday" 
+                            name="friday" 
+                            value={editingRep?.schedule?.friday || '8:00AM - 5:00PM'} 
+                        />
+                    </div>
+                    <div>
+                        <Label for="saturday">Saturday</Label>
+                        <Input 
+                            type="text" 
+                            id="saturday" 
+                            name="saturday" 
+                            value={editingRep?.schedule?.saturday || '9:00AM - 3:00PM'} 
+                        />
+                    </div>
                 </div>
-            {/each}
-        </div>
+            </div>
 
-        <div class="flex justify-end space-x-2 mt-4">
-            <Button variant="outline" on:click={() => isDialogOpen = false}>Cancel</Button>
-            <Button variant="default" on:click={confirmRepresentatives}>Confirm</Button>
-        </div>
-    </Dialog.Content>
-</Dialog.Root>
-
-{#if loading}
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white p-4 rounded-lg shadow-lg">
-            <p class="text-lg font-semibold">Loading...</p>
-        </div>
-    </div>
-{/if}
-
-<style>
-    :global(body) {
-        @apply bg-gray-100;
-    }
-</style>
+            <div class="flex justify-end space-x-2">
+                <Button type="button" variant="outline" on:click={() => showAddDialog = false}>
+                    Cancel
+                </Button>
+                <Button type="submit">
+                    {editingRep ? 'Update' : 'Add'} Representative
+                </Button>
+            </div>
+        </form>
+    </DialogContent>
+</Dialog>

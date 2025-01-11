@@ -61,7 +61,30 @@ export const actions: Actions = {
                 }
             }
 
-            await locals.pb.collection('content_library').create(data);
+            // Create the content first
+            const record = await locals.pb.collection('content_library').create(data);
+
+            // Update each representative's connected_content
+            for (const repId of repIds) {
+                // Get current representative data
+                const rep = await locals.pb.collection('representatives').getOne(repId);
+                
+                // Create a new array with existing content plus the new one
+                const connectedContent = Array.isArray(rep.connected_content) 
+                    ? [...rep.connected_content, record.id]
+                    : [record.id];
+                
+                // Update the representative with the full data structure
+                await locals.pb.collection('representatives').update(repId, {
+                    "name": rep.name,
+                    "email": rep.email,
+                    "phone": rep.phone,
+                    "company": rep.company,
+                    "is_active": rep.is_active,
+                    "schedule": rep.schedule,
+                    "connected_content": connectedContent
+                });
+            }
 
             return {
                 type: 'success'

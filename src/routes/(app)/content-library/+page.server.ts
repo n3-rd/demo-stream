@@ -9,31 +9,32 @@ export const load: PageServerLoad = async ({ locals }) => {
     const user = locals.pb.authStore.model;
 
     try {
-        let content;
-        if (user.representative) {
-            // For representatives, fetch content shared with them
-            content = await locals.pb.collection('content_library').getFullList({
-                filter: `shared_with ?~ "${user.id}"`,
-                sort: '-created',
-                expand: 'owner_company'
-            });
-        } else {
-            // For companies, fetch their own content
-            content = await locals.pb.collection('content_library').getFullList({
-                filter: `owner_company = "${user.id}"`,
-                sort: '-created'
-            });
-        }
+        // Get all representatives for this company
+        const representatives = await locals.pb.collection('representatives').getFullList({
+            filter: `company = "${user.id}"`,
+            sort: '-created'
+        });
+
+
+
+        // Get all content owned by this company
+        const content = await locals.pb.collection('content_library').getFullList({
+            filter: `owner_company = "${user.id}"`,
+            sort: '-created',
+            expand: 'shared_with'
+        });
 
         return {
             user,
-            content
+            content,
+            representatives
         };
     } catch (err) {
         console.error('Error fetching content:', err);
         return {
             user,
-            content: []
+            content: [],
+            representatives: []
         };
     }
 }; 

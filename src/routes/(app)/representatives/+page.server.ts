@@ -1,9 +1,10 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
     if (!locals.pb.authStore.isValid) {
-        throw error(401, 'Unauthorized');
+        redirect(304, '/login')
+        return;
     }
 
     const user = locals.pb.authStore.model;

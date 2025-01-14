@@ -10,6 +10,11 @@
     import { ChevronDown, ChevronUp, MoreHorizontal } from "lucide-svelte";
     import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
+	import { invalidateAll } from "$app/navigation";
+    import { useForm, HintGroup, Hint, validators, email, required } from 'svelte-use-form';
+    import { slide } from 'svelte/transition';
+    import { quintOut } from 'svelte/easing';
+    import HintValidate from '$lib/components/layout/hint-validate.svelte';
 
     export let data;
     const { representatives } = data;
@@ -17,6 +22,7 @@
     let showAddDialog = false;
     let editingRep: any = null;
     let expandedRep: string | null = null;
+    const form = useForm();
 
     function toggleExpand(id: string) {
         expandedRep = expandedRep === id ? null : id;
@@ -25,7 +31,7 @@
 
 <div class="flex h-screen bg-gray-100">
     <Sidenav activePage="representatives" />
-    
+
     <div class="flex-1 overflow-auto">
         <div class="p-6">
             <div class="flex justify-between items-center mb-6">
@@ -87,7 +93,7 @@
                                         <ChevronUp class="h-4 w-4" />
                                     {:else}
                                         <ChevronDown class="h-4 w-4" />
-                                    {/if}
+            {/if}
                                 </Button>
                                 <DropdownMenu.Root>
                                     <DropdownMenu.Trigger asChild let:builder>
@@ -109,8 +115,8 @@
                                         </DropdownMenu.Item>
                                     </DropdownMenu.Content>
                                 </DropdownMenu.Root>
-                            </div>
-                        </div>
+    </div>
+</div>
 
                         <!-- Expanded Content -->
                         {#if expandedRep === rep.id}
@@ -161,13 +167,13 @@
                                                             <div>
                                                                 <div class="text-gray-600">Title {content.title || content.id}</div>
                                                                 <div class="font-medium">id{content.id}</div>
-                                                            </div>
-                                                        {/each}
+                </div>
+            {/each}
                                                     </div>
                                                 </div>
                                             {/if}
                                         </div>
-                                    </div>
+        </div>
 
                                     <!-- Schedule -->
                                     <div>
@@ -198,7 +204,7 @@
                         {/if}
                     </div>
                 {/each}
-            </div>
+        </div>
         </div>
     </div>
 </div>
@@ -212,10 +218,12 @@
             action={editingRep ? '?/updateRepresentative' : '?/addRepresentative'}
             method="POST"
             enctype="multipart/form-data"
+            use:form
             use:enhance={() => {
                 return async ({ result }) => {
                     if (result.type === 'success') {
                         showAddDialog = false;
+                        invalidateAll();
                         toast.success(editingRep ? 'Representative updated' : 'Representative added');
                     } else {
                         toast.error('Error occurred');
@@ -226,107 +234,136 @@
         >
             {#if editingRep}
                 <input type="hidden" name="id" value={editingRep.id} />
-            {/if}
-            
+{/if}
+
             <div class="space-y-2">
                 <Label for="name">Name</Label>
-                <Input 
+                <input 
                     type="text" 
                     id="name" 
                     name="name" 
+                    class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     value={editingRep?.name || ''} 
                     required 
+                    use:validators={[required]}
                 />
+                <HintGroup for="name">
+                    <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+                        <Hint on="required"><HintValidate>Name is required</HintValidate></Hint>
+                    </div>
+                </HintGroup>
             </div>
 
             <div class="space-y-2">
                 <Label for="email">Email</Label>
-                <Input 
+                <input 
                     type="email" 
                     id="email" 
                     name="email" 
+                    class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     value={editingRep?.email || ''} 
                     required 
+                    use:validators={[required, email]}
                 />
+                <HintGroup for="email">
+                    <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+                        <Hint on="required"><HintValidate>Email is required</HintValidate></Hint>
+                        <Hint on="email" hideWhenRequired><HintValidate>Email is not valid</HintValidate></Hint>
+                    </div>
+                </HintGroup>
             </div>
 
             <div class="space-y-2">
                 <Label for="phone">Phone</Label>
-                <Input 
+                <input 
                     type="tel" 
                     id="phone" 
                     name="phone" 
+                    class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     value={editingRep?.phone || ''} 
                 />
             </div>
 
             <div class="space-y-2">
                 <Label for="location">Location</Label>
-                <Input 
+                <input 
                     type="text" 
                     id="location" 
                     name="location" 
+                    class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     value={editingRep?.location || ''} 
+                    required
+                    use:validators={[required]}
                 />
+                <HintGroup for="location">
+                    <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+                        <Hint on="required"><HintValidate>Location is required</HintValidate></Hint>
+                    </div>
+                </HintGroup>
             </div>
 
             <div class="space-y-2">
                 <Label for="avatar">Avatar</Label>
-                <Input 
+                <input 
                     type="file" 
                     id="avatar" 
                     name="avatar" 
+                    class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     accept="image/*" 
                 />
             </div>
 
             <div class="space-y-2">
                 <Label>Schedule</Label>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4 gap-y-6">
                     <div>
                         <Label for="monday">Monday</Label>
-                        <Input 
+                        <input 
                             type="text" 
                             id="monday" 
                             name="monday" 
+                            class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             value={editingRep?.schedule?.monday || '8:00AM - 5:00PM'} 
                         />
                     </div>
                     <div>
                         <Label for="tuesday">Tuesday</Label>
-                        <Input 
+                        <input 
                             type="text" 
                             id="tuesday" 
                             name="tuesday" 
+                            class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             value={editingRep?.schedule?.tuesday || '8:00AM - 5:00PM'} 
                         />
                     </div>
                     <div>
                         <Label for="friday">Friday</Label>
-                        <Input 
+                        <input 
                             type="text" 
                             id="friday" 
                             name="friday" 
+                            class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             value={editingRep?.schedule?.friday || '8:00AM - 5:00PM'} 
                         />
                     </div>
                     <div>
                         <Label for="saturday">Saturday</Label>
-                        <Input 
+                        <input 
                             type="text" 
                             id="saturday" 
                             name="saturday" 
+                            class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             value={editingRep?.schedule?.saturday || '9:00AM - 3:00PM'} 
                         />
                     </div>
                 </div>
             </div>
 
-            <div class="flex justify-end space-x-2">
+            <div class="flex justify-end space-x-2 mt-8">
                 <Button type="button" variant="outline" on:click={() => showAddDialog = false}>
                     Cancel
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={!$form.valid}>
                     {editingRep ? 'Update' : 'Add'} Representative
                 </Button>
             </div>

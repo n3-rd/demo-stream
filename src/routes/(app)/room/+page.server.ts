@@ -1,154 +1,89 @@
-import { redirect, type RequestHandler } from '@sveltejs/kit';
-import { PUBLIC_DAILY_API_KEY, PUBLIC_DAILY_DOMAIN } from '$env/static/public';
-import { Actions } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 
-export const load = async ({ locals }) => {
-    const isLoggedIn = locals.pb.authStore.isValid;
-    const user = locals.pb.authStore.model;
-    console.log('Load function called:', { isLoggedIn, user });
-    // if (!isLoggedIn){
-    // return redirect(301,'/login');
-    // }
-    // else{
-    //     return redirect(301,'/');
-    // }
-    return {
-        isLoggedIn,
-        user,
-    };
+export const load: PageServerLoad = async ({ locals }) => {
+    if (!locals.pb.authStore.isValid) {
+        throw error(401, 'Unauthorized');
+    }
+
+    try {
+        const user = locals.pb.authStore.model;
+        
+        // Fetch rooms owned by the company
+        const rooms = await locals.pb.collection('rooms').getFullList({
+            filter: `owner_company = "${user.id}"`,
+            expand: 'representative,host_content,representative_content',
+            sort: '-created'
+        });
+
+        // Fetch representatives for the company
+        const representatives = await locals.pb.collection('representatives').getFullList({
+            filter: `company = "${user.id}" && is_active = true`
+        });
+
+        // Fetch content for host and representative libraries
+        const hostContent = await locals.pb.collection('content_library').getFullList({
+            filter: `owner_company = "${user.id}" && library_type ?~ "host"`
+        });
+
+        const repContent = await locals.pb.collection('content_library').getFullList({
+            filter: `owner_company = "${user.id}" && library_type ?~ "representative"`
+        });
+
+        return {
+            rooms,
+            representatives,
+            hostContent,
+            repContent
+        };
+    } catch (err) {
+        console.error('Error:', err);
+        throw error(500, 'Failed to load rooms');
+    }
 };
 
-const DAILY_API_KEY = PUBLIC_DAILY_API_KEY;
-
-
-function sanitizeStreamName(name: string): string {
-    if (!name) return '';
-    // First decode any URL encoded characters
-    const decodedName = decodeURIComponent(name);
-    // Then replace any spaces or special characters with underscores
-    return decodedName.replace(/[^a-zA-Z0-9-]/g, '_');
-}
-export const actions = {
-    'create-room': async ({ fetch, locals, request }) => {
-        const formData = await request.formData();
-        const videoUrl = formData.get('videoUrl') as string;
-        const videoName = formData.get('videoName') as string;
-        const anonymousName = formData.get('anonymousName') as string;
-
-        const userId = locals.pb.authStore.isValid ? locals.pb.authStore.model.id : 'anonymous';
-        const exp = Math.round(Date.now() / 1000) + 60 * 60;
-
-        // Sanitize the userId/anonymousName before creating meeting name
-        const sanitizedName = sanitizeStreamName(anonymousName || userId);
-        const meetingName = `room-${Math.random().toString(36).substring(2, 7)}-${sanitizedName}`;
-        const options = {
-            name: meetingName,
-            properties: {
-                exp,
-                enable_chat: true,
-                user_name: locals.pb.authStore.isValid ? locals.pb.authStore.model.name : anonymousName,
-            }
-        };
-
-        try {
-            const res = await fetch('https://api.daily.co/v1/rooms', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${DAILY_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(options)
-            });
-
-            if (res.ok) {
-                const room = await res.json();
-                // Store the videoUrl with the room data
-                await locals.pb.collection('rooms').create({
-                    room_id: meetingName,
-                    associated_video: videoUrl,
-                    associated_video_name: videoName,
-                    created_by: userId,
-                    owner_company: locals.pb.authStore.model.id
-                });
-                return {
-                    success: true,
-                    room: {
-                        name: room.name,
-                        url: room.url,
-                        videoUrl: videoUrl,
-                        videoName: videoName,
-                        anonymousName: anonymousName
-                    }
-                };
-            } else {
-                console.error('Failed to create room:', res.status);
-                return {
-                    success: false,
-                    status: res.status
-                };
-            }
-        } catch (error) {
-            console.error('Error creating room:', error);
-            return {
-                success: false,
-                message: 'something went wrong with the room submit!',
-                status: 500
-            };
-        }
-    },
-    'join-room': async ({ request, fetch }) => {
-        console.log('Join room action called');
-        const formData = await request.formData();
-        const dailyUrl = formData.get('dailyUrl') as string;
-
-        if (dailyUrl) {
-            console.log('Joining existing room with URL:', dailyUrl);
-            return {
-                success: true,
-                url: dailyUrl
-            };
+export const actions: Actions = {
+    'create-room': async ({ request, locals }) => {
+        if (!locals.pb.authStore.isValid) {
+            throw error(401, 'Unauthorized');
         }
 
-        const exp = Math.round(Date.now() / 1000) + 60 * 30;
-        const options = {
-            properties: {
-                exp
-            }
-        };
+        const formData = await request.formData();
+        const title = formData.get('title')?.toString();
+        const isActive = formData.has('is_active');
+        
+        // Get the arrays from the form data
+        const hostContent = formData.get('host_content[]')?.toString().split(',').filter(Boolean) || [];
+        const repContent = formData.get('representative_content[]')?.toString().split(',').filter(Boolean) || [];
+        const representatives = formData.get('representative[]')?.toString().split(',').filter(Boolean) || [];
+
+        console.log('Host content:', hostContent);
+        console.log('Representative content:', repContent);
+        console.log('Representatives:', representatives);
+
+        if (!title) {
+            return fail(400, { error: 'Title is required' });
+        }
 
         try {
-            const res = await fetch('https://api.daily.co/v1/rooms', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${DAILY_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(options)
-            });
-
-            if (res.ok) {
-                const room = await res.json();
-                const DOMAIN = PUBLIC_DAILY_DOMAIN;
-                const roomUrl = `https://${DOMAIN}.daily.co/${room.name}`;
-                console.log('Room joined successfully:', roomUrl);
-                return {
-                    success: true,
-                    url: roomUrl
-                };
-            } else {
-                console.error('Failed to join room:', res.status);
-                return {
-                    success: false,
-                    status: res.status
-                };
-            }
-        } catch (error) {
-            console.error('Error joining room:', error);
-            return {
-                success: false,
-                message: 'something went wrong with the room submit!',
-                status: 500
+            const data = {
+                title,
+                is_active: isActive,
+                host_content: hostContent,
+                representative_content: repContent,
+                representative: representatives,
+                owner_company: locals.pb.authStore.model.id
             };
+
+            console.log('Creating room with data:', data);
+            
+            const record = await locals.pb.collection('rooms').create(data);
+            console.log('Created room:', record);
+
+            return { success: true };
+        } catch (err) {
+            console.error('Error creating room:', err);
+            return fail(500, { error: 'Failed to create room' });
         }
     }
 };

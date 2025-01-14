@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ locals }) => {
             filter: `owner_company = "${user.id}" && library_type ?~ "representative"`
         });
 
-        return {
+                return {
             rooms,
             representatives,
             hostContent,

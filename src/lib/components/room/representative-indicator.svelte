@@ -38,25 +38,51 @@
     }
 
     function isRepresentative(participant) {
-        const participantName = participant.split('-').pop();
-        return participantName && participantName.includes('Representative');
+        return participant.isRepresentative || 
+               (participant.metaData && JSON.parse(participant.metaData).isRepresentative) ||
+               (participant.streamId && participant.streamId.includes('Representative'));
+    }
+
+    function getParticipantName(participant) {
+        try {
+            if (participant.metaData) {
+                const metadata = JSON.parse(participant.metaData);
+                if (metadata.name) return metadata.name;
+            }
+            
+            if (participant.streamName) {
+                return participant.streamName.replace(/_/g, ' ');
+            }
+            
+            if (participant.streamId) {
+                const parts = participant.streamId.split('-');
+                if (parts.length > 1) {
+                    return parts[parts.length - 1].replace(/_/g, ' ').replace('Representative', '');
+                }
+            }
+            
+            if (participant.name) {
+                return participant.name;
+            }
+            
+            return 'Guest User';
+        } catch (e) {
+            console.error('Error parsing participant name:', e);
+            return 'Guest User';
+        }
     }
 
     function shouldShowIndicator(participant) {
-        const participantName = participant.split('-').pop();
-        const representativeName = participantName?.replace('Representative', '') || '';
-        return representativeName !== urlRepresentativeName;
+        const participantName = getParticipantName(participant);
+        return participantName !== urlRepresentativeName;
     }
 
     $: visibleRepresentatives = participants.filter(p => isRepresentative(p) && shouldShowIndicator(p));
 
-    // $: {
-    //     console.log('Current videoElements:', videoElements);
-    //     console.log('Visible representatives:', visibleRepresentatives);
-    //     visibleRepresentatives.forEach(participant => {
-    //         console.log(`Stream for ${participant}:`, videoElements.get(participant));
-    //     });
-    // }
+    $: {
+        console.log('Participants:', participants);
+        console.log('Visible Representatives:', visibleRepresentatives);
+    }
 </script>
 
 {#if visibleRepresentatives.length > 0}
@@ -64,12 +90,10 @@
     {#each visibleRepresentatives as participant}
     <div class="relative h-32 w-52 rounded-lg overflow-hidden bg-black">
         <div class="video-container h-full w-full">
-          
-            <iframe class="w-full h-full" src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant}`} frameborder="0" allowfullscreen></iframe>
-        
+            <iframe class="w-full h-full" src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant.streamId}`} frameborder="0" allowfullscreen></iframe>
         </div>
         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 text-sm">
-            {participant.split('-').pop().replace('Representative', ' (Representative)').replace(/_/g, ' ') || 'Unknown'}
+            {getParticipantName(participant)} {isRepresentative(participant) ? '(Representative)' : ''}
         </div>
     </div>
     {/each}

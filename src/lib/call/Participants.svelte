@@ -56,26 +56,32 @@
 {#each participants as participant}
   <div class="flex items-center py-4">
     <img
-      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(participant.split('-').pop())}&background=random`}
-      alt={`${participant.split('-').pop()}'s avatar`}
+      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(participant.name || 'Unknown')}&background=random`}
+      alt={`${participant.name || 'Unknown'}'s avatar`}
       class="w-8 h-8 rounded-full mr-2"
     />
     <div class="flex-grow flex flex-col">
       <span class="text-sm font-medium capitalize">
-        {#if participant.includes('Representative')}
-          {participant.split('-').pop().replace('Representative', '').replace(/_/g, ' ')} (Representative)
+        {#if participant.isRepresentative}
+          {participant.name || 'Unknown'} (Representative)
         {:else}
-          {participant.split('-').pop().replace(/_/g, ' ')}
+          {participant.name || 'Unknown'}
         {/if}
-        {#if participant === name}
+        {#if participant.name === name}
           <span class="text-gray-400"> (You)</span>
         {/if}
       </span>
-      {#if isHost && hostUser && participant === hostUser.name}
+      {#if isHost && hostUser && participant.name === hostUser.name}
         <span class="text-gray-100 text-xs">Demo room host</span>
       {/if}
     </div>
     <div class="flex flex-row gap-2 items-center">
+      {#if participant.isMicMuted}
+        <span class="text-red-500">Muted</span>
+      {/if}
+      {#if participant.isCameraOff}
+        <span class="text-red-500">Camera Off</span>
+      {/if}
     </div>
   </div>
     {/each}

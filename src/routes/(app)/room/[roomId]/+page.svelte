@@ -27,8 +27,15 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
     import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
 
-export let data;
+interface VideoElement extends HTMLVideoElement {
+    srcObject: MediaStream;
+}
 
+interface AudioElement extends HTMLAudioElement {
+    srcObject: MediaStream;
+}
+
+export let data;
 
 // State management
 let webRTCAdaptor: any;
@@ -54,89 +61,51 @@ let videoPlayer;
 let isVideoPlaying = false;
 let currentVideoTime = 0;
 
-
-// Add WebSocket state management
-let wsConnection = null;
-let isWsConnected = false;
-
-// Add this near the top of your script section with other state management variables
-let videoElements = new Map();
-
-// $:{
-//     console.log("meetingParticipants", meetingParticipants);
-// }
-
-// Function to initialize WebSocket connection
-function initializeWebSocket() {
-    if (wsConnection) {
-        wsConnection.close();
-    }
-
-    wsConnection = new WebSocket(`${getWebSocketURL()}?target=origin`);
-    
-    wsConnection.onopen = () => {
-        console.log('WebSocket connected');
-        isWsConnected = true;
-    };
-    
-    wsConnection.onclose = () => {
-        console.log('WebSocket closed');
-        isWsConnected = false;
-        // Attempt to reconnect after a delay
-        setTimeout(initializeWebSocket, 3000);
-    };
-    
-    wsConnection.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        isWsConnected = false;
-    };
-}
-
-
 // Room data
-const roomName = $page.url.pathname.split("/").pop().split("&")[0];
+const room = data.roomId[0]; // Get the first room from the array
+const roomName = room.id;
 const user = data.user;
 const isAuthenticated = !!user;
 const name = isAuthenticated ? user.name : "";
 const representatives = data.representatives;
 const users = data.users;
-const roomIdentity = data.roomId;
-const videoRepresentatives = data.videoRepresentativesInfo;
 let isHost = false;
-// ... existing code ...
-const host = $page.url.pathname.split("/").pop().split("-").pop();
-$:{
-    isHost = host === (user ? user.id : "") || host == anonymousUserId
-}
 let isRepresentative = false;
-$:{
-    const urlRepName = $page.url.searchParams.get('representativeName');
-    isRepresentative = urlRepName !== null && urlRepName !== '';
-    console.log('isRepresentative:', isRepresentative); // Debug log
-}
 
-console.log("host", host);
- console.log("isHost", isHost);
- console.log("anonymousUserId", anonymousUserId);
- console.log('page url', $page.url);
-// ... existing code ...
+// Add videoElements map declaration at the top with other state variables
+let videoElements = new Map();
+
+$: {
+    // Determine if user is host (owner of the room)
+    isHost = user?.id === room.owner_company;
+    
+    // Determine if user is a representative
+    isRepresentative = representatives?.some(rep => rep.id === user?.id) || false;
+    
+    console.log('Role determination:', {
+        isHost,
+        isRepresentative,
+        userId: user?.id,
+        roomOwner: room.owner_company,
+        representatives: representatives?.map(r => r.id)
+    });
+}
 
 // Stream configuration
 let publishStreamId = null;
 let showNameModal = !isAuthenticated;
-const streamName = roomIdentity[0]?.associated_video_name;
+const streamName = room?.title;
 const dcOnly = false;
 const playOnly = false;
 
 // WebRTC configuration
 const mediaConstraints = {
-    video: false,
+    video: isRepresentative, // Video enabled by default for representatives
     audio: true
 };
 
 function getWebSocketURL() {
-    // Implement your WebSocket URL logic here
-    return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`
+    return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
 }
 
 onMount(() => {
@@ -301,15 +270,17 @@ function joinRoom() {
     }
 
     const sanitizedName = sanitizeStreamName(name || anonymousUserId);
-    const sanitizedRoomName = sanitizeStreamName(roomName);
-
+    
     if (!playOnly) {
-        const streamId = `${publishStreamId}-${sanitizedName}`;
+        const streamId = `${roomName}-${sanitizedName}`;
         console.log('starting publish with streamId:', streamId);
         
         const metadata = JSON.stringify({
             isCameraOff,
-            isMicMuted
+            isMicMuted,
+            isHost,
+            isRepresentative,
+            userId: user?.id || anonymousUserId
         });
         
         webRTCAdaptor.publish(
@@ -318,12 +289,12 @@ function joinRoom() {
             metadata,
             null,
             sanitizedName,
-            roomIdentity[0].room_id
+            roomName
         );
     }
 
-    console.log('starting play with roomName:', sanitizedRoomName);
-    webRTCAdaptor.play(sanitizedRoomName);
+    console.log('starting play with roomName:', roomName);
+    webRTCAdaptor.play(roomName);
 }
 
 function leaveRoom() {
@@ -389,7 +360,7 @@ function turnOnCamera() {
         isCameraOff = false;
         
         // Republish stream with camera
-        const streamId = `${publishStreamId}-${sanitizeStreamName(name || anonymousUserId)}`;
+        const streamId = `${roomName}-${sanitizeStreamName(name || anonymousUserId)}`;
         const metadata = JSON.stringify({
             isCameraOff: false,
             isMicMuted
@@ -401,7 +372,7 @@ function turnOnCamera() {
             metadata,
             null,
             sanitizeStreamName(name || anonymousUserId),
-            roomIdentity[0].room_id
+            roomName
         );
     }, 500);
 }
@@ -417,7 +388,7 @@ function turnOffCamera() {
     isCameraOff = true;
     
     // Update stream metadata
-    const streamId = `${publishStreamId}-${sanitizeStreamName(name || anonymousUserId)}`;
+    const streamId = `${roomName}-${sanitizeStreamName(name || anonymousUserId)}`;
     const metadata = JSON.stringify({
         isCameraOff: true,
         isMicMuted
@@ -484,29 +455,23 @@ function handleVideoStateChange() {
 function handleVideoSync(data) {
     if (!videoPlayer) return;
 
-    // Don't process our own sync messages
-    const isOwnMessage = (isHost && data.syncSource === 'host') || 
-                        (isRepresentative && data.syncSource === 'representative');
-    if (isOwnMessage) return;
+    // Only accept sync messages from authorized sources
+    const isAuthorizedSync = (data.fromHost && syncSource === 'host') || 
+                           (data.fromRepresentative && syncSource === 'representative');
+    
+    if (!isAuthorizedSync) return;
 
     try {
-        // Always sync if we're not the current sync source
-        const shouldSync = (isHost && syncSource !== 'host') || 
-                         (isRepresentative && syncSource !== 'representative') || 
-                         (!isHost && !isRepresentative);
+        // Sync video time if difference is more than 0.5 seconds
+        if (Math.abs(videoPlayer.currentTime - data.currentTime) > 0.5) {
+            videoPlayer.currentTime = data.currentTime;
+        }
 
-        if (shouldSync) {
-            // Sync video time if difference is more than 0.5 seconds
-            if (Math.abs(videoPlayer.currentTime - data.currentTime) > 0.5) {
-                videoPlayer.currentTime = data.currentTime;
-            }
-
-            // Sync play/pause state
-            if (data.isPlaying && videoPlayer.paused) {
-                videoPlayer.play();
-            } else if (!data.isPlaying && !videoPlayer.paused) {
-                videoPlayer.pause();
-            }
+        // Sync play/pause state
+        if (data.isPlaying && videoPlayer.paused) {
+            videoPlayer.play();
+        } else if (!data.isPlaying && !videoPlayer.paused) {
+            videoPlayer.pause();
         }
     } catch (e) {
         console.error("Error handling video sync data:", e);
@@ -565,21 +530,49 @@ function handleMainTrackBroadcastObject(broadcastObject) {
     });
 
     // Request broadcast object for new tracks
-    participantIds.forEach(pid => {// Update the sync source buttons to use the new function
+    participantIds.forEach(pid => {
         if (allParticipants[pid] === undefined) {
             webRTCAdaptor.getBroadcastObject(pid);
         }
+    });
+
+    // Update meeting participants list with role information
+    meetingParticipants = participantIds.map(pid => {
+        const participant = allParticipants[pid];
+        if (participant?.metaData) {
+            try {
+                const metadata = JSON.parse(participant.metaData);
+                return {
+                    streamId: pid,
+                    name: participant.streamName,
+                    isHost: metadata.isHost,
+                    isRepresentative: metadata.isRepresentative,
+                    userId: metadata.userId,
+                    isCameraOff: metadata.isCameraOff,
+                    isMicMuted: metadata.isMicMuted
+                };
+            } catch (e) {
+                console.error('Error parsing participant metadata:', e);
+            }
+        }
+        return {
+            streamId: pid,
+            name: participant?.streamName || 'Unknown'
+        };
     });
 }
 
 function handleSubtrackBroadcastObject(broadcastObject) {
     if (broadcastObject.metaData !== undefined && broadcastObject.metaData !== null) {
-        let userStatusMetadata = JSON.parse(broadcastObject.metaData);
-        if (userStatusMetadata.isCameraOff !== undefined) {
+        try {
+            let userStatusMetadata = JSON.parse(broadcastObject.metaData);
             broadcastObject.isCameraOff = userStatusMetadata.isCameraOff;
-        }
-        if (userStatusMetadata.isMicMuted !== undefined) {
             broadcastObject.isMicMuted = userStatusMetadata.isMicMuted;
+            broadcastObject.isHost = userStatusMetadata.isHost;
+            broadcastObject.isRepresentative = userStatusMetadata.isRepresentative;
+            broadcastObject.userId = userStatusMetadata.userId;
+        } catch (e) {
+            console.error('Error parsing subtrack metadata:', e);
         }
     }
     allParticipants[broadcastObject.streamId] = broadcastObject;
@@ -598,11 +591,11 @@ function playVideo(obj) {
 
     // Handle audio tracks
     if (obj.track.kind === "audio") {
-        let audio = document.getElementById("remoteAudio" + incomingTrackId);
+        let audio = document.getElementById("remoteAudio" + incomingTrackId) as AudioElement;
 
         if (audio == null) {
             createRemoteAudio(incomingTrackId);
-            audio = document.getElementById("remoteAudio" + incomingTrackId);
+            audio = document.getElementById("remoteAudio" + incomingTrackId) as AudioElement;
         }
 
         if (audio) {
@@ -613,10 +606,10 @@ function playVideo(obj) {
             audio.play().catch(e => console.error("Error playing audio:", e));
         }
     } else if (obj.track.kind === "video") {
-        let video = document.getElementById("remoteVideo" + incomingTrackId);
+        let video = document.getElementById("remoteVideo" + incomingTrackId) as VideoElement;
         
         if (video == null) {
-            video = document.createElement('video');
+            video = document.createElement('video') as VideoElement;
             video.id = "remoteVideo" + incomingTrackId;
             video.autoplay = true;
             video.playsInline = true;
@@ -680,11 +673,17 @@ function removeRemoteAudio(trackLabel: string) {
 
 let videoURL;
 
-let videoUrl = $currentVideoUrl || `${roomIdentity[0].associated_video}`;
+// let lastUpdate = 0;
+
+// Get video URL from room data
+let videoUrl = $currentVideoUrl || room.expand?.host_content?.[0]?.url || room.expand?.representative_content?.[0]?.url;
 console.log("videoUrl", videoUrl);
 
 // Add timestamp for throttling
 let lastUpdate = 0;
+
+// Initialize WebRTC client with room name from URL params
+const streamId = `${$page.params.roomId}`;
 
 // Reactive declarations with immediate logging
 $: {
@@ -739,14 +738,17 @@ let syncSource = 'host'; // Can be 'host' or 'representative'
 
 // Add a new message type for sync source changes
 function updateSyncSource(newSource: 'host' | 'representative') {
+    // Only allow host to change sync source
+    if (!isHost) return;
+    
     syncSource = newSource;
     
-    // Broadcast the sync source change to all participants
-    if (isHost && webRTCAdaptor && isDataChannelOpen) {
+    if (webRTCAdaptor && isDataChannelOpen) {
         const syncSourceUpdate = {
             streamId: roomName,
             eventType: 'sync_source_change',
-            syncSource: newSource
+            syncSource: newSource,
+            fromHost: true
         };
         
         try {
@@ -767,18 +769,29 @@ function handlePanelToggle(event) {
     togglePanel(id);
 }
 
+// Add missing removeAllRemoteVideos function
+function removeAllRemoteVideos() {
+    // Remove all remote video elements
+    const players = document.getElementById("players");
+    if (players) {
+        players.innerHTML = '';
+    }
+    // Clear video elements map
+    videoElements = new Map();
+}
+
 </script>
 
 
 {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '')}
-    <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={roomIdentity[0].associated_video_name} />
+    <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room.title} />
 {:else}
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
     <div class="h-full">
         <div class="flex items-center md:items-start h-full pt-6 pb-24">
             <!-- left sidebar -->
              <div class="hidden lg:flex">
-             <LeftBar joinURL={joinURL} videoRepresentatives={videoRepresentatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+             <LeftBar joinURL={joinURL} videoRepresentatives={representatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
              </div>
              <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
                 {#if isHost || isRepresentative}
@@ -922,10 +935,12 @@ function handlePanelToggle(event) {
         />
      
         <RightBar 
-        isHost={isHost}
-        name={name}
-        participants={meetingParticipants.map(participant => participant.split("-").pop())}
-        on:toggleChat={() => togglePanel("chatPanel")} on:toggleParticipants={() => togglePanel("participantsPanel")} />
+            isHost={isHost}
+            name={name}
+            participants={meetingParticipants.map(participant => participant.name || participant.streamId)}
+            on:toggleChat={() => togglePanel("chatPanel")} 
+            on:toggleParticipants={() => togglePanel("participantsPanel")} 
+        />
       
         </div>
     </div>
@@ -933,7 +948,7 @@ function handlePanelToggle(event) {
     <!-- Desktop Bottom Bar -->
     <div class="hidden lg:block">
         <BottomBar 
-            roomIdentityName={roomIdentity[0].associated_video_name} 
+            roomIdentityName={room.title} 
             {isMicMuted} 
             on:leaveRoom={leaveRoom} 
             on:toggleMicrophone={toggleMicrophone} 
@@ -944,8 +959,8 @@ function handlePanelToggle(event) {
 
     <!-- Mobile Bottom Bar -->
     <MobileBottomBar 
-        roomIdentityName={roomIdentity[0].associated_video_name}
-        videoRepresentatives={videoRepresentatives}
+        roomIdentityName={room.title}
+        videoRepresentatives={representatives}
         scheduleOpen={scheduleOpen}
         userId={user?.id || ''}
         joinURL={joinURL}

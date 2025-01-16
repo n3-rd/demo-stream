@@ -85,7 +85,7 @@
                     <div>Representative</div>
                     <div>Host Content</div>
                     <div>Rep Content</div>
-                    <div>Edit View</div>
+                    <div>Actions</div>
                 </div>
 
                 {#each rooms as room}
@@ -118,7 +118,10 @@
                                 show
                             </button>
                         </div>
-                        <div>
+                        <div class="flex items-center gap-2">
+                            <Button variant="outline" size="sm" on:click={() => window.location.href = `/room/${room.id}`}>
+                                Join Room
+                            </Button>
                             <button class="text-gray-600 hover:text-gray-900">
                                 <MoreHorizontal size={20} />
                             </button>

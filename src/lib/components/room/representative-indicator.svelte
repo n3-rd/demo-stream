@@ -38,14 +38,11 @@
     }
 
     function isRepresentative(participant) {
-        const participantName = participant.split('-').pop();
-        return participantName && participantName.includes('Representative');
+        return participant.isRepresentative;
     }
 
     function shouldShowIndicator(participant) {
-        const participantName = participant.split('-').pop();
-        const representativeName = participantName?.replace('Representative', '') || '';
-        return representativeName !== urlRepresentativeName;
+        return participant.name !== urlRepresentativeName;
     }
 
     $: visibleRepresentatives = participants.filter(p => isRepresentative(p) && shouldShowIndicator(p));
@@ -65,11 +62,11 @@
     <div class="relative h-32 w-52 rounded-lg overflow-hidden bg-black">
         <div class="video-container h-full w-full">
           
-            <iframe class="w-full h-full" src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant}`} frameborder="0" allowfullscreen></iframe>
+            <iframe class="w-full h-full" src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant.streamId}`} frameborder="0" allowfullscreen></iframe>
         
         </div>
         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 text-sm">
-            {participant.split('-').pop().replace('Representative', ' (Representative)').replace(/_/g, ' ') || 'Unknown'}
+            {participant.name || 'Unknown'} (Representative)
         </div>
     </div>
     {/each}

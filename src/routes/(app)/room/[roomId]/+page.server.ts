@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     // Get the room with expanded relations
     const roomId = await locals.pb.collection('rooms').getFullList({
         filter: `id = "${params.roomId.split('&')[0]}"`,
-        expand: 'representative,host_content,representative_content'
+        expand: 'representative,host_content,representative_content,selected_video'
     });
 
     // If no room found, redirect

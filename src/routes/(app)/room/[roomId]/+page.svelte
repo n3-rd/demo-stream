@@ -1,4 +1,5 @@
 <script lang="ts">
+	
 import {
     PUBLIC_ANT_MEDIA_URL
 } from '$env/static/public';
@@ -26,6 +27,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import Chat from '$lib/call/Chat.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
     import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
+    import {PUBLIC_POCKETBASE_INSTANCE} from '$env/static/public';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -414,39 +416,35 @@ function handleVideoStateChange() {
     const shouldSendSync = (isHost && syncSource === 'host') || 
                          (isRepresentative && syncSource === 'representative');
     
-    console.log('Sync conditions:', { 
+    console.log('Video state change:', { 
         isHost, 
         isRepresentative, 
         syncSource, 
-        shouldSendSync 
-    }); // Debug log
+        shouldSendSync,
+        currentTime: videoPlayer.currentTime,
+        isPlaying: !videoPlayer.paused
+    });
     
-    if (shouldSendSync) {
+    if (shouldSendSync && webRTCAdaptor && isDataChannelOpen) {
         const videoState = {
             streamId: roomName,
             eventType: 'video_sync',
             currentTime: videoPlayer.currentTime,
             isPlaying: !videoPlayer.paused,
-            syncSource: syncSource
+            syncSource,
+            fromHost: isHost,
+            fromRepresentative: isRepresentative
         };
         
-        if (webRTCAdaptor && isDataChannelOpen) {
-            try {
-                console.log('Sending sync message:', videoState); // Debug log
-                sendMessage(
-                    videoState.streamId,
-                    videoState.currentTime,
-                    JSON.stringify(videoState),
-                    roomName
-                );
-            } catch (error) {
-                console.error('Error sending video sync:', error);
-            }
-        } else {
-            console.log('WebRTC data channel not ready:', { 
-                webRTCAdaptor: !!webRTCAdaptor, 
-                isDataChannelOpen 
-            });
+        try {
+            sendMessage(
+                videoState.streamId,
+                Date.now(),
+                JSON.stringify(videoState),
+                roomName
+            );
+        } catch (error) {
+            console.error('Error sending video sync:', error);
         }
     }
 }
@@ -455,22 +453,40 @@ function handleVideoStateChange() {
 function handleVideoSync(data) {
     if (!videoPlayer) return;
 
-    // Only accept sync messages from authorized sources
+    console.log('Received video sync:', data);
+
+    // Only accept sync messages from authorized sources based on current sync source
     const isAuthorizedSync = (data.fromHost && syncSource === 'host') || 
                            (data.fromRepresentative && syncSource === 'representative');
     
-    if (!isAuthorizedSync) return;
+    console.log('Sync authorization:', {
+        isAuthorizedSync,
+        syncSource,
+        fromHost: data.fromHost,
+        fromRepresentative: data.fromRepresentative
+    });
+
+    if (!isAuthorizedSync) {
+        console.log('Ignoring unauthorized sync message');
+        return;
+    }
 
     try {
         // Sync video time if difference is more than 0.5 seconds
-        if (Math.abs(videoPlayer.currentTime - data.currentTime) > 0.5) {
+        const timeDiff = Math.abs(videoPlayer.currentTime - data.currentTime);
+        console.log('Time difference:', timeDiff);
+        
+        if (timeDiff > 0.5) {
+            console.log('Syncing time to:', data.currentTime);
             videoPlayer.currentTime = data.currentTime;
         }
 
         // Sync play/pause state
         if (data.isPlaying && videoPlayer.paused) {
-            videoPlayer.play();
+            console.log('Playing video');
+            videoPlayer.play().catch(e => console.error('Error playing video:', e));
         } else if (!data.isPlaying && !videoPlayer.paused) {
+            console.log('Pausing video');
             videoPlayer.pause();
         }
     } catch (e) {
@@ -478,7 +494,17 @@ function handleVideoSync(data) {
     }
 }
 
-
+// Add event listener for timeupdate to sync periodically
+$: if (videoPlayer) {
+    videoPlayer.ontimeupdate = () => {
+        // Only sync every second to avoid flooding
+        const now = Date.now();
+        if (now - lastUpdate > 1000) {
+            handleVideoStateChange();
+            lastUpdate = now;
+        }
+    };
+}
 
 const handleScheduleClose = () => {
     scheduleOpen = false;
@@ -676,8 +702,18 @@ let videoURL;
 // let lastUpdate = 0;
 
 // Get video URL from room data
-let videoUrl = $currentVideoUrl || room.expand?.host_content?.[0]?.url || room.expand?.representative_content?.[0]?.url;
-console.log("videoUrl", videoUrl);
+let videoUrl = '';
+
+$: {
+    console.log('Room data:', room);
+    console.log('Selected video:', room?.expand?.selected_video);
+    if (room?.expand?.selected_video) {
+        const selectedVideo = room.expand.selected_video;
+        console.log('Selected video details:', selectedVideo);
+        videoUrl = selectedVideo.file ? `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+        console.log('Video URL:', videoUrl);
+    }
+}
 
 // Add timestamp for throttling
 let lastUpdate = 0;
@@ -803,69 +839,58 @@ function removeAllRemoteVideos() {
                                     size="sm"
                                     on:click={() => updateSyncSource('host')}
                                 >
-                                    Sync My Video
+                                    Host View
                                 </Button>
                                 <Button
                                     variant={syncSource === 'representative' ? 'default' : 'secondary'}
                                     size="sm"
                                     on:click={() => updateSyncSource('representative')}
                                 >
-                                    Sync Representative Video
+                                    Rep View
                                 </Button>
                             </div>
                         {/if}
+                        <!-- WebRTC Video -->
                         <video
-                            bind:this={videoPlayer}
-                            src={videoUrl}
-                            autoplay={false}
-                            controls={isHost || isRepresentative}
+                            id="localVideo"
+                            class="w-full h-full object-contain absolute inset-0"
+                            autoplay
                             playsinline
-                            class="h-[91%] md:h-full w-full px-3 bg-[#9d9d9f] object-contain md:object-cover"
-                            loop
-                            on:play={() => {
-                                console.log('Video play event:', { isRepresentative, syncSource }); // Debug log
-                                if (videoPlayer) handleVideoStateChange();
-                            }}
-                            on:pause={() => {
-                                console.log('Video pause event:', { isRepresentative, syncSource }); // Debug log
-                                if (videoPlayer) handleVideoStateChange();
-                            }}
-                            on:seeked={() => {
-                                console.log('Video seek event:', { isRepresentative, syncSource }); // Debug log
-                                if (videoPlayer) handleVideoStateChange();
-                            }}
-                            on:timeupdate={() => {
-                                if (!videoPlayer) return;
-                                
-                                const shouldSendSync = (isHost && syncSource === 'host') || 
-                                                     (isRepresentative && syncSource === 'representative');
-                                
-                                if (shouldSendSync) {
-                                    const now = Date.now();
-                                    if (!lastUpdate || now - lastUpdate > 1000) {
-                                        lastUpdate = now;
-                                        handleVideoStateChange();
-                                    }
-                                }
-                            }}
+                            muted
+                            controls={false}
                         >
-                            <track kind="captions">
                             Your browser does not support the video element.
                         </video>
+                        <!-- Controlling Video for Host/Rep -->
+                        {#if videoUrl}
+                            <video
+                                class="w-full h-full object-contain absolute inset-0"
+                                controls
+                                src={videoUrl}
+                                bind:this={videoPlayer}
+                                on:play={handleVideoStateChange}
+                                on:pause={handleVideoStateChange}
+                                on:seeking={handleVideoStateChange}
+                                loop
+                            >
+                                Your browser does not support the video element.
+                            </video>
+                        {/if}
                     </div>
                 {:else}
-                    <div class="video-container bg-transparent h-full w-full">
-                        <video
-                            bind:this={videoPlayer}
-                            src={videoUrl}
-                            autoplay={false}
-                            controls={false}
-                            playsinline
-                            class="h-[91%] md:h-full w-full px-3 bg-[#9d9d9f] object-contain md:object-cover"
-                        >
-                            <track kind="captions">
-                            Your browser does not support the video element.
-                        </video>
+                    <div class="w-full h-full flex items-center justify-center">
+                        {#if videoUrl}
+                            <video
+                                class="w-full h-full object-contain"
+                                controls={false}
+                                src={videoUrl}
+                                bind:this={videoPlayer}
+                            >
+                                Your browser does not support the video element.
+                            </video>
+                        {:else}
+                            <div class="text-white text-xl">No video selected for this room</div>
+                        {/if}
                     </div>
                 {/if}
 

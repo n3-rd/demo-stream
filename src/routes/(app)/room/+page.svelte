@@ -13,28 +13,38 @@
 	import { toast } from 'svelte-sonner';
     import Sidenav from '$lib/components/layout/sidenav.svelte';
 
+    interface SelectItem {
+        value: string;
+        label: string;
+    }
+
     export let data;
     const form = useForm();
 
     let showAddRoomDialog = false;
+    let selectedVideo: string = '';
     let selectedHostContent: string[] = [];
     let selectedRepContent: string[] = [];
     let selectedRepresentatives: string[] = [];
 
     $: ({ rooms, representatives, hostContent, repContent } = data);
 
-    function handleHostContentSelect(event: CustomEvent<string[]>) {
-        selectedHostContent = event.detail;
+    function handleVideoSelect(e: { value: string } | null) {
+        selectedVideo = e?.value || '';
+    }
+
+    function handleHostContentSelect(event: CustomEvent<{ value: string }[]>) {
+        selectedHostContent = event.detail.map(item => item.value);
         console.log('Selected host content:', selectedHostContent);
     }
 
-    function handleRepContentSelect(event: CustomEvent<string[]>) {
-        selectedRepContent = event.detail;
+    function handleRepContentSelect(event: CustomEvent<{ value: string }[]>) {
+        selectedRepContent = event.detail.map(item => item.value);
         console.log('Selected rep content:', selectedRepContent);
     }
 
-    function handleRepresentativeSelect(event: CustomEvent<string[]>) {
-        selectedRepresentatives = event.detail;
+    function handleRepresentativeSelect(event: CustomEvent<{ value: string }[]>) {
+        selectedRepresentatives = event.detail.map(item => item.value);
         console.log('Selected representatives:', selectedRepresentatives);
     }
 
@@ -59,11 +69,6 @@
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return null;
         return `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
-    }
-
-    interface SelectItem {
-        value: string;
-        label: string;
     }
 </script>
 
@@ -176,11 +181,36 @@
                 </div>
 
                 <div class="space-y-2">
+                    <Label for="selected_video">Select Video</Label>
+                    <Select.Root
+                        onSelectedChange={e => {
+                            selectedVideo = String(e?.value || '');
+                        }}
+                    >
+                        <Select.Trigger class="w-full">
+                            <Select.Value placeholder="Select a video..." />
+                        </Select.Trigger>
+                        <Select.Content>
+                            {#each hostContent.filter(content => content.type === 'video') as content}
+                                <Select.Item value={content.id} label={content.title}>
+                                    <div class="flex items-center gap-2">
+                                        {#if content.thumbnail}
+                                            <img src={getThumbnailUrl(content)} alt="Thumbnail" class="w-6 h-6 object-cover rounded" />
+                                        {/if}
+                                        {content.title}
+                                    </div>
+                                </Select.Item>
+                            {/each}
+                        </Select.Content>
+                    </Select.Root>
+                </div>
+
+                <div class="space-y-2">
                     <Label for="representative">Representatives</Label>
                     <Select.Root
                         multiple
                         onSelectedChange={e => {
-                            selectedRepresentatives = e?.map?.(item => item?.value) || [];
+                            selectedRepresentatives = (e?.map?.(item => String(item?.value)) || []);
                         }}
                     >
                         <Select.Trigger class="w-full">
@@ -206,7 +236,7 @@
                     <Select.Root
                         multiple
                         onSelectedChange={e => {
-                            selectedHostContent = e?.map?.(item => item?.value) || [];
+                            selectedHostContent = (e?.map?.(item => String(item?.value)) || []);
                         }}
                     >
                         <Select.Trigger class="w-full">
@@ -232,7 +262,7 @@
                     <Select.Root
                         multiple
                         onSelectedChange={e => {
-                            selectedRepContent = e?.map?.(item => item?.value) || [];
+                            selectedRepContent = (e?.map?.(item => String(item?.value)) || []);
                         }}
                     >
                         <Select.Trigger class="w-full">
@@ -257,6 +287,7 @@
             <input type="hidden" name="host_content[]" value={selectedHostContent.join(',')} />
             <input type="hidden" name="representative_content[]" value={selectedRepContent.join(',')} />
             <input type="hidden" name="representative[]" value={selectedRepresentatives.join(',')} />
+            <input type="hidden" name="selected_video" value={selectedVideo} />
 
             <Dialog.Footer>
                 <Button type="button" variant="outline" on:click={() => showAddRoomDialog = false}>

@@ -19,42 +19,35 @@ const sanitizeAssociatedVideo = (videoRef: string) => {
 export const load: PageServerLoad = async ({ locals, params }) => {
     const user = locals.pb.authStore.model;
     
-    // Get the room
+    // Get the room with expanded relations
     const roomId = await locals.pb.collection('rooms').getFullList({
-        filter: `room_id = "${params.roomId.split('&')[0]}"`
+        filter: `id = "${params.roomId.split('&')[0]}"`,
+        expand: 'representative,host_content,representative_content'
     });
 
-    // If no room found, or if the room doesn't belong to the company and user is not a representative
-    if (!roomId.length || (roomId[0].owner_company !== user?.id && !user?.representative)) {
+    // If no room found, redirect
+    if (!roomId.length) {
         throw redirect(302, '/');
     }
 
-    let videoRepresentativesInfo = [];
-    const representatives = await locals.pb.collection('users').getFullList({
-        filter: 'representative = true',
-    });
+    const room = roomId[0];
 
-    const videoRepresentatives = await locals.pb.collection('room_videos_duplicate')
-        .getFirstListItem(`video_ref = "${sanitizeAssociatedVideo(roomId[0].associated_video)}"`)
-        .then((result) => {
-            console.log('result', result);
-            // Check if the video belongs to the company
-            if (result.owner_company !== user?.id && !user?.representative) {
-                throw redirect(302, '/');
-            }
-            return result.representatives;
-        });
+    // Check if user has access to the room (only if they are authenticated)
+    const isHost = user ? room.owner_company === user.id : false;
+    const isRepresentative = user ? room.expand?.representative?.some(rep => rep.id === user.id) : false;
 
-    videoRepresentatives.forEach((rep) => {
-        videoRepresentativesInfo.push(representatives.find((repInfo) => repInfo.id === rep));
-    });
+    // Get all representatives assigned to this room
+    const representatives = room.expand?.representative || [];
+
+    // Get all users in the room for participant management (only if authenticated)
+    const users = user ? await locals.pb.collection('users').getFullList() : [];
 
     return {
-        user,
+        user: user || null,
         representatives,
-        roomId,
-        videoRepresentatives,
-        videoRepresentativesInfo
+        users,
+        roomId: [room],
+        videoRepresentativesInfo: representatives
     };
 };
 

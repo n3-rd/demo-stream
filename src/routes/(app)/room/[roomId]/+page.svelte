@@ -81,7 +81,7 @@ $: {
 
 let isRepresentative = false;
 $: {
-    const urlRepName = $page.url.searchParams.get('representativeName');
+    const urlRepName = $page.url.searchParams.get('repid');
     isRepresentative = urlRepName !== null && urlRepName !== '';
     console.log('isRepresentative:', isRepresentative);
 }
@@ -129,11 +129,20 @@ function getWebSocketURL() {
 }
 
 onMount(() => {
+    const params = new URLSearchParams(window.location.search);
+    const representativeName = params.get('repid');
+
     if ($anonymousUser || isAuthenticated) {
         // Start with camera on for representatives, off for others
         isCameraOff = !isRepresentative;
         mediaConstraints.video = isRepresentative;
         
+        // If this is a representative, ensure video is enabled
+        if (representativeName) {
+            mediaConstraints.video = true;
+            mediaConstraints.audio = true;
+        }
+
         initializeWebRTC();
         
         // Initialize sync source based on role

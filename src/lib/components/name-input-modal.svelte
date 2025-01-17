@@ -72,6 +72,8 @@
                         </svg>
                         Join Call
                     </button>
+
+                    <p>If you are supposed to be the host, please <a href="/login" class="text-primary">Login here</a></p>
                 </form>
             </div>
         </div>

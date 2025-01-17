@@ -66,6 +66,30 @@ console.log("participants from representative-indicator.svelte", participants);
 
     $: visibleRepresentatives = participants.filter(p => isRepresentative(p) && shouldShowIndicator(p));
 
+    onMount(async () => {
+        // Get URL parameters
+        const params = new URLSearchParams(window.location.search);
+        urlRepresentativeName = params.get('representativeName');
+
+        if (urlRepresentativeName) {
+            // If this is a representative, request camera access
+            try {
+                const mediaConstraints = {
+                    video: true,
+                    audio: true
+                };
+
+                // Request camera access
+                const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+                console.log('Camera access granted for representative');
+
+                // The stream will be handled by the WebRTC adaptor in the main room component
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+            }
+        }
+    });
+
     $: {
         console.log('Participants:', participants);
         console.log('Visible Representatives:', visibleRepresentatives);
@@ -74,18 +98,21 @@ console.log("participants from representative-indicator.svelte", participants);
 
 {#if visibleRepresentatives.length > 0}
 <div class="absolute bottom-0 right-10 top-[37%] md:right-24 md:top-[37%] z-50 flex items-center gap-3 pointer-events-none">
-    {#if visibleRepresentatives.length > 0}
     {#each visibleRepresentatives as participant}
     <div class="relative h-32 w-52 rounded-lg overflow-hidden bg-black">
         <div class="video-container h-full w-full">
-            <iframe class="w-full h-full" src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant}`} frameborder="0" allowfullscreen></iframe>
+            <iframe 
+                class="w-full h-full" 
+                src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant}`} 
+                frameborder="0" 
+                allowfullscreen
+            ></iframe>
         </div>
         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 text-sm">
             {getParticipantName(participant)} (Representative)
         </div>
     </div>
     {/each}
-    {/if}
 </div>
 {/if}
 

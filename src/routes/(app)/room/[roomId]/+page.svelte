@@ -38,6 +38,7 @@ interface AudioElement extends HTMLAudioElement {
 }
 
 export let data;
+ console.log('data from room/[roomId]/+page.svelte', data);
 
 // State management
 let webRTCAdaptor: any;
@@ -64,33 +65,46 @@ let isVideoPlaying = false;
 let currentVideoTime = 0;
 
 // Room data
-const room = data.roomId[0]; // Get the first room from the array
-const roomName = room.id;
+const room = data.roomId[0];
+const roomName = $page.url.pathname.split("/").pop().split("&")[0];
 const user = data.user;
 const isAuthenticated = !!user;
-const name = isAuthenticated ? user.name : "";
+const name = isAuthenticated ? user.company_name : "";
 const representatives = data.representatives;
 const users = data.users;
 let isHost = false;
+const host = $page.url.pathname.split("/").pop().split("-").pop();
+
+$: {
+    isHost = host === (user ? user.id : "") || host == anonymousUserId;
+}
+
 let isRepresentative = false;
+$: {
+    const urlRepName = $page.url.searchParams.get('repid');
+    isRepresentative = urlRepName !== null && urlRepName !== '';
+    console.log('isRepresentative:', isRepresentative);
+}
 
 // Add videoElements map declaration at the top with other state variables
 let videoElements = new Map();
 
 $: {
-    // Determine if user is host (owner of the room)
-    isHost = user?.id === room.owner_company;
-    
-    // Determine if user is a representative
-    isRepresentative = representatives?.some(rep => rep.id === user?.id) || false;
-    
-    console.log('Role determination:', {
-        isHost,
-        isRepresentative,
-        userId: user?.id,
-        roomOwner: room.owner_company,
-        representatives: representatives?.map(r => r.id)
-    });
+    if (room) {
+        // Determine if user is host (owner of the room)
+        isHost = user?.id === room.owner_company;
+        
+        // Determine if user is a representative
+        isRepresentative = representatives?.some(rep => rep.id === user?.id) || false;
+        
+        console.log('Role determination:', {
+            isHost,
+            isRepresentative,
+            userId: user?.id,
+            roomOwner: room.owner_company,
+            representatives: representatives?.map(r => r.id)
+        });
+    }
 }
 
 // Stream configuration
@@ -103,7 +117,11 @@ const playOnly = false;
 // WebRTC configuration
 const mediaConstraints = {
     video: isRepresentative, // Video enabled by default for representatives
-    audio: true
+    audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+    }
 };
 
 function getWebSocketURL() {
@@ -111,11 +129,20 @@ function getWebSocketURL() {
 }
 
 onMount(() => {
+    const params = new URLSearchParams(window.location.search);
+    const representativeName = params.get('repid');
+
     if ($anonymousUser || isAuthenticated) {
         // Start with camera on for representatives, off for others
         isCameraOff = !isRepresentative;
         mediaConstraints.video = isRepresentative;
         
+        // If this is a representative, ensure video is enabled
+        if (representativeName) {
+            mediaConstraints.video = true;
+            mediaConstraints.audio = true;
+        }
+
         initializeWebRTC();
         
         // Initialize sync source based on role
@@ -145,8 +172,16 @@ function initializeWebRTC() {
         debug: true,
         callback: handleWebRTCCallback,
         callbackError: handleWebRTCError,
-        bandwidth: 900, // Reduce bandwidth since video is optional
-        publishMode: "camera" // This ensures basic camera/mic publishing
+        bandwidth: 900,
+        publishMode: "camera",
+        audioBandwidth: 56,
+        micGainNode: 1.0,
+        audioSourceIndex: 0,
+        videoCodec: "H264",
+        sdpConstraints: {
+            OfferToReceiveAudio: true,
+            OfferToReceiveVideo: true
+        }
     });
 }
 
@@ -154,7 +189,6 @@ function handleWebRTCCallback(info: string, obj: any) {
     switch (info) {
         case "initialized":
             console.log("WebRTC initialized");
-            
             joinRoom();
             break;
         case "broadcastObject":
@@ -170,9 +204,37 @@ function handleWebRTCCallback(info: string, obj: any) {
         case "newTrackAvailable":
             playVideo(obj);
             break;
+        case "streamJoined":
+            console.log("Stream joined event:", obj);
+            if (obj.streamId) {
+                let participantName = 'Unknown User';
+                try {
+                    if (obj.metadata) {
+                        const metadata = JSON.parse(obj.metadata);
+                        participantName = metadata.displayName || obj.streamName || 'Unknown User';
+                    } else {
+                        participantName = obj.streamName || 'Unknown User';
+                    }
+                } catch (e) {
+                    console.error('Error parsing participant metadata:', e);
+                }
+                
+                const participant = {
+                    streamId: obj.streamId,
+                    name: participantName,
+                    isRepresentative: participantName.endsWith('_representative')
+                };
+                handleNewParticipant(participant);
+            }
+            break;
         case "publish_started":
             isPlaying = true;
             webRTCAdaptor.getBroadcastObject(roomName);
+            // Enable local audio after publishing starts
+            const localAudio = document.getElementById("localAudio") as HTMLAudioElement;
+            if (localAudio && !isMicMuted) {
+                localAudio.srcObject = webRTCAdaptor.localStream;
+            }
             break;
         case "play_started":
             isPlaying = true;
@@ -266,23 +328,39 @@ function sanitizeStreamName(name: string): string {
     return decodedName.replace(/[^a-zA-Z0-9-]/g, '_');
 }
 
+function formatDisplayName(name: string, isRepresentative = false): string {
+    if (!name) return 'Unknown User';
+    const formattedName = name.trim();
+    return isRepresentative ? `${formattedName}_representative` : formattedName;
+}
+
 function joinRoom() {
     if (!publishStreamId) {
         publishStreamId = generateRandomString(12);            
     }
 
-    const sanitizedName = sanitizeStreamName(name || anonymousUserId);
-    
+    // Format the display name based on user type
+    let displayName;
+    if (isAuthenticated) {
+        displayName = formatDisplayName(name);
+    } else if (data.representativeName) {
+        displayName = formatDisplayName(data.representativeName, true);
+    } else {
+        displayName = formatDisplayName($anonymousUser);
+    }
+
+    const sanitizedName = sanitizeStreamName(displayName);
+    const sanitizedRoomName = sanitizeStreamName(roomName);
+
     if (!playOnly) {
-        const streamId = `${roomName}-${sanitizedName}`;
+        const streamId = `${publishStreamId}-${sanitizedName}`;
         console.log('starting publish with streamId:', streamId);
         
         const metadata = JSON.stringify({
             isCameraOff,
             isMicMuted,
-            isHost,
-            isRepresentative,
-            userId: user?.id || anonymousUserId
+            isRepresentative: !!data.representativeName,
+            displayName
         });
         
         webRTCAdaptor.publish(
@@ -290,13 +368,13 @@ function joinRoom() {
             null,
             metadata,
             null,
-            sanitizedName,
-            roomName
+            displayName,
+            room.id
         );
     }
 
-    console.log('starting play with roomName:', roomName);
-    webRTCAdaptor.play(roomName);
+    console.log('starting play with roomName:', sanitizedRoomName);
+    webRTCAdaptor.play(sanitizedRoomName);
 }
 
 function leaveRoom() {
@@ -330,11 +408,25 @@ function handlePlayStarted() {
 }
 
 function muteLocalMic() {
+    if (webRTCAdaptor && webRTCAdaptor.localStream) {
+        const audioTrack = webRTCAdaptor.localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = false;
+            console.log('Muted local mic');
+        }
+    }
     webRTCAdaptor.muteLocalMic();
     isMicMuted = true;
 }
 
 function unmuteLocalMic() {
+    if (webRTCAdaptor && webRTCAdaptor.localStream) {
+        const audioTrack = webRTCAdaptor.localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = true;
+            console.log('Unmuted local mic');
+        }
+    }
     webRTCAdaptor.unmuteLocalMic();
     isMicMuted = false;
 }
@@ -589,19 +681,20 @@ function handleMainTrackBroadcastObject(broadcastObject) {
 }
 
 function handleSubtrackBroadcastObject(broadcastObject) {
-    if (broadcastObject.metaData !== undefined && broadcastObject.metaData !== null) {
-        try {
-            let userStatusMetadata = JSON.parse(broadcastObject.metaData);
-            broadcastObject.isCameraOff = userStatusMetadata.isCameraOff;
-            broadcastObject.isMicMuted = userStatusMetadata.isMicMuted;
-            broadcastObject.isHost = userStatusMetadata.isHost;
-            broadcastObject.isRepresentative = userStatusMetadata.isRepresentative;
-            broadcastObject.userId = userStatusMetadata.userId;
-        } catch (e) {
-            console.error('Error parsing subtrack metadata:', e);
-        }
+    try {
+        let metadata = JSON.parse(broadcastObject.metadata || '{}');
+        let participantName = metadata.displayName || broadcastObject.streamName || 'Unknown User';
+        
+        allParticipants[broadcastObject.streamId] = {
+            streamId: broadcastObject.streamId,
+            name: participantName,
+            isRepresentative: participantName.endsWith('_representative'),
+            isCameraOff: metadata.isCameraOff || false,
+            isMicMuted: metadata.isMicMuted || false
+        };
+    } catch (e) {
+        console.error('Error handling subtrack broadcast object:', e);
     }
-    allParticipants[broadcastObject.streamId] = broadcastObject;
 }
 
 function playVideo(obj) {
@@ -674,6 +767,7 @@ function createRemoteAudio(trackLabel: string) {
     if (!playersContainer) {
         playersContainer = document.createElement("div");
         playersContainer.id = "players";
+        playersContainer.className = "hidden";
         document.body.appendChild(playersContainer);
     }
 
@@ -683,8 +777,8 @@ function createRemoteAudio(trackLabel: string) {
     const audio = document.createElement("audio");
     audio.id = "remoteAudio" + trackLabel;
     audio.autoplay = true;
-    audio.controls = true;  // Make controls visible for debugging
-    audio.style.visibility = "hidden";
+    audio.playsinline = true;
+    audio.controls = false;  // Hide controls since we manage it through UI
 
     player.appendChild(audio);
     playersContainer.appendChild(player);
@@ -723,9 +817,18 @@ const streamId = `${$page.params.roomId}`;
 
 // Reactive declarations with immediate logging
 $: {
-    urlRepresentativeName = $page.url.searchParams.get('representativeName');
+    urlRepresentativeName = data.representativeName || '';
     anonymousUserId = $anonymousUser;
     hostUserId = $page.url.searchParams.get('hostUserId');
+    
+    // If we have a representative name, set it as the anonymous user with proper formatting
+    if (data.representativeName && !$anonymousUser) {
+        anonymousUser.set(formatUserName(data.representativeName, true));
+        // Initialize WebRTC after setting the name
+        if (webRTCAdaptor === null) {
+            initializeWebRTC();
+        }
+    }
     
     // Debug logging
     console.log('URL Params updated:', {
@@ -740,9 +843,18 @@ $: {
 function handleNameSubmitted(event) {
     const submittedName = event.detail;
     console.log("submittedName", submittedName);
+    // For anonymous users, just use their submitted name
     anonymousUser.set(submittedName);
     // Initialize WebRTC after name is set
     initializeWebRTC();
+}
+
+// Add function to format user name based on type
+function formatUserName(name: string, isRepresentative = false) {
+    if (isRepresentative) {
+        return `${name}_representative`;
+    }
+    return name;
 }
 
 function handleChatMessage(messageBody) {
@@ -819,10 +931,16 @@ function removeAllRemoteVideos() {
 </script>
 
 
-{#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '')}
-    <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room.title} />
+{#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data.representativeName}
+    <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
+    <!-- Add audio container at the top level -->
+    <div id="players" class="hidden">
+        <!-- Local audio element -->
+        <audio id="localAudio" autoplay playsinline></audio>
+    </div>
+
     <div class="h-full">
         <div class="flex items-center md:items-start h-full pt-6 pb-24">
             <!-- left sidebar -->

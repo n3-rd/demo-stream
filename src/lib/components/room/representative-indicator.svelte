@@ -5,6 +5,8 @@
     
     export let participants;
     
+console.log("participants from representative-indicator.svelte", participants);
+
     let urlRepresentativeName: string;
     let videoElements = new Map();
     
@@ -37,42 +39,27 @@
         };
     }
 
-    function isRepresentative(participant) {
-        return participant.isRepresentative || 
-               (participant.metaData && JSON.parse(participant.metaData).isRepresentative) ||
-               (participant.streamId && participant.streamId.includes('Representative'));
-    }
-
-    function getParticipantName(participant) {
-        try {
-            if (participant.metaData) {
-                const metadata = JSON.parse(participant.metaData);
-                if (metadata.name) return metadata.name;
-            }
-            
-            if (participant.streamName) {
-                return participant.streamName.replace(/_/g, ' ');
-            }
-            
-            if (participant.streamId) {
-                const parts = participant.streamId.split('-');
-                if (parts.length > 1) {
-                    return parts[parts.length - 1].replace(/_/g, ' ').replace('Representative', '');
-                }
-            }
-            
-            if (participant.name) {
-                return participant.name;
-            }
-            
-            return 'Guest User';
-        } catch (e) {
-            console.error('Error parsing participant name:', e);
-            return 'Guest User';
+    function isRepresentative(participant: any) {
+        if (typeof participant === 'string') {
+            return participant.includes('_representative');
+        } else if (participant && participant.streamId) {
+            return participant.streamId.includes('_representative');
         }
+        return false;
     }
 
-    function shouldShowIndicator(participant) {
+    function getParticipantName(participant: any) {
+        if (typeof participant === 'string') {
+            const nameWithoutPrefix = participant.split('-').pop() || '';
+            return nameWithoutPrefix.replace(/_+representative/g, '');
+        } else if (participant && participant.streamId) {
+            const nameWithoutPrefix = participant.streamId.split('-').pop() || '';
+            return nameWithoutPrefix.replace(/_+representative/g, '');
+        }
+        return 'Unknown User';
+    }
+
+    function shouldShowIndicator(participant: any) {
         const participantName = getParticipantName(participant);
         return participantName !== urlRepresentativeName;
     }
@@ -87,16 +74,18 @@
 
 {#if visibleRepresentatives.length > 0}
 <div class="absolute bottom-0 right-10 top-[37%] md:right-24 md:top-[37%] z-50 flex items-center gap-3 pointer-events-none">
+    {#if visibleRepresentatives.length > 0}
     {#each visibleRepresentatives as participant}
     <div class="relative h-32 w-52 rounded-lg overflow-hidden bg-black">
         <div class="video-container h-full w-full">
-            <iframe class="w-full h-full" src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant.streamId}`} frameborder="0" allowfullscreen></iframe>
+            <iframe class="w-full h-full" src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant}`} frameborder="0" allowfullscreen></iframe>
         </div>
         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 text-sm">
-            {getParticipantName(participant)} {isRepresentative(participant) ? '(Representative)' : ''}
+            {getParticipantName(participant)} (Representative)
         </div>
     </div>
     {/each}
+    {/if}
 </div>
 {/if}
 

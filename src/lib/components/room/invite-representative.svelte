@@ -5,7 +5,8 @@
 	import { enhance } from "$app/forms";
 	import Share from "./share.svelte";
 	import { page } from '$app/stores';
-
+    import { Button } from "$lib/components/ui/button";
+    import { ClipboardCopy } from "lucide-svelte";
 
     export let representatives;
     let showRepresentativeList = false;
@@ -63,10 +64,10 @@
 {#if !showRepresentativeList}
     <!-- First Modal -->
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white p-6  w-full text-gray-400">
-            <h2 class="text-lg font-semibold mb-4 text-[#464646]">Speak to Representative</h2>
+        <div class="bg-white p-6 w-full text-gray-400">
+            <h2 class="text-lg font-semibold mb-4 text-[#464646]">Invite Representative</h2>
             <p class="text-sm mb-6">
-                Speak to a representative, you're gaining direct access to an expert who specializes in our services. They're here to guide you, answer your questions, and provide personalized assistance. Whether you're seeking advice, information, or a step-by-step walkthrough, our representatives are ready to help you. Click the 'CONTINUE' to start a conversation.
+                Select a representative to generate a unique invitation link. The representative will be able to join the room with their credentials and assist in the meeting.
             </p>
             <div class="flex justify-end space-x-4">
                 <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={() => showRepresentativeList = false}>Cancel</button>
@@ -77,8 +78,8 @@
 {:else}
     <!-- Second Modal -->
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white p-6 w-full ">
-            <h2 class="text-lg font-semibold mb-4 text-center text-[#464646]">Innovated Building Group Representative</h2>
+        <div class="bg-white p-6 w-full">
+            <h2 class="text-lg font-semibold mb-4 text-center text-[#464646]">Select Representative</h2>
             <div class="flex space-x-4 mb-6 justify-center flex-wrap">
                 <!-- Representatives -->
                 {#each representatives as representative}
@@ -99,55 +100,45 @@
                 </div>
                 {/each}
             </div>
-            <p class="text-sm mb-4 text-center text-[#464646]">
-                Welcome to Speak to a Representative. Choosing the right representative can make all the difference in getting the information and guidance you need.
-                <span class="block mt-2 text-xs text-gray-500">Note: Please Choose a Representative</span>
-            </p>
             
-            <div class="flex justify-center w-full ">
-                <Dialog.Root>
-                    <Dialog.Trigger>
-                        
-                        <button 
-                        type="submit"
-                        class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700"
-                        disabled={!selectedRepresentative}
-                    >
-                        CONNECT
-                    </button>
-                 
-                    </Dialog.Trigger>
-                    <Dialog.Content class="p-4 rounded-lg shadow-lg">
-                        <Share {joinURL} representative={true} representativeId={selectedRepresentative.id} />
-                    </Dialog.Content>
-                </Dialog.Root>
-               
-               
-                <!-- <form action="?/send-email" method="POST"
-                    use:enhance={() => {
-                        return async ({ result }) => {
-                            if (result.ok) {
-                                handleInviteConfirmation();
-                                toast.success('Email sent to representative successfully');
-                            } else {
-                                toast.error('Failed to send email to representative');
-                            }
-                        };
-                    }}
-                >
-                    {#if selectedRepresentative }
-                        <input type="hidden" name="name" value={selectedRepresentative.name} />
-                        <input type="hidden" name="url" value={window.location.href} />
-                        <input type="hidden" name="receipient" value={selectedRepresentative.email} />
-                    {/if}
+            {#if selectedRepresentative}
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium mb-2 text-[#464646]">Invitation Link</h3>
+                    <div class="flex items-center gap-2 bg-gray-50 p-2 rounded">
+                        <input 
+                            type="text" 
+                            value={`${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}`}
+                            class="flex-1 bg-transparent border-none text-sm text-gray-600 focus:outline-none"
+                            readonly
+                        />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            on:click={() => {
+                                navigator.clipboard.writeText(`${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}`);
+                                toast.success('Link copied to clipboard');
+                            }}
+                        >
+                            <ClipboardCopy class="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Share this link with {selectedRepresentative.name} to join as a representative</p>
+                </div>
+            {/if}
+
+            <div class="flex justify-center space-x-4">
+                <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={() => showRepresentativeList = false}>Cancel</button>
+                {#if selectedRepresentative}
                     <button 
-                        type="submit"
                         class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700"
-                        disabled={!selectedRepresentative}
+                        on:click={() => {
+                            handleInviteConfirmation();
+                            showRepresentativeList = false;
+                        }}
                     >
-                        CONNECT
+                        Done
                     </button>
-                </form> -->
+                {/if}
             </div>
         </div>
     </div>

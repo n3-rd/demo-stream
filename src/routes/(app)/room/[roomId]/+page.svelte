@@ -28,6 +28,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
     import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
     import {PUBLIC_POCKETBASE_INSTANCE} from '$env/static/public';
+    import MediaSelector from '$lib/components/room/MediaSelector.svelte';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -58,6 +59,7 @@ let playReconnected = false;
 let isNoStreamExist = false;
 const joinURL = $page.url.href;
 let scheduleOpen = false;
+let videoUrl = '';
 
 // Add video state management
 let videoPlayer;
@@ -791,21 +793,28 @@ function removeRemoteAudio(trackLabel: string) {
     }
 }
 
-let videoURL;
-
-// let lastUpdate = 0;
-
-// Get video URL from room data
-let videoUrl = '';
-
+// Update the video URL reactive statement with more detailed logging
 $: {
-    console.log('Room data:', room);
-    console.log('Selected video:', room?.expand?.selected_video);
+    console.log('Checking room data for selected video:', {
+        hasRoom: !!room,
+        hasExpand: !!room?.expand,
+        hasSelectedVideo: !!room?.expand?.selected_video,
+        selectedVideo: room?.expand?.selected_video
+    });
+    
     if (room?.expand?.selected_video) {
         const selectedVideo = room.expand.selected_video;
-        console.log('Selected video details:', selectedVideo);
-        videoUrl = selectedVideo.file ? `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
-        console.log('Video URL:', videoUrl);
+        const newVideoUrl = selectedVideo.file ? 
+            `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+        console.log('Setting video URL:', {
+            oldUrl: videoUrl,
+            newUrl: newVideoUrl,
+            selectedVideo
+        });
+        videoUrl = newVideoUrl;
+    } else {
+        console.log('No selected video found in room data');
+        videoUrl = '';
     }
 }
 
@@ -928,6 +937,17 @@ function removeAllRemoteVideos() {
     videoElements = new Map();
 }
 
+// Remove the videoUrl reactive statement and replace with a function
+function handleVideoSelect(event) {
+    const selectedVideo = event.detail;
+    console.log('Video selected:', selectedVideo);
+    if (selectedVideo && selectedVideo.file) {
+        videoUrl = `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}`;
+    } else {
+        videoUrl = '';
+    }
+}
+
 </script>
 
 
@@ -935,19 +955,19 @@ function removeAllRemoteVideos() {
     <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
-    <!-- Add audio container at the top level -->
     <div id="players" class="hidden">
-        <!-- Local audio element -->
         <audio id="localAudio" autoplay playsinline></audio>
     </div>
 
     <div class="h-full">
         <div class="flex items-center md:items-start h-full pt-6 pb-24">
             <!-- left sidebar -->
-             <div class="hidden lg:flex">
-             <LeftBar joinURL={joinURL} videoRepresentatives={representatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
-             </div>
-             <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
+            <div class="hidden lg:flex">
+                <LeftBar joinURL={joinURL} videoRepresentatives={representatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+            </div>
+            
+            <!-- Main content area -->
+            <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
                 {#if isHost || isRepresentative}
                     <div class="video-container bg-transparent h-full w-full">
                         {#if isHost}
@@ -968,7 +988,6 @@ function removeAllRemoteVideos() {
                                 </Button>
                             </div>
                         {/if}
-                        <!-- WebRTC Video -->
                         <video
                             id="localVideo"
                             class="w-full h-full object-contain absolute inset-0"
@@ -979,7 +998,6 @@ function removeAllRemoteVideos() {
                         >
                             Your browser does not support the video element.
                         </video>
-                        <!-- Controlling Video for Host/Rep -->
                         {#if videoUrl}
                             <video
                                 class="w-full h-full object-contain absolute inset-0"
@@ -993,6 +1011,10 @@ function removeAllRemoteVideos() {
                             >
                                 Your browser does not support the video element.
                             </video>
+                        {:else}
+                            <div class="absolute inset-0 flex items-center justify-center text-white text-xl">
+                                No video selected
+                            </div>
                         {/if}
                     </div>
                 {:else}
@@ -1036,7 +1058,7 @@ function removeAllRemoteVideos() {
                     style="transform: translateX(100%)"
                 >
                     <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
-                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden ">
+                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
                             <div class="text-white text-lg font-semibold">Participants</div>
                             <Button variant="ghost" size="icon" on:click={() => togglePanel("participantsPanel")}>
                                 <X scale={1.3} color="#fff" />
@@ -1048,7 +1070,7 @@ function removeAllRemoteVideos() {
             </div>
 
             <!-- Right sidebar controls -->
-            <div class=" flex-col gap-3 h-full justify-end hidden lg:flex">
+            <div class="flex-col gap-3 h-full justify-end hidden lg:flex">
                 <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
                     <Button
                         variant="ghost"
@@ -1073,48 +1095,46 @@ function removeAllRemoteVideos() {
             </div>
         </div>
 
-        <RepresentativeIndicator 
-            participants={meetingParticipants} 
+        <!-- Mobile Bottom Bar -->
+        <MobileBottomBar 
+            roomIdentityName={room.title}
+            videoRepresentatives={representatives}
+            scheduleOpen={scheduleOpen}
+            userId={user?.id || ''}
+            joinURL={joinURL}
+            {isMicMuted}
+            {isCameraOff}
+            on:leaveRoom={leaveRoom}
+            on:toggleMicrophone={toggleMicrophone}
+            on:toggleCamera={toggleCamera}
+            on:togglePanel={handlePanelToggle}
         />
-     
-        <RightBar 
-            isHost={isHost}
-            name={name}
-            participants={meetingParticipants.map(participant => participant.name || participant.streamId)}
-            on:toggleChat={() => togglePanel("chatPanel")} 
-            on:toggleParticipants={() => togglePanel("participantsPanel")} 
-        />
-      
+
+        <!-- MediaSelector -->
+        {#if isHost || isRepresentative}
+            <div class="h-72 bg-black/50">
+                <MediaSelector 
+                    {isHost} 
+                    {isRepresentative} 
+                    {room} 
+                    on:videoSelect={handleVideoSelect}
+                />
+            </div>
+        {/if}
+
+        <!-- Desktop Bottom Bar -->
+        <div class="hidden lg:block">
+            <BottomBar 
+                roomIdentityName={room.title} 
+                {isMicMuted} 
+                on:leaveRoom={leaveRoom} 
+                on:toggleMicrophone={toggleMicrophone} 
+                {isCameraOff} 
+                on:toggleCamera={toggleCamera} 
+            />
         </div>
     </div>
-
-    <!-- Desktop Bottom Bar -->
-    <div class="hidden lg:block">
-        <BottomBar 
-            roomIdentityName={room.title} 
-            {isMicMuted} 
-            on:leaveRoom={leaveRoom} 
-            on:toggleMicrophone={toggleMicrophone} 
-            {isCameraOff} 
-            on:toggleCamera={toggleCamera} 
-        />
-    </div>
-
-    <!-- Mobile Bottom Bar -->
-    <MobileBottomBar 
-        roomIdentityName={room.title}
-        videoRepresentatives={representatives}
-        scheduleOpen={scheduleOpen}
-        userId={user?.id || ''}
-        joinURL={joinURL}
-        {isMicMuted}
-        {isCameraOff}
-        on:leaveRoom={leaveRoom}
-        on:toggleMicrophone={toggleMicrophone}
-        on:toggleCamera={toggleCamera}
-        on:togglePanel={handlePanelToggle}
-    />
- 
+</div>
 {/if}
 
 <style>
@@ -1148,8 +1168,6 @@ function removeAllRemoteVideos() {
     position: absolute;
 }
 
-/* Keep your existing styles... */
-
 .panel {
     transition: all 0.3s ease-in-out;
 }
@@ -1173,7 +1191,6 @@ function removeAllRemoteVideos() {
     color: #000000
 }
 
-/* Remove any panel-specific transitions from here as we're handling them inline */
 @media (max-width: 1024px) {
     :global(#chatPanel), :global(#participantsPanel) {
         height: 100vh !important;

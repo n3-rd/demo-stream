@@ -64,33 +64,46 @@ let isVideoPlaying = false;
 let currentVideoTime = 0;
 
 // Room data
-const room = data.roomId[0]; // Get the first room from the array
-const roomName = room.id;
+const room = data.roomId[0];
+const roomName = $page.url.pathname.split("/").pop().split("&")[0];
 const user = data.user;
 const isAuthenticated = !!user;
 const name = isAuthenticated ? user.name : "";
 const representatives = data.representatives;
 const users = data.users;
 let isHost = false;
+const host = $page.url.pathname.split("/").pop().split("-").pop();
+
+$: {
+    isHost = host === (user ? user.id : "") || host == anonymousUserId;
+}
+
 let isRepresentative = false;
+$: {
+    const urlRepName = $page.url.searchParams.get('representativeName');
+    isRepresentative = urlRepName !== null && urlRepName !== '';
+    console.log('isRepresentative:', isRepresentative);
+}
 
 // Add videoElements map declaration at the top with other state variables
 let videoElements = new Map();
 
 $: {
-    // Determine if user is host (owner of the room)
-    isHost = user?.id === room.owner_company;
-    
-    // Determine if user is a representative
-    isRepresentative = representatives?.some(rep => rep.id === user?.id) || false;
-    
-    console.log('Role determination:', {
-        isHost,
-        isRepresentative,
-        userId: user?.id,
-        roomOwner: room.owner_company,
-        representatives: representatives?.map(r => r.id)
-    });
+    if (room) {
+        // Determine if user is host (owner of the room)
+        isHost = user?.id === room.owner_company;
+        
+        // Determine if user is a representative
+        isRepresentative = representatives?.some(rep => rep.id === user?.id) || false;
+        
+        console.log('Role determination:', {
+            isHost,
+            isRepresentative,
+            userId: user?.id,
+            roomOwner: room.owner_company,
+            representatives: representatives?.map(r => r.id)
+        });
+    }
 }
 
 // Stream configuration
@@ -103,7 +116,11 @@ const playOnly = false;
 // WebRTC configuration
 const mediaConstraints = {
     video: isRepresentative, // Video enabled by default for representatives
-    audio: true
+    audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+    }
 };
 
 function getWebSocketURL() {
@@ -145,8 +162,16 @@ function initializeWebRTC() {
         debug: true,
         callback: handleWebRTCCallback,
         callbackError: handleWebRTCError,
-        bandwidth: 900, // Reduce bandwidth since video is optional
-        publishMode: "camera" // This ensures basic camera/mic publishing
+        bandwidth: 900,
+        publishMode: "camera",
+        audioBandwidth: 56,
+        micGainNode: 1.0,
+        audioSourceIndex: 0,
+        videoCodec: "H264",
+        sdpConstraints: {
+            OfferToReceiveAudio: true,
+            OfferToReceiveVideo: true
+        }
     });
 }
 
@@ -154,7 +179,6 @@ function handleWebRTCCallback(info: string, obj: any) {
     switch (info) {
         case "initialized":
             console.log("WebRTC initialized");
-            
             joinRoom();
             break;
         case "broadcastObject":
@@ -173,6 +197,11 @@ function handleWebRTCCallback(info: string, obj: any) {
         case "publish_started":
             isPlaying = true;
             webRTCAdaptor.getBroadcastObject(roomName);
+            // Enable local audio after publishing starts
+            const localAudio = document.getElementById("localAudio") as HTMLAudioElement;
+            if (localAudio && !isMicMuted) {
+                localAudio.srcObject = webRTCAdaptor.localStream;
+            }
             break;
         case "play_started":
             isPlaying = true;
@@ -272,17 +301,15 @@ function joinRoom() {
     }
 
     const sanitizedName = sanitizeStreamName(name || anonymousUserId);
-    
+    const sanitizedRoomName = sanitizeStreamName(roomName);
+
     if (!playOnly) {
-        const streamId = `${roomName}-${sanitizedName}`;
+        const streamId = `${publishStreamId}-${sanitizedName}`;
         console.log('starting publish with streamId:', streamId);
         
         const metadata = JSON.stringify({
             isCameraOff,
-            isMicMuted,
-            isHost,
-            isRepresentative,
-            userId: user?.id || anonymousUserId
+            isMicMuted
         });
         
         webRTCAdaptor.publish(
@@ -291,12 +318,12 @@ function joinRoom() {
             metadata,
             null,
             sanitizedName,
-            roomName
+            room.id
         );
     }
 
-    console.log('starting play with roomName:', roomName);
-    webRTCAdaptor.play(roomName);
+    console.log('starting play with roomName:', sanitizedRoomName);
+    webRTCAdaptor.play(sanitizedRoomName);
 }
 
 function leaveRoom() {
@@ -330,11 +357,25 @@ function handlePlayStarted() {
 }
 
 function muteLocalMic() {
+    if (webRTCAdaptor && webRTCAdaptor.localStream) {
+        const audioTrack = webRTCAdaptor.localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = false;
+            console.log('Muted local mic');
+        }
+    }
     webRTCAdaptor.muteLocalMic();
     isMicMuted = true;
 }
 
 function unmuteLocalMic() {
+    if (webRTCAdaptor && webRTCAdaptor.localStream) {
+        const audioTrack = webRTCAdaptor.localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = true;
+            console.log('Unmuted local mic');
+        }
+    }
     webRTCAdaptor.unmuteLocalMic();
     isMicMuted = false;
 }
@@ -674,6 +715,7 @@ function createRemoteAudio(trackLabel: string) {
     if (!playersContainer) {
         playersContainer = document.createElement("div");
         playersContainer.id = "players";
+        playersContainer.className = "hidden";
         document.body.appendChild(playersContainer);
     }
 
@@ -683,8 +725,8 @@ function createRemoteAudio(trackLabel: string) {
     const audio = document.createElement("audio");
     audio.id = "remoteAudio" + trackLabel;
     audio.autoplay = true;
-    audio.controls = true;  // Make controls visible for debugging
-    audio.style.visibility = "hidden";
+    audio.playsinline = true;
+    audio.controls = false;  // Hide controls since we manage it through UI
 
     player.appendChild(audio);
     playersContainer.appendChild(player);
@@ -820,9 +862,15 @@ function removeAllRemoteVideos() {
 
 
 {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '')}
-    <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room.title} />
+    <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
+    <!-- Add audio container at the top level -->
+    <div id="players" class="hidden">
+        <!-- Local audio element -->
+        <audio id="localAudio" autoplay playsinline></audio>
+    </div>
+
     <div class="h-full">
         <div class="flex items-center md:items-start h-full pt-6 pb-24">
             <!-- left sidebar -->

@@ -77,6 +77,13 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
         const representatives = room.expand?.representative || [];
         const users = user ? await locals.pb.collection('users').getFullList() : [];
 
+        console.log('Room data loaded:', {
+            id: room.id,
+            hasHostContent: !!room.host_content,
+            hasRepContent: !!room.representative_content,
+            expandedData: room.expand
+        });
+
         return {
             user: user || null,
             representatives,

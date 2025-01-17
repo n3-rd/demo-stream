@@ -8,6 +8,7 @@
     export let participants: any[];
     export let isHost: boolean;
     export let name: string;
+    console.log("name from right-bar.svelte", name);
 </script>
 <div class="flex flex-col gap-3 h-full justify-end">
     <!-- Right sidebar (Chat) -->

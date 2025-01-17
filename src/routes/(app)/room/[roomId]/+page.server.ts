@@ -16,39 +16,79 @@ const sanitizeAssociatedVideo = (videoRef: string) => {
     return sanitizedVideo;
 }
 
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const load: PageServerLoad = async ({ locals, params, url }) => {
+    const representativeId = url.searchParams.get('repid');
     const user = locals.pb.authStore.model;
-    
-    // Get the room with expanded relations
-    const roomId = await locals.pb.collection('rooms').getFullList({
-        filter: `id = "${params.roomId.split('&')[0]}"`,
-        expand: 'representative,host_content,representative_content,selected_video'
-    });
 
-    // If no room found, redirect
-    if (!roomId.length) {
-        throw redirect(302, '/');
+    // If there's a representative ID in the URL, handle representative access
+    if (representativeId) {
+        try {
+            // Get the representative from the representatives collection with expanded fields
+            const representative = await locals.pb.collection('representatives').getOne(representativeId, {
+                expand: 'connected_content'
+            });
+            
+            // Get the room with expanded relations
+            const roomId = await locals.pb.collection('rooms').getFullList({
+                filter: `id = "${params.roomId}"`,
+                expand: 'representative,host_content,representative_content,selected_video'
+            });
+
+            if (!roomId.length) {
+                throw redirect(303, '/');
+            }
+
+            const room = roomId[0];
+
+            // Verify the representative has access to this room
+            if (!room.representative || !room.representative.includes(representativeId)) {
+                console.log('Representative does not have access to this room');
+                throw redirect(303, '/');
+            }
+
+            // Return data with representative info
+            return {
+                user: null,
+                representatives: room.expand?.representative || [],
+                users: [],
+                roomId: [room],
+                videoRepresentativesInfo: room.expand?.representative || [],
+                representativeName: representative.name + ' (representative)',
+                isRepresentative: true
+            };
+        } catch (error) {
+            console.error('Error handling representative access:', error);
+            throw redirect(303, '/');
+        }
     }
 
-    const room = roomId[0];
+    // Regular room access
+    try {
+        const roomId = await locals.pb.collection('rooms').getFullList({
+            filter: `id = "${params.roomId}"`,
+            expand: 'representative,host_content,representative_content,selected_video'
+        });
 
-    // Check if user has access to the room (only if they are authenticated)
-    const isHost = user ? room.owner_company === user.id : false;
-    const isRepresentative = user ? room.expand?.representative?.some(rep => rep.id === user.id) : false;
+        if (!roomId.length) {
+            throw redirect(303, '/');
+        }
 
-    // Get all representatives assigned to this room
-    const representatives = room.expand?.representative || [];
+        const room = roomId[0];
+        const representatives = room.expand?.representative || [];
+        const users = user ? await locals.pb.collection('users').getFullList() : [];
 
-    // Get all users in the room for participant management (only if authenticated)
-    const users = user ? await locals.pb.collection('users').getFullList() : [];
-
-    return {
-        user: user || null,
-        representatives,
-        users,
-        roomId: [room],
-        videoRepresentativesInfo: representatives
-    };
+        return {
+            user: user || null,
+            representatives,
+            users,
+            roomId: [room],
+            videoRepresentativesInfo: representatives,
+            isRepresentative: false
+        };
+    } catch (error) {
+        console.error('Error loading room:', error);
+        throw redirect(303, '/');
+    }
 };
 
 export const actions: Actions = {

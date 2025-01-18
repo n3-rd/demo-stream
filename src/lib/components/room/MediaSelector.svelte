@@ -57,7 +57,14 @@
     }
 
     function handleVideoClick(video) {
-        console.log('Video clicked:', video);
+        console.log('Video clicked:', {
+            video,
+            hasFile: !!video?.file,
+            collectionId: video?.collectionId,
+            id: video?.id,
+            file: video?.file,
+            fileUrl: getFileUrl(video)
+        });
         dispatch('videoSelect', video);
     }
 

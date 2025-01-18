@@ -15,7 +15,7 @@ import {
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
-	import { currentVideoUrl } from '$lib/callStores.js';
+	import { currentVideoUrl } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
@@ -29,6 +29,9 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
     import {PUBLIC_POCKETBASE_INSTANCE} from '$env/static/public';
     import MediaSelector from '$lib/components/room/MediaSelector.svelte';
+    import {
+        playVideoStore
+    } from '$lib/stores/playStore';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -59,7 +62,6 @@ let playReconnected = false;
 let isNoStreamExist = false;
 const joinURL = $page.url.href;
 let scheduleOpen = false;
-let videoUrl = '';
 
 // Add video state management
 let videoPlayer;
@@ -287,7 +289,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                         handleChatMessage(messageBody);
                         break;
                     case 'video_sync':
-                        handleVideoSync(messageBody);
+                        if(!isHost) {
+                            handleVideoSync(messageBody);
+                        }
                         break;
                     case 'sync_source_change':
                         // Only non-host participants should update their sync source
@@ -645,7 +649,7 @@ function handleMainTrackBroadcastObject(broadcastObject) {
     currentTracks.forEach(trackId => {
         if (!allParticipants[trackId].isFake && !participantIds.includes(trackId)) {
             console.log("stream removed:" + trackId);
-            delete allParticipants[trackId];
+            delete allParticipants[trackId];u
         }
     });
 
@@ -795,27 +799,35 @@ function removeRemoteAudio(trackLabel: string) {
 
 // Update the video URL reactive statement with more detailed logging
 $: {
-    console.log('Checking room data for selected video:', {
+    console.log('Room data reactive statement triggered:', {
         hasRoom: !!room,
+        roomData: room,
         hasExpand: !!room?.expand,
         hasSelectedVideo: !!room?.expand?.selected_video,
-        selectedVideo: room?.expand?.selected_video
+        selectedVideo: room?.expand?.selected_video,
+        currentStoreValue: currentVideoUrl,
+        currentStoreSubscribedValue: $currentVideoUrl,
+        PUBLIC_POCKETBASE_INSTANCE
     });
     
-    if (room?.expand?.selected_video) {
-        const selectedVideo = room.expand.selected_video;
-        const newVideoUrl = selectedVideo.file ? 
-            `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
-        console.log('Setting video URL:', {
-            oldUrl: videoUrl,
-            newUrl: newVideoUrl,
-            selectedVideo
-        });
-        videoUrl = newVideoUrl;
-    } else {
-        console.log('No selected video found in room data');
-        videoUrl = '';
-    }
+    // if (room?.expand?.selected_video) {
+    //     const selectedVideo = room.expand.selected_video;
+    //     const newVideoUrl = selectedVideo.file ? 
+    //         `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+    //     console.log('Setting video URL from room data:', {
+    //         oldUrl: $currentVideoUrl,
+    //         newUrl: newVideoUrl,
+    //         selectedVideo,
+    //         storeValue: currentVideoUrl,
+    //         PUBLIC_POCKETBASE_INSTANCE
+    //     });
+    //     currentVideoUrl.set(newVideoUrl);
+    //     console.log('Video URL updated from room data:', $currentVideoUrl);
+    // } else {
+    //     console.log('No selected video in room data, clearing URL');
+    //     currentVideoUrl.set('');
+    //     console.log('Video URL cleared from room data:', $currentVideoUrl);
+    // }
 }
 
 // Add timestamp for throttling
@@ -937,16 +949,63 @@ function removeAllRemoteVideos() {
     videoElements = new Map();
 }
 
-// Remove the videoUrl reactive statement and replace with a function
+// Example of how to use the update function
 function handleVideoSelect(event) {
     const selectedVideo = event.detail;
-    console.log('Video selected:', selectedVideo);
+    console.log('Video selected event:', {
+        selectedVideo,
+        hasFile: !!selectedVideo?.file,
+        collectionId: selectedVideo?.collectionId,
+        id: selectedVideo?.id,
+        file: selectedVideo?.file,
+        currentStoreValue: $currentVideoUrl
+    });
+    
     if (selectedVideo && selectedVideo.file) {
-        videoUrl = `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}`;
+        const newUrl = `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}`;
+        console.log('Setting new video URL:', {
+            oldUrl: $currentVideoUrl,
+            newUrl,
+            storeValue: currentVideoUrl
+        });
+        currentVideoUrl.set(newUrl);
+        console.log('Video URL set to:', $currentVideoUrl);
     } else {
-        videoUrl = '';
+        console.log('Clearing video URL');
+        currentVideoUrl.set('');
+        console.log('Video URL cleared:', $currentVideoUrl);
     }
 }
+
+// Add store debugging
+let unsubscribe;
+onMount(() => {
+    console.log('Setting up store subscription');
+    unsubscribe = currentVideoUrl.subscribe(value => {
+        console.log('Store value changed:', {
+            newValue: value,
+            videoPlayer: videoPlayer,
+            hasVideoPlayer: !!videoPlayer,
+            isHost,
+            isRepresentative,
+            currentTime: videoPlayer?.currentTime
+        });
+        
+        // If we have a video player and a URL, update it
+        if (videoPlayer && value) {
+            console.log('Updating video player source');
+            videoPlayer.src = value;
+            if ($playVideoStore) {
+                videoPlayer.play().catch(e => console.error('Error playing video:', e));
+            }
+        }
+    });
+
+    return () => {
+        console.log('Cleaning up store subscription');
+        if (unsubscribe) unsubscribe();
+    };
+});
 
 </script>
 
@@ -959,7 +1018,7 @@ function handleVideoSelect(event) {
         <audio id="localAudio" autoplay playsinline></audio>
     </div>
 
-    <div class="h-full">
+    <div class="h-full overflow-y-scroll">
         <div class="flex items-center md:items-start h-full pt-6 pb-24">
             <!-- left sidebar -->
             <div class="hidden lg:flex">
@@ -998,11 +1057,11 @@ function handleVideoSelect(event) {
                         >
                             Your browser does not support the video element.
                         </video>
-                        {#if videoUrl}
+                        {#if $currentVideoUrl}
                             <video
                                 class="w-full h-full object-contain absolute inset-0"
                                 controls
-                                src={videoUrl}
+                                src={$currentVideoUrl}
                                 bind:this={videoPlayer}
                                 on:play={handleVideoStateChange}
                                 on:pause={handleVideoStateChange}
@@ -1019,11 +1078,11 @@ function handleVideoSelect(event) {
                     </div>
                 {:else}
                     <div class="w-full h-full flex items-center justify-center">
-                        {#if videoUrl}
+                        {#if $currentVideoUrl}
                             <video
                                 class="w-full h-full object-contain"
                                 controls={false}
-                                src={videoUrl}
+                                src={$currentVideoUrl}
                                 bind:this={videoPlayer}
                             >
                                 Your browser does not support the video element.
@@ -1097,7 +1156,7 @@ function handleVideoSelect(event) {
 
         <!-- Mobile Bottom Bar -->
         <MobileBottomBar 
-            roomIdentityName={room.title}
+            roomIdentityName={`${room.title} - ${$currentVideoUrl}`}
             videoRepresentatives={representatives}
             scheduleOpen={scheduleOpen}
             userId={user?.id || ''}
@@ -1124,8 +1183,8 @@ function handleVideoSelect(event) {
 
         <!-- Desktop Bottom Bar -->
         <div class="hidden lg:block">
-            <BottomBar 
-                roomIdentityName={room.title} 
+                <BottomBar 
+                    roomIdentityName={`${room.title} - ${$currentVideoUrl}`} 
                 {isMicMuted} 
                 on:leaveRoom={leaveRoom} 
                 on:toggleMicrophone={toggleMicrophone} 

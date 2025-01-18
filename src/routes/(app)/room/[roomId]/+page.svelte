@@ -319,8 +319,48 @@ function handleWebRTCCallback(info: string, obj: any) {
                             handleChatMessage(messageBody);
                             break;
                         case 'video_sync':
-                            if(!isHost) {
-                                handleVideoSync(messageBody);
+                            if (!isHost) {
+                                try {
+                                    // Parse the inner messageBody for video sync
+                                    const syncData = JSON.parse(messageBody.messageBody);
+                                    console.log('Video sync data:', syncData);
+                                    
+                                    // Only accept sync messages from authorized sources based on current sync source
+                                    const isAuthorizedSync = (syncData.fromHost && syncSource === 'host') || 
+                                                           (syncData.fromRepresentative && syncSource === 'representative');
+                                    
+                                    console.log('Sync authorization:', {
+                                        isAuthorizedSync,
+                                        syncSource,
+                                        fromHost: syncData.fromHost,
+                                        fromRepresentative: syncData.fromRepresentative
+                                    });
+
+                                    if (!videoPlayer) {
+                                        console.error("No video player available for sync");
+                                        return;
+                                    }
+
+                                    // Sync video time if difference is more than 0.5 seconds
+                                    const timeDiff = Math.abs(videoPlayer.currentTime - syncData.currentTime);
+                                    console.log('Time difference:', timeDiff);
+                                    
+                                    if (timeDiff > 0.5) {
+                                        console.log('Syncing time to:', syncData.currentTime);
+                                        videoPlayer.currentTime = syncData.currentTime;
+                                    }
+
+                                    // Sync play/pause state
+                                    if (syncData.isPlaying && videoPlayer.paused) {
+                                        console.log('Playing video');
+                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                    } else if (!syncData.isPlaying && !videoPlayer.paused) {
+                                        console.log('Pausing video');
+                                        videoPlayer.pause();
+                                    }
+                                } catch (error) {
+                                    console.error('Error handling video sync:', error);
+                                }
                             }
                             break;
                         case 'sync_source_change':
@@ -579,54 +619,6 @@ function handleVideoStateChange() {
         } catch (error) {
             console.error('Error sending video sync:', error);
         }
-    }
-}
-
-// Function to handle incoming video sync messages
-function handleVideoSync(messageBody) {
-    if (!videoPlayer || !messageBody) {
-        console.error("Invalid video sync message or no video player:", messageBody);
-        return;
-    }
-
-    console.log('Received video sync:', messageBody);
-
-    // Only accept sync messages from authorized sources based on current sync source
-    const isAuthorizedSync = (messageBody.fromHost && syncSource === 'host') || 
-                           (messageBody.fromRepresentative && syncSource === 'representative');
-    
-    console.log('Sync authorization:', {
-        isAuthorizedSync,
-        syncSource,
-        fromHost: messageBody.fromHost,
-        fromRepresentative: messageBody.fromRepresentative
-    });
-
-    if (!isAuthorizedSync) {
-        console.log('Ignoring unauthorized sync message');
-        return;
-    }
-
-    try {
-        // Sync video time if difference is more than 0.5 seconds
-        const timeDiff = Math.abs(videoPlayer.currentTime - messageBody.currentTime);
-        console.log('Time difference:', timeDiff);
-        
-        if (timeDiff > 0.5) {
-            console.log('Syncing time to:', messageBody.currentTime);
-            videoPlayer.currentTime = messageBody.currentTime;
-        }
-
-        // Sync play/pause state
-        if (messageBody.isPlaying && videoPlayer.paused) {
-            console.log('Playing video');
-            videoPlayer.play().catch(e => console.error('Error playing video:', e));
-        } else if (!messageBody.isPlaying && !videoPlayer.paused) {
-            console.log('Pausing video');
-            videoPlayer.pause();
-        }
-    } catch (e) {
-        console.error("Error handling video sync data:", e);
     }
 }
 

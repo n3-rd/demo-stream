@@ -278,31 +278,65 @@ function handleWebRTCCallback(info: string, obj: any) {
             try {
                 const data = JSON.parse(obj.data);
                 let messageBody;
-                if (data.messageBody) {
-                    messageBody = JSON.parse(data.messageBody);
-                }
-                
-                console.log('Received data message:', messageBody); // Debug log
-                
-                switch (messageBody?.eventType) {
-                    case 'chat_message':
-                        handleChatMessage(messageBody);
-                        break;
-                    case 'video_sync':
-                        if(!isHost) {
-                            handleVideoSync(messageBody);
+                try {
+                    // First parse the outer messageBody
+                    if (data.messageBody) {
+                        messageBody = JSON.parse(data.messageBody);
+                        console.log('Outer messageBody:', messageBody);
+                        
+                        // If it's a video URL update, parse the inner messageBody
+                        if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {
+                            const videoUpdateData = JSON.parse(messageBody.messageBody);
+                            console.log('Video update data:', videoUpdateData);
+                            
+                            if (videoUpdateData.videoUrl) {
+                                console.log('Setting video URL to:', videoUpdateData.videoUrl);
+                                currentVideoUrl.set(videoUpdateData.videoUrl);
+                                
+                                // Update video player if it exists
+                                if (videoPlayer) {
+                                    console.log('Updating video player source to:', videoUpdateData.videoUrl);
+                                    videoPlayer.src = videoUpdateData.videoUrl;
+                                    if ($playVideoStore) {
+                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                    }
+                                }
+                            }
                         }
-                        break;
-                    case 'sync_source_change':
-                        // Only non-host participants should update their sync source
-                        if (!isHost) {
-                            console.log('Updating sync source to:', messageBody.syncSource);
-                            syncSource = messageBody.syncSource;
-                        }
-                        break;
+                    }
+                    
+                    console.log('Parsed message data:', { 
+                        data, 
+                        messageBody, 
+                        eventType: messageBody?.eventType,
+                        isHost,
+                        isRepresentative 
+                    });
+                    
+                    // Handle other message types
+                    switch (messageBody?.eventType) {
+                        case 'chat_message':
+                            handleChatMessage(messageBody);
+                            break;
+                        case 'video_sync':
+                            if(!isHost) {
+                                handleVideoSync(messageBody);
+                            }
+                            break;
+                        case 'sync_source_change':
+                            if (!isHost && messageBody?.fromHost) {
+                                console.log('Updating sync source to:', messageBody.syncSource);
+                                syncSource = messageBody.syncSource;
+                            }
+                            break;
+                    }
+                } catch (parseError) {
+                    console.error("Error parsing message body:", parseError);
+                    console.error("Raw message body:", data.messageBody);
                 }
             } catch (e) {
                 console.error("Error parsing data message:", e);
+                console.error("Raw message data:", obj.data);
             }
             break;
         case "data_sent":
@@ -525,18 +559,19 @@ function handleVideoStateChange() {
     
     if (shouldSendSync && webRTCAdaptor && isDataChannelOpen) {
         const videoState = {
-            streamId: roomName,
             eventType: 'video_sync',
-            currentTime: videoPlayer.currentTime,
-            isPlaying: !videoPlayer.paused,
-            syncSource,
-            fromHost: isHost,
-            fromRepresentative: isRepresentative
+            messageBody: JSON.stringify({
+                currentTime: videoPlayer.currentTime,
+                isPlaying: !videoPlayer.paused,
+                syncSource,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative
+            })
         };
         
         try {
             sendMessage(
-                videoState.streamId,
+                roomName,
                 Date.now(),
                 JSON.stringify(videoState),
                 roomName
@@ -548,20 +583,23 @@ function handleVideoStateChange() {
 }
 
 // Function to handle incoming video sync messages
-function handleVideoSync(data) {
-    if (!videoPlayer) return;
+function handleVideoSync(messageBody) {
+    if (!videoPlayer || !messageBody) {
+        console.error("Invalid video sync message or no video player:", messageBody);
+        return;
+    }
 
-    console.log('Received video sync:', data);
+    console.log('Received video sync:', messageBody);
 
     // Only accept sync messages from authorized sources based on current sync source
-    const isAuthorizedSync = (data.fromHost && syncSource === 'host') || 
-                           (data.fromRepresentative && syncSource === 'representative');
+    const isAuthorizedSync = (messageBody.fromHost && syncSource === 'host') || 
+                           (messageBody.fromRepresentative && syncSource === 'representative');
     
     console.log('Sync authorization:', {
         isAuthorizedSync,
         syncSource,
-        fromHost: data.fromHost,
-        fromRepresentative: data.fromRepresentative
+        fromHost: messageBody.fromHost,
+        fromRepresentative: messageBody.fromRepresentative
     });
 
     if (!isAuthorizedSync) {
@@ -571,19 +609,19 @@ function handleVideoSync(data) {
 
     try {
         // Sync video time if difference is more than 0.5 seconds
-        const timeDiff = Math.abs(videoPlayer.currentTime - data.currentTime);
+        const timeDiff = Math.abs(videoPlayer.currentTime - messageBody.currentTime);
         console.log('Time difference:', timeDiff);
         
         if (timeDiff > 0.5) {
-            console.log('Syncing time to:', data.currentTime);
-            videoPlayer.currentTime = data.currentTime;
+            console.log('Syncing time to:', messageBody.currentTime);
+            videoPlayer.currentTime = messageBody.currentTime;
         }
 
         // Sync play/pause state
-        if (data.isPlaying && videoPlayer.paused) {
+        if (messageBody.isPlaying && videoPlayer.paused) {
             console.log('Playing video');
             videoPlayer.play().catch(e => console.error('Error playing video:', e));
-        } else if (!data.isPlaying && !videoPlayer.paused) {
+        } else if (!messageBody.isPlaying && !videoPlayer.paused) {
             console.log('Pausing video');
             videoPlayer.pause();
         }
@@ -914,15 +952,18 @@ function updateSyncSource(newSource: 'host' | 'representative') {
     
     if (webRTCAdaptor && isDataChannelOpen) {
         const syncSourceUpdate = {
-            streamId: roomName,
             eventType: 'sync_source_change',
-            syncSource: newSource,
-            fromHost: true
+            messageBody: JSON.stringify({
+                eventType: 'sync_source_change',
+                syncSource: newSource,
+                fromHost: true
+            })
         };
         
+        console.log('Sending sync source update:', syncSourceUpdate);
         try {
             sendMessage(
-                syncSourceUpdate.streamId,
+                roomName,
                 Date.now(),
                 JSON.stringify(syncSourceUpdate),
                 roomName
@@ -957,23 +998,42 @@ function handleVideoSelect(event) {
         hasFile: !!selectedVideo?.file,
         collectionId: selectedVideo?.collectionId,
         id: selectedVideo?.id,
-        file: selectedVideo?.file,
-        currentStoreValue: $currentVideoUrl
+        file: selectedVideo?.file
     });
     
-    if (selectedVideo && selectedVideo.file) {
-        const newUrl = `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}`;
-        console.log('Setting new video URL:', {
-            oldUrl: $currentVideoUrl,
-            newUrl,
-            storeValue: currentVideoUrl
-        });
+    if ((isHost || isRepresentative) && webRTCAdaptor && isDataChannelOpen) {
+        const newUrl = selectedVideo && selectedVideo.file ? 
+            `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+        
+        console.log('Preparing to send video URL update:', newUrl);
+        
+        // Update local state first
         currentVideoUrl.set(newUrl);
-        console.log('Video URL set to:', $currentVideoUrl);
-    } else {
-        console.log('Clearing video URL');
-        currentVideoUrl.set('');
-        console.log('Video URL cleared:', $currentVideoUrl);
+        if (videoPlayer) {
+            videoPlayer.src = newUrl;
+        }
+        
+        // Send update to all participants
+        const videoUrlUpdate = {
+            eventType: 'video_url_update',
+            messageBody: JSON.stringify({
+                videoUrl: newUrl,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative
+            })
+        };
+        
+        console.log('Sending video URL update message:', videoUrlUpdate);
+        try {
+            sendMessage(
+                roomName,
+                Date.now(),
+                JSON.stringify(videoUrlUpdate),
+                roomName
+            );
+        } catch (error) {
+            console.error('Error sending video URL update:', error);
+        }
     }
 }
 

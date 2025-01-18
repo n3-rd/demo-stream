@@ -13,7 +13,13 @@
     let videoInput;
     let localVideoStream;
     let localAudioStream;
-    let videoEl;
+    interface VideoElementWithCapture extends HTMLVideoElement {
+        captureStream(): MediaStream;
+        mozCaptureStream(): MediaStream;
+    }
+
+    let videoEl: HTMLVideoElement | null = null;
+    let retryCount = 0;
     $:{
         console.log('playVideoStore', $playVideoStore);
         if($playVideoStore && videoEl){
@@ -21,7 +27,16 @@
         }
     }
 
-    const videoURL = $currentVideoUrl;
+    // Remove the snapshot and use a reactive statement instead
+    $: videoUrl = $currentVideoUrl;
+    $: if (videoUrl && videoEl) {
+        console.log('Video URL changed:', videoUrl);
+        videoEl.src = videoUrl;
+        videoEl.volume = 0.01;
+        if ($playVideoStore) {
+            videoEl.play().catch(e => console.error('Error playing video:', e));
+        }
+    }
 
     async function fetchVideoBlob(url) {
         const response = await fetch(url);
@@ -29,12 +44,18 @@
         return URL.createObjectURL(blob);
     }
 
+    function isVideoElement(el: HTMLElement | null): el is HTMLVideoElement {
+        return el !== null && el instanceof HTMLVideoElement;
+    }
+
     async function playLocalVideoFile(evt: Event) {
-        videoEl = document.getElementById('local-vid') as HTMLVideoElement;
-        if (!videoEl) {
+        const el = document.getElementById('local-vid');
+        if (!isVideoElement(el)) {
             console.error('Video element not found');
             return;
         }
+        videoEl = el;
+        
         let file = (evt.target as HTMLInputElement).files?.[0];
         if (!file) {
             console.error('No file selected');
@@ -54,28 +75,24 @@
 
     async function captureStream(videoEl: HTMLVideoElement) {
         try {
-            let stream;
+            let stream: MediaStream;
+            // Use type assertion for browser-specific methods
             if ('captureStream' in videoEl) {
-                // For browsers that support captureStream (Chrome, Edge)
                 stream = (videoEl as any).captureStream();
             } else if ('mozCaptureStream' in videoEl) {
-                // For Firefox
                 stream = (videoEl as any).mozCaptureStream();
             } else {
-                // Fallback for other browsers
                 stream = await createMediaStreamFromVideo(videoEl);
             }
 
             localVideoStream = new MediaStream(stream.getVideoTracks());
             localAudioStream = new MediaStream(stream.getAudioTracks());
 
-            // Simulate hot reload effect
             await new Promise(resolve => setTimeout(resolve, 1000));
             await shareVideo();
         } catch (error) {
             console.error('Error capturing stream:', error);
             toast('Unable to capture video stream. This may be due to cross-origin restrictions.');
-            // Fallback: try to create a stream from the video source
             await createStreamFromSource(videoEl.src);
         }
     }
@@ -85,7 +102,7 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d')!;
         const fps = 30;
 
         const stream = canvas.captureStream(fps);
@@ -121,8 +138,10 @@
             });
 
             await video.play();
-            localVideoStream = new MediaStream(video.captureStream().getVideoTracks());
-            localAudioStream = new MediaStream(video.captureStream().getAudioTracks());
+            // Use type assertion for captureStream
+            const stream = (video as any).captureStream();
+            localVideoStream = new MediaStream(stream.getVideoTracks());
+            localAudioStream = new MediaStream(stream.getAudioTracks());
             await shareVideo();
         } catch (error) {
             console.error('Error creating stream from source:', error);
@@ -222,16 +241,13 @@
         if (videoInput) {
             videoInput.addEventListener('change', playLocalVideoFile, false);
         }
-        // Automatically play the video from the URL
-        videoEl = document.getElementById('local-vid');
-        const blobURL = videoURL;
-        videoEl.src = blobURL;
-        videoEl.volume = 0.01;
-        await videoEl.play();
-        await captureStream(videoEl);
-        // pause and restart video from the start
-        videoEl.pause();
-        videoEl.currentTime = 0;
+        
+        // Initialize video element
+        const el = document.getElementById('local-vid');
+        if (isVideoElement(el)) {
+            videoEl = el;
+            videoEl.volume = 0.01;
+        }
 
         // Subscribe to playVideoStore
         playVideoStore.subscribe(async (value) => {
@@ -240,8 +256,10 @@
             }
         });
 
-        videoEl.addEventListener('play', () => isPaused = false);
-        videoEl.addEventListener('pause', () => isPaused = true);
+        if (videoEl) {
+            videoEl.addEventListener('play', () => isPaused = false);
+            videoEl.addEventListener('pause', () => isPaused = true);
+        }
 
         // Add event listener for participant joined
         callObject.on('participant-joined', handleParticipantJoined);

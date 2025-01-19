@@ -91,60 +91,62 @@
                 <Button on:click={() => showAddRoomDialog = true}>Add New Room</Button>
             </div>
 
-            <div class="bg-white rounded-lg shadow">
-                <div class="grid grid-cols-7 gap-4 p-4 border-b font-medium text-sm text-gray-500">
-                    <div>Date</div>
-                    <div>Room Name</div>
-                    <div>Active</div>
-                    <div>Representative</div>
-                    <div>Host Content</div>
-                    <div>Rep Content</div>
-                    <div>Actions</div>
-                </div>
+            <div class="bg-white rounded-lg shadow overflow-x-auto">
+                <div class="min-w-[1000px]">
+                    <div class="grid grid-cols-7 gap-4 p-4 border-b font-medium text-sm text-gray-500">
+                        <div>Room Name</div>
+                        <div>Active</div>
+                        <div>Representative</div>
+                        <div>Host Content</div>
+                        <div>Rep Content</div>
+                        <div class="col-span-2">Actions</div>
+                    </div>
 
-                {#each rooms as room}
-                    <div class="grid grid-cols-7 gap-4 p-4 border-b hover:bg-gray-50">
-                        <div class="text-sm">{formatDate(room.created)}</div>
-                        <div class="text-blue-600">{room.title}</div>
-                        <div>
-                            <div class="w-12 h-6 rounded-full bg-gray-200 relative {room.is_active ? 'bg-green-500' : ''}">
-                                <div class="w-4 h-4 bg-white rounded-full absolute top-1 {room.is_active ? 'right-1' : 'left-1'}" />
+                    {#each rooms as room}
+                        <div class="grid grid-cols-7 gap-4 p-4 border-b hover:bg-gray-50">
+                            <div class="text-blue-600">{room.title}</div>
+                            <div>
+                                <div class="w-12 h-6 rounded-full bg-gray-200 relative {room.is_active ? 'bg-green-500' : ''}">
+                                    <div class="w-4 h-4 bg-white rounded-full absolute top-1 {room.is_active ? 'right-1' : 'left-1'}" />
+                                </div>
+                            </div>
+                            <div class="text-sm">
+                                {#if room.expand?.representative}
+                                    {room.expand.representative.map(rep => rep.name).join(', ')}
+                                {/if}
+                            </div>
+                            <div>
+                                <button class="text-blue-600 hover:underline flex items-center gap-2" on:click={() => showHostContent(room.host_content)}>
+                                    {#if room.expand?.host_content?.[0]?.thumbnail}
+                                        <img src={getThumbnailUrl(room.expand.host_content[0])} alt="Thumbnail" class="w-8 h-8 object-cover rounded" />
+                                    {/if}
+                                    show
+                                </button>
+                            </div>
+                            <div>
+                                <button class="text-blue-600 hover:underline flex items-center gap-2" on:click={() => showRepContent(room.representative_content)}>
+                                    {#if room.expand?.representative_content?.[0]?.thumbnail}
+                                        <img src={getThumbnailUrl(room.expand.representative_content[0])} alt="Thumbnail" class="w-8 h-8 object-cover rounded" />
+                                    {/if}
+                                    show
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2 col-span-2">
+                                <div class="flex items-center gap-2 flex-1">
+                                    <Button variant="outline" size="sm" on:click={() => window.location.href = `/room/${room.id}`}>
+                                        Join Room
+                                    </Button>
+                                    <Button variant="outline" size="sm" on:click={() => showEmbedDialog(room.id)}>
+                                        Embed
+                                    </Button>
+                                </div>
+                                <button class="text-gray-600 hover:text-gray-900 ml-auto">
+                                    <MoreHorizontal size={20} />
+                                </button>
                             </div>
                         </div>
-                        <div class="text-sm">
-                            {#if room.expand?.representative}
-                                {room.expand.representative.map(rep => rep.name).join(', ')}
-                            {/if}
-                        </div>
-                        <div>
-                            <button class="text-blue-600 hover:underline flex items-center gap-2" on:click={() => showHostContent(room.host_content)}>
-                                {#if room.expand?.host_content?.[0]?.thumbnail}
-                                    <img src={getThumbnailUrl(room.expand.host_content[0])} alt="Thumbnail" class="w-8 h-8 object-cover rounded" />
-                                {/if}
-                                show
-                            </button>
-                        </div>
-                        <div>
-                            <button class="text-blue-600 hover:underline flex items-center gap-2" on:click={() => showRepContent(room.representative_content)}>
-                                {#if room.expand?.representative_content?.[0]?.thumbnail}
-                                    <img src={getThumbnailUrl(room.expand.representative_content[0])} alt="Thumbnail" class="w-8 h-8 object-cover rounded" />
-                                {/if}
-                                show
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <Button variant="outline" size="sm" on:click={() => window.location.href = `/room/${room.id}`}>
-                                Join Room
-                            </Button>
-                            <Button variant="outline" size="sm" on:click={() => showEmbedDialog(room.id)}>
-                                Embed
-                            </Button>
-                            <button class="text-gray-600 hover:text-gray-900">
-                                <MoreHorizontal size={20} />
-                            </button>
-                        </div>
-                    </div>
-                {/each}
+                    {/each}
+                </div>
             </div>
         </div>
     </div>

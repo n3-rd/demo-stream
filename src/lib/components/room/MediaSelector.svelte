@@ -85,7 +85,7 @@
     }
 </script>
 
-<div class="content-selector">
+<div class="content-selector !pb-20">
     {#if loading}
         <div class="loading">Loading content...</div>
     {:else if error}
@@ -99,11 +99,11 @@
                 >
                     <img 
                         src={getThumbnailUrl(video)} 
-                        alt={video.name}
+                        alt={video.title}
                         class="w-full h-full object-cover"
                     />
                     <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-sm text-white truncate">
-                        {video.name}
+                        {video.title}
                     </div>
                 </button>
             {/each}

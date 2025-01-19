@@ -1,22 +1,51 @@
 import type { PageServerLoad } from './$types';
-import { Actions, redirect } from '@sveltejs/kit';
+import { Actions, redirect, error } from '@sveltejs/kit';
 import { browser } from '$app/environment';
+import { pb } from '$lib/pocketbase';
 
+export const load = async ({ locals }) => {
+    if (!locals.pb) {
+        throw error(500, 'Database connection not available');
+    }
 
-export const load: PageServerLoad = async ({ locals }) => {
-    const user = locals.pb.authStore.isValid ? locals.pb.authStore.model : null;
-    
-    // Only fetch videos owned by the current company
-    const roomVideos = await locals.pb.collection('room_videos_duplicate').getFullList({
-        filter: user ? `owner_company = "${user.id}"` : ''
-    });
-    
-    return {
-        user,
-        roomVideos
-    };
+    try {
+        // Fetch the last room with its content
+        const room = await locals.pb.collection('rooms').getFirstListItem('', {
+            sort: '-created', // Sort by creation date descending to get the latest
+            expand: 'host_content,representative_content',
+            fields: 'id,title,is_active,host_content,representative_content,owner_company'
+        });
+
+        // Fetch host content details
+        const hostContent = await locals.pb.collection('content_library').getList(1, 50, {
+            filter: room.host_content?.map(id => `id = "${id}"`).join(' || ') || 'id = ""',
+            fields: 'id,title,collectionId,thumbnail,type,file'
+        });
+
+        // Fetch representative content details
+        const representativeContent = await locals.pb.collection('content_library').getList(1, 50, {
+            filter: room.representative_content?.map(id => `id = "${id}"`).join(' || ') || 'id = ""',
+            fields: 'id,title,collectionId,thumbnail,type,file'
+        });
+
+        // Fetch content library items
+        const contentLibrary = await locals.pb.collection('content_library').getList(1, 10, {
+            sort: '-created',
+            filter: 'library_type ~ "host"',
+            fields: 'id,title,collectionId,thumbnail,type,file'
+        });
+
+        return {
+            room: structuredClone(room),
+            hostContent: structuredClone(hostContent.items),
+            representativeContent: structuredClone(representativeContent.items),
+            contentLibrary: structuredClone(contentLibrary.items)
+        };
+    } catch (err) {
+        console.error('Error loading dashboard data:', err);
+        throw error(500, 'Failed to load dashboard data');
+    }
 };
-
 
 function sanitizeStreamName(name: string): string {
     if (!name) return '';
@@ -25,7 +54,6 @@ function sanitizeStreamName(name: string): string {
     // Then replace any spaces or special characters with underscores
     return decodedName.replace(/[^a-zA-Z0-9-]/g, '_');
 }
-
 
 export const actions: Actions = {
     'create-room': async ({ locals, request }) => {

@@ -1208,7 +1208,7 @@ onMount(() => {
 
         <!-- Mobile Bottom Bar -->
         <MobileBottomBar 
-            roomIdentityName={`${room.title} - ${$currentVideoUrl}`}
+            roomIdentityName={room.title}
             videoRepresentatives={representatives}
             scheduleOpen={scheduleOpen}
             userId={user?.id || ''}
@@ -1236,7 +1236,7 @@ onMount(() => {
         <!-- Desktop Bottom Bar -->
         <div class="hidden lg:block">
                 <BottomBar 
-                    roomIdentityName={`${room.title} - ${$currentVideoUrl}`} 
+                    roomIdentityName={room.title} 
                 {isMicMuted} 
                 on:leaveRoom={leaveRoom} 
                 on:toggleMicrophone={toggleMicrophone} 

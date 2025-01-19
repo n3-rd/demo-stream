@@ -12,6 +12,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
     import Sidenav from '$lib/components/layout/sidenav.svelte';
+    import Embed from "$lib/components/room/embed.svelte";
 
     interface SelectItem {
         value: string;
@@ -26,6 +27,8 @@
     let selectedHostContent: string[] = [];
     let selectedRepContent: string[] = [];
     let selectedRepresentatives: string[] = [];
+    let embedRoomId = '';
+    let showEmbed = false;
 
     $: ({ rooms, representatives, hostContent, repContent } = data);
 
@@ -69,6 +72,12 @@
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return null;
         return `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+    }
+
+    function showEmbedDialog(roomId: string) {
+        // Show embed dialog for the room
+        embedRoomId = roomId;
+        showEmbed = true;
     }
 </script>
 
@@ -126,6 +135,9 @@
                         <div class="flex items-center gap-2">
                             <Button variant="outline" size="sm" on:click={() => window.location.href = `/room/${room.id}`}>
                                 Join Room
+                            </Button>
+                            <Button variant="outline" size="sm" on:click={() => showEmbedDialog(room.id)}>
+                                Embed
                             </Button>
                             <button class="text-gray-600 hover:text-gray-900">
                                 <MoreHorizontal size={20} />
@@ -296,5 +308,27 @@
                 <Button type="submit" disabled={!$form.valid}>Add Room</Button>
             </Dialog.Footer>
         </form>
+    </Dialog.Content>
+</Dialog.Root>
+
+<!-- Add embed dialog -->
+<Dialog.Root bind:open={showEmbed}>
+    <Dialog.Content class="sm:max-w-[425px]">
+        <Dialog.Header>
+            <Dialog.Title>Embed Room</Dialog.Title>
+            <Dialog.Description>
+                Copy the embed code to add this room to your website.
+            </Dialog.Description>
+        </Dialog.Header>
+        
+        {#if embedRoomId}
+            <Embed videoId={embedRoomId} />
+        {/if}
+        
+        <Dialog.Footer>
+            <Dialog.Close>
+                Close
+            </Dialog.Close>
+        </Dialog.Footer>
     </Dialog.Content>
 </Dialog.Root>

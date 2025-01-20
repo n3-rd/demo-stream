@@ -55,6 +55,14 @@
     return `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
   }
 
+  function handleJoinRoom() {
+    goto(`/room/${room.id}`);
+  }
+
+  function handleRoomInfo() {
+    goto(`/room/${room.id}/info`);
+  }
+
   onMount(() => {
     loading = false;
   });

@@ -140,9 +140,11 @@
                                         Embed
                                     </Button>
                                 </div>
-                                <button class="text-gray-600 hover:text-gray-900 ml-auto">
+                                <Button variant="outline" size="sm" class="text-gray-600 hover:text-gray-900 ml-auto"
+                                href={`/room/${room.id}/info`}
+                                >
                                     <MoreHorizontal size={20} />
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     {/each}

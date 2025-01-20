@@ -139,8 +139,32 @@
                         <div>
                             <p class="text-sm text-gray-500">Status</p>
                             <div class="flex items-center mt-1">
-                                <div class="h-2.5 w-2.5 rounded-full {room.is_active ? 'bg-green-400' : 'bg-gray-400'} mr-2"></div>
-                                <p class="text-sm">{room.is_active ? 'Active' : 'Inactive'}</p>
+                                <form 
+                                    method="POST" 
+                                    action="?/toggle-active" 
+                                    use:enhance={() => {
+                                        return async ({ result }) => {
+                                            if (result.type === 'success') {
+                                                toast.success('Room status updated');
+                                                invalidateAll();
+                                            } else {
+                                                toast.error('Failed to update room status');
+                                            }
+                                        };
+                                    }}
+                                >
+                                    <button 
+                                        type="submit" 
+                                        class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 {room.is_active ? 'bg-green-500' : 'bg-gray-200'}"
+                                        role="switch"
+                                        aria-checked={room.is_active}
+                                    >
+                                        <span 
+                                            class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {room.is_active ? 'translate-x-5' : 'translate-x-0'}"
+                                        />
+                                    </button>
+                                    <span class="ml-3 text-sm">{room.is_active ? 'Active' : 'Inactive'}</span>
+                                </form>
                             </div>
                         </div>
                         <div>

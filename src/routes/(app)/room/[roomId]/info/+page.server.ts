@@ -74,5 +74,26 @@ export const actions = {
             console.error('Error updating room:', err);
             return fail(500, { error: 'Failed to update room' });
         }
+    },
+
+    'toggle-active': async ({ locals, params }) => {
+        if (!locals.pb) {
+            return fail(500, { error: 'Database connection not available' });
+        }
+
+        try {
+            // First get the current room to check its status
+            const room = await locals.pb.collection('rooms').getOne(params.roomId);
+            
+            // Toggle the is_active status
+            await locals.pb.collection('rooms').update(params.roomId, {
+                is_active: !room.is_active
+            });
+
+            return { type: 'success' };
+        } catch (err) {
+            console.error('Error toggling room status:', err);
+            return fail(500, { error: 'Failed to update room status' });
+        }
     }
 };

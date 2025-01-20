@@ -1233,6 +1233,10 @@ onMount(() => {
             </div>
         {/if}
 
+        <RepresentativeIndicator 
+        participants={meetingParticipants} 
+    />
+
         <!-- Desktop Bottom Bar -->
         <div class="hidden lg:block">
                 <BottomBar 

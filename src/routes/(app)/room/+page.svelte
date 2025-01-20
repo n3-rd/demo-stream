@@ -95,7 +95,7 @@
                 <div class="min-w-[1000px]">
                     <div class="grid grid-cols-7 gap-4 p-4 border-b font-medium text-sm text-gray-500">
                         <div>Room Name</div>
-                        <div>Active</div>
+                        <div>Status</div>
                         <div>Representative</div>
                         <div>Host Content</div>
                         <div>Rep Content</div>
@@ -106,8 +106,8 @@
                         <div class="grid grid-cols-7 gap-4 p-4 border-b hover:bg-gray-50">
                             <div class="text-blue-600">{room.title}</div>
                             <div>
-                                <div class="w-12 h-6 rounded-full bg-gray-200 relative {room.is_active ? 'bg-green-500' : ''}">
-                                    <div class="w-4 h-4 bg-white rounded-full absolute top-1 {room.is_active ? 'right-1' : 'left-1'}" />
+                                <div class="w-12 h-6 rounded-full  relative {room.is_active ? 'text-green-500' : 'text-red-500'}">
+                                  {room.is_active ? 'Active' : 'Inactive'}
                                 </div>
                             </div>
                             <div class="text-sm">

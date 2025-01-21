@@ -1,9 +1,16 @@
-// vite.config.js
-import { sveltekit } from '@sveltejs/kit/vite';
+const isProduction = process.env.NODE_ENV === 'production';
 
-/** @type {import('vite').UserConfig} */
 const config = {
-	plugins: [sveltekit()]
+    plugins: [sveltekit()],
+    server: {
+        hmr: isProduction
+            ? {
+                host: 'viewroom.ca',
+                port: 443,
+                protocol: 'wss'
+            }
+            : undefined // Defaults to localhost in dev mode
+    }
 };
 
 export default config;

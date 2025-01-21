@@ -19,16 +19,22 @@ export const load = async ({ locals, params }) => {
             throw error(404, 'Room not found');
         }
 
-        // Fetch all content from content library
-        const allContent = await locals.pb.collection('content_library').getList(1, 100, {
+        // Fetch content for the room's owner company
+        const hostContent = await locals.pb.collection('content_library').getList(1, 100, {
+            filter: `owner_company = "${room.owner_company}"`,
             fields: 'id,title,collectionId,thumbnail,type,file'
         });
-        console.log('All content:', allContent.items);
+
+        // Fetch content for representatives (from the same company)
+        const representativeContent = await locals.pb.collection('content_library').getList(1, 100, {
+            filter: `owner_company = "${room.owner_company}"`,
+            fields: 'id,title,collectionId,thumbnail,type,file'
+        });
 
         const data = {
             room: structuredClone(room),
-            hostContent: structuredClone(allContent.items),
-            representativeContent: structuredClone(allContent.items)
+            hostContent: structuredClone(hostContent.items),
+            representativeContent: structuredClone(representativeContent.items)
         };
         console.log('Returning data:', data);
 

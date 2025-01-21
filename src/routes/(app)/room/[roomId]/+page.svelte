@@ -1088,14 +1088,14 @@ onMount(() => {
                                     size="sm"
                                     on:click={() => updateSyncSource('host')}
                                 >
-                                    Host View
+                                    Host Ctrl
                                 </Button>
                                 <Button
                                     variant={syncSource === 'representative' ? 'default' : 'secondary'}
                                     size="sm"
                                     on:click={() => updateSyncSource('representative')}
                                 >
-                                    Rep View
+                                    Rep Ctrl
                                 </Button>
                             </div>
                         {/if}
@@ -1223,7 +1223,7 @@ onMount(() => {
 
         <!-- MediaSelector -->
         {#if isHost || isRepresentative}
-            <div class="h-72 bg-black/50">
+            <div class="h-72 ">
                 <MediaSelector 
                     {isHost} 
                     {isRepresentative} 

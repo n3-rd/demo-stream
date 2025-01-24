@@ -2,6 +2,9 @@ import { json, redirect, type RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
 import { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from "./$types";
+import { error } from '@sveltejs/kit';
+import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
+import PocketBase from 'pocketbase';
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
 const sanitizeAssociatedVideo = (videoRef: string) => {
@@ -206,5 +209,24 @@ export const actions: Actions = {
                 body: { error: 'Failed to create quote request' }
             };
         });
+    }
+};
+
+export const loadLocations: PageServerLoad = async ({ params, locals }) => {
+    const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
+    
+    try {
+        // Load locations for the current user's company
+        const locations = await pb.collection('locations').getFullList({
+            filter: `owner_company = "${locals.user?.id}"`,
+            sort: '-created'
+        });
+
+        return {
+            locations
+        };
+    } catch (error) {
+        console.error('Error loading locations:', error);
+        throw error(500, 'Failed to load locations');
     }
 };

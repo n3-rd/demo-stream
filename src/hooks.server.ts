@@ -4,6 +4,24 @@ import type { Handle } from '@sveltejs/kit';
 import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 import PocketBase from 'pocketbase';
 
+// Define the User type
+interface User {
+    id: string;
+    email: string;
+    name?: string;
+}
+
+// Extend Locals type
+declare global {
+    namespace App {
+        interface Locals {
+            pb: PocketBase;
+            user: User | null;
+            userid: string;
+        }
+    }
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
     const request = event.request;
     const cookies = cookie.parse(request.headers.get('cookie') || '');
@@ -26,16 +44,21 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.locals.pb.authStore.loadFromCookie(request.headers.get('cookie') || '');
 
     // Set user if auth store is valid
-    if (event.locals.pb.authStore.isValid) {
-        event.locals.user = event.locals.pb.authStore.model;
-    }
+    event.locals.user = event.locals.pb.authStore.isValid ? event.locals.pb.authStore.model as User : null;
 
     // Set user ID if not present
-    event.locals['userid'] = cookies.userid || uuid();
+    event.locals.userid = cookies.userid || uuid();
 
-    // Handle _method query parameter
+    // Handle _method query parameter by creating a new request
+    let finalRequest = request;
     if (event.url.searchParams.has('_method')) {
-        event.request.method = event.url.searchParams.get('_method')!.toUpperCase();
+        const method = event.url.searchParams.get('_method')!.toUpperCase();
+        finalRequest = new Request(request.url, {
+            method,
+            headers: request.headers,
+            body: request.body
+        });
+        event.request = finalRequest;
     }
 
     const response = await resolve(event);

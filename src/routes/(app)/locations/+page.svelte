@@ -5,7 +5,12 @@
     import { Card, CardContent, CardHeader, CardTitle } from "$lib/components/ui/card";
     import { Plus, Save } from 'lucide-svelte';
     import Sidenav from '$lib/components/layout/sidenav.svelte';
-	import { toast } from "svelte-sonner";
+    import { enhance } from "$app/forms";
+    import { toast } from "svelte-sonner";
+	import { invalidateAll } from "$app/navigation";
+
+    export let data;
+    let locations = data.locations;
 
     type Location = {
         name: string;
@@ -17,7 +22,6 @@
         };
     };
 
-    let locations: Location[] = [];
     let currentLocation: Location = {
         name: '',
         address: '',
@@ -43,23 +47,12 @@
         { label: "Closed", value: "Closed" }
     ];
 
-    function isLocationValid(location: Location): boolean {
-        return Boolean(
-            location.name.trim() &&
-            location.address.trim() &&
-            location.city.trim() &&
-            location.phone.trim() &&
-            Object.values(location.hours).some(hour => hour.trim())
-        );
+    function setHours(day: string, hours: string) {
+        currentLocation.hours[day] = hours;
+        currentLocation = currentLocation; // trigger reactivity
     }
 
-    function handleSave() {
-        if (!isLocationValid(currentLocation)) {
-            toast.error('Please fill in at least the name, address, city, phone, and one business hour before saving.');
-            return;
-        }
-        locations = [...locations, { ...currentLocation }];
-        // Reset form
+    function resetForm() {
         currentLocation = {
             name: '',
             address: '',
@@ -76,15 +69,6 @@
             }
         };
     }
-
-    function addAnotherLocation() {
-        handleSave();
-    }
-
-    function setHours(day: string, hours: string) {
-        currentLocation.hours[day] = hours;
-        currentLocation = currentLocation; // trigger reactivity
-    }
 </script>
 
 <div class="flex h-screen bg-gray-100">
@@ -97,14 +81,35 @@
                     <CardTitle>Add a Location</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <form class="space-y-6">
+                    <form 
+                        method="POST" 
+                        action="?/create"
+                        use:enhance={({ cancel }) => {
+                            return async ({ update, result }) => {
+                                await update();
+
+                                if (result.type === 'success') {
+                                    toast.success('Location created successfully');
+                                    resetForm();
+                                    invalidateAll();
+                                } else if (result.type === 'failure') {
+                                    toast.error(result.data?.message ?? 'Failed to create location');
+                                } else {
+                                    toast.error('Failed to create location');
+                                }
+                            };
+                        }}
+                        class="space-y-6"
+                    >
                         <div class="grid gap-4">
                             <div class="grid gap-2">
                                 <Label for="locationName">Name of Location</Label>
                                 <Input 
                                     id="locationName"
+                                    name="name"
                                     bind:value={currentLocation.name}
                                     placeholder="e.g. Timmins Branch"
+                                    required
                                 />
                             </div>
 
@@ -112,8 +117,10 @@
                                 <Label for="address">Address</Label>
                                 <Input 
                                     id="address"
+                                    name="address"
                                     bind:value={currentLocation.address}
                                     placeholder="123 Street Name"
+                                    required
                                 />
                             </div>
 
@@ -121,8 +128,10 @@
                                 <Label for="city">City</Label>
                                 <Input 
                                     id="city"
+                                    name="city"
                                     bind:value={currentLocation.city}
                                     placeholder="Timmins"
+                                    required
                                 />
                             </div>
 
@@ -130,9 +139,11 @@
                                 <Label for="phone">Phone #</Label>
                                 <Input 
                                     id="phone"
+                                    name="phone"
                                     bind:value={currentLocation.phone}
                                     placeholder="705-123-1234"
                                     type="tel"
+                                    required
                                 />
                             </div>
 
@@ -144,6 +155,7 @@
                                             <Label for={day}>{day}:</Label>
                                             <Input 
                                                 id={day}
+                                                name={day}
                                                 bind:value={currentLocation.hours[day]}
                                                 placeholder="9:00 am - 5:00 pm"
                                             />
@@ -168,21 +180,11 @@
 
                         <div class="flex justify-between items-center pt-4">
                             <Button 
-                                type="button" 
-                                on:click={handleSave}
+                                type="submit"
                                 variant="default"
                             >
                                 <Save class="mr-2 h-4 w-4" />
                                 Save
-                            </Button>
-
-                            <Button 
-                                type="button"
-                                on:click={addAnotherLocation}
-                                variant="outline"
-                            >
-                                <Plus class="mr-2 h-4 w-4" />
-                                Add Another Location
                             </Button>
                         </div>
                     </form>
@@ -203,7 +205,7 @@
                                     <p>{location.phone}</p>
                                     <div class="pt-2">
                                         <h4 class="font-semibold mb-2">Hours:</h4>
-                                        {#each Object.entries(location.hours) as [day, hours]}
+                                        {#each Object.entries(location.hours || {}) as [day, hours]}
                                             {#if hours}
                                                 <p class="grid grid-cols-[100px_1fr]">
                                                     <span class="font-medium">{day}:</span>
@@ -211,6 +213,34 @@
                                                 </p>
                                             {/if}
                                         {/each}
+                                    </div>
+                                    <div class="flex justify-end space-x-2 mt-4">
+                                        <form
+                                            method="POST"
+                                            action="?/delete"
+                                            use:enhance={({ cancel }) => {
+                                                return async ({ update, result }) => {
+                                                    await update();
+
+                                                    if (result.type === 'success') {
+                                                        toast.success('Location deleted successfully');
+                                                    } else if (result.type === 'failure') {
+                                                        toast.error(result.data?.message ?? 'Failed to delete location');
+                                                    } else {
+                                                        toast.error('Failed to delete location');
+                                                    }
+                                                };
+                                            }}
+                                        >
+                                            <input type="hidden" name="id" value={location.id} />
+                                            <Button
+                                                type="submit"
+                                                variant="destructive"
+                                                size="sm"
+                                            >
+                                                Delete
+                                            </Button>
+                                        </form>
                                     </div>
                                 </div>
                             </CardContent>

@@ -15,17 +15,27 @@
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
     import HintValidate from '$lib/components/layout/hint-validate.svelte';
+    import * as Select from "$lib/components/ui/select";
 
     export let data;
-    const { representatives } = data;
+    const { representatives, locations } = data;
 
     let showAddDialog = false;
     let editingRep: any = null;
     let expandedRep: string | null = null;
+    let selectedLocation: string = '';
     const form = useForm();
 
     function toggleExpand(id: string) {
         expandedRep = expandedRep === id ? null : id;
+    }
+
+    $: {
+        if (editingRep) {
+            selectedLocation = editingRep.location || '';
+        } else {
+            selectedLocation = '';
+        }
     }
 </script>
 
@@ -286,15 +296,22 @@
 
             <div class="space-y-2">
                 <Label for="location">Location</Label>
-                <input 
-                    type="text" 
-                    id="location" 
-                    name="location" 
-                    class="w-full border border-input bg-background rounded-md px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    value={editingRep?.location || ''} 
-                    required
-                    use:validators={[required]}
-                />
+                <Select.Root
+                    value={selectedLocation}
+                    onSelectedChange={(e) => {
+                        selectedLocation = e?.value || '';
+                    }}
+                >
+                    <Select.Trigger class="w-full">
+                        <Select.Value placeholder="Select a location" />
+                    </Select.Trigger>
+                    <Select.Content>
+                        {#each locations as location}
+                            <Select.Item value={location.id}>{location.name}</Select.Item>
+                        {/each}
+                    </Select.Content>
+                </Select.Root>
+                <input type="hidden" name="location" value={selectedLocation} required />
                 <HintGroup for="location">
                     <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
                         <Hint on="required"><HintValidate>Location is required</HintValidate></Hint>
@@ -359,7 +376,7 @@
                 </div>
             </div>
 
-            <div class="flex justify-end space-x-2 mt-8">
+            <div class="flex justify-end space-x-2 !mt-8">
                 <Button type="button" variant="outline" on:click={() => showAddDialog = false}>
                     Cancel
                 </Button>

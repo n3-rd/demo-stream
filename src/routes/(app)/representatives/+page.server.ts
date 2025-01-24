@@ -10,21 +10,29 @@ export const load: PageServerLoad = async ({ locals }) => {
     const user = locals.pb.authStore.model;
 
     try {
-        const representatives = await locals.pb.collection('representatives').getFullList({
-            filter: `company = "${user.id}"`,
-            sort: '-created',
-            expand: 'connected_content'
-        });
+        const [representatives, locations] = await Promise.all([
+            locals.pb.collection('representatives').getFullList({
+                filter: `company = "${user.id}"`,
+                sort: '-created',
+                expand: 'connected_content'
+            }),
+            locals.pb.collection('locations').getFullList({
+                filter: `owner_company = "${user.id}"`,
+                sort: '-created'
+            })
+        ]);
 
         return {
             user,
-            representatives
+            representatives,
+            locations
         };
     } catch (err) {
         console.error('Error fetching representatives:', err);
         return {
             user,
-            representatives: []
+            representatives: [],
+            locations: []
         };
     }
 };
@@ -51,20 +59,27 @@ export const actions: Actions = {
                 email: formData.get('email'),
                 phone: formData.get('phone'),
                 company: user.id,
+                location: formData.get('location'),
                 is_active: true,
                 schedule
             };
 
-            const avatar = formData.get('avatar');
-            if (avatar instanceof File && avatar.size > 0) {
-                Object.assign(data, { avatar });
+            const avatar = formData.get('avatar') as File;
+            if (avatar.size > 0) {
+                const record = await locals.pb.collection('representatives').create(data, {
+                    files: { avatar }
+                });
+                if (!record) {
+                    return fail(400, { success: false, message: 'Failed to create representative' });
+                }
+            } else {
+                const record = await locals.pb.collection('representatives').create(data);
+                if (!record) {
+                    return fail(400, { success: false, message: 'Failed to create representative' });
+                }
             }
 
-            await locals.pb.collection('representatives').create(data);
-
-            return {
-                type: 'success'
-            };
+            return { success: true };
         } catch (err) {
             console.error('Error adding representative:', err);
             return fail(400, {
@@ -94,19 +109,26 @@ export const actions: Actions = {
                 name: formData.get('name'),
                 email: formData.get('email'),
                 phone: formData.get('phone'),
+                location: formData.get('location'),
                 schedule
             };
 
-            const avatar = formData.get('avatar');
-            if (avatar instanceof File && avatar.size > 0) {
-                Object.assign(data, { avatar });
+            const avatar = formData.get('avatar') as File;
+            if (avatar.size > 0) {
+                const record = await locals.pb.collection('representatives').update(id, data, {
+                    files: { avatar }
+                });
+                if (!record) {
+                    return fail(400, { success: false, message: 'Failed to update representative' });
+                }
+            } else {
+                const record = await locals.pb.collection('representatives').update(id, data);
+                if (!record) {
+                    return fail(400, { success: false, message: 'Failed to update representative' });
+                }
             }
 
-            await locals.pb.collection('representatives').update(id, data);
-
-            return {
-                type: 'success'
-            };
+            return { success: true };
         } catch (err) {
             console.error('Error updating representative:', err);
             return fail(400, {

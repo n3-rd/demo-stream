@@ -10,10 +10,10 @@ import Share from '$lib/components/room/share.svelte';
   export let name: string;
   export let users: any[] = []; // Provide a default empty array
   const pageName = $page.url.pathname.split('/').pop().split('-').pop();
-  // export const user;
-  
+  // Create a clean URL without query parameters
+  const joinURL = new URL($page.url.href).origin + new URL($page.url.href).pathname;
+
   $: hostUser = users.length > 0 ? users.find((user) => user.id === pageName) || users[0] : null;
-  const joinURL = $page.url.href;
 
   console.log('participants from participants.svelte', participants);
   // console.log('users', users);

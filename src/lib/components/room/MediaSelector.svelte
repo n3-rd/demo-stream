@@ -93,51 +93,55 @@
     {:else if content?.length}
         <div class="flex flex-col gap-8 p-4">
             <!-- Host Content -->
-            {#if content.filter(video => room?.host_content?.includes(video.id)).length > 0}
-                <div class="content-section">
-                    <h2 class="text-xl font-semibold mb-4 text-white">Host Content</h2>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {#each content.filter(video => room?.host_content?.includes(video.id)) as video}
-                            <button 
-                                class="relative aspect-video bg-black/50 rounded overflow-hidden hover:ring-2 ring-primary"
-                                on:click={() => handleVideoClick(video)}
-                            >
-                                <img 
-                                    src={getThumbnailUrl(video)} 
-                                    alt={video.title}
-                                    class="w-full h-full object-cover"
-                                />
-                                <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-sm text-white truncate">
-                                    {video.title}
-                                </div>
-                            </button>
-                        {/each}
+            {#if isHost || isRepresentative}
+                {#if content.filter(video => room?.host_content?.includes(video.id)).length > 0}
+                    <div class="content-section">
+                        <h2 class="text-xl font-semibold mb-4 text-white">Host Content</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {#each content.filter(video => room?.host_content?.includes(video.id)) as video}
+                                <button 
+                                    class="relative aspect-video bg-black/50 rounded overflow-hidden hover:ring-2 ring-primary"
+                                    on:click={() => handleVideoClick(video)}
+                                >
+                                    <img 
+                                        src={getThumbnailUrl(video)} 
+                                        alt={video.title}
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-sm text-white truncate">
+                                        {video.title}
+                                    </div>
+                                </button>
+                            {/each}
+                        </div>
                     </div>
-                </div>
+                {/if}
             {/if}
 
-            <!-- Representative Content -->
-            {#if content.filter(video => room?.representative_content?.includes(video.id)).length > 0}
-                <div class="content-section">
-                    <h2 class="text-xl font-semibold mb-4 text-white">Representative Content</h2>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {#each content.filter(video => room?.representative_content?.includes(video.id)) as video}
-                            <button 
-                                class="relative aspect-video bg-black/50 rounded overflow-hidden hover:ring-2 ring-primary"
-                                on:click={() => handleVideoClick(video)}
-                            >
-                                <img 
-                                    src={getThumbnailUrl(video)} 
-                                    alt={video.title}
-                                    class="w-full h-full object-cover"
-                                />
-                                <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-sm text-white truncate">
-                                    {video.title}
-                                </div>
-                            </button>
-                        {/each}
+            <!-- Representative Content - Only shown to representatives -->
+            {#if isRepresentative}
+                {#if content.filter(video => room?.representative_content?.includes(video.id)).length > 0}
+                    <div class="content-section">
+                        <h2 class="text-xl font-semibold mb-4 text-white">Representative Content</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {#each content.filter(video => room?.representative_content?.includes(video.id)) as video}
+                                <button 
+                                    class="relative aspect-video bg-black/50 rounded overflow-hidden hover:ring-2 ring-primary"
+                                    on:click={() => handleVideoClick(video)}
+                                >
+                                    <img 
+                                        src={getThumbnailUrl(video)} 
+                                        alt={video.title}
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-sm text-white truncate">
+                                        {video.title}
+                                    </div>
+                                </button>
+                            {/each}
+                        </div>
                     </div>
-                </div>
+                {/if}
             {/if}
         </div>
     {:else}

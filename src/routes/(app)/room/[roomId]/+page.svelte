@@ -79,16 +79,13 @@ const users = data.users;
 let isHost = false;
 const host = $page.url.pathname.split("/").pop().split("-").pop();
 
-$: {
-    isHost = host === (user ? user.id : "") || host == anonymousUserId;
-}
-
 let isRepresentative = false;
-
 $: {
     if (room) {
-        // Determine if user is host (owner of the room)
-        isHost = user?.id === room.owner_company;
+        // Determine if user is host (owner of the room or anonymous host from embed)
+        const isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
+                               $page.url.searchParams.get('anonymous') === 'true';
+        isHost = user?.id === room.owner_company || isAnonymousHost;
         
         // Determine if user is a representative (check both URL param and room data)
         const urlRepName = $page.url.searchParams.get('repid');
@@ -97,6 +94,7 @@ $: {
         
         console.log('Role determination:', {
             isHost,
+            isAnonymousHost,
             isRepresentative,
             userId: user?.id,
             roomOwner: room.owner_company,

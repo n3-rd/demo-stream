@@ -9,7 +9,7 @@
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 
     const { room } = data;
-    console.log(room);
+    console.log("data", data);
     let loading = false;
     let anonymousUserId: string | null = null;
     let form: HTMLFormElement;
@@ -29,8 +29,28 @@
         if (!content?.thumbnail) return null;
         return `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
     }
+
+    async function handleJoinRoom() {
+        if (!anonymousUserId || anonymousUserId.length < 3) return;
+        
+        loading = true;
+        try {
+            const sanitizedName = sanitizeStreamName(anonymousUserId);
+            anonymousUser.set(sanitizedName);
+            // Use the direct room path with anonymous host parameters
+            await goto(`/room/${room.id}?anonymousUserId=${sanitizedName}&isHost=true&anonymous=true`, {
+                replaceState: true
+            });
+        } catch (error) {
+            console.error('Failed to join room:', error);
+            toast.error('Failed to join room');
+        } finally {
+            loading = false;
+        }
+    }
 </script>
 
+{#if room}
 <div class="container mx-auto p-4">
     <h1 class="text-2xl font-bold mb-4">{room.title}</h1>
 
@@ -38,7 +58,7 @@
         <div class="flex-1 h-full">
             <div class="mb-4">
                 <label for="anonymousUserId" class="block text-sm font-medium text-gray-700 mb-1">
-                    Enter your user id
+                    Enter your name to host this room
                 </label>
                 <input 
                     type="text" 
@@ -50,13 +70,13 @@
                     placeholder="Your name"
                 />
                 <p class="mt-1 text-sm text-gray-500">
-                    This name will be used to identify you in the room.
+                    This name will be used to identify you as the host in the room.
                 </p>
                 <p class="mt-1 text-sm text-gray-500">
-                    ensure it is at least 3 characters long and unique 
+                    Ensure it is at least 3 characters long and unique 
                 </p>
                 <p class="mt-1 text-sm text-primary">
-                    for example: JohnDoe-Bluesky
+                    For example: JohnDoe-Host
                 </p>
             </div>
         </div>
@@ -73,37 +93,20 @@
     </div>
 
     <div class="mt-8">
-        <form 
-            bind:this={form}
-            use:enhance={() => {
-                loading = true;
-                return async ({ result }) => {
-                    if (result.type === 'success') {
-                        toast.success('Joining room...');
-                        const sanitizedName = sanitizeStreamName(anonymousUserId);
-                        anonymousUser.set(sanitizedName);
-                        goto(`/room/${room.id}?anonymousUserId=${sanitizedName}`);
-                    } else {
-                        toast.error('Failed to join room');
-                    }
-                    loading = false;
-                };
-            }}
-            class="mt-4" 
-            method="post" 
-            action="?/join-room"
+        <Button 
+            on:click={handleJoinRoom}
+            disabled={loading || anonymousUserId === '' || anonymousUserId === null || anonymousUserId.length < 3} 
+            class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
         >
-            <input type="hidden" name="anonymousUserId" bind:value={anonymousUserId} />
-            <Button 
-                type="submit" 
-                disabled={loading || anonymousUserId === '' || anonymousUserId === null || anonymousUserId.length < 3} 
-                class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
-            >
-                {loading ? 'Joining...' : 'Join Room'}
-            </Button>
-        </form>
+            {loading ? 'Joining...' : 'Host Room'}
+        </Button>
     </div>
 </div>
+{:else}
+    <div class="container mx-auto p-4">
+        <p class="text-red-500">Room not found</p>
+    </div>
+{/if}
 
 <style>
     :global(html, body) {

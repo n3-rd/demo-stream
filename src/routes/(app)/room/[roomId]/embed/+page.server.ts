@@ -1,35 +1,31 @@
-import { fail } from '@sveltejs/kit';
-import type { Actions } from './$types';
+import { error } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
 
-export async function load({ params, locals }) {
+export const load: PageServerLoad = async ({ locals, params }) => {
+    if (!locals.pb) {
+        throw error(500, 'Database connection not available');
+    }
+
     try {
-        // Fetch the room data
-        const room = await locals.pb.collection('rooms').getOne(params.roomId, {
-            expand: 'selected_video,host_content,representative_content,representative'
+        // Get the room with expanded relations, no auth required
+        const roomId = await locals.pb.collection('rooms').getFullList({
+            filter: `id = "${params.roomId}"`,
+            expand: 'representative,host_content,representative_content,selected_video'
         });
 
-        return {
-            room
-        };
-    } catch (error) {
-        console.error('Error loading room data:', error);
-        return {
-            room: null
-        };
-    }
-}
-
-export const actions = {
-    'join-room': async ({ request }) => {
-        const data = await request.formData();
-        const anonymousUserId = data.get('anonymousUserId');
-
-        if (!anonymousUserId || typeof anonymousUserId !== 'string' || anonymousUserId.length < 3) {
-            return fail(400, { error: 'Invalid user ID' });
+        if (!roomId.length) {
+            throw error(404, 'Room not found');
         }
 
+        const room = roomId[0];
+
+        // Return minimal data needed for anonymous access
         return {
-            success: true
+            room,
+            isAnonymous: true
         };
+    } catch (err) {
+        console.error('Error loading room data:', err);
+        throw error(500, 'Failed to load room data');
     }
-} satisfies Actions; 
+}; 

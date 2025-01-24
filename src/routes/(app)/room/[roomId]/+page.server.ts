@@ -35,6 +35,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
             });
 
             if (!roomId.length) {
+                console.log('Room not found line 38');
                 throw redirect(303, '/');
             }
 
@@ -42,7 +43,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
             // Verify the representative has access to this room
             if (!room.representative || !room.representative.includes(representativeId)) {
-                console.log('Representative does not have access to this room');
+                console.log('Representative does not have access to this room line 46');
                 throw redirect(303, '/');
             }
 
@@ -57,7 +58,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
                 isRepresentative: true
             };
         } catch (error) {
-            console.error('Error handling representative access:', error);
+            console.error('Error handling representative access line 61:', error);
             throw redirect(303, '/');
         }
     }
@@ -70,12 +71,20 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
         });
 
         if (!roomId.length) {
+            console.log('Room not found line 74');
             throw redirect(303, '/');
         }
 
         const room = roomId[0];
         const representatives = room.expand?.representative || [];
         const users = user ? await locals.pb.collection('users').getFullList() : [];
+
+        console.log('Room data loaded:', {
+            id: room.id,
+            hasHostContent: !!room.host_content,
+            hasRepContent: !!room.representative_content,
+            expandedData: room.expand
+        });
 
         return {
             user: user || null,
@@ -86,7 +95,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
             isRepresentative: false
         };
     } catch (error) {
-        console.error('Error loading room:', error);
+        console.error('Error loading room line 99:', error);
         throw redirect(303, '/');
     }
 };

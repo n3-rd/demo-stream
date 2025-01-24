@@ -36,7 +36,12 @@
     }
     let videoUrl;
     $: {
-        videoUrl = $currentVideoUrl || `/static/video${roomId[0].associated_video}`;
+        videoUrl = $currentVideoUrl;
+        console.log('Video URL updated:', {
+            currentVideoUrl: $currentVideoUrl,
+            videoUrl,
+            roomId
+        });
     }
 
     let audioTrackSet = false;
@@ -247,15 +252,15 @@
         callObject.on('participant-joined', updateParticipants);
         callObject.on('active-speaker-change', handleActiveSpeakerChanged);
 
-        if (Hls.isSupported()) {
+        if (Hls.isSupported() && videoUrl) {
             const hls = new Hls();
             hls.loadSource(videoUrl);
             hls.attachMedia(videoEl);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 videoEl.play();
             });
-        } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-            videoEl.src = videoURL;
+        } else if (videoEl && videoEl.canPlayType('application/vnd.apple.mpegurl') && videoUrl) {
+            videoEl.src = videoUrl;
             videoEl.addEventListener('loadedmetadata', () => {
                 videoEl.play();
             });

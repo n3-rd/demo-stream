@@ -77,7 +77,6 @@ import Share from '$lib/components/room/share.svelte';
   </div>
   <div class="p-2">
 {#each participants as participant}
-{console.log("participant", participant)}
 <div class="flex items-center py-4">
   <img
     src={`https://ui-avatars.com/api/?name=${encodeURIComponent(formatParticipantName(participant))}&background=random`}

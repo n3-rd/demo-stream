@@ -6,10 +6,11 @@
     import { toast } from 'svelte-sonner';
     import { Button } from "$lib/components/ui/button";
     import { page} from '$app/stores';
+
     let width = 1100;
     let height = 700;
     
-    $: embedCode = `<iframe src="${$page.url.origin}/embed?videoId=${videoId}" style="border: none; width: ${width}px; height: ${height}px;" allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read"></iframe>`;
+    $: embedCode = `<iframe src="${$page.url.origin}/room/${videoId}/embed" style="border: none; width: ${width}px; height: ${height}px;" allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read"></iframe>`;
     
     // $: scriptEmbedCode = `<script src="${window.location.origin}/embed.js" data-room-url="${roomUrl}" data-width="${width}" data-height="${height}"><\/script>`;
     
@@ -23,11 +24,25 @@
 
 <div class="bg-white rounded-lg p-4">
     <div class="flex flex-col gap-2">
-        <Input type="number" bind:value={width} placeholder="Width" />
-        <Input type="number" bind:value={height} placeholder="Height" />
+        <div class="flex flex-col gap-1">
+            <label for="width" class="text-sm font-medium text-gray-700">Width (px)</label>
+            <Input type="number" id="width" bind:value={width} placeholder="Width" />
+        </div>
+        <div class="flex flex-col gap-1">
+            <label for="height" class="text-sm font-medium text-gray-700">Height (px)</label>
+            <Input type="number" id="height" bind:value={height} placeholder="Height" />
+        </div>
     </div>
-    <textarea class="w-full mt-2 p-2 border rounded" rows="3" readonly>{embedCode}</textarea>
-    <Button on:click={copyEmbedCode} class="mt-2">
+    <div class="mt-4">
+        <label for="embed-code" class="text-sm font-medium text-gray-700">Embed Code</label>
+        <textarea 
+            id="embed-code"
+            class="w-full mt-2 p-2 border rounded font-mono text-sm"
+            rows="4"
+            readonly
+        >{embedCode}</textarea>
+    </div>
+    <Button on:click={copyEmbedCode} class="mt-4 w-full">
         Copy Embed Code <ClipboardCopy class="h-5 w-5 ml-2" />
     </Button>
     

@@ -15,7 +15,7 @@ import {
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
-	import { currentVideoUrl } from '$lib/callStores.js';
+	import { currentVideoUrl } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
@@ -28,6 +28,10 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
     import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
     import {PUBLIC_POCKETBASE_INSTANCE} from '$env/static/public';
+    import MediaSelector from '$lib/components/room/MediaSelector.svelte';
+    import {
+        playVideoStore
+    } from '$lib/stores/playStore';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -80,32 +84,30 @@ $: {
 }
 
 let isRepresentative = false;
-$: {
-    const urlRepName = $page.url.searchParams.get('repid');
-    isRepresentative = urlRepName !== null && urlRepName !== '';
-    console.log('isRepresentative:', isRepresentative);
-}
-
-// Add videoElements map declaration at the top with other state variables
-let videoElements = new Map();
 
 $: {
     if (room) {
         // Determine if user is host (owner of the room)
         isHost = user?.id === room.owner_company;
         
-        // Determine if user is a representative
-        isRepresentative = representatives?.some(rep => rep.id === user?.id) || false;
+        // Determine if user is a representative (check both URL param and room data)
+        const urlRepName = $page.url.searchParams.get('repid');
+        isRepresentative = (urlRepName !== null && urlRepName !== '') || 
+                          representatives?.some(rep => rep.id === user?.id) || false;
         
         console.log('Role determination:', {
             isHost,
             isRepresentative,
             userId: user?.id,
             roomOwner: room.owner_company,
-            representatives: representatives?.map(r => r.id)
+            representatives: representatives?.map(r => r.id),
+            urlRepName
         });
     }
 }
+
+// Add videoElements map declaration at the top with other state variables
+let videoElements = new Map();
 
 // Stream configuration
 let publishStreamId = null;
@@ -123,6 +125,9 @@ const mediaConstraints = {
         autoGainControl: true
     }
 };
+
+// Add near the top with other state variables
+let syncSource = 'host';
 
 function getWebSocketURL() {
     return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
@@ -145,12 +150,8 @@ onMount(() => {
 
         initializeWebRTC();
         
-        // Initialize sync source based on role
-        if (isHost) {
-            syncSource = 'host'; // Default to host sync for host
-        } else if (isRepresentative) {
-            syncSource = 'representative'; // Default to representative sync for representatives
-        }
+        // Always initialize as host control
+        syncSource = 'host';
     }
     
     return () => {
@@ -274,29 +275,112 @@ function handleWebRTCCallback(info: string, obj: any) {
             try {
                 const data = JSON.parse(obj.data);
                 let messageBody;
-                if (data.messageBody) {
-                    messageBody = JSON.parse(data.messageBody);
-                }
-                
-                console.log('Received data message:', messageBody); // Debug log
-                
-                switch (messageBody?.eventType) {
-                    case 'chat_message':
-                        handleChatMessage(messageBody);
-                        break;
-                    case 'video_sync':
-                        handleVideoSync(messageBody);
-                        break;
-                    case 'sync_source_change':
-                        // Only non-host participants should update their sync source
-                        if (!isHost) {
-                            console.log('Updating sync source to:', messageBody.syncSource);
-                            syncSource = messageBody.syncSource;
+                try {
+                    // First parse the outer messageBody
+                    if (data.messageBody) {
+                        messageBody = JSON.parse(data.messageBody);
+                        console.log('Outer messageBody:', messageBody);
+                        
+                        // If it's a video URL update, parse the inner messageBody
+                        if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {
+                            const videoUpdateData = JSON.parse(messageBody.messageBody);
+                            console.log('Video update data:', videoUpdateData);
+                            
+                            if (videoUpdateData.videoUrl) {
+                                console.log('Setting video URL to:', videoUpdateData.videoUrl);
+                                currentVideoUrl.set(videoUpdateData.videoUrl);
+                                
+                                // Update video player if it exists
+                                if (videoPlayer) {
+                                    console.log('Updating video player source to:', videoUpdateData.videoUrl);
+                                    videoPlayer.src = videoUpdateData.videoUrl;
+                                    if ($playVideoStore) {
+                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                    }
+                                }
+                            }
                         }
-                        break;
+                    }
+                    
+                    console.log('Parsed message data:', { 
+                        data, 
+                        messageBody, 
+                        eventType: messageBody?.eventType,
+                        isHost,
+                        isRepresentative 
+                    });
+                    
+                    // Handle other message types
+                    switch (messageBody?.eventType) {
+                        case 'chat_message':
+                            handleChatMessage(messageBody);
+                            break;
+                        case 'video_sync':
+                            try {
+                                // Parse the inner messageBody for video sync
+                                const syncData = JSON.parse(messageBody.messageBody);
+                                console.log('Video sync data:', syncData);
+                                
+                                // Accept sync if we're not the current controller
+                                const isCurrentController = (syncSource === 'host' && isHost) || 
+                                                                  (syncSource === 'representative' && isRepresentative);
+                                
+                                if (!isCurrentController && videoPlayer) {
+                                    console.log('Applying sync as viewer:', {
+                                        syncSource,
+                                        isHost,
+                                        isRepresentative,
+                                        currentTime: videoPlayer.currentTime,
+                                        syncTime: syncData.currentTime
+                                    });
+
+                                    // Sync video time if difference is more than 0.5 seconds
+                                    const timeDiff = Math.abs(videoPlayer.currentTime - syncData.currentTime);
+                                    if (timeDiff > 0.5) {
+                                        console.log('Syncing time to:', syncData.currentTime);
+                                        videoPlayer.currentTime = syncData.currentTime;
+                                    }
+
+                                    // Sync play/pause state
+                                    if (syncData.isPlaying && videoPlayer.paused) {
+                                        console.log('Playing video');
+                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                    } else if (!syncData.isPlaying && !videoPlayer.paused) {
+                                        console.log('Pausing video');
+                                        videoPlayer.pause();
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('Error handling video sync:', error);
+                            }
+                            break;
+                        case 'sync_source_change':
+                            try {
+                                const innerMessageBody = JSON.parse(messageBody.messageBody);
+                                console.log('Sync source change:', {
+                                    innerMessageBody,
+                                    isHost,
+                                    isRepresentative,
+                                    currentSyncSource: syncSource
+                                });
+                                
+                                // Update sync source if message is from host
+                                if (innerMessageBody.fromHost) {
+                                    console.log('Updating sync source to:', innerMessageBody.syncSource);
+                                    syncSource = innerMessageBody.syncSource;
+                                }
+                            } catch (error) {
+                                console.error('Error handling sync source change:', error);
+                            }
+                            break;
+                    }
+                } catch (parseError) {
+                    console.error("Error parsing message body:", parseError);
+                    console.error("Raw message body:", data.messageBody);
                 }
             } catch (e) {
                 console.error("Error parsing data message:", e);
+                console.error("Raw message data:", obj.data);
             }
             break;
         case "data_sent":
@@ -500,37 +584,73 @@ function toggleCamera() {
     }
 }
 
-// Function to handle video state changes by host
-function handleVideoStateChange() {
-    if (!videoPlayer) return;
+// Update the updateSyncSource function
+function updateSyncSource(newSource: 'host' | 'representative') {
+    if (!isHost) return; // Only host can change sync source
     
-    // Only send sync messages if we're the current sync source
-    const shouldSendSync = (isHost && syncSource === 'host') || 
-                         (isRepresentative && syncSource === 'representative');
-    
-    console.log('Video state change:', { 
+    console.log('Updating sync source:', { 
+        oldSource: syncSource, 
+        newSource, 
         isHost, 
-        isRepresentative, 
-        syncSource, 
-        shouldSendSync,
-        currentTime: videoPlayer.currentTime,
-        isPlaying: !videoPlayer.paused
+        isRepresentative 
     });
     
-    if (shouldSendSync && webRTCAdaptor && isDataChannelOpen) {
-        const videoState = {
-            streamId: roomName,
-            eventType: 'video_sync',
-            currentTime: videoPlayer.currentTime,
-            isPlaying: !videoPlayer.paused,
-            syncSource,
-            fromHost: isHost,
-            fromRepresentative: isRepresentative
+    syncSource = newSource;
+    
+    // Broadcast the sync source change
+    if (webRTCAdaptor && isDataChannelOpen) {
+        const syncSourceUpdate = {
+            eventType: 'sync_source_change',
+            messageBody: JSON.stringify({
+                syncSource: newSource,
+                fromHost: true
+            })
         };
         
         try {
             sendMessage(
-                videoState.streamId,
+                roomName,
+                Date.now(),
+                JSON.stringify(syncSourceUpdate),
+                roomName
+            );
+        } catch (error) {
+            console.error('Error sending sync source update:', error);
+        }
+    }
+}
+
+// Update the video state change handler
+function handleVideoStateChange() {
+    if (!videoPlayer) return;
+    
+    const isCurrentController = (syncSource === 'host' && isHost) || 
+                              (syncSource === 'representative' && isRepresentative);
+    
+    console.log('Video state change:', { 
+        isHost, 
+        isRepresentative, 
+        syncSource,
+        isCurrentController,
+        currentTime: videoPlayer.currentTime,
+        isPlaying: !videoPlayer.paused
+    });
+    
+    if (isCurrentController && webRTCAdaptor && isDataChannelOpen) {
+        const videoState = {
+            eventType: 'video_sync',
+            messageBody: JSON.stringify({
+                currentTime: videoPlayer.currentTime,
+                isPlaying: !videoPlayer.paused,
+                syncSource,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative
+            })
+        };
+        
+        try {
+            sendMessage(
+                roomName,
                 Date.now(),
                 JSON.stringify(videoState),
                 roomName
@@ -538,51 +658,6 @@ function handleVideoStateChange() {
         } catch (error) {
             console.error('Error sending video sync:', error);
         }
-    }
-}
-
-// Function to handle incoming video sync messages
-function handleVideoSync(data) {
-    if (!videoPlayer) return;
-
-    console.log('Received video sync:', data);
-
-    // Only accept sync messages from authorized sources based on current sync source
-    const isAuthorizedSync = (data.fromHost && syncSource === 'host') || 
-                           (data.fromRepresentative && syncSource === 'representative');
-    
-    console.log('Sync authorization:', {
-        isAuthorizedSync,
-        syncSource,
-        fromHost: data.fromHost,
-        fromRepresentative: data.fromRepresentative
-    });
-
-    if (!isAuthorizedSync) {
-        console.log('Ignoring unauthorized sync message');
-        return;
-    }
-
-    try {
-        // Sync video time if difference is more than 0.5 seconds
-        const timeDiff = Math.abs(videoPlayer.currentTime - data.currentTime);
-        console.log('Time difference:', timeDiff);
-        
-        if (timeDiff > 0.5) {
-            console.log('Syncing time to:', data.currentTime);
-            videoPlayer.currentTime = data.currentTime;
-        }
-
-        // Sync play/pause state
-        if (data.isPlaying && videoPlayer.paused) {
-            console.log('Playing video');
-            videoPlayer.play().catch(e => console.error('Error playing video:', e));
-        } else if (!data.isPlaying && !videoPlayer.paused) {
-            console.log('Pausing video');
-            videoPlayer.pause();
-        }
-    } catch (e) {
-        console.error("Error handling video sync data:", e);
     }
 }
 
@@ -643,7 +718,7 @@ function handleMainTrackBroadcastObject(broadcastObject) {
     currentTracks.forEach(trackId => {
         if (!allParticipants[trackId].isFake && !participantIds.includes(trackId)) {
             console.log("stream removed:" + trackId);
-            delete allParticipants[trackId];
+            delete allParticipants[trackId];u
         }
     });
 
@@ -791,22 +866,37 @@ function removeRemoteAudio(trackLabel: string) {
     }
 }
 
-let videoURL;
-
-// let lastUpdate = 0;
-
-// Get video URL from room data
-let videoUrl = '';
-
+// Update the video URL reactive statement with more detailed logging
 $: {
-    console.log('Room data:', room);
-    console.log('Selected video:', room?.expand?.selected_video);
-    if (room?.expand?.selected_video) {
-        const selectedVideo = room.expand.selected_video;
-        console.log('Selected video details:', selectedVideo);
-        videoUrl = selectedVideo.file ? `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
-        console.log('Video URL:', videoUrl);
-    }
+    console.log('Room data reactive statement triggered:', {
+        hasRoom: !!room,
+        roomData: room,
+        hasExpand: !!room?.expand,
+        hasSelectedVideo: !!room?.expand?.selected_video,
+        selectedVideo: room?.expand?.selected_video,
+        currentStoreValue: currentVideoUrl,
+        currentStoreSubscribedValue: $currentVideoUrl,
+        PUBLIC_POCKETBASE_INSTANCE
+    });
+    
+    // if (room?.expand?.selected_video) {
+    //     const selectedVideo = room.expand.selected_video;
+    //     const newVideoUrl = selectedVideo.file ? 
+    //         `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+    //     console.log('Setting video URL from room data:', {
+    //         oldUrl: $currentVideoUrl,
+    //         newUrl: newVideoUrl,
+    //         selectedVideo,
+    //         storeValue: currentVideoUrl,
+    //         PUBLIC_POCKETBASE_INSTANCE
+    //     });
+    //     currentVideoUrl.set(newVideoUrl);
+    //     console.log('Video URL updated from room data:', $currentVideoUrl);
+    // } else {
+    //     console.log('No selected video in room data, clearing URL');
+    //     currentVideoUrl.set('');
+    //     console.log('Video URL cleared from room data:', $currentVideoUrl);
+    // }
 }
 
 // Add timestamp for throttling
@@ -881,37 +971,6 @@ function handleChatMessage(messageBody) {
     });
 }
 
-// Add near other state management variables (around line 32-54)
-let syncSource = 'host'; // Can be 'host' or 'representative'
-
-// Add a new message type for sync source changes
-function updateSyncSource(newSource: 'host' | 'representative') {
-    // Only allow host to change sync source
-    if (!isHost) return;
-    
-    syncSource = newSource;
-    
-    if (webRTCAdaptor && isDataChannelOpen) {
-        const syncSourceUpdate = {
-            streamId: roomName,
-            eventType: 'sync_source_change',
-            syncSource: newSource,
-            fromHost: true
-        };
-        
-        try {
-            sendMessage(
-                syncSourceUpdate.streamId,
-                Date.now(),
-                JSON.stringify(syncSourceUpdate),
-                roomName
-            );
-        } catch (error) {
-            console.error('Error sending sync source update:', error);
-        }
-    }
-}
-
 function handlePanelToggle(event) {
     const { id } = event.detail;
     togglePanel(id);
@@ -928,6 +987,83 @@ function removeAllRemoteVideos() {
     videoElements = new Map();
 }
 
+// Example of how to use the update function
+function handleVideoSelect(event) {
+    const selectedVideo = event.detail;
+    console.log('Video selected event:', {
+        selectedVideo,
+        hasFile: !!selectedVideo?.file,
+        collectionId: selectedVideo?.collectionId,
+        id: selectedVideo?.id,
+        file: selectedVideo?.file
+    });
+    
+    if ((isHost || isRepresentative) && webRTCAdaptor && isDataChannelOpen) {
+        const newUrl = selectedVideo && selectedVideo.file ? 
+            `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+        
+        console.log('Preparing to send video URL update:', newUrl);
+        
+        // Update local state first
+        currentVideoUrl.set(newUrl);
+        if (videoPlayer) {
+            videoPlayer.src = newUrl;
+        }
+        
+        // Send update to all participants
+        const videoUrlUpdate = {
+            eventType: 'video_url_update',
+            messageBody: JSON.stringify({
+                videoUrl: newUrl,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative
+            })
+        };
+        
+        console.log('Sending video URL update message:', videoUrlUpdate);
+        try {
+            sendMessage(
+                roomName,
+                Date.now(),
+                JSON.stringify(videoUrlUpdate),
+                roomName
+            );
+        } catch (error) {
+            console.error('Error sending video URL update:', error);
+        }
+    }
+}
+
+// Add store debugging
+let unsubscribe;
+onMount(() => {
+    console.log('Setting up store subscription');
+    unsubscribe = currentVideoUrl.subscribe(value => {
+        console.log('Store value changed:', {
+            newValue: value,
+            videoPlayer: videoPlayer,
+            hasVideoPlayer: !!videoPlayer,
+            isHost,
+            isRepresentative,
+            currentTime: videoPlayer?.currentTime
+        });
+        
+        // If we have a video player and a URL, update it
+        if (videoPlayer && value) {
+            console.log('Updating video player source');
+            videoPlayer.src = value;
+            if ($playVideoStore) {
+                videoPlayer.play().catch(e => console.error('Error playing video:', e));
+            }
+        }
+    });
+
+    return () => {
+        console.log('Cleaning up store subscription');
+        if (unsubscribe) unsubscribe();
+    };
+});
+
 </script>
 
 
@@ -935,19 +1071,19 @@ function removeAllRemoteVideos() {
     <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
 <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
-    <!-- Add audio container at the top level -->
     <div id="players" class="hidden">
-        <!-- Local audio element -->
         <audio id="localAudio" autoplay playsinline></audio>
     </div>
 
-    <div class="h-full">
+    <div class="h-full overflow-y-scroll">
         <div class="flex items-center md:items-start h-full pt-6 pb-24">
             <!-- left sidebar -->
-             <div class="hidden lg:flex">
-             <LeftBar joinURL={joinURL} videoRepresentatives={representatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
-             </div>
-             <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
+            <div class="hidden lg:flex">
+                <LeftBar joinURL={joinURL} videoRepresentatives={representatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+            </div>
+            
+            <!-- Main content area -->
+            <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
                 {#if isHost || isRepresentative}
                     <div class="video-container bg-transparent h-full w-full">
                         {#if isHost}
@@ -957,51 +1093,61 @@ function removeAllRemoteVideos() {
                                     size="sm"
                                     on:click={() => updateSyncSource('host')}
                                 >
-                                    Host View
+                                    Host Ctrl
                                 </Button>
                                 <Button
                                     variant={syncSource === 'representative' ? 'default' : 'secondary'}
                                     size="sm"
                                     on:click={() => updateSyncSource('representative')}
                                 >
-                                    Rep View
+                                    Rep Ctrl
                                 </Button>
                             </div>
                         {/if}
-                        <!-- WebRTC Video -->
-                        <video
-                            id="localVideo"
-                            class="w-full h-full object-contain absolute inset-0"
-                            autoplay
-                            playsinline
-                            muted
-                            controls={false}
-                        >
-                            Your browser does not support the video element.
-                        </video>
-                        <!-- Controlling Video for Host/Rep -->
-                        {#if videoUrl}
-                            <video
-                                class="w-full h-full object-contain absolute inset-0"
-                                controls
-                                src={videoUrl}
-                                bind:this={videoPlayer}
-                                on:play={handleVideoStateChange}
-                                on:pause={handleVideoStateChange}
-                                on:seeking={handleVideoStateChange}
-                                loop
-                            >
-                                Your browser does not support the video element.
-                            </video>
+                     
+                        {#if $currentVideoUrl}
+                            <!-- Show control video only to the current controller based on syncSource -->
+                            {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+                                <video
+                                    class="w-full h-full object-contain absolute inset-0"
+                                    controls={true}
+                                    src={$currentVideoUrl}
+                                    bind:this={videoPlayer}
+                                    on:play={handleVideoStateChange}
+                                    on:pause={handleVideoStateChange}
+                                    on:seeking={handleVideoStateChange}
+                                    loop
+                                >
+                                    Your browser does not support the video element.
+                                </video>
+                            {:else}
+                                <!-- Show mirrored video to everyone else -->
+                                <video
+                                    class="w-full h-full object-contain absolute inset-0"
+                                    controls={false}
+                                    src={$currentVideoUrl}
+                                    bind:this={videoPlayer}
+                                    on:play={() => {}}
+                                    on:pause={() => {}}
+                                    on:seeking={() => {}}
+                                    loop
+                                >
+                                    Your browser does not support the video element.
+                                </video>
+                            {/if}
+                        {:else}
+                            <div class="absolute inset-0 flex items-center justify-center text-white text-xl">
+                                No video selected
+                            </div>
                         {/if}
                     </div>
                 {:else}
                     <div class="w-full h-full flex items-center justify-center">
-                        {#if videoUrl}
+                        {#if $currentVideoUrl}
                             <video
                                 class="w-full h-full object-contain"
                                 controls={false}
-                                src={videoUrl}
+                                src={$currentVideoUrl}
                                 bind:this={videoPlayer}
                             >
                                 Your browser does not support the video element.
@@ -1036,7 +1182,7 @@ function removeAllRemoteVideos() {
                     style="transform: translateX(100%)"
                 >
                     <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
-                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden ">
+                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
                             <div class="text-white text-lg font-semibold">Participants</div>
                             <Button variant="ghost" size="icon" on:click={() => togglePanel("participantsPanel")}>
                                 <X scale={1.3} color="#fff" />
@@ -1048,7 +1194,7 @@ function removeAllRemoteVideos() {
             </div>
 
             <!-- Right sidebar controls -->
-            <div class=" flex-col gap-3 h-full justify-end hidden lg:flex">
+            <div class="flex-col gap-3 h-full justify-end hidden lg:flex">
                 <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
                     <Button
                         variant="ghost"
@@ -1073,48 +1219,50 @@ function removeAllRemoteVideos() {
             </div>
         </div>
 
+        <!-- Mobile Bottom Bar -->
+        <MobileBottomBar 
+            roomIdentityName={room.title}
+            videoRepresentatives={representatives}
+            scheduleOpen={scheduleOpen}
+            userId={user?.id || ''}
+            joinURL={joinURL}
+            {isMicMuted}
+            {isCameraOff}
+            on:leaveRoom={leaveRoom}
+            on:toggleMicrophone={toggleMicrophone}
+            on:toggleCamera={toggleCamera}
+            on:togglePanel={handlePanelToggle}
+        />
+
+        <!-- MediaSelector -->
+        {#if isHost || isRepresentative}
+            <div class="h-72 ">
+                <MediaSelector 
+                    {isHost} 
+                    {isRepresentative} 
+                    {room} 
+                    on:videoSelect={handleVideoSelect}
+                />
+            </div>
+        {/if}
+
         <RepresentativeIndicator 
-            participants={meetingParticipants} 
-        />
-     
-        <RightBar 
-            isHost={isHost}
-            name={name}
-            participants={meetingParticipants.map(participant => participant.name || participant.streamId)}
-            on:toggleChat={() => togglePanel("chatPanel")} 
-            on:toggleParticipants={() => togglePanel("participantsPanel")} 
-        />
-      
+        participants={meetingParticipants} 
+    />
+
+        <!-- Desktop Bottom Bar -->
+        <div class="hidden lg:block">
+                <BottomBar 
+                    roomIdentityName={room.title} 
+                {isMicMuted} 
+                on:leaveRoom={leaveRoom} 
+                on:toggleMicrophone={toggleMicrophone} 
+                {isCameraOff} 
+                on:toggleCamera={toggleCamera} 
+            />
         </div>
     </div>
-
-    <!-- Desktop Bottom Bar -->
-    <div class="hidden lg:block">
-        <BottomBar 
-            roomIdentityName={room.title} 
-            {isMicMuted} 
-            on:leaveRoom={leaveRoom} 
-            on:toggleMicrophone={toggleMicrophone} 
-            {isCameraOff} 
-            on:toggleCamera={toggleCamera} 
-        />
-    </div>
-
-    <!-- Mobile Bottom Bar -->
-    <MobileBottomBar 
-        roomIdentityName={room.title}
-        videoRepresentatives={representatives}
-        scheduleOpen={scheduleOpen}
-        userId={user?.id || ''}
-        joinURL={joinURL}
-        {isMicMuted}
-        {isCameraOff}
-        on:leaveRoom={leaveRoom}
-        on:toggleMicrophone={toggleMicrophone}
-        on:toggleCamera={toggleCamera}
-        on:togglePanel={handlePanelToggle}
-    />
- 
+</div>
 {/if}
 
 <style>
@@ -1148,8 +1296,6 @@ function removeAllRemoteVideos() {
     position: absolute;
 }
 
-/* Keep your existing styles... */
-
 .panel {
     transition: all 0.3s ease-in-out;
 }
@@ -1173,7 +1319,6 @@ function removeAllRemoteVideos() {
     color: #000000
 }
 
-/* Remove any panel-specific transitions from here as we're handling them inline */
 @media (max-width: 1024px) {
     :global(#chatPanel), :global(#participantsPanel) {
         height: 100vh !important;

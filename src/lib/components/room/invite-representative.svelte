@@ -7,11 +7,14 @@
 	import { page } from '$app/stores';
     import { Button } from "$lib/components/ui/button";
     import { ClipboardCopy } from "lucide-svelte";
+    import * as Select from "$lib/components/ui/select";
 
     export let representatives;
+    export let locations = [];
     let showRepresentativeList = false;
     let dialogOpen = false;
     let selectedRepresentative: any = null;
+    let selectedLocation: any = null;
     let inviteConfirmed = false;
     const joinURL = $page.url.href;
 
@@ -36,9 +39,36 @@
         console.log('Representative selected:', representative);
     }
 
-    function handleInviteConfirmation() {
-        inviteConfirmed = true;
-        invitedRepresentative = selectedRepresentative.name;
+    async function handleInviteConfirmation() {
+        if (!selectedLocation) {
+            toast.error('Please select a location for the representative');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/representatives/${selectedRepresentative.id}/location`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    locationId: selectedLocation.id
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to update representative location');
+            
+            inviteConfirmed = true;
+            invitedRepresentative = selectedRepresentative.name;
+        } catch (error) {
+            console.error('Error updating representative location:', error);
+            toast.error('Failed to update representative location');
+        }
+    }
+
+    function handleLocationSelect(event: CustomEvent<string>) {
+        const locationId = event.detail;
+        selectedLocation = locations.find(l => l.id === locationId);
     }
 </script>
 
@@ -67,7 +97,7 @@
         <div class="bg-white p-6 w-full text-gray-400">
             <h2 class="text-lg font-semibold mb-4 text-[#464646]">Invite Representative</h2>
             <p class="text-sm mb-6">
-                Select a representative to generate a unique invitation link. The representative will be able to join the room with their credentials and assist in the meeting.
+                Select a representative and their location to generate a unique invitation link. The representative will be able to join the room with their credentials and assist in the meeting.
             </p>
             <div class="flex justify-end space-x-4">
                 <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={() => showRepresentativeList = false}>Cancel</button>
@@ -102,6 +132,22 @@
             </div>
             
             {#if selectedRepresentative}
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium mb-2 text-[#464646]">Select Location</h3>
+                    <Select.Root onSelectedChange={(value) => {
+                        selectedLocation = locations.find(l => l.id === value);
+                    }}>
+                        <Select.Trigger class="w-full">
+                            <Select.Value placeholder="Select a location" />
+                        </Select.Trigger>
+                        <Select.Content>
+                            {#each locations as location}
+                                <Select.Item value={location.id}>{location.name}</Select.Item>
+                            {/each}
+                        </Select.Content>
+                    </Select.Root>
+                </div>
+
                 <div class="mb-6">
                     <h3 class="text-sm font-medium mb-2 text-[#464646]">Invitation Link</h3>
                     <div class="flex items-center gap-2 bg-gray-50 p-2 rounded">

@@ -42,6 +42,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
                 throw redirect(303, '/');
             }
 
+            const locations = await locals.pb.collection('locations').getFullList({
+                filter: `owner_company = "${locals.user?.id}"`,
+                sort: '-created'
+            });
+
             const room = roomId[0];
 
             // Verify the representative has access to this room
@@ -58,7 +63,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
                 roomId: [room],
                 videoRepresentativesInfo: room.expand?.representative || [],
                 representativeName: representative.name + ' (representative)',
-                isRepresentative: true
+                isRepresentative: true,
+                locations
             };
         } catch (error) {
             console.error('Error handling representative access line 61:', error);
@@ -95,7 +101,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
             users,
             roomId: [room],
             videoRepresentativesInfo: representatives,
-            isRepresentative: false
+            isRepresentative: false,
         };
     } catch (error) {
         console.error('Error loading room line 99:', error);
@@ -212,21 +218,3 @@ export const actions: Actions = {
     }
 };
 
-export const loadLocations: PageServerLoad = async ({ params, locals }) => {
-    const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
-    
-    try {
-        // Load locations for the current user's company
-        const locations = await pb.collection('locations').getFullList({
-            filter: `owner_company = "${locals.user?.id}"`,
-            sort: '-created'
-        });
-
-        return {
-            locations
-        };
-    } catch (error) {
-        console.error('Error loading locations:', error);
-        throw error(500, 'Failed to load locations');
-    }
-};

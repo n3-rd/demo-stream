@@ -290,26 +290,7 @@
                 </div>
             
 
-            <!-- Share with Representatives -->
-            <div class="space-y-2">
-                <Label>Share with Representatives</Label>
-                <Select.Root multiple>
-                    <Select.Trigger class="w-full">
-                        <Select.Value placeholder="Select representatives" />
-                    </Select.Trigger>
-                    <Select.Content>
-                        {#each representatives as rep}
-                            <Select.Item 
-                                value={rep.id}
-                                on:click={() => handleRepresentativeChange(rep.id)}
-                            >
-                                {rep.name}
-                            </Select.Item>
-                        {/each}
-                    </Select.Content>
-                </Select.Root>
-                <input type="hidden" name="shared_with" value={selectedRepresentatives.join(',')} />
-            </div>
+  
 
             <div class="flex justify-end space-x-4">
                 <Button

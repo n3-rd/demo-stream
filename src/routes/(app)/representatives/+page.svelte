@@ -225,26 +225,26 @@
             <DialogTitle>{editingRep ? 'Edit' : 'Add'} Representative</DialogTitle>
         </DialogHeader>
         <form
-            action={editingRep ? '?/updateRepresentative' : '?/addRepresentative'}
             method="POST"
-            enctype="multipart/form-data"
+            action={editingRep ? "?/updateRepresentative" : "?/addRepresentative"}
             use:form
             use:enhance={() => {
                 return async ({ result }) => {
                     if (result.type === 'success') {
                         showAddDialog = false;
-                        invalidateAll();
-                        toast.success(editingRep ? 'Representative updated' : 'Representative added');
+                        await invalidateAll();
+                        toast.success(editingRep ? 'Representative updated successfully' : 'Representative added successfully');
                     } else {
-                        toast.error('Error occurred');
+                        toast.error(result.data?.message || 'Failed to process representative');
                     }
                 };
             }}
-            class="space-y-4"
+            enctype="multipart/form-data"
+            class="space-y-6"
         >
             {#if editingRep}
                 <input type="hidden" name="id" value={editingRep.id} />
-{/if}
+            {/if}
 
             <div class="space-y-2">
                 <Label for="name">Name</Label>

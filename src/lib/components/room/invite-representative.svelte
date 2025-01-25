@@ -7,15 +7,14 @@
 	import { page } from '$app/stores';
     import { Button } from "$lib/components/ui/button";
     import { ClipboardCopy } from "lucide-svelte";
-    import * as Select from "$lib/components/ui/select";
+    import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "$lib/components/ui/select";
+    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
 
     export let representatives;
-    export let locations = [];
     let showRepresentativeList = false;
+    let showInitialDialog = true;
     let dialogOpen = false;
     let selectedRepresentative: any = null;
-    let selectedLocation: any = null;
-    let inviteConfirmed = false;
     const joinURL = $page.url.href;
 
     let invitedRepresentative = '';
@@ -27,52 +26,25 @@
     }
 
     function showNextModal() {
+        showInitialDialog = false;
         showRepresentativeList = true;
     }
 
     function handleClose() {
         dialogOpen = false;
+        showRepresentativeList = false;
+        showInitialDialog = true;
+        selectedRepresentative = null;
     }
 
     function selectRepresentative(representative: any) {
         selectedRepresentative = representative;
         console.log('Representative selected:', representative);
     }
-
-    async function handleInviteConfirmation() {
-        if (!selectedLocation) {
-            toast.error('Please select a location for the representative');
-            return;
-        }
-
-        try {
-            const response = await fetch(`/api/representatives/${selectedRepresentative.id}/location`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    locationId: selectedLocation.id
-                })
-            });
-
-            if (!response.ok) throw new Error('Failed to update representative location');
-            
-            inviteConfirmed = true;
-            invitedRepresentative = selectedRepresentative.name;
-        } catch (error) {
-            console.error('Error updating representative location:', error);
-            toast.error('Failed to update representative location');
-        }
-    }
-
-    function handleLocationSelect(event: CustomEvent<string>) {
-        const locationId = event.detail;
-        selectedLocation = locations.find(l => l.id === locationId);
-    }
 </script>
 
-<Dialog.Root bind:open={inviteConfirmed}>
+<!-- Comment out confirmation dialog -->
+<!-- <Dialog.Root bind:open={inviteConfirmed}>
     <Dialog.Content>
         <div class="flex flex-col items-center p-6">
             <svg class="w-16 h-16 text-green-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -89,15 +61,15 @@
             </Dialog.Close>
         </div>
     </Dialog.Content>
-</Dialog.Root>
+</Dialog.Root> -->
 
-{#if !showRepresentativeList}
+{#if !showRepresentativeList && showInitialDialog}
     <!-- First Modal -->
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
         <div class="bg-white p-6 w-full text-gray-400">
             <h2 class="text-lg font-semibold mb-4 text-[#464646]">Invite Representative</h2>
             <p class="text-sm mb-6">
-                Select a representative and their location to generate a unique invitation link. The representative will be able to join the room with their credentials and assist in the meeting.
+                Select a representative to generate a unique invitation link. The representative will be able to join the room with their credentials and assist in the meeting.
             </p>
             <div class="flex justify-end space-x-4">
                 <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={() => showRepresentativeList = false}>Cancel</button>
@@ -119,7 +91,7 @@
                 >
                     <img 
                         src={representative.avatar 
-                            ? `${import.meta.env.VITE_POCKETBASE_URL}/api/files/${representative.collectionId}/${representative.id}/${representative.avatar}` 
+                            ? `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${representative.collectionId}/${representative.id}/${representative.avatar}` 
                             : `https://ui-avatars.com/api/?name=${encodeURIComponent(representative.name)}&background=random`} 
                         alt="{representative.name}'s Avatar" 
                         class="w-24 h-24 rounded-full mb-4 object-cover object-center"
@@ -132,22 +104,6 @@
             </div>
             
             {#if selectedRepresentative}
-                <div class="mb-6">
-                    <h3 class="text-sm font-medium mb-2 text-[#464646]">Select Location</h3>
-                    <Select.Root onSelectedChange={(value) => {
-                        selectedLocation = locations.find(l => l.id === value);
-                    }}>
-                        <Select.Trigger class="w-full">
-                            <Select.Value placeholder="Select a location" />
-                        </Select.Trigger>
-                        <Select.Content>
-                            {#each locations as location}
-                                <Select.Item value={location.id}>{location.name}</Select.Item>
-                            {/each}
-                        </Select.Content>
-                    </Select.Root>
-                </div>
-
                 <div class="mb-6">
                     <h3 class="text-sm font-medium mb-2 text-[#464646]">Invitation Link</h3>
                     <div class="flex items-center gap-2 bg-gray-50 p-2 rounded">
@@ -177,10 +133,7 @@
                 {#if selectedRepresentative}
                     <button 
                         class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700"
-                        on:click={() => {
-                            handleInviteConfirmation();
-                            showRepresentativeList = false;
-                        }}
+                        on:click={handleClose}
                     >
                         Done
                     </button>

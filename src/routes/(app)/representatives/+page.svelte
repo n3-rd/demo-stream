@@ -18,7 +18,7 @@
     import * as Select from "$lib/components/ui/select";
 
     export let data;
-    const { representatives, locations } = data;
+    $: ({ representatives, locations } = data);
 
     let showAddDialog = false;
     let editingRep: any = null;

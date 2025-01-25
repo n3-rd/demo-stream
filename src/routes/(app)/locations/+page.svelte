@@ -10,7 +10,7 @@
 	import { invalidateAll } from "$app/navigation";
 
     export let data;
-    let locations = data.locations;
+    $: locations = data.locations;
 
     type Location = {
         name: string;
@@ -84,18 +84,16 @@
                     <form 
                         method="POST" 
                         action="?/create"
-                        use:enhance={({ cancel }) => {
-                            return async ({ update, result }) => {
-                                await update();
-
+                        use:enhance={() => {
+                            return async ({ result }) => {
                                 if (result.type === 'success') {
-                                    toast.success('Location created successfully');
+                                    await invalidateAll();
                                     resetForm();
-                                    invalidateAll();
+                                    toast.success('Location created successfully');
                                 } else if (result.type === 'failure') {
                                     toast.error(result.data?.message ?? 'Failed to create location');
                                 } else {
-                                    toast.error('Failed to create location');
+                                    toast.error('An error occurred');
                                 }
                             };
                         }}

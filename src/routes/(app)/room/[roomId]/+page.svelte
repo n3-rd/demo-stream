@@ -15,7 +15,7 @@ import {
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
-	import { currentVideoUrl } from '$lib/callStores';
+	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
@@ -32,6 +32,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     import {
         playVideoStore
     } from '$lib/stores/playStore';
+    import PdfViewer from '$lib/components/room/PdfViewer.svelte';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -274,28 +275,31 @@ function handleWebRTCCallback(info: string, obj: any) {
                 const data = JSON.parse(obj.data);
                 let messageBody;
                 try {
-                    // First parse the outer messageBody
                     if (data.messageBody) {
                         messageBody = JSON.parse(data.messageBody);
-                        console.log('Outer messageBody:', messageBody);
                         
-                        // If it's a video URL update, parse the inner messageBody
                         if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {
                             const videoUpdateData = JSON.parse(messageBody.messageBody);
-                            console.log('Video update data:', videoUpdateData);
-                            
                             if (videoUpdateData.videoUrl) {
-                                console.log('Setting video URL to:', videoUpdateData.videoUrl);
                                 currentVideoUrl.set(videoUpdateData.videoUrl);
-                                
-                                // Update video player if it exists
+                                currentPdfUrl.set(''); // Clear PDF when video is shown
                                 if (videoPlayer) {
-                                    console.log('Updating video player source to:', videoUpdateData.videoUrl);
                                     videoPlayer.src = videoUpdateData.videoUrl;
                                     if ($playVideoStore) {
                                         videoPlayer.play().catch(e => console.error('Error playing video:', e));
                                     }
                                 }
+                            }
+                        } else if (messageBody.eventType === 'pdf_url_update' && messageBody.messageBody) {
+                            const pdfUpdateData = JSON.parse(messageBody.messageBody);
+                            if (pdfUpdateData.fileUrl) {
+                                currentPdfUrl.set(pdfUpdateData.fileUrl);
+                                currentVideoUrl.set(''); // Clear video when PDF is shown
+                            }
+                        } else if (messageBody.eventType === 'pdf_scroll_sync' && messageBody.messageBody) {
+                            const scrollData = JSON.parse(messageBody.messageBody);
+                            if (scrollData.scrollPosition !== undefined) {
+                                pdfScrollPosition.set(scrollData.scrollPosition);
                             }
                         }
                     }
@@ -1104,7 +1108,6 @@ onMount(() => {
                         {/if}
                      
                         {#if $currentVideoUrl}
-                            <!-- Show control video only to the current controller based on syncSource -->
                             {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
                                 <video
                                     class="w-full h-full object-contain absolute inset-0"
@@ -1119,23 +1122,24 @@ onMount(() => {
                                     Your browser does not support the video element.
                                 </video>
                             {:else}
-                                <!-- Show mirrored video to everyone else -->
                                 <video
                                     class="w-full h-full object-contain absolute inset-0"
                                     controls={false}
                                     src={$currentVideoUrl}
                                     bind:this={videoPlayer}
-                                    on:play={() => {}}
-                                    on:pause={() => {}}
-                                    on:seeking={() => {}}
                                     loop
                                 >
                                     Your browser does not support the video element.
                                 </video>
                             {/if}
+                        {:else if $currentPdfUrl}
+                            <PdfViewer
+                                roomName={roomName}
+                                isController={(syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+                            />
                         {:else}
                             <div class="absolute inset-0 flex items-center justify-center text-white text-xl">
-                                No video selected
+                                No media selected
                             </div>
                         {/if}
                     </div>
@@ -1150,8 +1154,13 @@ onMount(() => {
                             >
                                 Your browser does not support the video element.
                             </video>
+                        {:else if $currentPdfUrl}
+                            <PdfViewer
+                                roomName={roomName}
+                                isController={false}
+                            />
                         {:else}
-                            <div class="text-white text-xl">No video selected for this room</div>
+                            <div class="text-white text-xl">No media selected for this room</div>
                         {/if}
                     </div>
                 {/if}

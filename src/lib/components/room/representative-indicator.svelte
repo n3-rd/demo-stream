@@ -96,8 +96,35 @@ console.log("participants from representative-indicator.svelte", participants);
     }
 </script>
 
+<style>
+    .video-container {
+        position: relative;
+    }
+    
+    .video-container video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .fixed-indicator {
+        position: absolute;
+        bottom: 0;
+        right: 10px;
+        top: 37%;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        pointer-events: none;
+    }
+</style>
+
 {#if visibleRepresentatives.length > 0}
-<div class="absolute bottom-0 right-10 top-[37%] md:right-24 md:top-[37%] z-50 flex items-center gap-3 pointer-events-none">
+<div class="fixed-indicator">
     {#each visibleRepresentatives as participant}
     <div class="relative h-32 w-52 rounded-lg overflow-hidden bg-black">
         <div class="video-container h-full w-full">
@@ -115,18 +142,3 @@ console.log("participants from representative-indicator.svelte", participants);
     {/each}
 </div>
 {/if}
-
-<style>
-    .video-container {
-        position: relative;
-    }
-    
-    .video-container video {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-</style>

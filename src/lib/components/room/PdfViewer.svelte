@@ -116,6 +116,7 @@
 <div 
     class="pdf-container w-full h-full overflow-y-auto bg-white"
     bind:this={pdfContainer}
+    style="pointer-events: {isController ? 'auto' : 'none'}"
 >
     {#if !$currentPdfUrl}
         <div class="flex items-center justify-center h-full text-gray-500">

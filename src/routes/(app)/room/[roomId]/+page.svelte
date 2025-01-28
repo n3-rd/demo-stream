@@ -1086,6 +1086,9 @@ onMount(() => {
             
             <!-- Main content area -->
             <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
+                <RepresentativeIndicator 
+                participants={meetingParticipants} 
+            />
                 {#if isHost || isRepresentative}
                     <div class="video-container bg-transparent h-full w-full">
                         {#if isHost}
@@ -1253,9 +1256,7 @@ onMount(() => {
             </div>
         {/if}
 
-        <RepresentativeIndicator 
-        participants={meetingParticipants} 
-    />
+
 
         <!-- Desktop Bottom Bar -->
         <div class="hidden lg:block">

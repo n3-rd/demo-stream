@@ -301,6 +301,17 @@ function handleWebRTCCallback(info: string, obj: any) {
                             if (scrollData.scrollPosition !== undefined) {
                                 pdfScrollPosition.set(scrollData.scrollPosition);
                             }
+                        } else if (messageBody.eventType === 'pdf_zoom_sync' && messageBody.messageBody) {
+                            const zoomData = JSON.parse(messageBody.messageBody);
+                            if (zoomData.scale !== undefined) {
+                                // Update the PDF URL with the new scale parameter
+                                currentPdfUrl.update(url => {
+                                    if (!url) return url;
+                                    const urlObj = new URL(url);
+                                    urlObj.searchParams.set('scale', zoomData.scale.toString());
+                                    return urlObj.toString();
+                                });
+                            }
                         }
                     }
                     

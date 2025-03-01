@@ -33,6 +33,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
         playVideoStore
     } from '$lib/stores/playStore';
     import PdfViewer from '$lib/components/room/PdfViewer.svelte';
+	import GreetingPopup from '$lib/call/GreetingPopup.svelte';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -77,16 +78,21 @@ const isAuthenticated = !!user;
 const name = isAuthenticated ? user.company_name : "";
 const representatives = data.representatives;
 const users = data.users;
+let isAnonymousHost = false;
 let isHost = false;
 const host = $page.url.pathname.split("/").pop().split("-").pop();
+let showGreetingPopup = false;
 
 let isRepresentative = false;
 $: {
     if (room) {
         // Determine if user is host (owner of the room or anonymous host from embed)
-        const isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
+        isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
                                $page.url.searchParams.get('anonymous') === 'true';
         isHost = user?.id === room.owner_company || isAnonymousHost;
+        
+        // Set showGreetingPopup based on isAnonymousHost
+        showGreetingPopup = isAnonymousHost;
         
         // Determine if user is a representative (check both URL param and room data)
         const urlRepName = $page.url.searchParams.get('repid');
@@ -144,7 +150,12 @@ onMount(() => {
         // If this is a representative, ensure video is enabled
         if (representativeName) {
             mediaConstraints.video = true;
-            mediaConstraints.audio = true;
+            // Keep the audio constraints object structure
+            mediaConstraints.audio = {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            };
         }
 
         initializeWebRTC();
@@ -731,7 +742,7 @@ function handleMainTrackBroadcastObject(broadcastObject) {
     currentTracks.forEach(trackId => {
         if (!allParticipants[trackId].isFake && !participantIds.includes(trackId)) {
             console.log("stream removed:" + trackId);
-            delete allParticipants[trackId];u
+            delete allParticipants[trackId];
         }
     });
 
@@ -865,7 +876,7 @@ function createRemoteAudio(trackLabel: string) {
     const audio = document.createElement("audio");
     audio.id = "remoteAudio" + trackLabel;
     audio.autoplay = true;
-    audio.playsinline = true;
+    audio.setAttribute('playsinline', 'true');  // Use setAttribute instead of direct property
     audio.controls = false;  // Hide controls since we manage it through UI
 
     player.appendChild(audio);
@@ -1077,211 +1088,227 @@ onMount(() => {
     };
 });
 
+
+function handleGreetingDismissed() {
+    showGreetingPopup = false;
+}
+
+// Add the missing handleNewParticipant function
+function handleNewParticipant(participant) {
+    console.log("New participant joined:", participant);
+    // You can add additional logic here if needed
+    // For example, updating UI or sending notifications
+}
+
 </script>
 
 
 {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data.representativeName}
     <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
-<div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
-    <div id="players" class="hidden">
-        <audio id="localAudio" autoplay playsinline></audio>
-    </div>
+    {#if showGreetingPopup}
+        <GreetingPopup name={data.representativeName} host={isHost} on:dismissed={handleGreetingDismissed} />
+    {/if}
+    
+    <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
+        <div id="players" class="hidden">
+            <audio id="localAudio" autoplay playsinline></audio>
+        </div>
 
-    <div class="h-full overflow-y-scroll">
-        <div class="flex items-center md:items-start h-full pt-6 pb-24">
-            <!-- left sidebar -->
-            <div class="hidden lg:flex">
-                <LeftBar joinURL={joinURL} videoRepresentatives={representatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
-            </div>
-            
-            <!-- Main content area -->
-            <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
-                <RepresentativeIndicator 
-                participants={meetingParticipants} 
-            />
-                {#if isHost || isRepresentative}
-                    <div class="video-container bg-transparent h-full w-full">
-                        {#if isHost}
-                            <div class="absolute top-4 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
-                                <Button
-                                    variant={syncSource === 'host' ? 'default' : 'secondary'}
-                                    size="sm"
-                                    on:click={() => updateSyncSource('host')}
-                                >
-                                    Host Ctrl
-                                </Button>
-                                <Button
-                                    variant={syncSource === 'representative' ? 'default' : 'secondary'}
-                                    size="sm"
-                                    on:click={() => updateSyncSource('representative')}
-                                >
-                                    Rep Ctrl
-                                </Button>
-                            </div>
-                        {/if}
-                     
-                        {#if $currentVideoUrl}
-                            {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
-                                <video
-                                    class="w-full h-full object-contain absolute inset-0"
-                                    controls={true}
-                                    src={$currentVideoUrl}
-                                    bind:this={videoPlayer}
-                                    on:play={handleVideoStateChange}
-                                    on:pause={handleVideoStateChange}
-                                    on:seeking={handleVideoStateChange}
-                                    loop
-                                >
-                                    Your browser does not support the video element.
-                                </video>
+        <div class="h-full overflow-y-scroll">
+            <div class="flex items-center md:items-start h-full pt-6 pb-24">
+                <!-- left sidebar -->
+                <div class="hidden lg:flex">
+                    <LeftBar joinURL={joinURL} videoRepresentatives={representatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+                </div>
+                
+                <!-- Main content area -->
+                <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
+                    <RepresentativeIndicator 
+                    participants={meetingParticipants} 
+                />
+                    {#if isHost || isRepresentative}
+                        <div class="video-container bg-transparent h-full w-full">
+                            {#if isHost}
+                                <div class="absolute top-4 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
+                                    <Button
+                                        variant={syncSource === 'host' ? 'default' : 'secondary'}
+                                        size="sm"
+                                        on:click={() => updateSyncSource('host')}
+                                    >
+                                        Host Ctrl
+                                    </Button>
+                                    <Button
+                                        variant={syncSource === 'representative' ? 'default' : 'secondary'}
+                                        size="sm"
+                                        on:click={() => updateSyncSource('representative')}
+                                    >
+                                        Rep Ctrl
+                                    </Button>
+                                </div>
+                            {/if}
+                         
+                            {#if $currentVideoUrl}
+                                {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+                                    <video
+                                        class="w-full h-full object-contain absolute inset-0"
+                                        controls={true}
+                                        src={$currentVideoUrl}
+                                        bind:this={videoPlayer}
+                                        on:play={handleVideoStateChange}
+                                        on:pause={handleVideoStateChange}
+                                        on:seeking={handleVideoStateChange}
+                                        loop
+                                    >
+                                        Your browser does not support the video element.
+                                    </video>
+                                {:else}
+                                    <video
+                                        class="w-full h-full object-contain absolute inset-0"
+                                        controls={false}
+                                        src={$currentVideoUrl}
+                                        bind:this={videoPlayer}
+                                        loop
+                                    >
+                                        Your browser does not support the video element.
+                                    </video>
+                                {/if}
+                            {:else if $currentPdfUrl}
+                                <PdfViewer
+                                    roomName={roomName}
+                                    isController={(syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+                                />
                             {:else}
+                                <div class="absolute inset-0 flex items-center justify-center text-white text-xl">
+                                    No media selected
+                                </div>
+                            {/if}
+                        </div>
+                    {:else}
+                        <div class="w-full h-full flex items-center justify-center">
+                            {#if $currentVideoUrl}
                                 <video
-                                    class="w-full h-full object-contain absolute inset-0"
+                                    class="w-full h-full object-contain"
                                     controls={false}
                                     src={$currentVideoUrl}
                                     bind:this={videoPlayer}
-                                    loop
                                 >
                                     Your browser does not support the video element.
                                 </video>
+                            {:else if $currentPdfUrl}
+                                <PdfViewer
+                                    roomName={roomName}
+                                    isController={false}
+                                />
+                            {:else}
+                                <div class="text-white text-xl">No media selected for this room</div>
                             {/if}
-                        {:else if $currentPdfUrl}
-                            <PdfViewer
-                                roomName={roomName}
-                                isController={(syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
-                            />
-                        {:else}
-                            <div class="absolute inset-0 flex items-center justify-center text-white text-xl">
-                                No media selected
+                        </div>
+                    {/if}
+
+                    <!-- Chat Panel -->
+                    <div 
+                        class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
+                        id="chatPanel"
+                        style="transform: translateX(100%)"
+                    >
+                        <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
+                            <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
+                                <div class="text-white text-lg font-semibold">Chat message</div>
+                                <Button variant="ghost" size="icon" on:click={() => togglePanel("chatPanel")}>
+                                    <X scale={1.3} color="#fff" />
+                                </Button>
                             </div>
-                        {/if}
-                    </div>
-                {:else}
-                    <div class="w-full h-full flex items-center justify-center">
-                        {#if $currentVideoUrl}
-                            <video
-                                class="w-full h-full object-contain"
-                                controls={false}
-                                src={$currentVideoUrl}
-                                bind:this={videoPlayer}
-                            >
-                                Your browser does not support the video element.
-                            </video>
-                        {:else if $currentPdfUrl}
-                            <PdfViewer
-                                roomName={roomName}
-                                isController={false}
-                            />
-                        {:else}
-                            <div class="text-white text-xl">No media selected for this room</div>
-                        {/if}
-                    </div>
-                {/if}
-
-                <!-- Chat Panel -->
-                <div 
-                    class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
-                    id="chatPanel"
-                    style="transform: translateX(100%)"
-                >
-                    <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
-                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
-                            <div class="text-white text-lg font-semibold">Chat message</div>
-                            <Button variant="ghost" size="icon" on:click={() => togglePanel("chatPanel")}>
-                                <X scale={1.3} color="#fff" />
-                            </Button>
+                            <Chat roomId={roomName} name={name} />
                         </div>
-                        <Chat roomId={roomName} name={name} />
+                    </div>
+
+                    <!-- Participants Panel -->
+                    <div 
+                        class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
+                        id="participantsPanel"
+                        style="transform: translateX(100%)"
+                    >
+                        <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
+                            <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
+                                <div class="text-white text-lg font-semibold">Participants</div>
+                                <Button variant="ghost" size="icon" on:click={() => togglePanel("participantsPanel")}>
+                                    <X scale={1.3} color="#fff" />
+                                </Button>
+                            </div>
+                            <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} />
+                        </div>
                     </div>
                 </div>
 
-                <!-- Participants Panel -->
-                <div 
-                    class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
-                    id="participantsPanel"
-                    style="transform: translateX(100%)"
-                >
-                    <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
-                        <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
-                            <div class="text-white text-lg font-semibold">Participants</div>
-                            <Button variant="ghost" size="icon" on:click={() => togglePanel("participantsPanel")}>
-                                <X scale={1.3} color="#fff" />
-                            </Button>
-                        </div>
-                        <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} />
+                <!-- Right sidebar controls -->
+                <div class="flex-col gap-3 h-full justify-end hidden lg:flex">
+                    <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="w-full hover:bg-red-700"
+                            on:click={() => togglePanel("chatPanel")}
+                        >
+                            <MessageSquareDashed scale={1.3} color="#fff" />
+                        </Button>
+                    </div>
+
+                    <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="w-full hover:bg-red-700"
+                            on:click={() => togglePanel("participantsPanel")}
+                        >
+                            <UsersRound scale={1.3} color="#fff" />
+                        </Button>
                     </div>
                 </div>
             </div>
 
-            <!-- Right sidebar controls -->
-            <div class="flex-col gap-3 h-full justify-end hidden lg:flex">
-                <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        class="w-full hover:bg-red-700"
-                        on:click={() => togglePanel("chatPanel")}
-                    >
-                        <MessageSquareDashed scale={1.3} color="#fff" />
-                    </Button>
+            <!-- Mobile Bottom Bar -->
+            <MobileBottomBar 
+                roomIdentityName={room.title}
+                videoRepresentatives={representatives}
+                scheduleOpen={scheduleOpen}
+                userId={user?.id || ''}
+                joinURL={joinURL}
+                {isMicMuted}
+                {isCameraOff}
+                on:leaveRoom={leaveRoom}
+                on:toggleMicrophone={toggleMicrophone}
+                on:toggleCamera={toggleCamera}
+                on:togglePanel={handlePanelToggle}
+            />
+
+            <!-- MediaSelector -->
+            {#if isHost || isRepresentative}
+                <div class="h-72 ">
+                    <MediaSelector 
+                        {isHost} 
+                        {isRepresentative} 
+                        {room} 
+                        on:videoSelect={handleVideoSelect}
+                    />
                 </div>
+            {/if}
 
-                <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        class="w-full hover:bg-red-700"
-                        on:click={() => togglePanel("participantsPanel")}
-                    >
-                        <UsersRound scale={1.3} color="#fff" />
-                    </Button>
-                </div>
-            </div>
-        </div>
 
-        <!-- Mobile Bottom Bar -->
-        <MobileBottomBar 
-            roomIdentityName={room.title}
-            videoRepresentatives={representatives}
-            scheduleOpen={scheduleOpen}
-            userId={user?.id || ''}
-            joinURL={joinURL}
-            {isMicMuted}
-            {isCameraOff}
-            on:leaveRoom={leaveRoom}
-            on:toggleMicrophone={toggleMicrophone}
-            on:toggleCamera={toggleCamera}
-            on:togglePanel={handlePanelToggle}
-        />
 
-        <!-- MediaSelector -->
-        {#if isHost || isRepresentative}
-            <div class="h-72 ">
-                <MediaSelector 
-                    {isHost} 
-                    {isRepresentative} 
-                    {room} 
-                    on:videoSelect={handleVideoSelect}
+            <!-- Desktop Bottom Bar -->
+            <div class="hidden lg:block">
+                    <BottomBar 
+                        roomIdentityName={room.title} 
+                    {isMicMuted} 
+                    on:leaveRoom={leaveRoom} 
+                    on:toggleMicrophone={toggleMicrophone} 
+                    {isCameraOff} 
+                    on:toggleCamera={toggleCamera} 
                 />
             </div>
-        {/if}
-
-
-
-        <!-- Desktop Bottom Bar -->
-        <div class="hidden lg:block">
-                <BottomBar 
-                    roomIdentityName={room.title} 
-                {isMicMuted} 
-                on:leaveRoom={leaveRoom} 
-                on:toggleMicrophone={toggleMicrophone} 
-                {isCameraOff} 
-                on:toggleCamera={toggleCamera} 
-            />
         </div>
     </div>
-</div>
 {/if}
 
 <style>

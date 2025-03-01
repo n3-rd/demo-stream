@@ -104,6 +104,9 @@ importers:
       tailwind-variants:
         specifier: ^0.2.1
         version: 0.2.1(tailwindcss@3.4.13)
+      tourguidejs:
+        specifier: ^1.1.5
+        version: 1.1.5
       uid:
         specifier: ^2.0.2
         version: 2.0.2
@@ -2649,6 +2652,10 @@ packages:
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
     engines: {node: '>=6'}
+
+  tourguidejs@1.1.5:
+    resolution: {integrity: sha512-m5Un1NDif5N9oFaDHZpAIkwL0aIN5DlfuiMULxysxW2D6VgkKEDD1xu3hfR5QQY0emMgNCwupdsPHHziK8Xevg==}
+    engines: {node: '>=6.0.0', npm: '>=3.0.0'}
 
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
@@ -5784,6 +5791,8 @@ snapshots:
   toposort@2.0.2: {}
 
   totalist@3.0.1: {}
+
+  tourguidejs@1.1.5: {}
 
   tr46@0.0.3: {}
 

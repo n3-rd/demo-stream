@@ -4,7 +4,7 @@
     export let videoRepresentatives;
     export let userId;
     import { Button } from "$lib/components/ui/button";
-    import { ShareIcon } from "lucide-svelte";
+    import { MessageCircleQuestion, ShareIcon } from "lucide-svelte";
     import * as Dialog from "$lib/components/ui/dialog";
 
     import Share from "$lib/components/room/share.svelte";
@@ -26,16 +26,26 @@
                 <ShareIcon scale={1.3} color="#fff" />
             </Button>
         </Dialog.Trigger>
+        
         <Dialog.Content class="p-4 rounded-lg shadow-lg">
             <Share {joinURL} scale={1.3} color="#fff" />
         </Dialog.Content>
     </Dialog.Root>
+    <Button
+    variant="ghost"
+    size="icon"
+    class="w-full hover:bg-red-700"
+    id="virtual-assistant"
+    >
+        <MessageCircleQuestion scale={1.3} color="#fff" />
+    </Button>
     <Dialog.Root>
         <Dialog.Trigger>
             <Button
                 variant="ghost"
                 size="icon"
                 class="w-full hover:bg-red-700"
+                id="invite-representative"
             >
                 <img
                     src="/icons/icon-representative.svg"

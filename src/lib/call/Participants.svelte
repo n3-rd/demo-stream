@@ -53,7 +53,9 @@ import Share from '$lib/components/room/share.svelte';
   <Dialog.Root>
     <Dialog.Trigger>
         
-  <Button class="bg-[#9e9ba0] text-white mx-auto flex flex-row gap-2">
+  <Button class="bg-[#9e9ba0] text-white mx-auto flex flex-row gap-2" 
+  id="invite-people-button"
+  >
     <UserRoundPlus size={16} class="" />
       Invite People
   </Button>

@@ -162,6 +162,21 @@ onMount(() => {
         
         // Always initialize as host control
         syncSource = 'host';
+        
+        // Open participants panel by default after a short delay to ensure DOM is ready
+        setTimeout(() => {
+            const participantsPanel = document.getElementById("participantsPanel");
+            if (participantsPanel) {
+                const isMobile = window.innerWidth < 1024;
+                if (isMobile) {
+                    participantsPanel.style.width = "100vw";
+                } else {
+                    participantsPanel.style.width = "30rem";
+                }
+                participantsPanel.style.transform = "translateX(0%)";
+                console.log('Participants panel opened by default');
+            }
+        }, 500);
     }
     
     return () => {
@@ -1260,9 +1275,9 @@ function handleNewParticipant(participant) {
 
                     <!-- Participants Panel -->
                     <div 
-                        class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
+                        class="w-30rem lg:w-30rem z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
                         id="participantsPanel"
-                        style="transform: translateX(100%)"
+                        style="transform: translateX(0%)"
                     >
                         <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
                             <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">

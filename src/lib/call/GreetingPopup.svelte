@@ -53,6 +53,12 @@
       title: "Participants",
       content: "Click on the 'Participants' button to view a list of everyone currently in the demo room. You can also use this feature to invite others to join the session.",
     },
+    {
+      selector: "#invite-people-button",
+      step: 8,
+      title: "Invite People",
+      content: "Invite people to the demo room via email, SMS, or by copying and sharing the link. Choose your preferred method to ensure everyone can easily join the session.",
+    },
   ]
 
   let isOpen = true;

@@ -12,7 +12,7 @@
  <div
  class="absolute inset-x-0 bottom-0 h-16 bg-[#666669] w-full flex items-center justify-between px-14"
 >
- <div class="room-name text-white">
+ <div class="room-name text-white font-extrabold ">
      {roomIdentityName}
  </div>
  <div class="controls flex items-center gap-3">
@@ -40,14 +40,7 @@
              <CameraIcon color="#fff" size={24} class="hover:text-black" />
          {/if}
      </button>
-     <Button
-    variant="ghost"
-    size="icon"
-    class="h-12 w-12"
-    on:click={() => dispatch('toggleScreenShare')}
->
-    <Monitor class={isScreenSharing ? "text-red-500" : ""} />
-</Button>
+
      <button
          class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
      >

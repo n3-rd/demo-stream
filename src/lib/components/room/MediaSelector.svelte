@@ -143,14 +143,15 @@
     });
 </script>
 
-<div class="bg-[#47484b] p-4 rounded-lg pb-24">
+<div class="bg-[#9D9D9F] p-4 rounded-lg pb-24">
     {#if showHostContent && hostContent.length > 0}
         <div class="mb-8">
             <h2 class="text-white text-lg font-semibold mb-4">Host Content</h2>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {#each hostContent as item}
                     {@const fileType = getFileType(item.file)}
-                    <button
+                    <div class="flex flex-col gap-3">
+                        <button
                         class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
                         on:click={() => handleMediaSelect(item)}
                     >
@@ -161,20 +162,27 @@
                                     alt={item.title}
                                     class="w-full h-full object-cover"
                                 />
+
+                                <div class="absolute inset-0 flex items-center justify-center shadow-lg">
+                                    <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
+                                </div>
                             {:else}
                                 <div class="w-full h-full flex items-center justify-center text-white">
                                     Video
                                 </div>
                             {/if}
                         {:else if fileType === 'pdf'}
-                            <div class="w-full h-full flex items-center justify-center bg-red-600 text-white">
-                                PDF
+                            <div class="w-full h-full flex items-center justify-center bg-white text-white">
+                                <img src="/icons/pdf.svg" alt="PDF" class="w-[90px] h-[90px]" />
                             </div>
                         {/if}
-                        <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2">
-                            <p class="text-white text-sm truncate">{item.title}</p>
-                        </div>
+                        
                     </button>
+                        
+                        <p class="text-white text-sm truncate font-semibold">{item.title}</p>
+                        
+                    </div>
+                  
                 {/each}
             </div>
         </div>

@@ -23,7 +23,7 @@
             class="w-full hover:bg-red-700"
             id="chat-button"
         >
-            <MessageSquareDashed scale={1.3} color="#fff" />
+            <img src="/icons/icon-chat.svg" alt="Chat" class="w-5 h-5" />
         </Button>
         </Sheet.Trigger>
         <Sheet.Content>
@@ -50,7 +50,7 @@
             id="participants-button"
             on:click={() => dispatch("toggleParticipants")}
         >
-            <UsersRound scale={1.3} color="#fff" />
+            <img src="/icons/icon-participants.svg" alt="Participants" class="w-5 h-5" />
         </Button>
         </Sheet.Trigger>
         <Sheet.Content class="bg-[#666669]">

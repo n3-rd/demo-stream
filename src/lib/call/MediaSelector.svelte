@@ -1,1 +1,0 @@
-<div class="h-72 min-w-full bg-black"></div>

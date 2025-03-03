@@ -21,6 +21,7 @@
             variant="ghost"
             size="icon"
             class="w-full hover:bg-red-700"
+            id="chat-button"
         >
             <MessageSquareDashed scale={1.3} color="#fff" />
         </Button>
@@ -46,6 +47,7 @@
             variant="ghost"
             size="icon"
             class="w-full hover:bg-red-700"
+            id="participants-button"
             on:click={() => dispatch("toggleParticipants")}
         >
             <UsersRound scale={1.3} color="#fff" />

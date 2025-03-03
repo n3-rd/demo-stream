@@ -59,6 +59,7 @@
           
                 <button
                     class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-14 hover:bg-white hover:text-black"
+                    id="chat-button"
                     on:click={() => togglePanel("chatPanel")}
                 >
                     <MessageSquareDashed color="#fff" size={24} class="hover:text-black" />
@@ -89,6 +90,7 @@
                             variant="ghost"
                             size="icon"
                             class="w-full "
+                            id="participants-button"
                             on:click={() => togglePanel("participantsPanel")}
                         >
                             <UsersRound scale={1.3} color="#fff" />

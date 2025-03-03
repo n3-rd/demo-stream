@@ -12,6 +12,7 @@
 	import Embed from '$lib/components/room/embed.svelte';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
 
   interface Room {
     id: string;
@@ -38,10 +39,11 @@
     hostContent: ContentItem[];
     representativeContent: ContentItem[];
     contentLibrary: ContentItem[];
+    user?: any;
   };
   
   let loading = true;
-  let { room, hostContent, representativeContent, contentLibrary } = data;
+  let { room, hostContent, representativeContent, contentLibrary, user } = data;
 
   console.log(data)
 
@@ -64,6 +66,12 @@
   }
 
   onMount(() => {
+    if (browser && !user) {
+      console.log('User not authenticated, redirecting to login page');
+      goto('/login');
+      return;
+    }
+    
     loading = false;
   });
 </script>

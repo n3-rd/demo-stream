@@ -59,51 +59,82 @@
     };
 
     const toggleChat = () => (chatIsOpen = !chatIsOpen);
+    
+    function getInitials(name: string): string {
+        if (!name) return 'UN';
+        const parts = name.split(/[_\s-]+/);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
 </script>
 
+<div class="flex flex-col w-full h-full bg-[#202124] rounded-md text-white font-['Poppins']">
+    <!-- Chat Header -->
+    <div class="w-full h-12 bg-[#202124] rounded-t-md flex items-center px-4 border-b border-[#47484B]">
+        <h2 class="font-medium text-base leading-6 text-white">Chat</h2>
+    </div>
 
-        <div class="flex flex-col w-full h-full bg-[#47484b]">
-            <div class="flex-grow flex flex-col gap-4 p-4 overflow-y-auto">
-                {#each messages as message}
-                    <div 
-                        transition:slide={{ easing: quintOut }} 
-                        class="flex gap-2 {message.name === (name || $anonymousUser) ? 'flex-row-reverse' : 'flex-row'}"
-                    >
-                        <img 
-                            class="h-12 w-12 rounded-full" 
-                            src={`https://ui-avatars.com/api/?name=${message.name}`} 
-                            alt="avatar"
-                        />
-                        <div class="flex flex-col flex-1 gap-1">
-                            <div 
-                                class="flex flex-col rounded-xl text-sm {
-                                    message.name === (name || $anonymousUser) 
-                                        ? 'bg-[#d8e1ed] text-black' 
-                                        : 'bg-[#9d9d9f] text-white'
-                                } flex-1 px-2 py-2"
-                            >
-                                <div class="text-lg font-medium py-3">{message.name}</div>
-                                <div>
-                                    <p>{message.text}</p>
-                                </div>
-                            </div>
+    <!-- Messages Container -->
+    <div class="flex-grow flex flex-col gap-4 p-4 overflow-y-auto">
+        <!-- AI Welcome Message -->
+        {#if messages.length === 0}
+            <div class="h-full flex items-center justify-center">
+                <p class="text-sm text-gray-400">No messages yet</p>
+            </div>
+        {/if}
+
+        <!-- Message List -->
+        {#each messages as message}
+            <div 
+                transition:slide={{ easing: quintOut }} 
+                class="flex gap-3 mb-3"
+            >
+                <!-- User or participant Avatar -->
+                {#if message.name === (name || $anonymousUser)}
+                    <!-- User Message (right aligned) -->
+                    <div class="flex gap-3 w-full justify-end">
+                        <div class="max-w-[80%] bg-white text-black rounded-lg p-3 text-sm">
+                            <p>{message.text}</p>
+                        </div>
+                        <div class="w-[40px] h-[40px] rounded-full bg-[#47484B] flex items-center justify-center">
+                            <span class="text-white font-medium">{getInitials(message.name)}</span>
                         </div>
                     </div>
-                {/each}
+                {:else}
+                    <!-- participant Message (left aligned) -->
+                    <div class="flex gap-3 w-full">
+                        <div class="w-[40px] h-[40px] rounded-full bg-[#47484B] flex items-center justify-center">
+                            <span class="text-white font-medium">{getInitials(message.name)}</span>
+                        </div>
+                        <div class="max-w-[80%] bg-[#7b7b7b] text-white rounded-lg p-3 text-sm">
+                            <p>{message.text}</p>
+                            {#if message.link}
+                                <a href={message.link} class="text-blue-400 underline mt-2 block">{message.link}</a>
+                            {/if}
+                        </div>
+                    </div>
+                {/if}
             </div>
-            <form on:submit|preventDefault={sendNewMessage} class="flex justify-between border-t border-gray-300 py-4 w-full px-2">
-                <input 
-                    type="text" 
-                    placeholder="Type a message..." 
-                    bind:value={newText} 
-                    class="flex-grow border-none py-2 px-1 lg:px-4 w-full" 
-                />
-                <Button type="submit" class="bg-primary border-none cursor-pointer">
-                    <SendHorizontal class="w-6 h-6" />
-                </Button>
-            </form>
-        </div>
+        {/each}
+    </div>
 
+    <!-- Message Input -->
+    <div class="p-4 border-t border-[#47484B]">
+        <form on:submit|preventDefault={sendNewMessage} class="flex items-center gap-2 bg-[#47484B] rounded-full px-4 py-2">
+            <input 
+                type="text" 
+                placeholder="Send a message" 
+                bind:value={newText} 
+                class="flex-grow bg-transparent border-none outline-none text-white placeholder-gray-400" 
+            />
+            <button type="submit" class="w-8 h-8 flex items-center justify-center text-white">
+                <SendHorizontal size={18} />
+            </button>
+        </form>
+    </div>
+</div>
 
 <style>
     .shadow-pulse-red {

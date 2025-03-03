@@ -1293,18 +1293,7 @@ function handleNewParticipant(participant) {
 
                 <!-- Right sidebar controls -->
                 <div class="flex-col gap-3 h-full justify-end hidden lg:flex">
-                    <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            class="w-full hover:bg-red-700"
-                            id="chat-button"
-                            on:click={() => togglePanel("chatPanel")}
-                        >
-                            <MessageSquareDashed scale={1.3} color="#fff" />
-                        </Button>
-                    </div>
-
+                 
                     <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
                         <Button
                             variant="ghost"
@@ -1313,9 +1302,23 @@ function handleNewParticipant(participant) {
                             id="participants-button"
                             on:click={() => togglePanel("participantsPanel")}
                         >
-                            <UsersRound scale={1.3} color="#fff" />
+                            <img src="/icons/icon-participants.svg" alt="Participants" class="w-11 h-11" />
                         </Button>
                     </div>
+
+                    <div class="w-14 h-auto bg-red flex flex-col gap-1 justify-end items-center">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="w-full hover:bg-red-700"
+                            id="chat-button"
+                            on:click={() => togglePanel("chatPanel")}
+                        >
+                        <img src="/icons/icon-chat.svg" alt="Chat" class="w-9 h-9" />
+                        </Button>
+                        <p class="text-white text-sm">Chat</p>
+                    </div>
+
                 </div>
             </div>
 

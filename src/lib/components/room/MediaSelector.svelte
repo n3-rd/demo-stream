@@ -7,6 +7,7 @@
     export let isHost: boolean;
     export let isRepresentative: boolean;
     export let room: any;
+    export let roomName: string = '';
 
     const dispatch = createEventDispatcher();
 
@@ -40,7 +41,13 @@
     $: showRepContent = isRepresentative;
 
     function handleMediaSelect(item: any) {
-        console.log('Media selected:', item);
+        console.log('Media selected:', {
+            item,
+            isHost,
+            isRepresentative,
+            roomName,
+            hasRoomId: !!room?.id
+        });
         
         // Clear both stores first
         currentVideoUrl.set('');
@@ -50,15 +57,31 @@
         const isVideo = item.file.endsWith('.mp4') || item.file.endsWith('.webm');
         const isPdf = item.file.endsWith('.pdf');
         
+        console.log('File details:', {
+            fileUrl,
+            isVideo,
+            isPdf,
+            fileName: item.file
+        });
+        
         if (isVideo) {
+            console.log('Setting video URL:', fileUrl);
+            // Set the video URL directly in the store
+            currentVideoUrl.set(fileUrl);
+            // Also dispatch the event for backward compatibility
             dispatch('videoSelect', item);
+            
+            console.log('Broadcasting video update');
             broadcastMediaUpdate('video_url_update', {
                 videoUrl: fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative
             });
         } else if (isPdf) {
+            console.log('Setting PDF URL:', fileUrl);
             currentPdfUrl.set(fileUrl);
+            
+            console.log('Broadcasting PDF update');
             broadcastMediaUpdate('pdf_url_update', {
                 fileUrl: fileUrl,
                 fromHost: isHost,
@@ -79,14 +102,18 @@
             console.log('Broadcasting media update:', {
                 eventType,
                 messageData,
-                roomId: room.id
+                roomId: room.id,
+                roomName
             });
             
+            // Use roomName if available, otherwise fall back to room.id
+            const targetRoom = roomName || room.id;
+            
             sendMessage(
-                room.id,
+                targetRoom,
                 Date.now(),
                 JSON.stringify(message),
-                room.id
+                targetRoom
             );
         } catch (error) {
             console.error('Error broadcasting media update:', error);

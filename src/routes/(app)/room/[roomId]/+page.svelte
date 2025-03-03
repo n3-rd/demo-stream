@@ -283,18 +283,28 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
         case "data_received":
             try {
+                console.log('Raw data received:', obj.data);
                 const data = JSON.parse(obj.data);
+                console.log('Parsed data:', data);
+                
                 let messageBody;
                 try {
                     if (data.messageBody) {
+                        console.log('Attempting to parse message body:', data.messageBody);
                         messageBody = JSON.parse(data.messageBody);
+                        console.log('Successfully parsed message body:', messageBody);
                         
                         if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {
+                            console.log('Processing video_url_update event:', messageBody);
                             const videoUpdateData = JSON.parse(messageBody.messageBody);
+                            console.log('Video update data:', videoUpdateData);
+                            
                             if (videoUpdateData.videoUrl) {
+                                console.log('Setting video URL to:', videoUpdateData.videoUrl);
                                 currentVideoUrl.set(videoUpdateData.videoUrl);
                                 currentPdfUrl.set(''); // Clear PDF when video is shown
                                 if (videoPlayer) {
+                                    console.log('Updating video player source');
                                     videoPlayer.src = videoUpdateData.videoUrl;
                                     if ($playVideoStore) {
                                         videoPlayer.play().catch(e => console.error('Error playing video:', e));
@@ -1019,19 +1029,33 @@ function handleVideoSelect(event) {
         hasFile: !!selectedVideo?.file,
         collectionId: selectedVideo?.collectionId,
         id: selectedVideo?.id,
-        file: selectedVideo?.file
+        file: selectedVideo?.file,
+        roomName,
+        isDataChannelOpen
     });
     
+    // Check if we can send updates
     if ((isHost || isRepresentative) && webRTCAdaptor && isDataChannelOpen) {
         const newUrl = selectedVideo && selectedVideo.file ? 
             `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
         
-        console.log('Preparing to send video URL update:', newUrl);
+        console.log('Preparing to send video URL update:', {
+            newUrl,
+            roomName,
+            isHost,
+            isRepresentative
+        });
         
         // Update local state first
         currentVideoUrl.set(newUrl);
+        currentPdfUrl.set(''); // Ensure PDF is cleared
+        
         if (videoPlayer) {
+            console.log('Updating video player source');
             videoPlayer.src = newUrl;
+            if ($playVideoStore) {
+                videoPlayer.play().catch(e => console.error('Error playing video:', e));
+            }
         }
         
         // Send update to all participants
@@ -1044,7 +1068,11 @@ function handleVideoSelect(event) {
             })
         };
         
-        console.log('Sending video URL update message:', videoUrlUpdate);
+        console.log('Sending video URL update message:', {
+            videoUrlUpdate,
+            roomName
+        });
+        
         try {
             sendMessage(
                 roomName,
@@ -1055,6 +1083,13 @@ function handleVideoSelect(event) {
         } catch (error) {
             console.error('Error sending video URL update:', error);
         }
+    } else {
+        console.warn('Cannot send video update - conditions not met:', {
+            isHost,
+            isRepresentative,
+            hasWebRTCAdaptor: !!webRTCAdaptor,
+            isDataChannelOpen
+        });
     }
 }
 
@@ -1291,6 +1326,7 @@ function handleNewParticipant(participant) {
                         {isHost} 
                         {isRepresentative} 
                         {room} 
+                        {roomName}
                         on:videoSelect={handleVideoSelect}
                     />
                 </div>

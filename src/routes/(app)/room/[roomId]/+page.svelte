@@ -1248,6 +1248,7 @@ function handleNewParticipant(participant) {
                             variant="ghost"
                             size="icon"
                             class="w-full hover:bg-red-700"
+                            id="chat-button"
                             on:click={() => togglePanel("chatPanel")}
                         >
                             <MessageSquareDashed scale={1.3} color="#fff" />
@@ -1259,6 +1260,7 @@ function handleNewParticipant(participant) {
                             variant="ghost"
                             size="icon"
                             class="w-full hover:bg-red-700"
+                            id="participants-button"
                             on:click={() => togglePanel("participantsPanel")}
                         >
                             <UsersRound scale={1.3} color="#fff" />

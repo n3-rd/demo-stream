@@ -66,6 +66,7 @@
                 variant="ghost"
                 size="icon"
                 class="w-full hover:bg-red-700"
+                id="schedule-meeting"
             >
                 <img
                     src="/icons/icon-calendar.svg"
@@ -92,6 +93,7 @@
                 variant="ghost"
                 size="icon"
                 class="w-full hover:bg-red-700"
+                id="create-quote"
             >
                 <img
                     src="/icons/icon-quotes.svg"

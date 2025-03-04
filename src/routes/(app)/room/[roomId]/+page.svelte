@@ -163,6 +163,45 @@ onMount(() => {
         // Always initialize as host control
         syncSource = 'host';
         
+        // Load default video for host
+        if (isHost && room?.expand?.selected_video) {
+            const selectedVideo = room.expand.selected_video;
+            const videoUrl = selectedVideo.file ? 
+                `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+            
+            console.log('Setting default video for host:', {
+                selectedVideo,
+                videoUrl
+            });
+            
+            // Set the video URL in the store
+            currentVideoUrl.set(videoUrl);
+            
+            // Broadcast the video URL to all participants
+            if (webRTCAdaptor && isDataChannelOpen) {
+                const videoUrlUpdate = {
+                    eventType: 'video_url_update',
+                    messageBody: JSON.stringify({
+                        videoUrl,
+                        fromHost: true,
+                        fromRepresentative: false,
+                        shouldPlay: false // Explicitly set to not play
+                    })
+                };
+                
+                try {
+                    sendMessage(
+                        roomName,
+                        Date.now(),
+                        JSON.stringify(videoUrlUpdate),
+                        roomName
+                    );
+                } catch (error) {
+                    console.error('Error sending initial video URL update:', error);
+                }
+            }
+        }
+        
         // Open participants panel by default after a short delay to ensure DOM is ready
         setTimeout(() => {
             const participantsPanel = document.getElementById("participantsPanel");
@@ -710,7 +749,7 @@ function handleVideoStateChange() {
     }
 }
 
-// Add event listener for timeupdate to sync periodically
+// Update video player initialization
 $: if (videoPlayer) {
     videoPlayer.ontimeupdate = () => {
         // Only sync every second to avoid flooding
@@ -720,6 +759,9 @@ $: if (videoPlayer) {
             lastUpdate = now;
         }
     };
+    
+    // Ensure video is paused initially
+    videoPlayer.pause();
 }
 
 const handleScheduleClose = () => {
@@ -1068,9 +1110,7 @@ function handleVideoSelect(event) {
         if (videoPlayer) {
             console.log('Updating video player source');
             videoPlayer.src = newUrl;
-            if ($playVideoStore) {
-                videoPlayer.play().catch(e => console.error('Error playing video:', e));
-            }
+            videoPlayer.pause(); // Ensure video starts paused
         }
         
         // Send update to all participants
@@ -1079,7 +1119,8 @@ function handleVideoSelect(event) {
             messageBody: JSON.stringify({
                 videoUrl: newUrl,
                 fromHost: isHost,
-                fromRepresentative: isRepresentative
+                fromRepresentative: isRepresentative,
+                shouldPlay: false // Explicitly set to not play
             })
         };
         

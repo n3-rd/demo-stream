@@ -72,10 +72,22 @@
         selectedLocation = e?.value || '';
     }
 
+    function resetForm() {
+        // Reset all form inputs
+        const form = document.querySelector('form');
+        if (form) {
+            form.reset();
+        }
+        // Reset any bound variables
+        editingRep = null;
+        selectedLocation = '';
+    }
+
     function handleFormResult(result: any) {
         if (result.type === 'success') {
             showAddDialog = false;
             invalidateAll();
+            resetForm();
             toast.success(editingRep ? 'Representative updated successfully' : 'Representative added successfully');
         } else if (result.type === 'failure' && result.data) {
             const message = (result.data as ErrorData).message;

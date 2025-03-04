@@ -100,50 +100,58 @@
                         class="space-y-6"
                     >
                         <div class="grid gap-4">
-                            <div class="grid gap-2">
-                                <Label for="locationName">Name of Location</Label>
-                                <Input 
-                                    id="locationName"
-                                    name="name"
-                                    bind:value={currentLocation.name}
-                                    placeholder="e.g. Timmins Branch"
-                                    required
-                                />
+                            <div class="flex justify-between items-center gap-8">
+                                <div class="grid gap-2 w-full">
+                                    <Label for="locationName">Name of Location</Label>
+                                    <Input 
+                                        id="locationName"
+                                        name="name"
+                                        bind:value={currentLocation.name}
+                                        placeholder="e.g. Timmins Branch"
+                                        required
+                                    />
+                                </div>
+    
+                                <div class="grid gap-2 w-full">
+                                    <Label for="address">Address</Label>
+                                    <Input 
+                                        id="address"
+                                        name="address"
+                                        bind:value={currentLocation.address}
+                                        placeholder="123 Street Name"
+                                        required
+                                    />
+                                </div>
                             </div>
 
-                            <div class="grid gap-2">
-                                <Label for="address">Address</Label>
-                                <Input 
-                                    id="address"
-                                    name="address"
-                                    bind:value={currentLocation.address}
-                                    placeholder="123 Street Name"
-                                    required
-                                />
-                            </div>
+                            <div class="flex justify-between items-center gap-8">
 
-                            <div class="grid gap-2">
-                                <Label for="city">City</Label>
-                                <Input 
-                                    id="city"
-                                    name="city"
-                                    bind:value={currentLocation.city}
-                                    placeholder="Timmins"
-                                    required
-                                />
-                            </div>
+                                <div class="grid gap-2 w-full">
+                                    <Label for="city">City</Label>
+                                    <Input 
+                                        id="city"
+                                        name="city"
+                                        bind:value={currentLocation.city}
+                                        placeholder="Timmins"
+                                        required
+                                    />
+                                </div>
+    
+                                <div class="grid gap-2 w-full">
+                                    <Label for="phone">Phone #</Label>
+                                    <Input 
+                                        id="phone"
+                                        name="phone"
+                                        bind:value={currentLocation.phone}
+                                        placeholder="705-123-1234"
+                                        type="tel"
+                                        required
+                                    />
+                                </div>
+                                </div>
+                            
 
-                            <div class="grid gap-2">
-                                <Label for="phone">Phone #</Label>
-                                <Input 
-                                    id="phone"
-                                    name="phone"
-                                    bind:value={currentLocation.phone}
-                                    placeholder="705-123-1234"
-                                    type="tel"
-                                    required
-                                />
-                            </div>
+                        
 
                             <div class="grid gap-4">
                                 <Label>Hours of Operation</Label>

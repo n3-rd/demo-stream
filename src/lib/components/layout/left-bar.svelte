@@ -16,7 +16,7 @@
     const dispatch = createEventDispatcher();
 </script>
 <div class="w-14 h-full bg-red flex flex-col gap-4">
-    <Dialog.Root>
+    <!-- <Dialog.Root>
         <Dialog.Trigger>
             <Button
                 variant="ghost"
@@ -30,14 +30,17 @@
         <Dialog.Content class="p-4 rounded-lg shadow-lg">
             <Share {joinURL} scale={1.3} color="#fff" />
         </Dialog.Content>
-    </Dialog.Root>
+    </Dialog.Root> -->
+
+    <Notes scale={1.3} color="#fff" />
+
     <Button
     variant="ghost"
     size="icon"
     class="w-full hover:bg-red-700"
     id="virtual-assistant"
     >
-        <MessageCircleQuestion scale={1.3} color="#fff" />
+      <img src="/icons/icon-question.svg" alt="virtual-assistant" class="w-7 h-7"/>
     </Button>
     <Dialog.Root>
         <Dialog.Trigger>
@@ -50,7 +53,7 @@
                 <img
                     src="/icons/icon-representative.svg"
                     alt="user"
-                    class="w-5 h-5"
+                    class="w-7 h-7"
                 />
             </Button>
         </Dialog.Trigger>
@@ -71,7 +74,7 @@
                 <img
                     src="/icons/icon-calendar.svg"
                     alt="calendar"
-                    class="w-5 h-5"
+                    class="w-7 h-7"
                 />
             </Button>
         </Dialog.Trigger>
@@ -86,7 +89,6 @@
             </div>
         </Dialog.Content>
     </Dialog.Root>
-    <Notes scale={1.3} color="#fff" />
     <Dialog.Root>
         <Dialog.Trigger>
             <Button
@@ -98,7 +100,7 @@
                 <img
                     src="/icons/icon-quotes.svg"
                     alt="quote"
-                    class="w-5 h-5"
+                    class="w-7 h-7"
                 />
             </Button>
         </Dialog.Trigger>

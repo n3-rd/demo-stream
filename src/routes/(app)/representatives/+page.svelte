@@ -16,9 +16,20 @@
     import { quintOut } from 'svelte/easing';
     import HintValidate from '$lib/components/layout/hint-validate.svelte';
     import * as Select from "$lib/components/ui/select";
+    import PocketBase from 'pocketbase';
+
+    interface ErrorData {
+        message: string;
+    }
+
+    interface SelectEvent {
+        value: string;
+    }
+
+    const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
 
     export let data;
-    $: ({ representatives, locations } = data);
+    $: ({ representatives, locations, rooms } = data || {});
 
     let showAddDialog = false;
     let editingRep: any = null;
@@ -28,6 +39,9 @@
 
     function toggleExpand(id: string) {
         expandedRep = expandedRep === id ? null : id;
+        if (expandedRep) {
+            loadConnectedRooms(expandedRep);
+        }
     }
 
     $: {
@@ -35,6 +49,39 @@
             selectedLocation = editingRep.location || '';
         } else {
             selectedLocation = '';
+        }
+    }
+
+    let connectedRoomsMap: Record<string, any[]> = {};
+
+    // Function to get rooms connected to a representative
+    async function loadConnectedRooms(repId: string) {
+        try {
+            const records = await pb.collection('rooms').getFullList({
+                filter: `representative.id ?= "${repId}"`,
+                sort: '-created',
+            });
+            connectedRoomsMap[repId] = records;
+        } catch (error) {
+            console.error('Error loading connected rooms:', error);
+            connectedRoomsMap[repId] = [];
+        }
+    }
+
+    function handleLocationChange(e: SelectEvent | null) {
+        selectedLocation = e?.value || '';
+    }
+
+    function handleFormResult(result: any) {
+        if (result.type === 'success') {
+            showAddDialog = false;
+            invalidateAll();
+            toast.success(editingRep ? 'Representative updated successfully' : 'Representative added successfully');
+        } else if (result.type === 'failure' && result.data) {
+            const message = (result.data as ErrorData).message;
+            toast.error(message || 'Failed to process representative');
+        } else {
+            toast.error('Failed to process representative');
         }
     }
 </script>
@@ -57,7 +104,7 @@
                 </Button>
             </div>
 
-            <div class="bg-white rounded-lg shadow">
+            <div class=" rounded-lg shadow">
                 <!-- Table Header -->
                 <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 border-b text-sm font-medium text-gray-600">
                     <div>Icon</div>
@@ -70,9 +117,9 @@
 
                 <!-- Table Body -->
                 {#each representatives as rep}
-                    <div class="border-b last:border-b-0">
+                    <div class="">
                         <!-- Main Row -->
-                        <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 items-center">
+                        <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-y-4 p-4 items-center my-2 bg-white border-b last:border-b-0">
                             <div>
                                 {#if rep.avatar}
                                     <img
@@ -103,7 +150,7 @@
                                         <ChevronUp class="h-4 w-4" />
                                     {:else}
                                         <ChevronDown class="h-4 w-4" />
-            {/if}
+                                    {/if}
                                 </Button>
                                 <DropdownMenu.Root>
                                     <DropdownMenu.Trigger asChild let:builder>
@@ -125,88 +172,52 @@
                                         </DropdownMenu.Item>
                                     </DropdownMenu.Content>
                                 </DropdownMenu.Root>
-    </div>
-</div>
+                            </div>
+                        </div>
 
                         <!-- Expanded Content -->
                         {#if expandedRep === rep.id}
                             <div class="px-4 pb-4">
                                 <div class="grid grid-cols-2 gap-6">
-                                    <!-- Connected Content -->
-                                    <div>
-                                        <h3 class="font-medium mb-2">Connected to Content ID</h3>
-                                        <div class="bg-[#F8F9FC] rounded p-4">
-                                            <div class="grid grid-cols-4 gap-4 text-sm">
-                                                <div>Image</div>
-                                                <div>Video</div>
-                                                <div>PDF</div>
-                                                <div>Word</div>
-                                            </div>
-                                            {#if rep.expand?.connected_content?.length}
-                                                <div class="grid grid-cols-4 gap-4 mt-2">
-                                                    <!-- Images -->
-                                                    <div class="text-sm">
-                                                        {#each rep.expand.connected_content.filter(c => c.type === 'image') as content}
-                                                            <div>
-                                                                <div class="text-gray-600">Title {content.title || content.id}</div>
-                                                                <div class="font-medium">id{content.id}</div>
-                                                            </div>
-                                                        {/each}
-                                                    </div>
-                                                    <!-- Videos -->
-                                                    <div class="text-sm">
-                                                        {#each rep.expand.connected_content.filter(c => c.type === 'video') as content}
-                                                            <div>
-                                                                <div class="text-gray-600">Title {content.title || content.id}</div>
-                                                                <div class="font-medium">id{content.id}</div>
-                                                            </div>
-                                                        {/each}
-                                                    </div>
-                                                    <!-- PDFs -->
-                                                    <div class="text-sm">
-                                                        {#each rep.expand.connected_content.filter(c => c.type === 'pdf') as content}
-                                                            <div>
-                                                                <div class="text-gray-600">Title {content.title || content.id}</div>
-                                                                <div class="font-medium">id{content.id}</div>
-                                                            </div>
-                                                        {/each}
-                                                    </div>
-                                                    <!-- Documents -->
-                                                    <div class="text-sm">
-                                                        {#each rep.expand.connected_content.filter(c => c.type === 'document') as content}
-                                                            <div>
-                                                                <div class="text-gray-600">Title {content.title || content.id}</div>
-                                                                <div class="font-medium">id{content.id}</div>
-                </div>
-            {/each}
-                                                    </div>
-                                                </div>
-                                            {/if}
-                                        </div>
-        </div>
-
                                     <!-- Schedule -->
-                                    <div>
+                                    <div class="max-w-xl">
                                         <h3 class="font-medium mb-2">Schedule</h3>
-                                        <div class="bg-[#F8F9FC] rounded p-4">
-                                            <div class="grid grid-cols-2 gap-4 text-sm">
-                                                <div>
-                                                    <div class="text-gray-600">Monday</div>
-                                                    <div class="font-medium">{rep.schedule?.monday || '8:00AM - 5:00PM'}</div>
+                                        <div class="bg-[#E0E8F5] rounded-[3px] p-4">
+                                            <div class="grid grid-cols-[auto_1fr] gap-x-4 text-sm font-[Poppins]">
+                                                <div class="space-y-[10px] text-[#808080]">
+                                                    <div>Monday</div>
+                                                    <div>Tuesday</div>
+                                                    <div>Friday</div>
+                                                    <div>Saturday</div>
                                                 </div>
-                                                <div>
-                                                    <div class="text-gray-600">Tuesday</div>
-                                                    <div class="font-medium">{rep.schedule?.tuesday || '8:00AM - 5:00PM'}</div>
-                                                </div>
-                                                <div>
-                                                    <div class="text-gray-600">Friday</div>
-                                                    <div class="font-medium">{rep.schedule?.friday || '8:00AM - 5:00PM'}</div>
-                                                </div>
-                                                <div>
-                                                    <div class="text-gray-600">Saturday</div>
-                                                    <div class="font-medium">{rep.schedule?.saturday || '9:00AM - 3:00PM'}</div>
+                                                <div class="space-y-[10px] text-[#808080]">
+                                                    <div>{rep.schedule?.monday || '8:00AM - 5:00PM'}</div>
+                                                    <div>{rep.schedule?.tuesday || '8:00AM - 5:00PM'}</div>
+                                                    <div>{rep.schedule?.friday || '8:00AM - 5:00PM'}</div>
+                                                    <div>{rep.schedule?.saturday || '9:00AM - 3:00PM'}</div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Connected Rooms -->
+                                    <div class="max-w-xl">
+                                        <h3 class="font-medium mb-2">Room Connected to:</h3>
+                                        <div class="bg-[#E0E8F5] rounded-[3px] p-4">
+                                            {#if connectedRoomsMap[rep.id]?.length > 0}
+                                                <div class="space-y-[10px]">
+                                                    {#each connectedRoomsMap[rep.id] as room}
+                                                        <div class="flex items-center justify-between">
+                                                            <span class="text-[14px] text-[#808080] font-[Poppins]">{room.title || `ViewRoom ${room.id.substring(0, 1)}`}</span>
+                                                            <div class="w-[38.71px] h-[19.5px] bg-[#DDDDDD] rounded-full relative flex items-center px-[3px]">
+                                                                <div class="w-[13.4px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976]' : 'bg-[#7C7C7C]'} {room.is_active ? 'ml-auto' : ''} transition-all duration-200"></div>
+                                                            </div>
+                                                        </div>
+                                                    {/each}
+                                                </div>
+                                            {:else}
+                                                <div class="text-[14px] text-[#808080] font-[Poppins]">No rooms connected</div>
+                                            {/if}
                                         </div>
                                     </div>
                                 </div>
@@ -214,7 +225,7 @@
                         {/if}
                     </div>
                 {/each}
-        </div>
+            </div>
         </div>
     </div>
 </div>
@@ -230,13 +241,7 @@
             use:form
             use:enhance={() => {
                 return async ({ result }) => {
-                    if (result.type === 'success') {
-                        showAddDialog = false;
-                        await invalidateAll();
-                        toast.success(editingRep ? 'Representative updated successfully' : 'Representative added successfully');
-                    } else {
-                        toast.error(result.data?.message || 'Failed to process representative');
-                    }
+                    handleFormResult(result);
                 };
             }}
             enctype="multipart/form-data"
@@ -297,10 +302,7 @@
             <div class="space-y-2">
                 <Label for="location">Location</Label>
                 <Select.Root
-                    value={selectedLocation}
-                    onSelectedChange={(e) => {
-                        selectedLocation = e?.value || '';
-                    }}
+                    onSelectedChange={handleLocationChange}
                 >
                     <Select.Trigger class="w-full">
                         <Select.Value placeholder="Select a location" />

@@ -3,6 +3,7 @@ import { v4 as uuid } from '@lukeed/uuid';
 import type { Handle } from '@sveltejs/kit';
 import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 import PocketBase from 'pocketbase';
+import { redirect } from '@sveltejs/kit';
 
 // Define the User type
 interface User {
@@ -18,6 +19,7 @@ declare global {
             pb: PocketBase;
             user: User | null;
             userid: string;
+            session?: string;
         }
     }
 }
@@ -48,6 +50,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     // Set user ID if not present
     event.locals.userid = cookies.userid || uuid();
+
+    // Get session from cookies or wherever you store it
+    const session = event.cookies.get('session');
+
+    // Add session to event.locals
+    event.locals.session = session;
+
+    // Protected routes pattern - adjust this based on your needs
+    const protectedRoutes = /^\/(?:dashboard|admin|profile)/;
+    
+    if (protectedRoutes.test(event.url.pathname)) {
+        // If accessing protected route without session
+        if (!session) {
+            throw new Response('Unauthorized', { status: 401 });
+        }
+    }
 
     // Handle _method query parameter by creating a new request
     let finalRequest = request;

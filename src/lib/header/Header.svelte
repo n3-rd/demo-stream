@@ -6,7 +6,7 @@
 </script>
 
 <header>
-	<div class="wrapper">
+	<div class="wrapper ">
 		<div class="corner left">
 			<a href="https://daily.co" target="_blank" rel="noreferrer noopenner">
 				<img src={logo} alt="Daily" />

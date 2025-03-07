@@ -10,7 +10,6 @@
         {name: 'Locations', active: activePage === 'locations', href: '/locations'},
         {name: 'Content Library', active: activePage === 'content-library', href: '/content-library'},
         {name: 'Virtual Assistant', active: activePage === 'virtual-assistant', href: '/virtual-assistant'},
-
     ];
 </script>
 
@@ -23,14 +22,14 @@
     </svg>
 </button>
 
-<aside class="fixed lg:static w-64 h-full overflow-y-auto bg-white transform lg:transform-none transition-transform duration-200 ease-in-out {isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} z-40">
-    <div class="p-4">
-        <div class="bg-gray-300 h-12 w-24 mb-4 flex justify-center items-center">LOGO</div>
-        <nav class="mt-4">
+<aside class="fixed lg:static w-[18vw] min-h-screen bg-white transform lg:transform-none transition-transform duration-200 ease-in-out {isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} z-40 flex flex-col">
+    <div class="p-9 flex-1">
+        <div class="bg-[#C4C4C4] h-12 w-full mb-4 flex justify-center items-center mx-auto text-white font-bold">LOGO</div>
+        <nav class="mt-4 flex flex-col h-full">
             {#each sidebarItems as item}
                 <a
                     href={item.href}
-                    class="block py-2 px-4 text-gray-600 hover:bg-gray-100 transition duration-150 ease-in-out {item.active ? 'bg-gray-100 font-semibold' : ''}"
+                    class="block py-2 px-4 text-gray-600 hover:bg-gray-100 transition duration-150 ease-in-out {item.active ? 'text-[#577AB7] font-medium' : ''}"
                 >
                     {item.name}
                 </a>

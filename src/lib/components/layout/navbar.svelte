@@ -40,7 +40,7 @@
 </script>
 
 {#if !inRoom}
-<div class="navbar flex items-center justify-between bg-white px-4 py-4 md:px-9 md:py-7">
+<div class="navbar flex items-center justify-between bg-white px-4 py-4 md:px-9 md:py-7 drop-shadow-xl z-40">
     <a class="logo" href="/">
         <img src="/logo/main-logo.svg" alt="clearsky" class="h-9 w-[131px]" />
     </a>

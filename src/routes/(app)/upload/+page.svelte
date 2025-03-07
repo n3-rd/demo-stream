@@ -175,139 +175,174 @@
 <div class="flex h-screen bg-[#F5F5F5]">
     <Sidenav activePage="content-library" />
     
-    <div class="flex-1 overflow-auto">
-        <div class="container mx-auto p-6 max-w-2xl">
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h1 class="text-2xl font-bold mb-6">Upload Content</h1>
+    <div class="flex-1 overflow-auto p-6">
+        <div class="max-w-[1115px] mx-auto space-y-6">
+            <!-- Header -->
+            <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
+                <h1 class="font-['Poppins'] text-[24px] font-bold leading-[118%] text-[#808080]">Upload Content</h1>
+                <Button 
+                    type="submit" 
+                    form="uploadForm"
+                    disabled={isUploading || !selectedFile} 
+                    class="w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-['Inter'] font-semibold text-[16px] text-white flex items-center justify-center"
+                >
+                    {#if isUploading}
+                        <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                        {uploadProgress.toFixed(2)}%
+                    {:else}
+                        Upload
+                    {/if}
+                </Button>
+            </div>
 
-                <form on:submit={handleSubmit} enctype="multipart/form-data" class="space-y-6">
-                    <!-- Content Type -->
-                    <div class="space-y-2">
-                        <Label for="type">Content Type</Label>
-                        <Select.Root>
-                            <Select.Trigger class="w-full">
-                                <Select.Value>{contentTypes.find(t => t.value === selectedType)?.label || "Select content type"}</Select.Value>
-                            </Select.Trigger>
-                            <Select.Content>
-                                {#each contentTypes as type}
-                                    <Select.Item 
-                                        value={type.value}
-                                        on:click={() => handleTypeChange(type.value)}
-                                    >
-                                        {type.label}
-                                    </Select.Item>
-                                {/each}
-                            </Select.Content>
-                            <Select.Input name="type" value={selectedType} />
-                        </Select.Root>
-                    </div>
-
-                    <!-- Library Type -->
-                    <div class="space-y-2">
-                        <Label>Library Type</Label>
-                        <Select.Root on:select={handleLibraryTypeSelect}>
-                            <Select.Trigger class="w-full">
-                                <Select.Value placeholder="Select library type" />
-                            </Select.Trigger>
-                            <Select.Content>
-                                {#each libraryTypes as type}
-                                    <Select.Item 
-                                        value={type.value}
-                                        on:click={() => selectedLibraryType = type.value}
-                                    >
-                                        {type.label}
-                                    </Select.Item>
-                                {/each}
-                            </Select.Content>
-                        </Select.Root>
-                        <input type="hidden" name="library_type" value={selectedLibraryType} />
-                    </div>
-
+            <!-- Main Content -->
+            <div class="bg-white rounded-[8px] p-8">
+                <form id="uploadForm" on:submit={handleSubmit} enctype="multipart/form-data" class="space-y-8">
                     <!-- Title -->
                     <div class="space-y-2">
-                        <Label for="title">Title</Label>
-                        <Input type="text" id="title" name="title" required />
-                    </div>
-
-                    <!-- Description -->
-                    <div class="space-y-2">
-                        <Label for="description">Description</Label>
-                        <Textarea id="description" name="description" />
-                    </div>
-
-                    <!-- File Upload -->
-                    <div class="space-y-2">
-                        <Label for="file">File</Label>
+                        <Label for="title" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Title</Label>
                         <Input 
-                            type="file" 
-                            id="file" 
-                            name="file" 
-                            accept={allowedFileTypes[selectedType]} 
-                            on:change={handleFileChange}
+                            type="text" 
+                            id="title" 
+                            name="title" 
                             required 
+                            class="w-full h-[38px] border-[#9E9E9E] rounded-[5px]" 
                         />
-                        <p class="text-sm text-gray-500">
-                            {#if selectedType === 'video'}
-                                Supported formats: MP4, WebM
-                            {:else if selectedType === 'pdf'}
-                                Supported format: PDF
-                            {:else}
-                                Supported formats: DOC, DOCX, XLS, XLSX
-                            {/if}
-                        </p>
                     </div>
 
-                    <!-- Thumbnail -->
+                    <!-- Type of Content -->
                     <div class="space-y-2">
-                        <Label for="thumbnail">Thumbnail (optional)</Label>
-                        <div class="space-y-4">
-                            {#if thumbnailPreviewUrl}
-                                <div class="relative aspect-video w-full max-w-md mx-auto">
-                                    <img 
-                                        src={thumbnailPreviewUrl} 
-                                        alt="Thumbnail preview" 
-                                        class="rounded-lg object-cover w-full h-full"
+                        <Label class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Type of Content</Label>
+                        <div class="flex gap-8 items-center">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <div class="relative w-[15px] h-[15px]">
+                                    <input 
+                                        type="radio" 
+                                        name="content_type" 
+                                        value="image"
+                                        checked={selectedType === 'image'}
+                                        on:change={() => handleTypeChange('image')}
+                                        class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                     />
-                                    <button
-                                        type="button"
-                                        class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                                        on:click={resetThumbnail}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                        </svg>
-                                    </button>
+                                    <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'image' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
-                            {/if}
-                            <Input 
-                                type="file" 
-                                id="thumbnail" 
-                                name="thumbnail" 
-                                accept="image/*"
-                                on:change={handleThumbnailChange}
-                            />
-                            <p class="text-sm text-gray-500">Supported formats: JPG, PNG, WebP</p>
+                                <span class="font-['Poppins'] text-[14px] text-[#737373]">Image</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <div class="relative w-[15px] h-[15px]">
+                                    <input 
+                                        type="radio" 
+                                        name="content_type" 
+                                        value="video"
+                                        checked={selectedType === 'video'}
+                                        on:change={() => handleTypeChange('video')}
+                                        class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                    />
+                                    <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'video' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
+                                </div>
+                                <span class="font-['Poppins'] text-[14px] text-[#737373]">Video</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <div class="relative w-[15px] h-[15px]">
+                                    <input 
+                                        type="radio" 
+                                        name="content_type" 
+                                        value="pdf"
+                                        checked={selectedType === 'pdf'}
+                                        on:change={() => handleTypeChange('pdf')}
+                                        class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                    />
+                                    <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'pdf' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
+                                </div>
+                                <span class="font-['Poppins'] text-[14px] text-[#737373]">PDF</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <div class="relative w-[15px] h-[15px]">
+                                    <input 
+                                        type="radio" 
+                                        name="content_type" 
+                                        value="word"
+                                        checked={selectedType === 'word'}
+                                        on:change={() => handleTypeChange('word')}
+                                        class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                    />
+                                    <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'word' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
+                                </div>
+                                <span class="font-['Poppins'] text-[14px] text-[#737373]">Word</span>
+                            </label>
                         </div>
                     </div>
 
-                    <!-- Submit Buttons -->
-                    <div class="flex justify-end space-x-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            on:click={() => goto('/content-library')}
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={isUploading || !selectedFile || !selectedLibraryType}>
-                            {#if isUploading}
-                                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                                Uploading... {uploadProgress.toFixed(2)}%
-                            {:else}
-                                Upload
-                            {/if}
-                        </Button>
+                    <!-- Brief Description -->
+                    <div class="space-y-2">
+                        <Label for="description" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Brief Description</Label>
+                        <div class="relative">
+                            <Textarea 
+                                id="description" 
+                                name="description" 
+                                class="w-full h-[145px] border-[#9E9E9E] rounded-[5px] resize-none" 
+                            />
+                            <span class="absolute right-4 top-4 font-['Poppins'] text-[18px] font-semibold text-[#737373]">Add Image</span>
+                        </div>
                     </div>
+
+                    <!-- File Uploads -->
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="space-y-2">
+                            <Label for="file" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Upload file</Label>
+                            <div class="relative h-[38px]">
+                                <Input 
+                                    type="file" 
+                                    id="file" 
+                                    name="file" 
+                                    accept={allowedFileTypes[selectedType]} 
+                                    on:change={handleFileChange}
+                                    required 
+                                    class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                />
+                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white">
+                                    <span class="text-[#737373]">{selectedFile?.name || 'No file chosen'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <Label for="thumbnail" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Content Thumbnail</Label>
+                            <div class="relative h-[38px]">
+                                <Input 
+                                    type="file" 
+                                    id="thumbnail" 
+                                    name="thumbnail" 
+                                    accept="image/*"
+                                    on:change={handleThumbnailChange}
+                                    class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                />
+                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white">
+                                    <span class="text-[#737373]">{thumbnailFile?.name || 'No file chosen'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thumbnail Preview -->
+                    {#if thumbnailPreviewUrl}
+                        <div class="relative w-1/2 aspect-video">
+                            <img 
+                                src={thumbnailPreviewUrl} 
+                                alt="Thumbnail preview" 
+                                class="w-full h-full object-cover rounded-[5px]"
+                            />
+                            <button
+                                type="button"
+                                class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                on:click={resetThumbnail}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    {/if}
                 </form>
             </div>
         </div>

@@ -9,26 +9,36 @@ export const load = async ({ locals }) => {
     }
 
     try {
-        // Fetch the last room with its content
-        const room = await locals.pb.collection('rooms').getFirstListItem('', {
-            sort: '-created', // Sort by creation date descending to get the latest
-            expand: 'host_content,representative_content',
-            fields: 'id,title,is_active,host_content,representative_content,owner_company'
-        });
+        let room = null;
+        let hostContent = { items: [] };
+        let representativeContent = { items: [] };
 
-        // Fetch host content details
-        const hostContent = await locals.pb.collection('content_library').getList(1, 50, {
-            filter: room.host_content?.map(id => `id = "${id}"`).join(' || ') || 'id = ""',
-            fields: 'id,title,collectionId,thumbnail,type,file'
-        });
+        // Try to fetch the last room with its content
+        try {
+            room = await locals.pb.collection('rooms').getFirstListItem('', {
+                sort: '-created',
+                expand: 'host_content,representative_content',
+                fields: 'id,title,is_active,host_content,representative_content,owner_company'
+            });
 
-        // Fetch representative content details
-        const representativeContent = await locals.pb.collection('content_library').getList(1, 50, {
-            filter: room.representative_content?.map(id => `id = "${id}"`).join(' || ') || 'id = ""',
-            fields: 'id,title,collectionId,thumbnail,type,file'
-        });
+            if (room) {
+                // Only fetch content if we have a room
+                hostContent = await locals.pb.collection('content_library').getList(1, 50, {
+                    filter: room.host_content?.map(id => `id = "${id}"`).join(' || ') || 'id = ""',
+                    fields: 'id,title,collectionId,thumbnail,type,file'
+                });
 
-        // Fetch content library items
+                representativeContent = await locals.pb.collection('content_library').getList(1, 50, {
+                    filter: room.representative_content?.map(id => `id = "${id}"`).join(' || ') || 'id = ""',
+                    fields: 'id,title,collectionId,thumbnail,type,file'
+                });
+            }
+        } catch (roomErr) {
+            // If no rooms exist, continue with empty room data
+            console.log('No rooms found:', roomErr);
+        }
+
+        // Fetch content library items regardless of room status
         const contentLibrary = await locals.pb.collection('content_library').getList(1, 10, {
             sort: '-created',
             filter: 'library_type ~ "host"',
@@ -36,14 +46,20 @@ export const load = async ({ locals }) => {
         });
 
         return {
-            room: structuredClone(room),
+            room: room ? structuredClone(room) : null,
             hostContent: structuredClone(hostContent.items),
             representativeContent: structuredClone(representativeContent.items),
             contentLibrary: structuredClone(contentLibrary.items)
         };
     } catch (err) {
         console.error('Error loading dashboard data:', err);
-        throw error(500, 'Failed to load dashboard data');
+        // Return empty data instead of throwing an error
+        return {
+            room: null,
+            hostContent: [],
+            representativeContent: [],
+            contentLibrary: []
+        };
     }
 };
 

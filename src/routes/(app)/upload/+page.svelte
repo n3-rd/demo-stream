@@ -9,6 +9,7 @@
     import { enhance } from "$app/forms";
     import { Loader2 } from "lucide-svelte";
     import { onDestroy } from "svelte";
+    import Sidenav from '$lib/components/layout/sidenav.svelte';
 
     export let data;
     const { user, representatives } = data;
@@ -171,144 +172,144 @@
     });
 </script>
 
-<div class="container mx-auto p-6 max-w-2xl">
-    <div class="bg-white rounded-lg shadow-lg p-6">
-        <h1 class="text-2xl font-bold mb-6">Upload Content</h1>
+<div class="flex h-screen bg-[#F5F5F5]">
+    <Sidenav activePage="content-library" />
+    
+    <div class="flex-1 overflow-auto">
+        <div class="container mx-auto p-6 max-w-2xl">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h1 class="text-2xl font-bold mb-6">Upload Content</h1>
 
-        <form
-            on:submit={handleSubmit}
-            enctype="multipart/form-data"
-            class="space-y-6"
-        >
-            <!-- Content Type -->
-            <div class="space-y-2">
-                <Label for="type">Content Type</Label>
-                <Select.Root>
-                    <Select.Trigger class="w-full">
-                        <Select.Value>{contentTypes.find(t => t.value === selectedType)?.label || "Select content type"}</Select.Value>
-                    </Select.Trigger>
-                    <Select.Content>
-                        {#each contentTypes as type}
-                            <Select.Item 
-                                value={type.value}
-                                on:click={() => handleTypeChange(type.value)}
-                            >
-                                {type.label}
-                            </Select.Item>
-                        {/each}
-                    </Select.Content>
-                    <Select.Input name="type" value={selectedType} />
-                </Select.Root>
-            </div>
+                <form on:submit={handleSubmit} enctype="multipart/form-data" class="space-y-6">
+                    <!-- Content Type -->
+                    <div class="space-y-2">
+                        <Label for="type">Content Type</Label>
+                        <Select.Root>
+                            <Select.Trigger class="w-full">
+                                <Select.Value>{contentTypes.find(t => t.value === selectedType)?.label || "Select content type"}</Select.Value>
+                            </Select.Trigger>
+                            <Select.Content>
+                                {#each contentTypes as type}
+                                    <Select.Item 
+                                        value={type.value}
+                                        on:click={() => handleTypeChange(type.value)}
+                                    >
+                                        {type.label}
+                                    </Select.Item>
+                                {/each}
+                            </Select.Content>
+                            <Select.Input name="type" value={selectedType} />
+                        </Select.Root>
+                    </div>
 
-            <!-- Library Type -->
-            <div class="space-y-2">
-                <Label>Library Type</Label>
-                <Select.Root on:select={handleLibraryTypeSelect}>
-                    <Select.Trigger class="w-full">
-                        <Select.Value placeholder="Select library type" />
-                    </Select.Trigger>
-                    <Select.Content>
-                        {#each libraryTypes as type}
-                            <Select.Item 
-                                value={type.value}
-                                on:click={() => selectedLibraryType = type.value}
-                            >
-                                {type.label}
-                            </Select.Item>
-                        {/each}
-                    </Select.Content>
-                </Select.Root>
-                <input type="hidden" name="library_type" value={selectedLibraryType} />
-            </div>
+                    <!-- Library Type -->
+                    <div class="space-y-2">
+                        <Label>Library Type</Label>
+                        <Select.Root on:select={handleLibraryTypeSelect}>
+                            <Select.Trigger class="w-full">
+                                <Select.Value placeholder="Select library type" />
+                            </Select.Trigger>
+                            <Select.Content>
+                                {#each libraryTypes as type}
+                                    <Select.Item 
+                                        value={type.value}
+                                        on:click={() => selectedLibraryType = type.value}
+                                    >
+                                        {type.label}
+                                    </Select.Item>
+                                {/each}
+                            </Select.Content>
+                        </Select.Root>
+                        <input type="hidden" name="library_type" value={selectedLibraryType} />
+                    </div>
 
-            <!-- Title -->
-            <div class="space-y-2">
-                <Label for="title">Title</Label>
-                <Input type="text" id="title" name="title" required />
-            </div>
+                    <!-- Title -->
+                    <div class="space-y-2">
+                        <Label for="title">Title</Label>
+                        <Input type="text" id="title" name="title" required />
+                    </div>
 
-            <!-- Description -->
-            <div class="space-y-2">
-                <Label for="description">Description</Label>
-                <Textarea id="description" name="description" />
-            </div>
+                    <!-- Description -->
+                    <div class="space-y-2">
+                        <Label for="description">Description</Label>
+                        <Textarea id="description" name="description" />
+                    </div>
 
-            <!-- File Upload -->
-            <div class="space-y-2">
-                <Label for="file">File</Label>
-                <Input 
-                    type="file" 
-                    id="file" 
-                    name="file" 
-                    accept={allowedFileTypes[selectedType]} 
-                    on:change={handleFileChange}
-                    required 
-                />
-                <p class="text-sm text-gray-500">
-                    {#if selectedType === 'video'}
-                        Supported formats: MP4, WebM
-                    {:else if selectedType === 'pdf'}
-                        Supported format: PDF
-                    {:else}
-                        Supported formats: DOC, DOCX, XLS, XLSX
-                    {/if}
-                </p>
-            </div>
-
-        
-                <div class="space-y-2">
-                    <Label for="thumbnail">Thumbnail (optional)</Label>
-                    <div class="space-y-4">
-                        {#if thumbnailPreviewUrl}
-                            <div class="relative aspect-video w-full max-w-md mx-auto">
-                                <img 
-                                    src={thumbnailPreviewUrl} 
-                                    alt="Thumbnail preview" 
-                                    class="rounded-lg object-cover w-full h-full"
-                                />
-                                <button
-                                    type="button"
-                                    class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                                    on:click={resetThumbnail}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                    </svg>
-                                </button>
-                            </div>
-                        {/if}
+                    <!-- File Upload -->
+                    <div class="space-y-2">
+                        <Label for="file">File</Label>
                         <Input 
                             type="file" 
-                            id="thumbnail" 
-                            name="thumbnail" 
-                            accept="image/*"
-                            on:change={handleThumbnailChange}
+                            id="file" 
+                            name="file" 
+                            accept={allowedFileTypes[selectedType]} 
+                            on:change={handleFileChange}
+                            required 
                         />
-                        <p class="text-sm text-gray-500">Supported formats: JPG, PNG, WebP</p>
+                        <p class="text-sm text-gray-500">
+                            {#if selectedType === 'video'}
+                                Supported formats: MP4, WebM
+                            {:else if selectedType === 'pdf'}
+                                Supported format: PDF
+                            {:else}
+                                Supported formats: DOC, DOCX, XLS, XLSX
+                            {/if}
+                        </p>
                     </div>
-                </div>
-            
 
-  
+                    <!-- Thumbnail -->
+                    <div class="space-y-2">
+                        <Label for="thumbnail">Thumbnail (optional)</Label>
+                        <div class="space-y-4">
+                            {#if thumbnailPreviewUrl}
+                                <div class="relative aspect-video w-full max-w-md mx-auto">
+                                    <img 
+                                        src={thumbnailPreviewUrl} 
+                                        alt="Thumbnail preview" 
+                                        class="rounded-lg object-cover w-full h-full"
+                                    />
+                                    <button
+                                        type="button"
+                                        class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                        on:click={resetThumbnail}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            {/if}
+                            <Input 
+                                type="file" 
+                                id="thumbnail" 
+                                name="thumbnail" 
+                                accept="image/*"
+                                on:change={handleThumbnailChange}
+                            />
+                            <p class="text-sm text-gray-500">Supported formats: JPG, PNG, WebP</p>
+                        </div>
+                    </div>
 
-            <div class="flex justify-end space-x-4">
-                <Button
-                    type="button"
-                    variant="outline"
-                    on:click={() => goto('/content-library')}
-                >
-                    Cancel
-                </Button>
-                <Button type="submit" disabled={isUploading || !selectedFile || !selectedLibraryType}>
-                    {#if isUploading}
-                        <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-                        Uploading... {uploadProgress.toFixed(2)}%
-                    {:else}
-                        Upload
-                    {/if}
-                </Button>
+                    <!-- Submit Buttons -->
+                    <div class="flex justify-end space-x-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            on:click={() => goto('/content-library')}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={isUploading || !selectedFile || !selectedLibraryType}>
+                            {#if isUploading}
+                                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                                Uploading... {uploadProgress.toFixed(2)}%
+                            {:else}
+                                Upload
+                            {/if}
+                        </Button>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
     </div>
 </div>

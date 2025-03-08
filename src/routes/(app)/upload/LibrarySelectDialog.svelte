@@ -1,0 +1,41 @@
+<script lang="ts">
+    import * as Dialog from "$lib/components/ui/dialog";
+    import { Button } from "$lib/components/ui/button";
+
+    export let open = false;
+    export let onSelect: (type: string) => void;
+</script>
+
+<Dialog.Root bind:open>
+    <Dialog.Content class="sm:max-w-[425px]">
+        <Dialog.Header>
+            <Dialog.Title>Upload File</Dialog.Title>
+            <Dialog.Description>
+                Which Library would you like to upload this file to?
+            </Dialog.Description>
+        </Dialog.Header>
+        <div class="flex flex-col gap-3 py-4">
+            <Button 
+                variant="outline" 
+                class="w-full justify-start" 
+                on:click={() => onSelect('host')}
+            >
+                Host Library
+            </Button>
+            <Button 
+                variant="outline" 
+                class="w-full justify-start" 
+                on:click={() => onSelect('representative')}
+            >
+                Representative Library
+            </Button>
+            <Button 
+                variant="outline" 
+                class="w-full justify-start" 
+                on:click={() => onSelect('both')}
+            >
+                Both
+            </Button>
+        </div>
+    </Dialog.Content>
+</Dialog.Root> 

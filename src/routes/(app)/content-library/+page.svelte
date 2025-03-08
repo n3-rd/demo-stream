@@ -150,8 +150,8 @@
                                 </button>
                             </div>
                             <div class="mt-2">
-                                <h3 class="font-['Inter'] font-semibold text-[14px] leading-[120%] text-[#577AB7]">{item.title}</h3>
-                                <p class="font-['Inter'] font-light text-[11px] leading-[120%] text-black/50">ID {item.id}</p>
+                                <h3 class=" font-semibold text-[14px] leading-[120%] text-[#577AB7]">{item.title}</h3>
+                                <p class=" font-light text-[11px] leading-[120%] text-black/50">ID {item.id}</p>
                             </div>
                         </div>
                     {/each}

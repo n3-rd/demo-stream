@@ -199,7 +199,7 @@
         <div class="max-w-[1115px] mx-auto space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
-                <h1 class="font-['Poppins'] text-[24px] font-bold leading-[118%] text-[#808080]">Upload Content</h1>
+                <h1 class=" text-[24px] font-bold leading-[118%] text-[#808080]">Upload Content</h1>
                 <Button 
                     type="submit" 
                     form="uploadForm"
@@ -220,7 +220,7 @@
                 <form id="uploadForm" on:submit={handleSubmit} enctype="multipart/form-data" class="space-y-8">
                     <!-- Title -->
                     <div class="space-y-2">
-                        <Label for="title" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Title</Label>
+                        <Label for="title" class="block  text-[14px] font-medium text-[#737373]">Title</Label>
                         <Input 
                             type="text" 
                             id="title" 
@@ -232,7 +232,7 @@
 
                     <!-- Type of Content -->
                     <div class="space-y-2">
-                        <Label class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Type of Content</Label>
+                        <Label class="block  text-[14px] font-medium text-[#737373]">Type of Content</Label>
                         <div class="flex gap-8 items-center">
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <div class="relative w-[15px] h-[15px]">
@@ -246,7 +246,7 @@
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'image' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
-                                <span class="font-['Poppins'] text-[14px] text-[#737373]">Image</span>
+                                <span class=" text-[14px] text-[#737373]">Image</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <div class="relative w-[15px] h-[15px]">
@@ -260,7 +260,7 @@
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'video' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
-                                <span class="font-['Poppins'] text-[14px] text-[#737373]">Video</span>
+                                <span class=" text-[14px] text-[#737373]">Video</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <div class="relative w-[15px] h-[15px]">
@@ -274,7 +274,7 @@
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'pdf' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
-                                <span class="font-['Poppins'] text-[14px] text-[#737373]">PDF</span>
+                                <span class=" text-[14px] text-[#737373]">PDF</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <div class="relative w-[15px] h-[15px]">
@@ -288,28 +288,28 @@
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'word' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
-                                <span class="font-['Poppins'] text-[14px] text-[#737373]">Word</span>
+                                <span class=" text-[14px] text-[#737373]">Word</span>
                             </label>
                         </div>
                     </div>
 
                     <!-- Brief Description -->
                     <div class="space-y-2">
-                        <Label for="description" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Brief Description</Label>
+                        <Label for="description" class="block  text-[14px] font-medium text-[#737373]">Brief Description</Label>
                         <div class="relative">
                             <Textarea 
                                 id="description" 
                                 name="description" 
                                 class="w-full h-[145px] border-[#9E9E9E] rounded-[5px] resize-none" 
                             />
-                            <span class="absolute right-4 top-4 font-['Poppins'] text-[18px] font-semibold text-[#737373]">Add Image</span>
+                            <span class="absolute right-4 top-4  text-[18px] font-semibold text-[#737373]">Add Image</span>
                         </div>
                     </div>
 
                     <!-- File Uploads -->
                     <div class="grid grid-cols-2 gap-5">
                         <div class="space-y-2">
-                            <Label for="file" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Upload file</Label>
+                            <Label for="file" class="block  text-[14px] font-medium text-[#737373]">Upload file</Label>
                             <div class="relative h-[38px]">
                                 <Input 
                                     type="file" 
@@ -327,7 +327,7 @@
                         </div>
 
                         <div class="space-y-2">
-                            <Label for="thumbnail" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Content Thumbnail</Label>
+                            <Label for="thumbnail" class="block  text-[14px] font-medium text-[#737373]">Content Thumbnail</Label>
                             <div class="relative h-[38px]">
                                 <Input 
                                     type="file" 

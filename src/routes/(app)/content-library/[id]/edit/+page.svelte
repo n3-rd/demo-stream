@@ -195,7 +195,7 @@
         <div class="max-w-[1115px] mx-auto space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
-                <h1 class="font-['Poppins'] text-[24px] font-bold leading-[118%] text-[#808080]">Edit Content</h1>
+                <h1 class=" text-[24px] font-bold leading-[118%] text-[#808080]">Edit Content</h1>
                 <div class="flex gap-4">
                     <Button 
                         type="button"
@@ -226,7 +226,7 @@
                 <form id="editForm" on:submit={handleSubmit} enctype="multipart/form-data" class="space-y-8">
                     <!-- Title -->
                     <div class="space-y-2">
-                        <Label for="title" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Title</Label>
+                        <Label for="title" class="block  text-[14px] font-medium text-[#737373]">Title</Label>
                         <Input 
                             type="text" 
                             id="title" 
@@ -239,7 +239,7 @@
 
                     <!-- Type of Content -->
                     <div class="space-y-2">
-                        <Label class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Type of Content</Label>
+                        <Label class="block  text-[14px] font-medium text-[#737373]">Type of Content</Label>
                         <div class="flex gap-8 items-center">
                             {#each contentTypes as type}
                                 <label class="flex items-center gap-2 cursor-pointer">
@@ -254,7 +254,7 @@
                                         />
                                         <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === type.value ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                     </div>
-                                    <span class="font-['Poppins'] text-[14px] text-[#737373]">{type.label}</span>
+                                    <span class=" text-[14px] text-[#737373]">{type.label}</span>
                                 </label>
                             {/each}
                         </div>
@@ -262,7 +262,7 @@
 
                     <!-- Description -->
                     <div class="space-y-2">
-                        <Label for="description" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Description</Label>
+                        <Label for="description" class="block  text-[14px] font-medium text-[#737373]">Description</Label>
                         <Textarea 
                             id="description" 
                             name="description" 
@@ -273,7 +273,7 @@
 
                     <!-- File Upload -->
                     <div class="space-y-2">
-                        <Label for="file" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Replace File (Optional)</Label>
+                        <Label for="file" class="block  text-[14px] font-medium text-[#737373]">Replace File (Optional)</Label>
                         <div class="relative h-[38px]">
                             <Input 
                                 type="file" 
@@ -291,7 +291,7 @@
 
                     <!-- Thumbnail -->
                     <div class="space-y-2">
-                        <Label for="thumbnail" class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Content Thumbnail</Label>
+                        <Label for="thumbnail" class="block  text-[14px] font-medium text-[#737373]">Content Thumbnail</Label>
                         <div class="relative h-[38px]">
                             <Input 
                                 type="file" 
@@ -329,7 +329,7 @@
 
                     <!-- Library Type Selection -->
                     <div class="space-y-2">
-                        <Label class="block font-['Poppins'] text-[14px] font-medium text-[#737373]">Library Type</Label>
+                        <Label class="block  text-[14px] font-medium text-[#737373]">Library Type</Label>
                         <div class="flex gap-8 items-center">
                             {#each libraryTypes as type}
                                 <label class="flex items-center gap-2 cursor-pointer">
@@ -344,7 +344,7 @@
                                         />
                                         <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedLibraryType === type.value ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                     </div>
-                                    <span class="font-['Poppins'] text-[14px] text-[#737373]">{type.label}</span>
+                                    <span class=" text-[14px] text-[#737373]">{type.label}</span>
                                 </label>
                             {/each}
                         </div>

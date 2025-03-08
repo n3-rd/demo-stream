@@ -35,7 +35,7 @@
 
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return '';
-        return `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
     }
 
     function handleJoinRoom() {

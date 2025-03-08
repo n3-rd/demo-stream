@@ -60,13 +60,13 @@
             <div class="bg-white rounded-[8px] p-4 mb-6 flex justify-between items-center">
                 <div class="flex space-x-8">
                     <button 
-                        class="font-['Poppins'] text-[24px] leading-[118%] {selectedTab === 'host' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}"
+                        class=" text-[24px] leading-[118%] {selectedTab === 'host' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}"
                         on:click={() => handleTabChange('host')}
                     >
                         Host Content
                     </button>
                     <button 
-                        class="font-['Poppins'] text-[24px] leading-[118%] {selectedTab === 'representative' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}"
+                        class=" text-[24px] leading-[118%] {selectedTab === 'representative' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}"
                         on:click={() => handleTabChange('representative')}
                     >
                         Representative Content
@@ -91,19 +91,19 @@
             <div class="bg-white rounded-[8px] p-4 mb-6">
                 <div class="flex space-x-8">
                     <button 
-                        class="font-['Poppins'] font-medium text-[16px] {selectedContentType === 'video' ? 'text-[#577AB7]' : 'text-[#737373]'}"
+                        class=" font-medium text-[16px] {selectedContentType === 'video' ? 'text-[#577AB7]' : 'text-[#737373]'}"
                         on:click={() => handleContentTypeChange('video')}
                     >
                         Videos
                     </button>
                     <button 
-                        class="font-['Poppins'] font-medium text-[16px] {selectedContentType === 'pdf' ? 'text-[#577AB7]' : 'text-[#737373]'}"
+                        class=" font-medium text-[16px] {selectedContentType === 'pdf' ? 'text-[#577AB7]' : 'text-[#737373]'}"
                         on:click={() => handleContentTypeChange('pdf')}
                     >
                         PDF File
                     </button>
                     <button 
-                        class="font-['Poppins'] font-medium text-[16px] {selectedContentType === 'document' ? 'text-[#577AB7]' : 'text-[#737373]'}"
+                        class=" font-medium text-[16px] {selectedContentType === 'document' ? 'text-[#577AB7]' : 'text-[#737373]'}"
                         on:click={() => handleContentTypeChange('document')}
                     >
                         Word Document File
@@ -114,7 +114,7 @@
             <!-- Content Grid -->
             {#if filteredContent.length === 0}
                 <div class="text-center py-12 bg-white rounded-[8px]">
-                    <p class="text-[#737373] font-['Poppins']">No content found in this category</p>
+                    <p class="text-[#737373] ">No content found in this category</p>
                 </div>
             {:else}
                 <div class="grid grid-cols-4 gap-6">

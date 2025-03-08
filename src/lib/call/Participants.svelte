@@ -53,7 +53,7 @@ import Share from '$lib/components/room/share.svelte';
   }
 </script>
 
-<div class="relative w-[340px] h-full bg-[rgba(32,33,36,0.44)] rounded-md text-white font-['Poppins'] flex flex-col">
+<div class="relative w-[340px] h-full bg-[rgba(32,33,36,0.44)] rounded-md text-white  flex flex-col">
   <!-- Header -->
   <div class="w-full h-12 bg-[rgba(32,33,36,0.44)] rounded-t-md flex items-center px-4">
     <h2 class="font-medium text-base leading-6 text-white">Participants</h2>

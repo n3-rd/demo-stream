@@ -104,9 +104,9 @@
     <div class="flex-1 overflow-auto">
         <div class="p-6">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-['Poppins'] font-medium text-[#737373]">Representatives</h1>
+                <h1 class="text-2xl  font-medium text-[#737373]">Representatives</h1>
                 <Button 
-                    class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white font-['Poppins']"
+                    class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white "
                     on:click={() => {
                         editingRep = null;
                         showAddDialog = true;
@@ -118,7 +118,7 @@
 
             <div class="rounded-lg shadow">
                 <!-- Table Header -->
-                <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 border-b text-sm font-['Poppins'] text-[#737373]">
+                <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 border-b text-sm  text-[#737373]">
                     <div>Icon</div>
                     <div>Name</div>
                     <div>Phone</div>
@@ -141,16 +141,16 @@
                                     />
                                 {:else}
                                     <div class="w-10 h-10 rounded-full bg-[#E0E8F5] flex items-center justify-center">
-                                        <span class="text-lg font-['Poppins'] text-[#737373]">
+                                        <span class="text-lg  text-[#737373]">
                                             {rep.name[0].toUpperCase()}
                                         </span>
                                     </div>
                                 {/if}
                             </div>
-                            <div class="text-[#737373] font-['Poppins'] text-[14px]">{rep.name}</div>
-                            <div class="text-[#737373] font-['Poppins'] text-[14px]">{rep.phone}</div>
-                            <div class="text-[#737373] font-['Poppins'] text-[14px]">{rep.email}</div>
-                            <div class="text-[#737373] font-['Poppins'] text-[14px]">{rep.location || '-'}</div>
+                            <div class="text-[#737373]  text-[14px]">{rep.name}</div>
+                            <div class="text-[#737373]  text-[14px]">{rep.phone}</div>
+                            <div class="text-[#737373]  text-[14px]">{rep.email}</div>
+                            <div class="text-[#737373]  text-[14px]">{rep.location || '-'}</div>
                             <div class="flex items-center justify-end gap-2">
                                 <Button 
                                     variant="ghost" 
@@ -193,9 +193,9 @@
                                 <div class="grid grid-cols-2 gap-6">
                                     <!-- Schedule -->
                                     <div class="bg-white rounded-lg p-6">
-                                        <h3 class="font-['Poppins'] font-semibold text-[18px] text-[#737373] mb-4">Schedule</h3>
+                                        <h3 class=" font-semibold text-[18px] text-[#737373] mb-4">Schedule</h3>
                                         <div class="bg-[#E0E8F5] rounded-[3px] p-4">
-                                            <div class="grid grid-cols-[auto_1fr] gap-x-4 text-[14px] font-['Poppins']">
+                                            <div class="grid grid-cols-[auto_1fr] gap-x-4 text-[14px] ">
                                                 <div class="space-y-[10px] text-[#808080]">
                                                     <div>Monday</div>
                                                     <div>Tuesday</div>
@@ -214,13 +214,13 @@
 
                                     <!-- Connected Rooms -->
                                     <div class="bg-white rounded-lg p-6">
-                                        <h3 class="font-['Poppins'] font-semibold text-[18px] text-[#737373] mb-4">Room Connected to:</h3>
+                                        <h3 class=" font-semibold text-[18px] text-[#737373] mb-4">Room Connected to:</h3>
                                         <div class="bg-[#E0E8F5] rounded-[3px] p-4">
                                             {#if connectedRoomsMap[rep.id]?.length > 0}
                                                 <div class="space-y-[10px]">
                                                     {#each connectedRoomsMap[rep.id] as room}
                                                         <div class="flex items-center justify-between">
-                                                            <span class="text-[14px] text-[#808080] font-['Poppins']">{room.title || `ViewRoom ${room.id.substring(0, 1)}`}</span>
+                                                            <span class="text-[14px] text-[#808080] ">{room.title || `ViewRoom ${room.id.substring(0, 1)}`}</span>
                                                             <div class="w-[38.71px] h-[19.5px] bg-[#DDDDDD] rounded-full relative flex items-center px-[3px]">
                                                                 <div class="w-[13.4px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976]' : 'bg-[#7C7C7C]'} {room.is_active ? 'ml-auto' : ''} transition-all duration-200"></div>
                                                             </div>
@@ -228,7 +228,7 @@
                                                     {/each}
                                                 </div>
                                             {:else}
-                                                <div class="text-[14px] text-[#808080] font-['Poppins']">No rooms connected</div>
+                                                <div class="text-[14px] text-[#808080] ">No rooms connected</div>
                                             {/if}
                                         </div>
                                     </div>
@@ -245,7 +245,7 @@
 <Dialog bind:open={showAddDialog}>
     <DialogContent class="bg-white rounded-lg p-6 max-w-[1106.74px]">
         <DialogHeader>
-            <DialogTitle class="font-['Poppins'] text-[18px] font-semibold text-[#737373]">{editingRep ? 'Edit' : 'Add'} Representative</DialogTitle>
+            <DialogTitle class=" text-[18px] font-semibold text-[#737373]">{editingRep ? 'Edit' : 'Add'} Representative</DialogTitle>
         </DialogHeader>
         <form
             method="POST"
@@ -264,12 +264,12 @@
             {/if}
 
             <div class="space-y-2">
-                <Label for="name" class="font-['Poppins'] text-[14px] text-[#737373]">Name</Label>
+                <Label for="name" class=" text-[14px] text-[#737373]">Name</Label>
                 <input 
                     type="text" 
                     id="name" 
                     name="name" 
-                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 font-['Poppins']"
+                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                     value={editingRep?.name || ''} 
                     required 
                     use:validators={[required]}
@@ -282,12 +282,12 @@
             </div>
 
             <div class="space-y-2">
-                <Label for="email" class="font-['Poppins'] text-[14px] text-[#737373]">Email</Label>
+                <Label for="email" class=" text-[14px] text-[#737373]">Email</Label>
                 <input 
                     type="email" 
                     id="email" 
                     name="email" 
-                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 font-['Poppins']"
+                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                     value={editingRep?.email || ''} 
                     required 
                     use:validators={[required, email]}
@@ -301,18 +301,18 @@
             </div>
 
             <div class="space-y-2">
-                <Label for="phone" class="font-['Poppins'] text-[14px] text-[#737373]">Phone Number</Label>
+                <Label for="phone" class=" text-[14px] text-[#737373]">Phone Number</Label>
                 <input 
                     type="tel" 
                     id="phone" 
                     name="phone" 
-                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 font-['Poppins']"
+                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                     value={editingRep?.phone || ''} 
                 />
             </div>
 
             <div class="space-y-2">
-                <Label for="location" class="font-['Poppins'] text-[14px] text-[#737373]">Location</Label>
+                <Label for="location" class=" text-[14px] text-[#737373]">Location</Label>
                 <Select.Root
                     onSelectedChange={handleLocationChange}
                     class="w-full border border-[#9E9E9E] bg-white rounded-[5px] h-[38px]"
@@ -335,56 +335,56 @@
             </div>
 
             <div class="space-y-2">
-                <Label for="avatar" class="font-['Poppins'] text-[18px] font-semibold text-[#737373]">Add Image</Label>
+                <Label for="avatar" class=" text-[18px] font-semibold text-[#737373]">Add Image</Label>
                 <input 
                     type="file" 
                     id="avatar" 
                     name="avatar" 
-                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 font-['Poppins']"
+                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                     accept="image/*" 
                 />
             </div>
 
             <div class="space-y-2">
-                <Label class="font-['Poppins'] text-[18px] font-semibold text-[#737373]">Schedule</Label>
+                <Label class=" text-[18px] font-semibold text-[#737373]">Schedule</Label>
                 <div class="grid grid-cols-2 gap-4 gap-y-6">
                     <div>
-                        <Label for="monday" class="font-['Poppins'] text-[14px] text-[#808080]">Monday</Label>
+                        <Label for="monday" class=" text-[14px] text-[#808080]">Monday</Label>
                         <input 
                             type="text" 
                             id="monday" 
                             name="monday" 
-                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 font-['Poppins']"
+                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                             value={editingRep?.schedule?.monday || '8:00AM - 5:00PM'} 
                         />
                     </div>
                     <div>
-                        <Label for="tuesday" class="font-['Poppins'] text-[14px] text-[#808080]">Tuesday</Label>
+                        <Label for="tuesday" class=" text-[14px] text-[#808080]">Tuesday</Label>
                         <input 
                             type="text" 
                             id="tuesday" 
                             name="tuesday" 
-                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 font-['Poppins']"
+                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                             value={editingRep?.schedule?.tuesday || '8:00AM - 5:00PM'} 
                         />
                     </div>
                     <div>
-                        <Label for="friday" class="font-['Poppins'] text-[14px] text-[#808080]">Friday</Label>
+                        <Label for="friday" class=" text-[14px] text-[#808080]">Friday</Label>
                         <input 
                             type="text" 
                             id="friday" 
                             name="friday" 
-                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 font-['Poppins']"
+                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                             value={editingRep?.schedule?.friday || '8:00AM - 5:00PM'} 
                         />
                     </div>
                     <div>
-                        <Label for="saturday" class="font-['Poppins'] text-[14px] text-[#808080]">Saturday</Label>
+                        <Label for="saturday" class=" text-[14px] text-[#808080]">Saturday</Label>
                         <input 
                             type="text" 
                             id="saturday" 
                             name="saturday" 
-                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 font-['Poppins']"
+                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                             value={editingRep?.schedule?.saturday || '9:00AM - 3:00PM'} 
                         />
                     </div>
@@ -392,10 +392,10 @@
             </div>
 
             <div class="flex justify-end space-x-2 !mt-8">
-                <Button type="button" variant="outline" class="font-['Poppins']" on:click={() => showAddDialog = false}>
+                <Button type="button" variant="outline" class="" on:click={() => showAddDialog = false}>
                     Cancel
                 </Button>
-                <Button type="submit" class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 font-['Poppins']" disabled={!$form.valid}>
+                <Button type="submit" class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 " disabled={!$form.valid}>
                     {editingRep ? 'Update' : 'Add'} Representative
                 </Button>
             </div>

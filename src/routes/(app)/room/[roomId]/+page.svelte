@@ -167,7 +167,7 @@ onMount(() => {
         if (isHost && room?.expand?.selected_video) {
             const selectedVideo = room.expand.selected_video;
             const videoUrl = selectedVideo.file ? 
-                `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+                `${PUBLIC_POCKETBASE_INSTANCE}api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
             
             console.log('Setting default video for host:', {
                 selectedVideo,
@@ -1094,7 +1094,7 @@ function handleVideoSelect(event) {
     // Check if we can send updates
     if ((isHost || isRepresentative) && webRTCAdaptor && isDataChannelOpen) {
         const newUrl = selectedVideo && selectedVideo.file ? 
-            `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+            `${PUBLIC_POCKETBASE_INSTANCE}api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
         
         console.log('Preparing to send video URL update:', {
             newUrl,

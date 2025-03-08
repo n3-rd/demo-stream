@@ -29,6 +29,9 @@
     let selectedRepresentatives: string[] = [];
     let embedRoomId = '';
     let showEmbed = false;
+    let showContentDialog = false;
+    let contentToShow: any[] = [];
+    let dialogTitle = '';
 
     $: ({ rooms, representatives, hostContent, repContent } = data);
 
@@ -60,18 +63,24 @@
     }
 
     function showHostContent(content: string[]) {
-        // TODO: Implement host content display
-        console.log('Show host content:', content);
+        contentToShow = content.map(id => rooms.find(room => room.expand?.host_content?.find(c => c.id === id))?.expand?.host_content?.find(c => c.id === id)).filter(Boolean);
+        dialogTitle = 'Host Content';
+        showContentDialog = true;
     }
 
     function showRepContent(content: string[]) {
-        // TODO: Implement rep content display
-        console.log('Show rep content:', content);
+        contentToShow = content.map(id => rooms.find(room => room.expand?.representative_content?.find(c => c.id === id))?.expand?.representative_content?.find(c => c.id === id)).filter(Boolean);
+        dialogTitle = 'Representative Content';
+        showContentDialog = true;
     }
 
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return null;
-        return `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+    }
+
+    function getFileUrl(content: any) {
+        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.file}`;
     }
 
     function showEmbedDialog(roomId: string) {
@@ -333,6 +342,48 @@
             <Dialog.Close>
                 Close
             </Dialog.Close>
+        </Dialog.Footer>
+    </Dialog.Content>
+</Dialog.Root>
+
+<!-- Content Dialog -->
+<Dialog.Root bind:open={showContentDialog}>
+    <Dialog.Content class="sm:max-w-[600px]">
+        <Dialog.Header>
+            <Dialog.Title>{dialogTitle}</Dialog.Title>
+        </Dialog.Header>
+        <div class="py-4">
+            <div class="space-y-4">
+                {#each contentToShow as content}
+                    <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                        {#if content.thumbnail}
+                            <img 
+                                src={getThumbnailUrl(content)} 
+                                alt={content.title} 
+                                class="w-24 h-24 object-cover rounded"
+                            />
+                        {/if}
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-lg">{content.title}</h3>
+                            <p class="text-sm text-gray-600">{content.description}</p>
+                            <div class="mt-2">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    on:click={() => window.open(getFileUrl(content), '_blank')}
+                                >
+                                    View {content.type}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                {/each}
+            </div>
+        </div>
+        <Dialog.Footer>
+            <Button variant="outline" on:click={() => showContentDialog = false}>
+                Close
+            </Button>
         </Dialog.Footer>
     </Dialog.Content>
 </Dialog.Root>

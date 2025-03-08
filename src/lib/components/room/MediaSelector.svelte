@@ -18,7 +18,7 @@
         try {
             loading = true;
             const filterValue = encodeURIComponent(`(owner_company='${room.owner_company}')`);
-            const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}/api/collections/content_library/records?filter=${filterValue}`);
+            const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/content_library/records?filter=${filterValue}`);
             const data = await response.json();
             content = data.items.map(item => ({
                 ...item,
@@ -122,12 +122,12 @@
 
     function getFileUrl(file: any) {
         if (!file) return '';
-        return `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${file.collectionId}/${file.id}/${file.file}`;
+        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${file.collectionId}/${file.id}/${file.file}`;
     }
 
     function getThumbnailUrl(content: any) {
         if (content.thumbnail) {
-            return `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+            return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
         }
         return ''; // Return a default thumbnail URL if needed
     }

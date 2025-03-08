@@ -5,11 +5,12 @@
     import { Textarea } from "$lib/components/ui/textarea";
     import * as Select from "$lib/components/ui/select";
     import { toast } from "svelte-sonner";
-    import { goto } from "$app/navigation";
+    import { goto, invalidateAll } from "$app/navigation";
     import { enhance } from "$app/forms";
     import { Loader2 } from "lucide-svelte";
     import { onDestroy } from "svelte";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
+    import LibrarySelectDialog from './LibrarySelectDialog.svelte';
 
     export let data;
     const { user, representatives } = data;
@@ -24,6 +25,7 @@
     let uploadProgress = 0;
     let uploadedChunks: Set<number> = new Set();
     let thumbnailPreviewUrl: string | null = null;
+    let showLibraryDialog = false;
 
     const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
 
@@ -130,32 +132,50 @@
             return;
         }
 
+        // Show library selection dialog instead of uploading immediately
+        showLibraryDialog = true;
+    }
+
+    async function handleLibrarySelect(libraryType: string) {
+        showLibraryDialog = false;
         isUploading = true;
         uploadProgress = 0;
         uploadedChunks.clear();
 
         try {
-            const filename = await uploadFile(selectedFile);
-
-            const formData = new FormData(event.target as HTMLFormElement);
-            formData.append('file_ref', filename);
-
+            const filename = await uploadFile(selectedFile!);
+            const formData = new FormData(document.getElementById('uploadForm') as HTMLFormElement);
+            
+            // Create the proper form data structure matching server expectations
+            const finalFormData = new FormData();
+            finalFormData.append('title', formData.get('title') as string);
+            finalFormData.append('description', formData.get('description') as string);
+            finalFormData.append('type', selectedType);
+            finalFormData.append('file', selectedFile!); // Send the actual file
+            finalFormData.append('file_ref', filename); // Send the chunked file reference
+            finalFormData.append('library_type', libraryType);
+            
+            if (selectedRepresentatives.length > 0) {
+                finalFormData.append('representatives', selectedRepresentatives.join(','));
+            }
+            
             if (thumbnailFile) {
-                formData.append('thumbnail', thumbnailFile);
+                finalFormData.append('thumbnail', thumbnailFile);
             }
 
             const response = await fetch('?/uploadContent', {
                 method: 'POST',
-                body: formData
+                body: finalFormData
             });
 
             const result = await response.json();
 
-            if (result.status === 200) {
+            if (result.type === 'success') {
                 toast.success('Successfully uploaded content');
+                await invalidateAll();
                 goto('/content-library');
             } else {
-                toast.error('Error creating content entry');
+                toast.error(result.message || 'Error creating content entry');
             }
         } catch (error) {
             console.error('Upload error:', error);
@@ -184,7 +204,7 @@
                     type="submit" 
                     form="uploadForm"
                     disabled={isUploading || !selectedFile} 
-                    class="w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-['Inter'] font-semibold text-[16px] text-white flex items-center justify-center"
+                    class="w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-semibold text-[16px] text-white flex items-center justify-center"
                 >
                     {#if isUploading}
                         <Loader2 class="mr-2 h-4 w-4 animate-spin" />
@@ -348,3 +368,8 @@
         </div>
     </div>
 </div>
+
+<LibrarySelectDialog 
+    bind:open={showLibraryDialog} 
+    onSelect={handleLibrarySelect} 
+/>

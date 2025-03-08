@@ -70,7 +70,7 @@
     }
 </script>
 
-<div class="flex flex-col w-full h-full bg-[#202124] rounded-md text-white font-['Poppins']">
+<div class="flex flex-col w-full h-full bg-[#202124] rounded-md text-white ">
     <!-- Chat Header -->
     <div class="w-full h-12 bg-[#202124] rounded-t-md flex items-center px-4 border-b border-[#47484B]">
         <h2 class="font-medium text-base leading-6 text-white">Chat</h2>

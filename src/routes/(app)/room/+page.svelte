@@ -9,7 +9,7 @@
     import { enhance } from '$app/forms';
     import { MoreHorizontal } from 'lucide-svelte';
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import Embed from "$lib/components/room/embed.svelte";
@@ -90,75 +90,88 @@
     }
 </script>
 
-<div class="flex h-screen bg-gray-100">
+<!-- Header -->
+<div class="flex h-screen bg-[#F5F5F5]">
     <Sidenav activePage="rooms" />
     
-    <div class="flex-1 overflow-auto">
-        <div class="container mx-auto py-6">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold">View Room List</h1>
-                <Button on:click={() => showAddRoomDialog = true}>Add New Room</Button>
+    <div class="flex-1 overflow-auto p-6">
+        <div class="max-w-[1200px] mx-auto space-y-6">
+            <!-- Header -->
+            <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
+                <h1 class=" text-[24px] font-bold leading-[118%] text-[#808080]">View Room List</h1>
+                <Button 
+                    class="bg-[#577AB7] h-[39px] rounded-[3px] font-semibold text-[16px] text-white"
+                    on:click={() => showAddRoomDialog = true}
+                >
+                    Add New Room
+                </Button>
             </div>
 
-            <div class="bg-white rounded-lg shadow overflow-x-auto">
-                <div class="min-w-[1000px]">
-                    <div class="grid grid-cols-7 gap-4 p-4 border-b font-medium text-sm text-gray-500">
-                        <div>Room Name</div>
-                        <div>Status</div>
-                        <div>Representative</div>
-                        <div>Host Content</div>
-                        <div>Rep Content</div>
-                        <div class="col-span-2">Actions</div>
-                    </div>
-
-                    {#each rooms as room}
-                        <div class="grid grid-cols-7 gap-4 p-4 border-b hover:bg-gray-50">
-                            <div class="text-blue-600">{room.title}</div>
-                            <div>
-                                <div class="w-12 h-6 rounded-full  relative {room.is_active ? 'text-green-500' : 'text-red-500'}">
-                                  {room.is_active ? 'Active' : 'Inactive'}
-                                </div>
-                            </div>
-                            <div class="text-sm">
-                                {#if room.expand?.representative}
-                                    {room.expand.representative.map(rep => rep.name).join(', ')}
-                                {/if}
-                            </div>
-                            <div>
-                                <button class="text-blue-600 hover:underline flex items-center gap-2" on:click={() => showHostContent(room.host_content)}>
-                                    {#if room.expand?.host_content?.[0]?.thumbnail}
-                                        <img src={getThumbnailUrl(room.expand.host_content[0])} alt="Thumbnail" class="w-8 h-8 object-cover rounded" />
-                                    {/if}
-                                    show
-                                </button>
-                            </div>
-                            <div>
-                                <button class="text-blue-600 hover:underline flex items-center gap-2" on:click={() => showRepContent(room.representative_content)}>
-                                    {#if room.expand?.representative_content?.[0]?.thumbnail}
-                                        <img src={getThumbnailUrl(room.expand.representative_content[0])} alt="Thumbnail" class="w-8 h-8 object-cover rounded" />
-                                    {/if}
-                                    show
-                                </button>
-                            </div>
-                            <div class="flex items-center gap-2 col-span-2">
-                                <div class="flex items-center gap-2 flex-1">
-                                    <Button variant="outline" size="sm" on:click={() => window.location.href = `/room/${room.id}`}>
-                                        Join Room
-                                    </Button>
-                                    <Button variant="outline" size="sm" on:click={() => showEmbedDialog(room.id)}>
-                                        Embed
-                                    </Button>
-                                </div>
-                                <Button variant="outline" size="sm" class="text-gray-600 hover:text-gray-900 ml-auto"
-                                href={`/room/${room.id}/info`}
-                                >
-                                    <MoreHorizontal size={20} />
-                                </Button>
-                            </div>
-                        </div>
-                    {/each}
+            <!-- Table Header -->
+            <div class="bg-white rounded-[8px] h-[48px] flex items-center px-6">
+                <div class="grid grid-cols-7 w-full gap-4">
+                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Date</div>
+                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Room Name</div>
+                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Active</div>
+                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Virtual Assistant</div>
+                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Host Content</div>
+                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Rep Content</div>
+                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Embed Code</div>
                 </div>
             </div>
+
+            <!-- Table Rows -->
+            {#each rooms as room}
+                <div class="bg-white rounded-[8px] h-[73px] flex items-center px-6">
+                    <div class="grid grid-cols-7 w-full gap-4">
+                        <div class="text-[16px] font-normal text-[#808080] flex items-center justify-center">
+                            {formatDate(room.created)}
+                        </div>
+                        <div class="text-[16px] font-medium text-[#7798D2] flex items-center justify-center">
+                            <button 
+                                class="hover:underline"
+                                on:click={() => goto(`/room/${room.id}/info`)}
+                            >
+                                {room.title}
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-center">
+                            <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
+                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
+                            </div>
+                        </div>
+                        <div class="text-[16px] font-normal text-[#808080] flex items-center justify-center">
+                            {#if room.expand?.representative}
+                                {room.expand.representative.map(rep => rep.name).join(', ')}
+                            {/if}
+                        </div>
+                        <div class="flex items-center justify-center">
+                            <button 
+                                class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
+                                on:click={() => showHostContent(room.host_content)}
+                            >
+                                show
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-center">
+                            <button 
+                                class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
+                                on:click={() => showRepContent(room.representative_content)}
+                            >
+                                show
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-center">
+                            <button 
+                                class="text-[16px] font-normal text-[#808080]"
+                                on:click={() => showEmbedDialog(room.id)}
+                            >
+                                show
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {/each}
         </div>
     </div>
 </div>

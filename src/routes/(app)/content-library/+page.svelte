@@ -2,7 +2,7 @@
     import { Button } from "$lib/components/ui/button";
     import { goto } from "$app/navigation";
     import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
-    import { FileVideo, FileText, FilePen, Trash2 } from "lucide-svelte";
+    import { FileVideo, FileText, FilePen, Trash2, Pencil, Play } from "lucide-svelte";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
 
     export let data;
@@ -44,9 +44,9 @@
 
     function handleContentClick(item) {
         if (item.type === 'video') {
-            goto(`/content-library/video/${item.id}`);
+           window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`, '_blank');
         } else {
-            window.open(`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${item.id}/${item.file}`, '_blank');
+            window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`, '_blank');
         }
     }
 </script>
@@ -123,7 +123,7 @@
                             <div class="relative">
                                 {#if item.thumbnail}
                                     <img
-                                        src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${item.id}/${item.thumbnail}`}
+                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.thumbnail}`}
                                         alt={item.title}
                                         class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]"
                                     />
@@ -136,18 +136,31 @@
                                     </div>
                                 {/if}
                                 {#if item.type === 'video'}
-                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                                    on:click={()=>{
+                                        handleContentClick(item);
+                                    }}
+                                    >
                                         <div class="w-[37.16px] h-[35.04px] bg-white rounded-full flex items-center justify-center">
-                                            <div class="w-[17px] h-[27.53px] bg-[#666666]" />
+                                           <Play class="w-[17px] h-[27.53px]" 
+                                           />
                                         </div>
                                     </div>
                                 {/if}
-                                <button 
-                                    class="absolute top-2 right-2 w-[21.23px] h-[19.11px] bg-[#EB3223] rounded-full flex items-center justify-center"
-                                    on:click={() => {/* Handle delete */}}
-                                >
-                                    <Trash2 class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
-                                </button>
+                                <div class="absolute top-2 right-2 flex gap-2">
+                                    <button 
+                                        class="w-[21.23px] h-[19.11px] bg-[#577AB7] rounded-full flex items-center justify-center"
+                                        on:click|stopPropagation={() => goto(`/content-library/${item.id}/edit`)}
+                                    >
+                                        <Pencil class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
+                                    </button>
+                                    <button 
+                                        class="w-[21.23px] h-[19.11px] bg-[#EB3223] rounded-full flex items-center justify-center"
+                                        on:click|stopPropagation={() => {/* Handle delete */}}
+                                    >
+                                        <Trash2 class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
+                                    </button>
+                                </div>
                             </div>
                             <div class="mt-2">
                                 <h3 class=" font-semibold text-[14px] leading-[120%] text-[#577AB7]">{item.title}</h3>

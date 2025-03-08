@@ -43,144 +43,154 @@
     }
 </script>
 
-<div class="flex h-screen bg-gray-100 overflow-hidden">
+<div class="flex h-screen bg-[#F5F5F5]">
     <Sidenav activePage="rooms" />
-
-    <div class="flex-1 flex flex-col">
-        {#if !room}
-            <div class="flex items-center justify-center h-full">
-                <p class="text-gray-500">Loading room information...</p>
-            </div>
-        {:else}
+    
+    <div class="flex-1 overflow-auto p-6">
+        <div class="max-w-[1115px] mx-auto space-y-6">
             <!-- Header -->
-            <header class="border-b border-gray-200 bg-white px-6 py-4 flex-shrink-0">
-                <div class="flex items-center justify-between">
-                    <h1 class="text-xl font-semibold text-gray-800">{room.title} - Room Info</h1>
-                    <div class="flex items-center space-x-4">
-                        <Button variant="outline" on:click={() => showEmbed = true}>
-                            Get Embed Code
-                        </Button>
-                        <Button variant="outline" on:click={() => showEditDialog = true}>
-                            Edit Room
-                        </Button>
-                        <Button on:click={handleJoinRoom}>
-                            Join Room
-                        </Button>
-                    </div>
+            <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
+                <h1 class="font-['Poppins'] text-[24px] font-bold leading-[118%] text-[#808080]">{room?.title || ''}</h1>
+                <div class="flex items-center gap-4">
+                    <Button 
+                        variant="outline" 
+                        class="h-[39px] rounded-[3px] font-semibold text-[16px]"
+                        on:click={() => showEmbed = true}
+                    >
+                        Get Embed Code
+                    </Button>
+                    <Button 
+                        variant="outline"
+                        class="h-[39px] rounded-[3px] font-semibold text-[16px]"
+                        on:click={() => showEditDialog = true}
+                    >
+                        Edit Room
+                    </Button>
+                    <Button 
+                        class="bg-[#577AB7] h-[39px] rounded-[3px] font-semibold text-[16px] text-white"
+                        on:click={handleJoinRoom}
+                    >
+                        Join Room
+                    </Button>
                 </div>
-            </header>
+            </div>
 
-            <!-- Main Content -->
-            <main class="flex-1 overflow-y-auto p-6">
-                <section class="flex flex-col gap-4 mb-4">
-                    <!-- Host Content Section -->
-                    {#if room.host_content?.length}
-                    <section class="bg-white rounded-lg shadow p-6 ">
-                        <h2 class="text-lg font-semibold mb-4">Host Content</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                            {#each hostContent.filter(content => room.host_content.includes(content.id)) as content}
-                                <div class="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                                    {#if content.thumbnail}
-                                        <img 
-                                            src={getThumbnailUrl(content)} 
-                                            alt={content.title}
-                                            class="w-full h-full object-cover"
-                                        />
-                                    {:else}
-                                        <div class="absolute inset-0 flex items-center justify-center">
-                                            <span class="text-gray-400">No thumbnail</span>
-                                        </div>
-                                    {/if}
-                                    <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2">
-                                        <p class="text-white text-sm truncate">{content.title || 'Untitled'}</p>
-                                    </div>
-                                </div>
-                            {/each}
-                        </div>
-                    </section>
-                {/if}
-
-                <!-- Representative Content Section -->
-                {#if room.representative_content?.length}
-                    <section class="bg-white rounded-lg shadow p-6">
-                        <h2 class="text-lg font-semibold mb-4">Representative Content</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                            {#each representativeContent.filter(content => room.representative_content.includes(content.id)) as content}
-                                <div class="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                                    {#if content.thumbnail}
-                                        <img 
-                                            src={getThumbnailUrl(content)} 
-                                            alt={content.title}
-                                            class="w-full h-full object-cover"
-                                        />
-                                    {:else}
-                                        <div class="absolute inset-0 flex items-center justify-center">
-                                            <span class="text-gray-400">No thumbnail</span>
-                                        </div>
-                                    {/if}
-                                    <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2">
-                                        <p class="text-white text-sm truncate">{content.title || 'Untitled'}</p>
-                                    </div>
-                                </div>
-                            {/each}
-                        </div>
-                    </section>
-                {/if}
-                </section>
-                <!-- Room Details -->
-                <section class="bg-white rounded-lg shadow p-6 mb-8">
-                    
-                    <h2 class="text-lg font-semibold mb-4">Room Details</h2>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-sm text-gray-500">Title</p>
-                            <p class="text-sm mt-1 font-medium">{room.title}</p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Status</p>
-                            <div class="flex items-center mt-1">
-                                <form 
-                                    method="POST" 
-                                    action="?/toggle-active" 
-                                    use:enhance={() => {
-                                        return async ({ result }) => {
-                                            if (result.type === 'success') {
-                                                toast.success('Room status updated');
-                                                invalidateAll();
-                                            } else {
-                                                toast.error('Failed to update room status');
-                                            }
-                                        };
-                                    }}
-                                >
-                                    <button 
-                                        type="submit" 
-                                        class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 {room.is_active ? 'bg-green-500' : 'bg-gray-200'}"
-                                        role="switch"
-                                        aria-checked={room.is_active}
-                                    >
-                                        <span 
-                                            class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out {room.is_active ? 'translate-x-5' : 'translate-x-0'}"
-                                        />
-                                    </button>
-                                    <span class="ml-3 text-sm">{room.is_active ? 'Active' : 'Inactive'}</span>
-                                </form>
+            <!-- Host Content Section -->
+            <div class="bg-white rounded-[8px] p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <h2 class="font-['Poppins'] text-[18px] font-semibold text-[#737373]">Name of Viewroom-1</h2>
+                        <span class="font-['Poppins'] text-[18px] font-semibold text-[#577AB7]">(Host View)</span>
+                    </div>
+                    <a href="/upload" class=" text-[14px] text-[#737373] underline">Add More</a>
+                </div>
+                <div class="grid grid-cols-5 gap-4">
+                    {#each hostContent.filter(content => room?.host_content?.includes(content.id)).slice(0, 5) as content}
+                        <div class="bg-[#ECEFF3] rounded-[2px] p-2">
+                            {#if content.thumbnail}
+                                <img 
+                                    src={getThumbnailUrl(content)} 
+                                    alt={content.title}
+                                    class="w-[192px] h-[118px] object-cover rounded-[1px] mb-2"
+                                />
+                            {/if}
+                            <div class="space-y-1">
+                                <p class=" text-[14px] font-semibold text-[#577AB7] truncate">{content.title}</p>
+                                <p class=" text-[11px] font-light text-black/50">ID {content.id}</p>
                             </div>
                         </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Created By</p>
-                            <p class="text-sm mt-1">{room.owner_company}</p>
+                    {/each}
+                </div>
+            </div>
+
+            <!-- Representative Content Section -->
+            <div class="bg-white rounded-[8px]  p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <h2 class="font-['Poppins'] text-[18px] font-semibold text-[#737373]">Viewroom-1</h2>
+                        <span class="font-['Poppins'] text-[18px] font-semibold text-[#577AB7]">(Representative View)</span>
+                    </div>
+                    <a href="/upload" class=" text-[14px] text-[#737373] underline">Add More</a>
+                </div>
+                <div class="grid grid-cols-5 gap-4">
+                    {#each representativeContent.filter(content => room?.representative_content?.includes(content.id)).slice(0, 5) as content}
+                        <div class="bg-[#ECEFF3] rounded-[2px] p-2 ">
+                            {#if content.thumbnail}
+                                <img 
+                                    src={getThumbnailUrl(content)} 
+                                    alt={content.title}
+                                    class="w-[192px] h-[118px] object-cover rounded-[1px] mb-2"
+                                />
+                            {/if}
+                            <div class="space-y-1">
+                                <p class=" text-[14px] font-semibold text-[#577AB7] truncate">{content.title}</p>
+                                <p class=" text-[11px] font-light text-black/50">ID {content.id}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Selected Video</p>
-                            <p class="text-sm mt-1">{hostContent.find(c => c.id === room.selected_video)?.title || 'None'}</p>
+                    {/each}
+                </div>
+            </div>
+
+            <!-- Host Content List -->
+            <div class="bg-white rounded-[4px] p-6">
+                <h2 class="font-['Poppins'] text-[18px] font-semibold text-[#737373] mb-4">Host Content</h2>
+                <div class="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-4">
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Title</div>
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">ID Number</div>
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Active</div>
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</div>
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Actions</div>
+                </div>
+                <div class="h-[0.5px] bg-[#B4B4B4] my-4" />
+                {#each hostContent.filter(content => room?.host_content?.includes(content.id)) as content, i}
+                    <div class="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-4 items-center py-2">
+                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</div>
+                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</div>
+                        <div class="flex items-center">
+                            <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
+                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
+                            </div>
+                        </div>
+                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</div>
+                        <div class="flex items-center justify-end gap-2">
+                            <button class="w-[18.75px] h-[17.59px] bg-[#EB3223] rounded-full flex items-center justify-center">
+                                <div class="w-[12.5px] h-[11.73px]" />
+                            </button>
                         </div>
                     </div>
-                </section>
+                {/each}
+            </div>
 
-            
-            </main>
-        {/if}
+            <!-- Representative Content List -->
+            <div class="bg-white rounded-[4px] p-6">
+                <h2 class="font-['Poppins'] text-[18px] font-semibold text-[#737373] mb-4">Representative Content</h2>
+                <div class="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-4">
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Title</div>
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">ID Number</div>
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Active</div>
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</div>
+                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Actions</div>
+                </div>
+                <div class="h-[0.5px] bg-[#B4B4B4] my-4" />
+                {#each representativeContent.filter(content => room?.representative_content?.includes(content.id)) as content, i}
+                    <div class="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-4 items-center py-2">
+                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</div>
+                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</div>
+                        <div class="flex items-center">
+                            <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
+                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
+                            </div>
+                        </div>
+                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</div>
+                        <div class="flex items-center justify-end gap-2">
+                            <button class="w-[18.75px] h-[17.59px] bg-[#EB3223] rounded-full flex items-center justify-center">
+                                <div class="w-[12.5px] h-[11.73px]" />
+                            </button>
+                        </div>
+                    </div>
+                {/each}
+            </div>
+        </div>
     </div>
 </div>
 
@@ -352,6 +362,6 @@
 
 <style>
     :global(body) {
-        @apply bg-gray-100;
+        @apply bg-[#F5F5F5];
     }
 </style>

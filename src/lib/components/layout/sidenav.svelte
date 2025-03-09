@@ -29,7 +29,7 @@
             {#each sidebarItems as item}
                 <a
                     href={item.href}
-                    class="block py-2 px-4 text-gray-600 hover:bg-gray-100 transition duration-150 ease-in-out {item.active ? 'text-[#577AB7] font-medium' : ''}"
+                    class="block py-2 px-4 text-gray-600 hover:bg-gray-100 transition duration-150 ease-in-out {item.active ? 'text-primary font-medium' : ''}"
                 >
                     {item.name}
                 </a>

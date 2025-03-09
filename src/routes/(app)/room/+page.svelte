@@ -88,6 +88,33 @@
         embedRoomId = roomId;
         showEmbed = true;
     }
+
+    function handleRepCheckboxChange(e: Event, repId: string) {
+        const checkbox = e.target as HTMLInputElement;
+        if (checkbox.checked) {
+            selectedRepresentatives = [...selectedRepresentatives, repId];
+        } else {
+            selectedRepresentatives = selectedRepresentatives.filter(id => id !== repId);
+        }
+    }
+
+    function handleHostContentCheckboxChange(e: Event, contentId: string) {
+        const checkbox = e.target as HTMLInputElement;
+        if (checkbox.checked) {
+            selectedHostContent = [...selectedHostContent, contentId];
+        } else {
+            selectedHostContent = selectedHostContent.filter(id => id !== contentId);
+        }
+    }
+
+    function handleRepContentCheckboxChange(e: Event, contentId: string) {
+        const checkbox = e.target as HTMLInputElement;
+        if (checkbox.checked) {
+            selectedRepContent = [...selectedRepContent, contentId];
+        } else {
+            selectedRepContent = selectedRepContent.filter(id => id !== contentId);
+        }
+    }
 </script>
 
 <!-- Header -->
@@ -245,78 +272,135 @@
 
                 <div class="space-y-2">
                     <Label for="representative">Representatives</Label>
-                    <Select.Root
-                        multiple
-                        onSelectedChange={e => {
-                            selectedRepresentatives = (e?.map?.(item => String(item?.value)) || []);
-                        }}
-                    >
+                    <Select.Root>
                         <Select.Trigger class="w-full">
                             <Select.Value placeholder="Select representatives..." />
                         </Select.Trigger>
-                        <Select.Content>
-                            {#each representatives as rep}
-                                <Select.Item value={rep.id} label={rep.name}>
-                                    <div class="flex items-center gap-2">
-                                        {#if rep.avatar}
-                                            <img src={getThumbnailUrl(rep)} alt="Avatar" class="w-6 h-6 object-cover rounded-full" />
-                                        {/if}
-                                        {rep.name}
+                        <Select.Content class="w-full">
+                            <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
+                                {#each representatives as rep}
+                                    <div class="flex items-center justify-between gap-3 mb-3">
+                                        <div class="flex items-center gap-2">
+                                            {#if rep.avatar}
+                                                <img 
+                                                    src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${rep.id}/${rep.avatar}`}
+                                                    alt={rep.name}
+                                                    class="w-8 h-8 rounded-full object-cover"
+                                                />
+                                            {:else}
+                                                <div class="w-8 h-8 rounded-full bg-[#E0E8F5] flex items-center justify-center">
+                                                    <span class="text-sm font-medium text-[#737373]">
+                                                        {rep.name[0].toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            {/if}
+                                            <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
+                                                {rep.name}
+                                            </span>
+                                        </div>
+                                        <div class="relative">
+                                            <input 
+                                                type="checkbox" 
+                                                id="representative_{rep.id}" 
+                                                value={rep.id}
+                                                class="hidden peer"
+                                                on:change={(e) => handleRepCheckboxChange(e, rep.id)}
+                                                checked={selectedRepresentatives.includes(rep.id)}
+                                            />
+                                            <label 
+                                                for="representative_{rep.id}" 
+                                                class="box-border w-[23px] h-[22px] bg-white border-2 border-[#808080] rounded-[2px] inline-block cursor-pointer peer-checked:bg-[#66A73B] peer-checked:border-[#66A73B] relative"
+                                            >
+                                                {#if selectedRepresentatives.includes(rep.id)}
+                                                    <svg class="absolute inset-0 w-full h-full text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="white"/>
+                                                    </svg>
+                                                {/if}
+                                            </label>
+                                        </div>
                                     </div>
-                                </Select.Item>
-                            {/each}
+                                {/each}
+                            </div>
                         </Select.Content>
                     </Select.Root>
                 </div>
 
                 <div class="space-y-2">
                     <Label for="host_content">Host Content</Label>
-                    <Select.Root
-                        multiple
-                        onSelectedChange={e => {
-                            selectedHostContent = (e?.map?.(item => String(item?.value)) || []);
-                        }}
-                    >
+                    <Select.Root>
                         <Select.Trigger class="w-full">
-                            <Select.Value placeholder="Select content..." />
+                            <Select.Value placeholder="Select host content..." />
                         </Select.Trigger>
-                        <Select.Content>
-                            {#each hostContent as content}
-                                <Select.Item value={content.id} label={content.title}>
-                                    <div class="flex items-center gap-2">
-                                        {#if content.thumbnail}
-                                            <img src={getThumbnailUrl(content)} alt="Thumbnail" class="w-6 h-6 object-cover rounded" />
-                                        {/if}
-                                        {content.title}
+                        <Select.Content class="w-full">
+                            <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
+                                {#each hostContent as content}
+                                    <div class="flex items-center justify-between gap-3 mb-3">
+                                        <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
+                                            {content.title}
+                                        </span>
+                                        <div class="relative">
+                                            <input 
+                                                type="checkbox" 
+                                                id="host_{content.id}" 
+                                                value={content.id}
+                                                class="hidden peer"
+                                                on:change={(e) => handleHostContentCheckboxChange(e, content.id)}
+                                                checked={selectedHostContent.includes(content.id)}
+                                            />
+                                            <label 
+                                                for="host_{content.id}" 
+                                                class="box-border w-[23px] h-[22px] bg-white border-2 border-[#808080] rounded-[2px] inline-block cursor-pointer peer-checked:bg-[#66A73B] peer-checked:border-[#66A73B] relative"
+                                            >
+                                                {#if selectedHostContent.includes(content.id)}
+                                                    <svg class="absolute inset-0 w-full h-full text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="white"/>
+                                                    </svg>
+                                                {/if}
+                                            </label>
+                                        </div>
                                     </div>
-                                </Select.Item>
-                            {/each}
+                                {/each}
+                            </div>
                         </Select.Content>
                     </Select.Root>
                 </div>
 
                 <div class="space-y-2">
                     <Label for="representative_content">Representative Content</Label>
-                    <Select.Root
-                        multiple
-                        onSelectedChange={e => {
-                            selectedRepContent = (e?.map?.(item => String(item?.value)) || []);
-                        }}
-                    >
+                    <Select.Root>
                         <Select.Trigger class="w-full">
-                            <Select.Value placeholder="Select content..." />
+                            <Select.Value placeholder="Select representative content..." />
                         </Select.Trigger>
-                        <Select.Content>
-                            {#each repContent as content}
-                                <Select.Item value={content.id} label={content.title}>
-                                    <div class="flex items-center gap-2">
-                                        {#if content.thumbnail}
-                                            <img src={getThumbnailUrl(content)} alt="Thumbnail" class="w-6 h-6 object-cover rounded" />
-                                        {/if}
-                                        {content.title}
+                        <Select.Content class="w-full">
+                            <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
+                                {#each repContent as content}
+                                    <div class="flex items-center justify-between gap-3 mb-3">
+                                        <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
+                                            {content.title}
+                                        </span>
+                                        <div class="relative">
+                                            <input 
+                                                type="checkbox" 
+                                                id="rep_{content.id}" 
+                                                value={content.id}
+                                                class="hidden peer"
+                                                on:change={(e) => handleRepContentCheckboxChange(e, content.id)}
+                                                checked={selectedRepContent.includes(content.id)}
+                                            />
+                                            <label 
+                                                for="rep_{content.id}" 
+                                                class="box-border w-[23px] h-[22px] bg-white border-2 border-[#808080] rounded-[2px] inline-block cursor-pointer peer-checked:bg-[#66A73B] peer-checked:border-[#66A73B] relative"
+                                            >
+                                                {#if selectedRepContent.includes(content.id)}
+                                                    <svg class="absolute inset-0 w-full h-full text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="white"/>
+                                                    </svg>
+                                                {/if}
+                                            </label>
+                                        </div>
                                     </div>
-                                </Select.Item>
-                            {/each}
+                                {/each}
+                            </div>
                         </Select.Content>
                     </Select.Root>
                 </div>

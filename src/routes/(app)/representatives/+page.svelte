@@ -10,7 +10,7 @@
     import { ChevronDown, ChevronUp, MoreHorizontal } from "lucide-svelte";
     import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
-	import { invalidateAll } from "$app/navigation";
+	import { goto, invalidateAll } from "$app/navigation";
     import { useForm, HintGroup, Hint, validators, email, required } from 'svelte-use-form';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
@@ -107,10 +107,7 @@
                 <h1 class="text-2xl  font-medium text-[#737373]">Representatives</h1>
                 <Button 
                     class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white "
-                    on:click={() => {
-                        editingRep = null;
-                        showAddDialog = true;
-                    }}
+                    href="/representatives/new"
                 >
                     Add Representative
                 </Button>
@@ -135,7 +132,7 @@
                             <div>
                                 {#if rep.avatar}
                                     <img
-                                        src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/representatives/${rep.id}/${rep.avatar}`}
+                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${rep.id}/${rep.avatar}`}
                                         alt={rep.name}
                                         class="w-10 h-10 rounded-full object-cover"
                                     />
@@ -177,8 +174,7 @@
                                     </DropdownMenu.Trigger>
                                     <DropdownMenu.Content>
                                         <DropdownMenu.Item on:click={() => {
-                                            editingRep = rep;
-                                            showAddDialog = true;
+                                           goto(`/representatives/edit/${rep.id}`)
                                         }}>
                                             Edit
                                         </DropdownMenu.Item>

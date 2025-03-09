@@ -17,21 +17,21 @@
         <div class="flex flex-col gap-3 py-4">
             <Button 
                 variant="outline" 
-                class="w-full justify-start" 
+                class="w-full justify-start bg-primary text-white hover:bg-primary/80 rounded-none" 
                 on:click={() => onSelect('host')}
             >
                 Host Library
             </Button>
             <Button 
                 variant="outline" 
-                class="w-full justify-start" 
+                class="w-full justify-start bg-primary text-white hover:bg-primary/80 rounded-none" 
                 on:click={() => onSelect('representative')}
             >
                 Representative Library
             </Button>
             <Button 
                 variant="outline" 
-                class="w-full justify-start" 
+                class="w-full justify-start bg-primary text-white hover:bg-primary/80 rounded-none" 
                 on:click={() => onSelect('both')}
             >
                 Both

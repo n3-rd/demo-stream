@@ -13,10 +13,13 @@
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
     import { invalidateAll } from '$app/navigation';
     import { onMount } from 'svelte';
+    import { Play, Pencil, Trash2 } from 'lucide-svelte';
 
     export let data;
     let showEmbed = false;
     let showEditDialog = false;
+    let showDeleteDialog = false;
+    let contentToDelete = null;
     const form = useForm();
 
     $: ({ room, hostContent = [], representativeContent = [], representatives = [], locations = [] } = data || {});
@@ -92,6 +95,89 @@
         }, 100);
     }
     
+    // Handle content deletion
+    function openDeleteDialog(content) {
+        contentToDelete = content;
+        showDeleteDialog = true;
+    }
+    
+    async function deleteContent() {
+        if (!contentToDelete) return;
+        
+        try {
+            // Remove content from room
+            if (selectedHostContent.includes(contentToDelete.id)) {
+                selectedHostContent = selectedHostContent.filter(id => id !== contentToDelete.id);
+            }
+            
+            if (selectedRepContent.includes(contentToDelete.id)) {
+                selectedRepContent = selectedRepContent.filter(id => id !== contentToDelete.id);
+            }
+            
+            // Update room with new content lists and include all required fields
+            const formData = new FormData();
+            formData.append('title', room.title); // Required field
+            formData.append('owner_company', room.owner_company); // Required field
+            
+            // Ensure arrays are properly formatted
+            if (selectedHostContent.length > 0) {
+                formData.append('host_content[]', selectedHostContent.join(','));
+            } else {
+                formData.append('host_content[]', ''); // Empty array
+            }
+            
+            if (selectedRepContent.length > 0) {
+                formData.append('representative_content[]', selectedRepContent.join(','));
+            } else {
+                formData.append('representative_content[]', ''); // Empty array
+            }
+            
+            if (selectedRepresentatives.length > 0) {
+                formData.append('representative[]', selectedRepresentatives.join(','));
+            } else {
+                formData.append('representative[]', ''); // Empty array
+            }
+            
+            // Include other optional fields if they exist
+            if (selectedVideo) {
+                formData.append('selected_video', selectedVideo);
+            }
+            
+            if (room.is_active !== undefined) {
+                formData.append('is_active', room.is_active.toString());
+            }
+            
+            const response = await fetch('?/update-room', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.type === 'success') {
+                toast.success('Content removed from room');
+                await invalidateAll();
+            } else {
+                console.error('Error response:', result);
+                toast.error('Failed to remove content: ' + (result.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error removing content:', error);
+            toast.error('An error occurred');
+        } finally {
+            showDeleteDialog = false;
+            contentToDelete = null;
+        }
+    }
+    
+    function playContent(content) {
+        if (content.type === 'video') {
+            window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.file}`, '_blank');
+        } else {
+            window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.file}`, '_blank');
+        }
+    }
+    
     // Initialize form validation on mount
     onMount(() => {
         // Add a small delay to ensure the form is fully initialized
@@ -146,17 +232,42 @@
                     </div>
                     <a href="/upload" class=" text-[14px] text-[#737373] underline">Add More</a>
                 </div>
-                <div class="grid grid-cols-5 gap-4">
+                <div class="flex items-center gap-4">
                     {#each hostContent.filter(content => room?.host_content?.includes(content.id)).slice(0, 5) as content}
-                        <div class="bg-[#ECEFF3] rounded-[2px] p-2">
-                            {#if content.thumbnail}
-                                <img 
-                                    src={getThumbnailUrl(content)} 
-                                    alt={content.title}
-                                    class="w-[192px] h-[118px] object-cover rounded-[1px] mb-2"
-                                />
-                            {/if}
-                            <div class="space-y-1">
+                        <div class="bg-[#ECEFF3] rounded-[2px] p-2 w-[221px]">
+                            <div class="relative">
+                                {#if content.thumbnail}
+                                    <img 
+                                        src={getThumbnailUrl(content)} 
+                                        alt={content.title}
+                                        class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]"
+                                    />
+                                {/if}
+                                {#if content.type === 'video'}
+                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                                    on:click={() => playContent(content)}
+                                    >
+                                        <div class="w-[37.16px] h-[35.04px] bg-white rounded-full flex items-center justify-center shadow-md">
+                                           <Play class="w-[17px] h-[27.53px] text-[#577AB7]" />
+                                        </div>
+                                    </div>
+                                {/if}
+                                <div class="absolute top-2 right-2 flex gap-2">
+                                    <button 
+                                        class="w-[21.23px] h-[19.11px] bg-[#577AB7] rounded-full flex items-center justify-center shadow-sm"
+                                        on:click|stopPropagation={() => goto(`/content-library/${content.id}/edit`)}
+                                    >
+                                        <Pencil class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
+                                    </button>
+                                    <button 
+                                        class="w-[21.23px] h-[19.11px] bg-[#EB3223] rounded-full flex items-center justify-center shadow-sm"
+                                        on:click|stopPropagation={() => openDeleteDialog(content)}
+                                    >
+                                        <Trash2 class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-1 mt-2">
                                 <p class=" text-[14px] font-semibold text-[#577AB7] truncate">{content.title}</p>
                                 <p class=" text-[11px] font-light text-black/50">ID {content.id}</p>
                             </div>
@@ -176,15 +287,40 @@
                 </div>
                 <div class="grid grid-cols-5 gap-4">
                     {#each representativeContent.filter(content => room?.representative_content?.includes(content.id)).slice(0, 5) as content}
-                        <div class="bg-[#ECEFF3] rounded-[2px] p-2 ">
-                            {#if content.thumbnail}
-                                <img 
-                                    src={getThumbnailUrl(content)} 
-                                    alt={content.title}
-                                    class="w-[192px] h-[118px] object-cover rounded-[1px] mb-2"
-                                />
-                            {/if}
-                            <div class="space-y-1">
+                        <div class="bg-[#ECEFF3] rounded-[2px] p-2 w-[221px]">
+                            <div class="relative">
+                                {#if content.thumbnail}
+                                    <img 
+                                        src={getThumbnailUrl(content)} 
+                                        alt={content.title}
+                                        class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]"
+                                    />
+                                {/if}
+                                {#if content.type === 'video'}
+                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                                    on:click={() => playContent(content)}
+                                    >
+                                        <div class="w-[37.16px] h-[35.04px] bg-white rounded-full flex items-center justify-center shadow-md">
+                                           <Play class="w-[17px] h-[27.53px] text-[#577AB7]" />
+                                        </div>
+                                    </div>
+                                {/if}
+                                <div class="absolute top-2 right-2 flex gap-2">
+                                    <button 
+                                        class="w-[21.23px] h-[19.11px] bg-[#577AB7] rounded-full flex items-center justify-center shadow-sm"
+                                        on:click|stopPropagation={() => goto(`/content-library/${content.id}/edit`)}
+                                    >
+                                        <Pencil class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
+                                    </button>
+                                    <button 
+                                        class="w-[21.23px] h-[19.11px] bg-[#EB3223] rounded-full flex items-center justify-center shadow-sm"
+                                        on:click|stopPropagation={() => openDeleteDialog(content)}
+                                    >
+                                        <Trash2 class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="space-y-1 mt-2">
                                 <p class=" text-[14px] font-semibold text-[#577AB7] truncate">{content.title}</p>
                                 <p class=" text-[11px] font-light text-black/50">ID {content.id}</p>
                             </div>
@@ -533,6 +669,45 @@
         </Dialog.Content>
     </Dialog.Root>
 {/if}
+
+<!-- Delete Confirmation Dialog -->
+<Dialog.Root bind:open={showDeleteDialog}>
+    <Dialog.Content class="sm:max-w-[425px]">
+        <Dialog.Header>
+            <Dialog.Title>Remove Content</Dialog.Title>
+            <Dialog.Description>
+                Are you sure you want to remove this content from the room?
+            </Dialog.Description>
+        </Dialog.Header>
+        
+        {#if contentToDelete}
+            <div class="py-4">
+                <div class="flex items-center gap-3">
+                    {#if contentToDelete.thumbnail}
+                        <img 
+                            src={getThumbnailUrl(contentToDelete)} 
+                            alt={contentToDelete.title} 
+                            class="w-16 h-16 object-cover rounded"
+                        />
+                    {/if}
+                    <div>
+                        <h3 class="font-semibold">{contentToDelete.title}</h3>
+                        <p class="text-sm text-gray-500">ID: {contentToDelete.id}</p>
+                    </div>
+                </div>
+            </div>
+        {/if}
+        
+        <Dialog.Footer>
+            <Button variant="outline" on:click={() => showDeleteDialog = false}>
+                Cancel
+            </Button>
+            <Button variant="destructive" on:click={deleteContent}>
+                Remove
+            </Button>
+        </Dialog.Footer>
+    </Dialog.Content>
+</Dialog.Root>
 
 <style>
     :global(body) {

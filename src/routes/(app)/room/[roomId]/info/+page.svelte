@@ -285,7 +285,7 @@
                     </div>
                     <a href="/upload" class=" text-[14px] text-[#737373] underline">Add More</a>
                 </div>
-                <div class="grid grid-cols-5 gap-4">
+                <div class="flex items-center gap-4">
                     {#each representativeContent.filter(content => room?.representative_content?.includes(content.id)).slice(0, 5) as content}
                         <div class="bg-[#ECEFF3] rounded-[2px] p-2 w-[221px]">
                             <div class="relative">
@@ -339,7 +339,7 @@
                                 <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Title</th>
                                 <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">ID Number</th>
                                 <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Active</th>
-                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</th>
+                                <th class="py-3 px-4 text-center font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</th>
                                 <th class="py-3 px-4 text-right font-['Poppins'] text-[16px] font-semibold text-[#737373]">Actions</th>
                             </tr>
                         </thead>
@@ -354,12 +354,12 @@
                                         </div>
                                     </td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</td>
-                                    <td class="py-3 px-4 text-right">
+                                    <td class="py-3 px-4 text-right flex justify-end">
                                         <button 
-                                            class="w-[18.75px] h-[17.59px] bg-[#EB3223] rounded-full flex items-center justify-center"
+                                            class="w-[18.75px] h-[17.59px]  rounded-full flex items-center justify-center"
                                             on:click={() => openDeleteDialog(content)}
                                         >
-                                            <Trash2 class="w-[12.5px] h-[11.73px] text-white" />
+                                            <img src="/icons/table-trash.svg" class="w-[21.5px] h-[18.73px] text-white" />
                                         </button>
                                     </td>
                                 </tr>
@@ -379,7 +379,7 @@
                                 <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Title</th>
                                 <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">ID Number</th>
                                 <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Active</th>
-                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</th>
+                                <th class="py-3 px-4 text-center font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</th>
                                 <th class="py-3 px-4 text-right font-['Poppins'] text-[16px] font-semibold text-[#737373]">Actions</th>
                             </tr>
                         </thead>
@@ -394,12 +394,12 @@
                                         </div>
                                     </td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</td>
-                                    <td class="py-3 px-4 text-right">
+                                    <td class="py-3 px-4 text-right flex justify-end">
                                         <button 
-                                            class="w-[18.75px] h-[17.59px] bg-[#EB3223] rounded-full flex items-center justify-center"
+                                            class="w-[18.75px] h-[17.59px]  rounded-full flex items-center justify-center"
                                             on:click={() => openDeleteDialog(content)}
-                                        >
-                                            <Trash2 class="w-[12.5px] h-[11.73px] text-white" />
+                                            >
+                                                <img src="/icons/table-trash.svg" class="w-[21.5px] h-[18.73px] text-white" />
                                         </button>
                                     </td>
                                 </tr>

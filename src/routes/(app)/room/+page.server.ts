@@ -6,39 +6,44 @@ export const load: PageServerLoad = async ({ locals }) => {
         throw error(401, 'Unauthorized');
     }
 
+    const user = locals.pb.authStore.model;
+
     try {
-        const user = locals.pb.authStore.model;
-        
-        // Fetch rooms owned by the company
-        const rooms = await locals.pb.collection('rooms').getFullList({
-            filter: `owner_company = "${user.id}"`,
-            expand: 'representative,host_content,representative_content',
-            sort: '-created'
-        });
+        const [rooms, representatives, hostContent, repContent] = await Promise.all([
+            locals.pb.collection('rooms').getFullList({
+                filter: `company = "${user.id}"`,
+                sort: '-created',
+                expand: 'representative,host_content,representative_content'
+            }),
+            locals.pb.collection('representatives').getFullList({
+                filter: `company = "${user.id}"`,
+                sort: '-created',
+                expand: 'location'
+            }),
+            locals.pb.collection('content').getFullList({
+                filter: `company = "${user.id}" && library_type ?= "host"`,
+                sort: '-created'
+            }),
+            locals.pb.collection('content').getFullList({
+                filter: `company = "${user.id}" && library_type ?= "representative"`,
+                sort: '-created'
+            })
+        ]);
 
-        // Fetch representatives for the company
-        const representatives = await locals.pb.collection('representatives').getFullList({
-            filter: `company = "${user.id}" && is_active = true`
-        });
-
-        // Fetch content for host and representative libraries
-        const hostContent = await locals.pb.collection('content_library').getFullList({
-            filter: `owner_company = "${user.id}" && library_type ?~ "host"`
-        });
-
-        const repContent = await locals.pb.collection('content_library').getFullList({
-            filter: `owner_company = "${user.id}" && library_type ?~ "representative"`
-        });
-
-                return {
+        return {
             rooms,
             representatives,
             hostContent,
             repContent
         };
     } catch (err) {
-        console.error('Error:', err);
-        throw error(500, 'Failed to load rooms');
+        console.error('Error fetching data:', err);
+        return {
+            rooms: [],
+            representatives: [],
+            hostContent: [],
+            repContent: []
+        };
     }
 };
 

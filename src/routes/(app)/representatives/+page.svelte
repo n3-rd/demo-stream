@@ -103,7 +103,7 @@
 
     <div class="flex-1 overflow-auto">
         <div class="p-6">
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex justify-between items-center mb-6 bg-white rounded-lg p-4">
                 <h1 class="text-2xl  font-medium text-[#737373]">Representatives</h1>
                 <Button 
                     class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white "
@@ -115,7 +115,7 @@
 
             <div class="rounded-lg shadow">
                 <!-- Table Header -->
-                <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 border-b text-sm  text-[#737373]">
+                <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 border-b text-sm  text-[#737373] bg-white rounded-lg mb-5 font-bold">
                     <div>Icon</div>
                     <div>Name</div>
                     <div>Phone</div>
@@ -126,7 +126,12 @@
 
                 <!-- Table Body -->
                 {#each representatives as rep}
-                    <div class="bg-white rounded-lg mb-4">
+                    <!-- svelte-ignore a11y-click-events-have-key-events -->
+                    <!-- svelte-ignore a11y-no-static-element-interactions -->
+                    <div class="bg-white rounded-lg mb-4"
+                 
+                    
+                    >
                         <!-- Main Row -->
                         <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-y-4 p-4 items-center">
                             <div>
@@ -147,45 +152,45 @@
                             <div class="text-[#737373]  text-[14px]">{rep.name}</div>
                             <div class="text-[#737373]  text-[14px]">{rep.phone}</div>
                             <div class="text-[#737373]  text-[14px]">{rep.email}</div>
-                            <div class="text-[#737373]  text-[14px]">{rep.location || '-'}</div>
+                            <div class="text-[#737373]  text-[14px]">
+                                {#if rep.expand?.location}
+                                    {rep.expand.location.name}
+                                {:else if rep.location}
+                                    {locations.find(loc => loc.id === rep.location)?.name || rep.location}
+                                {:else}
+                                    -
+                                {/if}
+                            </div>
                             <div class="flex items-center justify-end gap-2">
                                 <Button 
                                     variant="ghost" 
                                     size="sm"
-                                    class="h-8 w-8 p-0"
-                                    on:click={() => toggleExpand(rep.id)}
+                                    class=" p-0 bg-[#EFEFEF] text-[#726F6F] py-1 px-3"
+                                    on:click={(e) => {
+                                        e.stopPropagation();
+                                        goto(`/representatives/edit/${rep.id}`)
+                                    }}
                                 >
-                                    {#if expandedRep === rep.id}
-                                        <ChevronUp class="h-4 w-4" />
-                                    {:else}
-                                        <ChevronDown class="h-4 w-4" />
-                                    {/if}
+                                   Edit
                                 </Button>
-                                <DropdownMenu.Root>
-                                    <DropdownMenu.Trigger asChild let:builder>
+                        
                                         <Button 
                                             variant="ghost"
                                             size="sm"
                                             class="h-8 w-8 p-0"
-                                            builders={[builder]}
+                                            on:click={() => toggleExpand(rep.id)}
                                         >
                                             <MoreHorizontal class="h-4 w-4" />
                                         </Button>
-                                    </DropdownMenu.Trigger>
-                                    <DropdownMenu.Content>
-                                        <DropdownMenu.Item on:click={() => {
-                                           goto(`/representatives/edit/${rep.id}`)
-                                        }}>
-                                            Edit
-                                        </DropdownMenu.Item>
-                                    </DropdownMenu.Content>
-                                </DropdownMenu.Root>
+                                   
                             </div>
                         </div>
 
                         <!-- Expanded Content -->
                         {#if expandedRep === rep.id}
-                            <div class="px-4 pb-4">
+                            <div class="px-4 pb-4"
+                            transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}
+                            >
                                 <div class="grid grid-cols-2 gap-6">
                                     <!-- Schedule -->
                                     <div class="bg-white rounded-lg p-6">

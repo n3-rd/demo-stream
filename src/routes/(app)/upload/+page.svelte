@@ -1,4 +1,5 @@
 <script lang="ts">
+
     import { Button } from "$lib/components/ui/button";
     import { Input } from "$lib/components/ui/input";
     import { Label } from "$lib/components/ui/label";
@@ -209,7 +210,7 @@
     <Sidenav activePage="content-library" />
     
     <div class="flex-1 overflow-auto p-6">
-        <div class="max-w-[1115px] mx-auto space-y-6">
+        <div class=" mx-auto space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
                 <h1 class=" text-[24px] font-bold leading-[118%] text-[#808080]">Upload Content</h1>
@@ -260,6 +261,7 @@
                                         checked={selectedType === 'image'}
                                         on:change={() => handleTypeChange('image')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                        disabled
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'image' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
@@ -302,6 +304,7 @@
                                         checked={selectedType === 'word'}
                                         on:change={() => handleTypeChange('word')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                        disabled
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'word' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>

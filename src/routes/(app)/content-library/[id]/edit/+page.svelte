@@ -205,7 +205,7 @@
     <Sidenav activePage="content-library" />
     
     <div class="flex-1 overflow-auto p-6">
-        <div class="max-w-[1115px] mx-auto space-y-6">
+        <div class=" mx-auto space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
                 <h1 class=" text-[24px] font-bold leading-[118%] text-[#808080]">Edit Content</h1>

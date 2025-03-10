@@ -13,6 +13,7 @@
 	import { toast } from 'svelte-sonner';
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import Embed from "$lib/components/room/embed.svelte";
+    import { onMount } from 'svelte';
 
     interface SelectItem {
         value: string;
@@ -96,6 +97,14 @@
         } else {
             selectedRepresentatives = selectedRepresentatives.filter(id => id !== repId);
         }
+        
+        // Update the hidden input for validation
+        const repInput = document.querySelector('input[name="representative[]"]') as HTMLInputElement;
+        if (repInput) {
+            repInput.value = selectedRepresentatives.join(',');
+            const event = new Event('input', { bubbles: true });
+            repInput.dispatchEvent(event);
+        }
     }
 
     function handleHostContentCheckboxChange(e: Event, contentId: string) {
@@ -104,6 +113,14 @@
             selectedHostContent = [...selectedHostContent, contentId];
         } else {
             selectedHostContent = selectedHostContent.filter(id => id !== contentId);
+        }
+        
+        // Update the hidden input for validation
+        const hostContentInput = document.querySelector('input[name="host_content[]"]') as HTMLInputElement;
+        if (hostContentInput) {
+            hostContentInput.value = selectedHostContent.join(',');
+            const event = new Event('input', { bubbles: true });
+            hostContentInput.dispatchEvent(event);
         }
     }
 
@@ -114,6 +131,51 @@
         } else {
             selectedRepContent = selectedRepContent.filter(id => id !== contentId);
         }
+        
+        // Update the hidden input for validation
+        const repContentInput = document.querySelector('input[name="representative_content[]"]') as HTMLInputElement;
+        if (repContentInput) {
+            repContentInput.value = selectedRepContent.join(',');
+            const event = new Event('input', { bubbles: true });
+            repContentInput.dispatchEvent(event);
+        }
+    }
+    
+    // Reset form when dialog is opened
+    function openAddRoomDialog() {
+        showAddRoomDialog = true;
+        selectedVideo = '';
+        selectedHostContent = [];
+        selectedRepContent = [];
+        selectedRepresentatives = [];
+        
+        // Reset form validation state
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('form[action="?/create-room"] input[name]');
+            inputs.forEach(input => {
+                if (input instanceof HTMLInputElement) {
+                    input.value = input.type === 'checkbox' ? '' : '';
+                    const event = new Event('input', { bubbles: true });
+                    input.dispatchEvent(event);
+                }
+            });
+        }, 100);
+    }
+    
+    // Custom validator for title
+    function titleValidator(value: string) {
+        if (!value || value.trim().length < 3) {
+            return { titleLength: true };
+        }
+        return null;
+    }
+    
+    // Custom validator for array inputs
+    function arrayValidator(value: string) {
+        if (!value || value === '') {
+            return { required: true };
+        }
+        return null;
     }
 </script>
 
@@ -128,7 +190,7 @@
                 <h1 class=" text-[24px] font-bold leading-[118%] text-[#808080]">View Room List</h1>
                 <Button 
                     class="bg-[#577AB7] h-[39px] rounded-[3px] font-semibold text-[16px] text-white"
-                    on:click={() => showAddRoomDialog = true}
+                    on:click={openAddRoomDialog}
                 >
                     Add New Room
                 </Button>
@@ -210,6 +272,11 @@
         </Dialog.Header>
         <form method="POST" action="?/create-room" use:form use:enhance={() => {
             return async ({ result }) => {
+                if (!$form.valid) {
+                    toast.error('Please fix the validation errors');
+                    return;
+                }
+                
                 if (result.type === 'success') {
                     showAddRoomDialog = false;
                     selectedHostContent = [];
@@ -230,10 +297,11 @@
                         id="title"
                         name="title"
                         class="w-full px-3 py-2 border rounded-md"
-                        use:validators={[required]}
+                        use:validators={[required, titleValidator]}
                     />
                     <HintGroup for="title">
                         <Hint on="required">Title is required</Hint>
+                        <Hint on="titleLength" hideWhenRequired>Title must be at least 3 characters</Hint>
                     </HintGroup>
                 </div>
 
@@ -273,7 +341,7 @@
                 <div class="space-y-2">
                     <Label for="representative">Representatives</Label>
                     <Select.Root>
-                        <Select.Trigger class="w-full">
+                        <Select.Trigger class="w-full {$form.representative && $form.representative.errors?.required ? 'border-red-500' : ''}">
                             <Select.Value placeholder="Select representatives..." />
                         </Select.Trigger>
                         <Select.Content class="w-full">
@@ -334,12 +402,21 @@
                             </div>
                         </Select.Content>
                     </Select.Root>
+                    <input 
+                        type="hidden" 
+                        name="representative[]" 
+                        value={selectedRepresentatives.join(',')}
+                        use:validators={[arrayValidator]}
+                    />
+                    <HintGroup for="representative[]">
+                        <Hint on="required">At least one representative must be selected</Hint>
+                    </HintGroup>
                 </div>
 
                 <div class="space-y-2">
                     <Label for="host_content">Host Content</Label>
                     <Select.Root>
-                        <Select.Trigger class="w-full">
+                        <Select.Trigger class="w-full {$form['host_content[]'] && $form['host_content[]'].errors?.required ? 'border-red-500' : ''}">
                             <Select.Value placeholder="Select host content..." />
                         </Select.Trigger>
                         <Select.Content class="w-full">
@@ -374,12 +451,21 @@
                             </div>
                         </Select.Content>
                     </Select.Root>
+                    <input 
+                        type="hidden" 
+                        name="host_content[]" 
+                        value={selectedHostContent.join(',')}
+                        use:validators={[arrayValidator]}
+                    />
+                    <HintGroup for="host_content[]">
+                        <Hint on="required">At least one host content must be selected</Hint>
+                    </HintGroup>
                 </div>
 
                 <div class="space-y-2">
                     <Label for="representative_content">Representative Content</Label>
                     <Select.Root>
-                        <Select.Trigger class="w-full">
+                        <Select.Trigger class="w-full {$form['representative_content[]'] && $form['representative_content[]'].errors?.required ? 'border-red-500' : ''}">
                             <Select.Value placeholder="Select representative content..." />
                         </Select.Trigger>
                         <Select.Content class="w-full">
@@ -414,12 +500,18 @@
                             </div>
                         </Select.Content>
                     </Select.Root>
+                    <input 
+                        type="hidden" 
+                        name="representative_content[]" 
+                        value={selectedRepContent.join(',')}
+                        use:validators={[arrayValidator]}
+                    />
+                    <HintGroup for="representative_content[]">
+                        <Hint on="required">At least one representative content must be selected</Hint>
+                    </HintGroup>
                 </div>
             </div>
 
-            <input type="hidden" name="host_content[]" value={selectedHostContent.join(',')} />
-            <input type="hidden" name="representative_content[]" value={selectedRepContent.join(',')} />
-            <input type="hidden" name="representative[]" value={selectedRepresentatives.join(',')} />
             <input type="hidden" name="selected_video" value={selectedVideo} />
 
             <Dialog.Footer>

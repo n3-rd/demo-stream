@@ -12,6 +12,7 @@
     import * as Select from '$lib/components/ui/select';
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
     import { invalidateAll } from '$app/navigation';
+    import { onMount } from 'svelte';
 
     export let data;
     let showEmbed = false;
@@ -68,6 +69,40 @@
             selectedRepContent = selectedRepContent.filter(id => id !== contentId);
         }
     }
+    
+    // Custom validator for title
+    function titleValidator(value: string) {
+        if (!value || value.trim().length < 3) {
+            return { titleLength: true };
+        }
+        return null;
+    }
+    
+    // Open edit dialog with validation reset
+    function openEditDialog() {
+        showEditDialog = true;
+        
+        // Reset form validation state after dialog opens
+        setTimeout(() => {
+            const titleInput = document.querySelector('input[name="title"]') as HTMLInputElement;
+            if (titleInput) {
+                const event = new Event('input', { bubbles: true });
+                titleInput.dispatchEvent(event);
+            }
+        }, 100);
+    }
+    
+    // Initialize form validation on mount
+    onMount(() => {
+        // Add a small delay to ensure the form is fully initialized
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('form[action="?/update-room"] input[name]');
+            inputs.forEach(input => {
+                const event = new Event('input', { bubbles: true });
+                input.dispatchEvent(event);
+            });
+        }, 100);
+    });
 </script>
 
 <div class="flex h-dvh bg-[#F5F5F5] overflow-hidden">
@@ -89,7 +124,7 @@
                     <Button 
                         variant="outline"
                         class="h-[39px] rounded-[3px] font-semibold text-[16px]"
-                        on:click={() => showEditDialog = true}
+                        on:click={openEditDialog}
                     >
                         Edit Room
                     </Button>
@@ -250,6 +285,11 @@
             </Dialog.Header>
             <form method="POST" action="?/update-room" use:form use:enhance={() => {
                 return async ({ result }) => {
+                    if (!$form.valid) {
+                        toast.error('Please fix the validation errors');
+                        return;
+                    }
+                    
                     if (result.type === 'success') {
                         showEditDialog = false;
                         invalidateAll();
@@ -268,10 +308,11 @@
                             name="title"
                             class="w-full px-3 py-2 border rounded-md"
                             value={room.title}
-                            use:validators={[required]}
+                            use:validators={[required, titleValidator]}
                         />
                         <HintGroup for="title">
                             <Hint on="required">Title is required</Hint>
+                            <Hint on="titleLength" hideWhenRequired>Title must be at least 3 characters</Hint>
                         </HintGroup>
                     </div>
 
@@ -281,13 +322,9 @@
                             onSelectedChange={e => {
                                 selectedVideo = String(e?.value || '');
                             }}
-                            selected={selectedVideo ? [{ 
-                                value: selectedVideo, 
-                                label: hostContent.find(c => c.id === selectedVideo)?.title || 'Select a video...'
-                            }] : []}
                         >
                             <Select.Trigger class="w-full">
-                                <Select.Value placeholder="Select a video..." />
+                                <Select.Value placeholder={hostContent.find(c => c.id === selectedVideo)?.title || 'Select a video...'} />
                             </Select.Trigger>
                             <Select.Content>
                                 {#each hostContent.filter(content => content.type === 'video') as content}

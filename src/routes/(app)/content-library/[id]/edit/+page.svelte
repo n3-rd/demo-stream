@@ -11,9 +11,11 @@
     import { onMount } from "svelte";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
+    import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
 
     export let data;
     const { user, representatives, content } = data;
+    const form = useForm();
 
     let loading = false;
     let selectedType = content.type;
@@ -116,6 +118,17 @@
 
     async function handleSubmit(event: Event) {
         event.preventDefault();
+        
+        if (!$form.valid) {
+            toast.error('Please fix the validation errors');
+            return;
+        }
+        
+        if (!thumbnailFile && !content.thumbnail) {
+            toast.error('Please select a thumbnail');
+            return;
+        }
+        
         isUploading = true;
         uploadProgress = 0;
         uploadedChunks.clear();
@@ -208,7 +221,7 @@
                     <Button 
                         type="submit" 
                         form="editForm"
-                        disabled={isUploading} 
+                        disabled={isUploading || !$form.valid} 
                         class="h-[39px] bg-[#577AB7] rounded-[3px] font-semibold text-[16px] text-white flex items-center justify-center"
                     >
                         {#if isUploading}
@@ -223,18 +236,22 @@
 
             <!-- Main Content -->
             <div class="bg-white rounded-[8px] p-8">
-                <form id="editForm" on:submit={handleSubmit} enctype="multipart/form-data" class="space-y-8">
+                <form id="editForm" on:submit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8">
                     <!-- Title -->
                     <div class="space-y-2">
                         <Label for="title" class="block  text-[14px] font-medium text-[#737373]">Title</Label>
-                        <Input 
+                        <input 
                             type="text" 
                             id="title" 
                             name="title" 
                             required 
                             value={content.title}
-                            class="w-full h-[38px] border-[#9E9E9E] rounded-[5px]" 
+                            use:validators={[required]}
+                            class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {$form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
                         />
+                        <HintGroup for="title">
+                            <Hint on="required" class="text-red-500 text-sm">Title is required</Hint>
+                        </HintGroup>
                     </div>
 
                     <!-- Type of Content -->
@@ -263,12 +280,15 @@
                     <!-- Description -->
                     <div class="space-y-2">
                         <Label for="description" class="block  text-[14px] font-medium text-[#737373]">Description</Label>
-                        <Textarea 
+                        <textarea 
                             id="description" 
                             name="description" 
-                            value={content.description}
-                            class="w-full h-[145px] border-[#9E9E9E] rounded-[5px] resize-none" 
-                        />
+                            use:validators={[required]}
+                            class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {$form.description && $form.description.errors?.required ? 'border-red-500' : ''}"
+                        >{content.description}</textarea>
+                        <HintGroup for="description">
+                            <Hint on="required" class="text-red-500 text-sm">Description is required</Hint>
+                        </HintGroup>
                     </div>
 
                     <!-- File Upload -->
@@ -293,18 +313,22 @@
                     <div class="space-y-2">
                         <Label for="thumbnail" class="block  text-[14px] font-medium text-[#737373]">Content Thumbnail</Label>
                         <div class="relative h-[38px]">
-                            <Input 
+                            <input 
                                 type="file" 
                                 id="thumbnail" 
                                 name="thumbnail" 
                                 accept="image/*"
                                 on:change={handleThumbnailChange}
+                                required={!content.thumbnail}
                                 class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                             />
-                            <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white">
+                            <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {!thumbnailFile && !content.thumbnail ? 'border-red-500' : ''}">
                                 <span class="text-[#737373]">{thumbnailFile?.name || (content.thumbnail ? 'Current thumbnail' : 'No file chosen')}</span>
                             </div>
                         </div>
+                        {#if !thumbnailFile && !content.thumbnail}
+                            <div class="text-red-500 text-sm">Thumbnail is required</div>
+                        {/if}
                     </div>
 
                     <!-- Thumbnail Preview -->
@@ -341,6 +365,7 @@
                                             checked={selectedLibraryType === type.value}
                                             on:change={() => selectedLibraryType = type.value}
                                             class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                            required
                                         />
                                         <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedLibraryType === type.value ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                     </div>

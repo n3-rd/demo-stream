@@ -11,9 +11,11 @@
     import { onDestroy } from "svelte";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import LibrarySelectDialog from './LibrarySelectDialog.svelte';
+    import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
 
     export let data;
     const { user, representatives } = data;
+    const form = useForm();
 
     let loading = false;
     let selectedType = 'video';
@@ -127,8 +129,19 @@
 
     async function handleSubmit(event: Event) {
         event.preventDefault();
+        
+        if (!$form.valid) {
+            toast.error('Please fix the validation errors');
+            return;
+        }
+        
         if (!selectedFile) {
             toast.error('Please select a file');
+            return;
+        }
+        
+        if (!thumbnailFile) {
+            toast.error('Please select a thumbnail');
             return;
         }
 
@@ -203,7 +216,7 @@
                 <Button 
                     type="submit" 
                     form="uploadForm"
-                    disabled={isUploading || !selectedFile} 
+                    disabled={isUploading || !selectedFile || !$form.valid} 
                     class="w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-semibold text-[16px] text-white flex items-center justify-center"
                 >
                     {#if isUploading}
@@ -217,17 +230,21 @@
 
             <!-- Main Content -->
             <div class="bg-white rounded-[8px] p-8">
-                <form id="uploadForm" on:submit={handleSubmit} enctype="multipart/form-data" class="space-y-8">
+                <form id="uploadForm" on:submit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8">
                     <!-- Title -->
                     <div class="space-y-2">
                         <Label for="title" class="block  text-[14px] font-medium text-[#737373]">Title</Label>
-                        <Input 
+                        <input 
                             type="text" 
                             id="title" 
                             name="title" 
                             required 
-                            class="w-full h-[38px] border-[#9E9E9E] rounded-[5px]" 
+                            use:validators={[required]}
+                            class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {$form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
                         />
+                        <HintGroup for="title">
+                            <Hint on="required" class="text-red-500 text-sm">Title is required</Hint>
+                        </HintGroup>
                     </div>
 
                     <!-- Type of Content -->
@@ -297,13 +314,17 @@
                     <div class="space-y-2">
                         <Label for="description" class="block  text-[14px] font-medium text-[#737373]">Brief Description</Label>
                         <div class="relative">
-                            <Textarea 
+                            <textarea 
                                 id="description" 
                                 name="description" 
-                                class="w-full h-[145px] border-[#9E9E9E] rounded-[5px] resize-none" 
-                            />
+                                use:validators={[required]}
+                                class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {$form.description && $form.description.errors?.required ? 'border-red-500' : ''}" 
+                            ></textarea>
                             <span class="absolute right-4 top-4  text-[18px] font-semibold text-[#737373]">Add Image</span>
                         </div>
+                        <HintGroup for="description">
+                            <Hint on="required" class="text-red-500 text-sm">Description is required</Hint>
+                        </HintGroup>
                     </div>
 
                     <!-- File Uploads -->
@@ -320,27 +341,34 @@
                                     required 
                                     class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                 />
-                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white">
+                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {!selectedFile ? 'border-red-500' : ''}">
                                     <span class="text-[#737373]">{selectedFile?.name || 'No file chosen'}</span>
                                 </div>
                             </div>
+                            {#if !selectedFile}
+                                <div class="text-red-500 text-sm">File is required</div>
+                            {/if}
                         </div>
 
                         <div class="space-y-2">
                             <Label for="thumbnail" class="block  text-[14px] font-medium text-[#737373]">Content Thumbnail</Label>
                             <div class="relative h-[38px]">
-                                <Input 
+                                <input 
                                     type="file" 
                                     id="thumbnail" 
                                     name="thumbnail" 
                                     accept="image/*"
                                     on:change={handleThumbnailChange}
+                                    required
                                     class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                 />
-                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white">
+                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {!thumbnailFile ? 'border-red-500' : ''}">
                                     <span class="text-[#737373]">{thumbnailFile?.name || 'No file chosen'}</span>
                                 </div>
                             </div>
+                            {#if !thumbnailFile}
+                                <div class="text-red-500 text-sm">Thumbnail is required</div>
+                            {/if}
                         </div>
                     </div>
 

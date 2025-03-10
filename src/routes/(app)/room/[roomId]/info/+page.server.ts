@@ -64,6 +64,8 @@ export const actions: Actions = {
         
         const title = formData.get('title')?.toString() || '';
         const selectedVideo = formData.get('selected_video')?.toString() || '';
+        const ownerCompany = formData.get('owner_company')?.toString() || '';
+        const isActive = formData.has('is_active') ? formData.get('is_active') === 'true' : undefined;
         
         // Parse arrays from comma-separated strings
         const hostContent = formData.get('host_content[]')?.toString().split(',').filter(Boolean) || [];
@@ -71,18 +73,30 @@ export const actions: Actions = {
         const representative = formData.get('representative[]')?.toString().split(',').filter(Boolean) || [];
 
         try {
-            await locals.pb.collection('rooms').update(roomId, {
-                title,
+            // First get the current room to ensure we have all required fields
+            const currentRoom = await locals.pb.collection('rooms').getOne(roomId);
+            
+            // Prepare update data with all required fields
+            const updateData: Record<string, any> = {
+                title: title || currentRoom.title, // Use current title if not provided
+                owner_company: ownerCompany || currentRoom.owner_company, // Use current owner_company if not provided
                 selected_video: selectedVideo,
                 host_content: hostContent,
                 representative_content: representativeContent,
                 representative
-            });
+            };
+            
+            // Only include is_active if it was provided
+            if (isActive !== undefined) {
+                updateData.is_active = isActive;
+            }
+
+            await locals.pb.collection('rooms').update(roomId, updateData);
 
             return { success: true };
         } catch (err) {
             console.error('Error updating room:', err);
-            return { success: false, error: 'Failed to update room' };
+            return { success: false, error: 'Failed to update room', message: err.message };
         }
     },
 

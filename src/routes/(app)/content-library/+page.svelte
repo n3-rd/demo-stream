@@ -178,7 +178,7 @@
                                     style="scroll-behavior: smooth; -ms-overflow-style: none; scrollbar-width: none;"
                                 >
                                     {#each contentGroup.items as item}
-                                        <div class="bg-[#ECEFF3] rounded-[2px] p-2 flex-shrink-0 shadow-sm hover:shadow-md transition-shadow duration-200" style="width: 221.66px;">
+                                        <div class="bg-[#ECEFF3] rounded-[2px] p-2 flex-shrink-0 shadow-sm hover:shadow-md transition-shadow duration-200 w-[221.66px]">
                                             <div class="relative">
                                                 {#if item.thumbnail}
                                                     <img

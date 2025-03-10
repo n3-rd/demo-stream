@@ -94,10 +94,10 @@
   });
 </script>
 
-<div class="flex h-screen bg-[#F5F5F5]">
+<div class="flex bg-[#F5F5F5]">
   <Sidenav activePage="representatives" />
 
-  <div class="flex-1 overflow-auto">
+  <div class="flex-1 overflow-auto mt-[6rem]">
     <div class="p-6">
       <form method="POST" enctype="multipart/form-data" class="space-y-6" use:form use:enhance={() => {
         return async ({ result }) => {

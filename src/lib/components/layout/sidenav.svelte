@@ -22,7 +22,7 @@
     </svg>
 </button>
 
-<aside class="fixed lg:static w-[18vw] min-h-screen bg-white transform lg:transform-none transition-transform duration-200 ease-in-out {isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} z-40 flex flex-col">
+<aside class="fixed lg:static w-[18vw] min-h-screen bg-white transform lg:transform-none transition-transform duration-200 ease-in-out {isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} z-40 flex flex-col mt-[6rem]">
     <div class="p-9 flex-1">
         <div class="bg-[#C4C4C4] h-12 w-full mb-4 flex justify-center items-center mx-auto text-white font-bold">LOGO</div>
         <nav class="mt-4 flex flex-col h-full">

@@ -71,10 +71,10 @@
     }
 </script>
 
-<div class="flex h-screen bg-gray-100">
+<div class="flex bg-gray-100">
     <Sidenav activePage="locations" />
     
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 overflow-auto mt-[6rem]">
         <div class="container mx-auto p-6 space-y-6">
             <Card>
                 <CardHeader>

@@ -209,7 +209,7 @@
 <div class="flex h-screen bg-[#F5F5F5]">
     <Sidenav activePage="content-library" />
     
-    <div class="flex-1 overflow-auto p-6">
+    <div class="flex-1 overflow-auto p-6 mt-[6rem]">
         <div class=" mx-auto space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">

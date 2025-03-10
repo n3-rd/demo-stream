@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
             locals.pb.collection('representatives').getFullList({
                 filter: `company = "${user.id}"`,
                 sort: '-created',
-                expand: 'connected_content'
+                expand: 'location'
             }),
             locals.pb.collection('locations').getFullList({
                 filter: `owner_company = "${user.id}"`,

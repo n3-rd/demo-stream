@@ -294,9 +294,16 @@
                                                     </span>
                                                 </div>
                                             {/if}
-                                            <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
-                                                {rep.name}
-                                            </span>
+                                            <div>
+                                                <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
+                                                    {rep.name}
+                                                </span>
+                                                {#if rep.expand?.location || rep.location}
+                                                    <div class="text-xs text-[#A0A0A0]">
+                                                        {rep.expand?.location?.name || locations.find(loc => loc.id === rep.location)?.name || ''}
+                                                    </div>
+                                                {/if}
+                                            </div>
                                         </div>
                                         <div class="relative">
                                             <input 

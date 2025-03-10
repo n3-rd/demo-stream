@@ -7,14 +7,26 @@
   import * as Select from "$lib/components/ui/select";
   import { goto, invalidateAll } from "$app/navigation";
   import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
+  import { useForm, HintGroup, Hint, validators, required, email } from 'svelte-use-form';
+  import { onMount } from 'svelte';
   
   export let data;
   $: ({ representative, parsedSchedule, locations } = data);
+  
+  const form = useForm();
   
   let selectedLocation = representative?.location || '';
   
   function handleLocationChange(e: any) {
     selectedLocation = e?.value || '';
+    // Force form validation update
+    setTimeout(() => {
+      const locationInput = document.querySelector('input[name="location"]') as HTMLInputElement;
+      if (locationInput) {
+        const event = new Event('input', { bubbles: true });
+        locationInput.dispatchEvent(event);
+      }
+    }, 0);
   }
 
   function handleFileChange(event: Event) {
@@ -24,7 +36,29 @@
     }
   }
 
+  // Custom validator for phone number
+  function phoneValidator(value) {
+    if (!value) return null; // Skip validation if empty (required will catch this)
+    const phoneRegex = /^[0-9+\-\s()]{7,15}$/;
+    if (!phoneRegex.test(value)) {
+      return { phone: true };
+    }
+    return null;
+  }
+
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  
+  // Force validation check after component is mounted
+  onMount(() => {
+    // Add a small delay to ensure the form is fully initialized
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('input[name]');
+      inputs.forEach(input => {
+        const event = new Event('input', { bubbles: true });
+        input.dispatchEvent(event);
+      });
+    }, 100);
+  });
 </script>
 
 <div class="flex h-screen bg-[#F5F5F5]">
@@ -32,8 +66,13 @@
 
   <div class="flex-1 overflow-auto">
     <div class="p-6">
-      <form method="POST" enctype="multipart/form-data" class="space-y-6" use:enhance={() => {
+      <form method="POST" enctype="multipart/form-data" class="space-y-6" use:form use:enhance={() => {
         return async ({ result }) => {
+          if (!$form.valid) {
+            toast.error('Please fix the validation errors');
+            return;
+          }
+          
           if (result.type === 'success') {
             toast.success('Representative updated successfully');
             invalidateAll();
@@ -55,6 +94,7 @@
             <Button 
               type="submit" 
               class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white"
+              disabled={!$form.valid}
             >
               Update
             </Button>
@@ -70,11 +110,14 @@
                   type="text" 
                   id="name" 
                   name="name"
-                  required
                   value={representative?.name || ''}
                   placeholder="Enter name"
                   class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2"
+                  use:validators={[required]}
                 />
+                <HintGroup for="name">
+                  <Hint on="required">Name is required</Hint>
+                </HintGroup>
               </div>
               <div>
                 <label for="email" class="block text-[14px] text-[#737373] mb-2">Email</label>
@@ -82,11 +125,15 @@
                   type="email" 
                   id="email" 
                   name="email"
-                  required
                   value={representative?.email || ''}
                   placeholder="Enter email"
                   class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2"
+                  use:validators={[required, email]}
                 />
+                <HintGroup for="email">
+                  <Hint on="required">Email is required</Hint>
+                  <Hint on="email" hideWhenRequired>Please enter a valid email address</Hint>
+                </HintGroup>
               </div>
             </div>
             <div class="space-y-4">
@@ -99,11 +146,16 @@
                   value={representative?.phone || ''}
                   placeholder="Enter phone number"
                   class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2"
+                  use:validators={[required, phoneValidator]}
                 />
+                <HintGroup for="phone">
+                  <Hint on="required">Phone number is required</Hint>
+                  <Hint on="phone" hideWhenRequired>Please enter a valid phone number</Hint>
+                </HintGroup>
               </div>
               <div>
                 <label for="location" class="block text-[14px] text-[#737373] mb-2">Location</label>
-                <Select.Root onSelectedChange={handleLocationChange} value={selectedLocation}>
+                <Select.Root onSelectedChange={handleLocationChange}>
                   <Select.Trigger class="w-full border border-[#9E9E9E] bg-white rounded-[5px] h-[38px]">
                     <Select.Value placeholder="Select a location" />
                   </Select.Trigger>
@@ -113,7 +165,15 @@
                     {/each}
                   </Select.Content>
                 </Select.Root>
-                <input type="hidden" name="location" value={selectedLocation} />
+                <input 
+                  type="hidden" 
+                  name="location" 
+                  value={selectedLocation}
+                  use:validators={[required]}
+                />
+                <HintGroup for="location">
+                  <Hint on="required">Location is required</Hint>
+                </HintGroup>
               </div>
             </div>
           </div>
@@ -121,7 +181,7 @@
 
         <div class="grid grid-cols-2 gap-6">
           <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-[18px] font-semibold text-[#737373] mb-4">Schedule</h2>
+            <h2 class="text-[18px] font-semibold text-[#737373] mb-4">Schedule (Optional)</h2>
             <div class="space-y-4">
               {#each days as day}
                 <div class="flex items-center">
@@ -160,9 +220,10 @@
             {/if}
             
             <div>
-              <p class="text-sm text-[#737373] mb-2">Upload New Image:</p>
+              <p class="text-sm text-[#737373] mb-2">Upload New Image (Optional):</p>
               <input 
                 type="file" 
+                id="avatar"
                 name="avatar"
                 accept="image/*"
                 on:change={handleFileChange}

@@ -191,11 +191,11 @@
     });
 </script>
 
-<div class="flex h-dvh bg-[#F5F5F5] overflow-hidden">
+<div class="flex bg-[#F5F5F5] overflow-hidden ">
     <Sidenav activePage="rooms" />
     
-    <div class="flex-1 ">
-        <div class=" mx-auto p-6 space-y-6">
+    <div class="flex-1 overflow-y-auto pb-6">
+        <div class="mx-auto p-6 space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
                 <h1 class="font-['Poppins'] text-[24px] font-bold leading-[118%] text-[#808080]">{room?.title || ''}</h1>
@@ -332,61 +332,81 @@
             <!-- Host Content List -->
             <div class="bg-white rounded-[4px] p-6">
                 <h2 class="font-['Poppins'] text-[18px] font-semibold text-[#737373] mb-4">Host Content</h2>
-                <div class="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-4">
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Title</div>
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">ID Number</div>
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Active</div>
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</div>
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Actions</div>
+                <div class="overflow-hidden border border-[#DDDDDD] rounded-[4px]">
+                    <table class="w-full">
+                        <thead class="bg-[#F5F5F5]">
+                            <tr>
+                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Title</th>
+                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">ID Number</th>
+                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Active</th>
+                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</th>
+                                <th class="py-3 px-4 text-right font-['Poppins'] text-[16px] font-semibold text-[#737373]">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {#each hostContent.filter(content => room?.host_content?.includes(content.id)) as content, i}
+                                <tr class="border-t border-[#DDDDDD]">
+                                    <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
+                                    <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
+                                    <td class="py-3 px-4">
+                                        <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
+                                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</td>
+                                    <td class="py-3 px-4 text-right">
+                                        <button 
+                                            class="w-[18.75px] h-[17.59px] bg-[#EB3223] rounded-full flex items-center justify-center"
+                                            on:click={() => openDeleteDialog(content)}
+                                        >
+                                            <Trash2 class="w-[12.5px] h-[11.73px] text-white" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            {/each}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="h-[0.5px] bg-[#B4B4B4] my-4" />
-                {#each hostContent.filter(content => room?.host_content?.includes(content.id)) as content, i}
-                    <div class="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-4 items-center py-2">
-                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</div>
-                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</div>
-                        <div class="flex items-center">
-                            <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
-                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
-                            </div>
-                        </div>
-                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</div>
-                        <div class="flex items-center justify-end gap-2">
-                            <button class="w-[18.75px] h-[17.59px] bg-[#EB3223] rounded-full flex items-center justify-center">
-                                <div class="w-[12.5px] h-[11.73px]" />
-                            </button>
-                        </div>
-                    </div>
-                {/each}
             </div>
 
             <!-- Representative Content List -->
             <div class="bg-white rounded-[4px] p-6">
                 <h2 class="font-['Poppins'] text-[18px] font-semibold text-[#737373] mb-4">Representative Content</h2>
-                <div class="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-4">
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Title</div>
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">ID Number</div>
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Active</div>
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</div>
-                    <div class="font-['Poppins'] text-[16px] font-semibold text-[#737373]">Actions</div>
+                <div class="overflow-hidden border border-[#DDDDDD] rounded-[4px]">
+                    <table class="w-full">
+                        <thead class="bg-[#F5F5F5]">
+                            <tr>
+                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Title</th>
+                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">ID Number</th>
+                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Active</th>
+                                <th class="py-3 px-4 text-left font-['Poppins'] text-[16px] font-semibold text-[#737373]">Order</th>
+                                <th class="py-3 px-4 text-right font-['Poppins'] text-[16px] font-semibold text-[#737373]">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {#each representativeContent.filter(content => room?.representative_content?.includes(content.id)) as content, i}
+                                <tr class="border-t border-[#DDDDDD]">
+                                    <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
+                                    <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
+                                    <td class="py-3 px-4">
+                                        <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
+                                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</td>
+                                    <td class="py-3 px-4 text-right">
+                                        <button 
+                                            class="w-[18.75px] h-[17.59px] bg-[#EB3223] rounded-full flex items-center justify-center"
+                                            on:click={() => openDeleteDialog(content)}
+                                        >
+                                            <Trash2 class="w-[12.5px] h-[11.73px] text-white" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            {/each}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="h-[0.5px] bg-[#B4B4B4] my-4" />
-                {#each representativeContent.filter(content => room?.representative_content?.includes(content.id)) as content, i}
-                    <div class="grid grid-cols-[1fr_2fr_1fr_1fr_1fr] gap-4 items-center py-2">
-                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</div>
-                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</div>
-                        <div class="flex items-center">
-                            <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
-                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
-                            </div>
-                        </div>
-                        <div class="font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</div>
-                        <div class="flex items-center justify-end gap-2">
-                            <button class="w-[18.75px] h-[17.59px] bg-[#EB3223] rounded-full flex items-center justify-center">
-                                <div class="w-[12.5px] h-[11.73px]" />
-                            </button>
-                        </div>
-                    </div>
-                {/each}
             </div>
         </div>
     </div>

@@ -98,10 +98,10 @@
     }
 </script>
 
-<div class="flex h-screen bg-[#F5F5F5]">
+<div class="flex bg-[#F5F5F5]">
     <Sidenav activePage="representatives" />
 
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 overflow-auto mt-[6rem]">
         <div class="p-6">
             <div class="flex justify-between items-center mb-6 bg-white rounded-lg p-4">
                 <h1 class="text-2xl  font-medium text-[#737373]">Representatives</h1>

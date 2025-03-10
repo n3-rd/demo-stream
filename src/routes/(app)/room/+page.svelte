@@ -33,7 +33,7 @@
     let contentToShow: any[] = [];
     let dialogTitle = '';
 
-    $: ({ rooms, representatives, hostContent, repContent } = data);
+    $: ({ rooms, representatives, hostContent, repContent, locations } = data);
 
     function handleVideoSelect(e: { value: string } | null) {
         selectedVideo = e?.value || '';
@@ -298,9 +298,13 @@
                                                 <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
                                                     {rep.name}
                                                 </span>
-                                                {#if rep.expand?.location || rep.location}
+                                                {#if rep.expand?.location}
                                                     <div class="text-xs text-[#A0A0A0]">
-                                                        {rep.expand?.location?.name || locations.find(loc => loc.id === rep.location)?.name || ''}
+                                                        {rep.expand.location.name}
+                                                    </div>
+                                                {:else if rep.location && locations}
+                                                    <div class="text-xs text-[#A0A0A0]">
+                                                        {locations.find(loc => loc.id === rep.location)?.name || ''}
                                                     </div>
                                                 {/if}
                                             </div>

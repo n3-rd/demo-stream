@@ -5,9 +5,11 @@
     import { FileVideo, FileText, FilePen, Trash2, Pencil, Play, ChevronLeft, ChevronRight } from "lucide-svelte";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import { onMount } from 'svelte';
+    import * as Dialog from "$lib/components/ui/dialog";
+    import { toast } from 'svelte-sonner';
 
     export let data;
-    const { content } = data;
+    let { content } = data;
 
     let selectedTab = 'host';
     let contentTypes = ['video', 'pdf', 'document'];
@@ -21,6 +23,10 @@
     let carouselContainers = {};
     // Track scroll position for each carousel
     let carouselScrollState = {};
+    
+    // Delete confirmation dialog
+    let showDeleteDialog = false;
+    let contentToDelete = null;
 
     function handleTabChange(tab: string) {
         selectedTab = tab;
@@ -115,12 +121,48 @@
         if (!items || items.length <= 4) return false;
         return true;
     }
+    
+    // Handle delete content
+    function openDeleteDialog(item, event) {
+        event.stopPropagation();
+        contentToDelete = item;
+        showDeleteDialog = true;
+    }
+    
+    async function deleteContent() {
+        if (!contentToDelete) return;
+        
+        try {
+            const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/content_library/records/${contentToDelete.id}`, {
+                method: 'DELETE',
+            });
+            
+            if (response.ok) {
+                // Remove the deleted item from the content array
+                const index = content.findIndex(item => item.id === contentToDelete.id);
+                if (index !== -1) {
+                    content.splice(index, 1);
+                    content = [...content]; // Trigger reactivity
+                }
+                toast.success('Content deleted successfully');
+            } else {
+                const error = await response.json();
+                toast.error(`Failed to delete: ${error.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error deleting content:', error);
+            toast.error('An error occurred while deleting');
+        } finally {
+            showDeleteDialog = false;
+            contentToDelete = null;
+        }
+    }
 </script>
 
 <div class="flex bg-[#F5F5F5]">
     <Sidenav activePage="content-library" />
     
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 overflow-auto mt-[6rem]">
         <div class="p-6  mx-auto">
             <!-- Header Section -->
             <div class="bg-white rounded-[8px] p-4 mb-6 flex justify-between items-center">
@@ -215,7 +257,7 @@
                                                     </button>
                                                     <button 
                                                         class="w-[21.23px] h-[19.11px] bg-[#EB3223] rounded-full flex items-center justify-center shadow-sm"
-                                                        on:click|stopPropagation={() => {/* Handle delete */}}
+                                                        on:click|stopPropagation={(e) => openDeleteDialog(item, e)}
                                                     >
                                                         <Trash2 class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
                                                     </button>
@@ -252,6 +294,52 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Confirmation Dialog -->
+<Dialog.Root bind:open={showDeleteDialog}>
+    <Dialog.Content class="sm:max-w-[425px]">
+        <Dialog.Header>
+            <Dialog.Title>Delete Content</Dialog.Title>
+            <Dialog.Description>
+                Are you sure you want to delete this content? This action cannot be undone.
+            </Dialog.Description>
+        </Dialog.Header>
+        
+        {#if contentToDelete}
+            <div class="py-4">
+                <div class="flex items-center gap-3">
+                    {#if contentToDelete.thumbnail}
+                        <img 
+                            src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${contentToDelete.id}/${contentToDelete.thumbnail}`} 
+                            alt={contentToDelete.title} 
+                            class="w-16 h-16 object-cover rounded"
+                        />
+                    {:else}
+                        <div class="w-16 h-16 bg-[#ECEFF3] rounded flex items-center justify-center">
+                            <svelte:component 
+                                this={getIcon(contentToDelete.type)} 
+                                class="w-8 h-8 text-[#666666]"
+                            />
+                        </div>
+                    {/if}
+                    <div>
+                        <h3 class="font-semibold">{contentToDelete.title}</h3>
+                        <p class="text-sm text-gray-500">ID: {contentToDelete.id}</p>
+                    </div>
+                </div>
+            </div>
+        {/if}
+        
+        <Dialog.Footer>
+            <Button variant="outline" on:click={() => showDeleteDialog = false}>
+                Cancel
+            </Button>
+            <Button variant="destructive" on:click={deleteContent}>
+                Delete
+            </Button>
+        </Dialog.Footer>
+    </Dialog.Content>
+</Dialog.Root>
 
 <style>
     /* Hide scrollbar for Chrome, Safari and Opera */

@@ -51,7 +51,7 @@
 </script>
 
 {#if room}
-<div class="container mx-auto p-4">
+<div class="container mx-auto p-4 mt-[8rem]">
     <h1 class="text-2xl font-bold mb-4">{room.title}</h1>
 
     <div class="flex flex-col md:flex-row justify-between gap-4 w-full h-full">

@@ -64,10 +64,12 @@ import Share from '$lib/components/room/share.svelte';
     <div class="p-4">
       <Dialog.Root>
         <Dialog.Trigger>
-          <button class="w-[138px] h-[29px] bg-[rgba(32,33,36,0.44)] rounded-[18px] flex items-center justify-center gap-2 cursor-pointer border-none text-white">
+          <button class="w-[138px] h-[29px] bg-[rgba(32,33,36,0.44)] rounded-[18px] flex items-center justify-center gap-2 cursor-pointer border-none text-white"
+          id="invite-people-button"
+          >
             <UserRoundPlus size={18} />
             <span class="font-medium text-sm leading-[21px]">Invite people</span>
-          </button>
+          </button>tourg
         </Dialog.Trigger>
         <Dialog.Content class="p-4 rounded-lg shadow-lg">
           <Share {joinURL} representative={false} />

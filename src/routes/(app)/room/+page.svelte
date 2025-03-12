@@ -55,6 +55,40 @@
         console.log('Selected representatives:', selectedRepresentatives);
     }
 
+    // Toggle room active status
+    async function toggleRoomActive(room) {
+        try {
+            // Create update data with toggled is_active status
+            const updateData = {
+                is_active: !room.is_active
+            };
+            
+            // Send PATCH request to update the room
+            const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${room.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateData)
+            });
+            
+            if (response.ok) {
+                // Update local state
+                room.is_active = !room.is_active;
+                toast.success(`Room ${room.is_active ? 'activated' : 'deactivated'}`);
+                
+                // Force reactivity
+                rooms = [...rooms];
+            } else {
+                const error = await response.json();
+                toast.error(`Failed to update: ${error.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error updating room:', error);
+            toast.error('An error occurred while updating the room');
+        }
+    }
+
     function formatDate(date: string) {
         return new Date(date).toLocaleDateString('en-US', {
             month: '2-digit',
@@ -225,7 +259,10 @@
                             </button>
                         </div>
                         <div class="flex items-center justify-center">
-                            <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
+                            <div 
+                                class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
+                                on:click={() => toggleRoomActive(room)}
+                            >
                                 <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
                             </div>
                         </div>

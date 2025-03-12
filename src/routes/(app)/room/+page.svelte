@@ -109,6 +109,79 @@
         showContentDialog = true;
     }
 
+    // Toggle content active status within a room
+    async function toggleContentActive(roomId, contentId, isHost, currentStatus) {
+        try {
+            // Get current room data
+            const roomResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${roomId}`);
+            if (!roomResponse.ok) {
+                throw new Error('Failed to fetch room data');
+            }
+            
+            const roomData = await roomResponse.json();
+            
+            // Create a new room_content record or update existing one
+            const contentField = isHost ? 'host_content_active' : 'representative_content_active';
+            
+            // If the field doesn't exist yet, initialize it
+            if (!roomData[contentField]) {
+                roomData[contentField] = {};
+            }
+            
+            // Toggle the active status for this content
+            roomData[contentField][contentId] = !currentStatus;
+            
+            // Update the room
+            const updateResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${roomId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    [contentField]: roomData[contentField]
+                })
+            });
+            
+            if (updateResponse.ok) {
+                // Update local state
+                const room = rooms.find(r => r.id === roomId);
+                if (room) {
+                    if (!room[contentField]) {
+                        room[contentField] = {};
+                    }
+                    room[contentField][contentId] = !currentStatus;
+                    rooms = [...rooms]; // Force reactivity
+                }
+                
+                toast.success(`Content ${!currentStatus ? 'activated' : 'deactivated'}`);
+                return true;
+            } else {
+                const error = await updateResponse.json();
+                toast.error(`Failed to update: ${error.message || 'Unknown error'}`);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error toggling content active status:', error);
+            toast.error('An error occurred while updating content status');
+            return false;
+        }
+    }
+
+    // Check if content is active in a room
+    function isContentActive(roomId, contentId, isHost) {
+        const room = rooms.find(r => r.id === roomId);
+        if (!room) return true; // Default to active if room not found
+        
+        const contentField = isHost ? 'host_content_active' : 'representative_content_active';
+        
+        // If the field doesn't exist or the content isn't explicitly set to inactive, consider it active
+        if (!room[contentField] || room[contentField][contentId] === undefined) {
+            return true;
+        }
+        
+        return room[contentField][contentId];
+    }
+
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return null;
         return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
@@ -601,7 +674,48 @@
                             />
                         {/if}
                         <div class="flex-1">
-                            <h3 class="font-semibold text-lg">{content.title}</h3>
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-semibold text-lg">{content.title}</h3>
+                                
+                                <!-- Active toggle -->
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-gray-500">Active</span>
+                                    <div 
+                                        class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
+                                        on:click={() => {
+                                            const roomId = rooms.find(room => 
+                                                (room.expand?.host_content?.some(c => c.id === content.id) || 
+                                                room.expand?.representative_content?.some(c => c.id === content.id))
+                                            )?.id;
+                                            
+                                            if (roomId) {
+                                                const isHost = dialogTitle === 'Host Content';
+                                                const currentStatus = isContentActive(roomId, content.id, isHost);
+                                                toggleContentActive(roomId, content.id, isHost, currentStatus);
+                                            }
+                                        }}
+                                    >
+                                        {#if rooms.length > 0}
+                                            {#if (() => {
+                                                const roomId = rooms.find(room => 
+                                                    (room.expand?.host_content?.some(c => c.id === content.id) || 
+                                                    room.expand?.representative_content?.some(c => c.id === content.id))
+                                                )?.id;
+                                                
+                                                if (roomId) {
+                                                    const isHost = dialogTitle === 'Host Content';
+                                                    return isContentActive(roomId, content.id, isHost);
+                                                }
+                                                return true;
+                                            })()}
+                                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
+                                            {:else}
+                                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#7C7C7C] translate-x-[3px] transition-all duration-200" />
+                                            {/if}
+                                        {/if}
+                                    </div>
+                                </div>
+                            </div>
                             <p class="text-sm text-gray-600">{content.description}</p>
                             <div class="mt-2">
                                 <Button 

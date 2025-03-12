@@ -147,6 +147,15 @@
                 formData.append('is_active', room.is_active.toString());
             }
             
+            // Preserve active status for content
+            if (room.host_content_active) {
+                formData.append('host_content_active', JSON.stringify(room.host_content_active));
+            }
+            
+            if (room.representative_content_active) {
+                formData.append('representative_content_active', JSON.stringify(room.representative_content_active));
+            }
+            
             const response = await fetch('?/update-room', {
                 method: 'POST',
                 body: formData
@@ -189,13 +198,84 @@
             });
         }, 100);
     });
+
+    // Toggle content active status within a room
+    async function toggleContentActive(contentId, isHost, currentStatus) {
+        try {
+            // Get current room data
+            const roomResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${room.id}`);
+            if (!roomResponse.ok) {
+                throw new Error('Failed to fetch room data');
+            }
+            
+            const roomData = await roomResponse.json();
+            
+            // Create a new room_content record or update existing one
+            const contentField = isHost ? 'host_content_active' : 'representative_content_active';
+            
+            // If the field doesn't exist yet, initialize it
+            if (!roomData[contentField]) {
+                roomData[contentField] = {};
+            }
+            
+            // Toggle the active status for this content
+            roomData[contentField][contentId] = !currentStatus;
+            
+            // Update the room
+            const updateResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${room.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    [contentField]: roomData[contentField]
+                })
+            });
+            
+            if (updateResponse.ok) {
+                // Update local state
+                if (!room[contentField]) {
+                    room[contentField] = {};
+                }
+                room[contentField][contentId] = !currentStatus;
+                
+                toast.success(`Content ${!currentStatus ? 'activated' : 'deactivated'}`);
+                
+                // Force reactivity
+                room = {...room};
+                return true;
+            } else {
+                const error = await updateResponse.json();
+                toast.error(`Failed to update: ${error.message || 'Unknown error'}`);
+                return false;
+            }
+        } catch (error) {
+            console.error('Error toggling content active status:', error);
+            toast.error('An error occurred while updating content status');
+            return false;
+        }
+    }
+
+    // Check if content is active in a room
+    function isContentActive(contentId, isHost) {
+        if (!room) return true; // Default to active if room not found
+        
+        const contentField = isHost ? 'host_content_active' : 'representative_content_active';
+        
+        // If the field doesn't exist or the content isn't explicitly set to inactive, consider it active
+        if (!room[contentField] || room[contentField][contentId] === undefined) {
+            return true;
+        }
+        
+        return room[contentField][contentId];
+    }
 </script>
 
 <div class="flex bg-[#F5F5F5] overflow-hidden ">
     <Sidenav activePage="rooms" />
     
     <div class="flex-1 overflow-y-auto pb-6">
-        <div class="mx-auto p-6 space-y-6">
+        <div class="mx-auto p-6 space-y-6 mt-[6rem]">
             <!-- Header -->
             <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
                 <h1 class="font-['Poppins'] text-[24px] font-bold leading-[118%] text-[#808080]">{room?.title || ''}</h1>
@@ -349,8 +429,14 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
-                                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
+                                        <div 
+                                            class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
+                                            on:click={() => {
+                                                const currentStatus = isContentActive(content.id, true);
+                                                toggleContentActive(content.id, true, currentStatus);
+                                            }}
+                                        >
+                                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {isContentActive(content.id, true) ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
                                         </div>
                                     </td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</td>
@@ -389,8 +475,14 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <div class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full">
-                                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
+                                        <div 
+                                            class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
+                                            on:click={() => {
+                                                const currentStatus = isContentActive(content.id, false);
+                                                toggleContentActive(content.id, false, currentStatus);
+                                            }}
+                                        >
+                                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {isContentActive(content.id, false) ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
                                         </div>
                                     </td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</td>
@@ -678,6 +770,14 @@
                 <input type="hidden" name="representative_content[]" value={selectedRepContent.join(',')} />
                 <input type="hidden" name="representative[]" value={selectedRepresentatives.join(',')} />
                 <input type="hidden" name="selected_video" value={selectedVideo} />
+                
+                {#if room.host_content_active}
+                    <input type="hidden" name="host_content_active" value={JSON.stringify(room.host_content_active)} />
+                {/if}
+                
+                {#if room.representative_content_active}
+                    <input type="hidden" name="representative_content_active" value={JSON.stringify(room.representative_content_active)} />
+                {/if}
 
                 <Dialog.Footer>
                     <Button type="button" variant="outline" on:click={() => showEditDialog = false}>

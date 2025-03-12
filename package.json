@@ -58,6 +58,7 @@
 		"lucide-svelte": "^0.439.0",
 		"nodemailer": "^6.9.15",
 		"pocketbase": "^0.21.5",
+		"shepherd.js": "^14.5.0",
 		"svelte-email": "^0.0.4",
 		"svelte-sonner": "^0.3.28",
 		"svelte-use-form": "^2.10.0",

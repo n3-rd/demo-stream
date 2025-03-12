@@ -9,10 +9,21 @@ export const load = async ({ locals }) => {
     }
 
     try {
-        let room = null;
-        let hostContent = { items: [] };
-        let representativeContent = { items: [] };
+        // Check if user is authenticated
+        if (!locals.pb.authStore.isValid) {
+            return {
+                room: null,
+                hostContent: [],
+                representativeContent: [],
+                contentLibrary: [],
+                user: null
+            };
+        }
 
+        const user = locals.pb.authStore.model;
+
+        let room = null;
+        
         // Try to fetch the last room with its content
         try {
             room = await locals.pb.collection('rooms').getFirstListItem('', {
@@ -20,36 +31,38 @@ export const load = async ({ locals }) => {
                 expand: 'host_content,representative_content',
                 fields: 'id,title,is_active,host_content,representative_content,owner_company'
             });
-
-            if (room) {
-                // Only fetch content if we have a room
-                hostContent = await locals.pb.collection('content_library').getList(1, 50, {
-                    filter: room.host_content?.map(id => `id = "${id}"`).join(' || ') || 'id = ""',
-                    fields: 'id,title,collectionId,thumbnail,type,file'
-                });
-
-                representativeContent = await locals.pb.collection('content_library').getList(1, 50, {
-                    filter: room.representative_content?.map(id => `id = "${id}"`).join(' || ') || 'id = ""',
-                    fields: 'id,title,collectionId,thumbnail,type,file'
-                });
-            }
         } catch (roomErr) {
             // If no rooms exist, continue with empty room data
             console.log('No rooms found:', roomErr);
         }
 
-        // Fetch content library items regardless of room status
-        const contentLibrary = await locals.pb.collection('content_library').getList(1, 10, {
+        // Fetch all content owned by this company, similar to content-library approach
+        const allContent = await locals.pb.collection('content_library').getFullList({
+            filter: `owner_company = "${user.id}"`,
             sort: '-created',
-            filter: 'library_type ~ "host"',
-            fields: 'id,title,collectionId,thumbnail,type,file'
+            fields: 'id,title,collectionId,thumbnail,type,file,library_type'
         });
+
+        // Separate content by type
+        const hostContent = allContent.filter(item => 
+            item.library_type === 'host' || 
+            (Array.isArray(item.library_type) && item.library_type.includes('host'))
+        );
+        
+        const representativeContent = allContent.filter(item => 
+            item.library_type === 'representative' || 
+            (Array.isArray(item.library_type) && item.library_type.includes('representative'))
+        );
+        
+        // Recent content for the library section
+        const contentLibrary = allContent.slice(0, 10);
 
         return {
             room: room ? structuredClone(room) : null,
-            hostContent: structuredClone(hostContent.items),
-            representativeContent: structuredClone(representativeContent.items),
-            contentLibrary: structuredClone(contentLibrary.items)
+            hostContent: structuredClone(hostContent),
+            representativeContent: structuredClone(representativeContent),
+            contentLibrary: structuredClone(contentLibrary),
+            user
         };
     } catch (err) {
         console.error('Error loading dashboard data:', err);
@@ -58,7 +71,8 @@ export const load = async ({ locals }) => {
             room: null,
             hostContent: [],
             representativeContent: [],
-            contentLibrary: []
+            contentLibrary: [],
+            user: locals.pb.authStore.isValid ? locals.pb.authStore.model : null
         };
     }
 };

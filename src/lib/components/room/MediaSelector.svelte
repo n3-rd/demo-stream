@@ -17,6 +17,48 @@
     async function loadContent() {
         try {
             loading = true;
+            
+            // First fetch the room with expanded content relations
+            if (room?.id) {
+                const roomResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${room.id}?expand=host_content,representative_content`);
+                if (roomResponse.ok) {
+                    const roomData = await roomResponse.json();
+                    
+                    // Update room with expanded content and active status
+                    room = {
+                        ...room,
+                        host_content: roomData.host_content || [],
+                        representative_content: roomData.representative_content || [],
+                        host_content_active: roomData.host_content_active || {},
+                        representative_content_active: roomData.representative_content_active || {},
+                        expand: roomData.expand || {}
+                    };
+                    
+                    console.log('Room data with content:', room);
+                    
+                    // If we have expanded content, use it directly
+                    if (roomData.expand?.host_content?.length > 0 || roomData.expand?.representative_content?.length > 0) {
+                        const hostContentItems = roomData.expand?.host_content || [];
+                        const repContentItems = roomData.expand?.representative_content || [];
+                        
+                        // Combine and deduplicate content
+                        content = [...hostContentItems, ...repContentItems]
+                            .filter((item, index, self) => 
+                                index === self.findIndex(t => t.id === item.id)
+                            )
+                            .map(item => ({
+                                ...item,
+                                type: item.library_type || ['host'] // Default to host if not specified
+                            }));
+                            
+                        console.log('Content loaded from expanded room data:', content);
+                        loading = false;
+                        return;
+                    }
+                }
+            }
+            
+            // Fallback: fetch all content for the company
             const filterValue = encodeURIComponent(`(owner_company='${room.owner_company}')`);
             const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/content_library/records?filter=${filterValue}`);
             const data = await response.json();
@@ -24,7 +66,8 @@
                 ...item,
                 type: item.library_type || ['host'] // Default to host if not specified
             }));
-            console.log('Content loaded:', content);
+            console.log('Content loaded from company:', content);
+            
         } catch (error) {
             console.error('Error loading content:', error);
         } finally {
@@ -32,9 +75,30 @@
         }
     }
 
-    // Filter content based on user role
-    $: hostContent = content.filter(item => item.type.includes('host'));
-    $: repContent = content.filter(item => item.type.includes('representative'));
+    // Check if content is active in the room
+    function isContentActive(contentId, isHost) {
+        if (!room) return true; // Default to active if room not found
+        
+        const contentField = isHost ? 'host_content_active' : 'representative_content_active';
+        
+        // If the field doesn't exist or the content isn't explicitly set to inactive, consider it active
+        if (!room[contentField] || room[contentField][contentId] === undefined) {
+            return true;
+        }
+        
+        return room[contentField][contentId];
+    }
+
+    // Filter content based on user role and active status
+    $: hostContent = content
+        .filter(item => item.type.includes('host'))
+        .filter(item => room?.host_content?.includes(item.id)) // Only show content that belongs to this room
+        .filter(item => isContentActive(item.id, true));
+        
+    $: repContent = content
+        .filter(item => item.type.includes('representative'))
+        .filter(item => room?.representative_content?.includes(item.id)) // Only show content that belongs to this room
+        .filter(item => isContentActive(item.id, false));
 
     // Determine which content sections to show
     $: showHostContent = isHost || isRepresentative;
@@ -144,83 +208,90 @@
 </script>
 
 <div class="bg-[#9D9D9F] p-4 rounded-lg pb-24">
-    {#if showHostContent && hostContent.length > 0}
+    {#if showHostContent}
         <div class="mb-8">
             <h2 class="text-white text-lg font-semibold mb-4">Host Content</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {#each hostContent as item}
-                    {@const fileType = getFileType(item.file)}
-                    <div class="flex flex-col gap-3">
-                        <button
-                        class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
-                        on:click={() => handleMediaSelect(item)}
-                    >
-                        {#if fileType === 'video'}
-                            {#if item.thumbnail}
-                                <img
-                                    src={getThumbnailUrl(item)}
-                                    alt={item.title}
-                                    class="w-full h-full object-cover"
-                                />
+            {#if hostContent.length > 0}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {#each hostContent as item}
+                        {@const fileType = getFileType(item.file)}
+                        <div class="flex flex-col gap-3">
+                            <button
+                            class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
+                            on:click={() => handleMediaSelect(item)}
+                        >
+                            {#if fileType === 'video'}
+                                {#if item.thumbnail}
+                                    <img
+                                        src={getThumbnailUrl(item)}
+                                        alt={item.title}
+                                        class="w-full h-full object-cover"
+                                    />
 
-                                <div class="absolute inset-0 flex items-center justify-center shadow-lg">
-                                    <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
-                                </div>
-                            {:else}
-                                <div class="w-full h-full flex items-center justify-center text-white">
-                                    Video
+                                    <div class="absolute inset-0 flex items-center justify-center shadow-lg">
+                                        <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
+                                    </div>
+                                {:else}
+                                    <div class="w-full h-full flex items-center justify-center text-white">
+                                        Video
+                                    </div>
+                                {/if}
+                            {:else if fileType === 'pdf'}
+                                <div class="w-full h-full flex items-center justify-center bg-white text-white">
+                                    <img src="/icons/pdf.svg" alt="PDF" class="w-[90px] h-[90px]" />
                                 </div>
                             {/if}
-                        {:else if fileType === 'pdf'}
-                            <div class="w-full h-full flex items-center justify-center bg-white text-white">
-                                <img src="/icons/pdf.svg" alt="PDF" class="w-[90px] h-[90px]" />
-                            </div>
-                        {/if}
-                        
-                    </button>
-                        
-                        <p class="text-white text-sm truncate font-semibold">{item.title}</p>
-                        
-                    </div>
-                  
-                {/each}
-            </div>
+                            
+                        </button>
+                            
+                            <p class="text-white text-sm truncate font-semibold">{item.title}</p>
+                            
+                        </div>
+                    {/each}
+                </div>
+            {:else}
+                <div class="text-center py-4 text-white">No active host content available</div>
+            {/if}
         </div>
     {/if}
 
-    {#if showRepContent && repContent.length > 0}
+    {#if showRepContent}
         <div>
             <h2 class="text-white text-lg font-semibold mb-4">Representative Content</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {#each repContent as item}
-                    {@const fileType = getFileType(item.file)}
-                    <button
-                        class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
-                        on:click={() => handleMediaSelect(item)}
-                    >
-                        {#if fileType === 'video'}
-                            {#if item.thumbnail}
-                                <img
-                                    src={getThumbnailUrl(item)}
-                                    alt={item.title}
-                                    class="w-full h-full object-cover"
-                                />
-                            {:else}
-                                <div class="w-full h-full flex items-center justify-center text-white">
-                                    Video
+            {#if repContent.length > 0}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {#each repContent as item}
+                        {@const fileType = getFileType(item.file)}
+                        <button
+                            class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
+                            on:click={() => handleMediaSelect(item)}
+                        >
+                            {#if fileType === 'video'}
+                                {#if item.thumbnail}
+                                    <img
+                                        src={getThumbnailUrl(item)}
+                                        alt={item.title}
+                                        class="w-full h-full object-cover"
+                                    />
+                                {:else}
+                                    <div class="w-full h-full flex items-center justify-center text-white">
+                                        Video
+                                    </div>
+                                {/if}
+                            {:else if fileType === 'pdf'}
+                                <div class="w-full h-full flex items-center justify-center bg-red-600 text-white">
+                                    PDF
                                 </div>
                             {/if}
-                        {:else if fileType === 'pdf'}
-                            <div class="w-full h-full flex items-center justify-center bg-red-600 text-white">
-                                PDF
+                            <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2">
+                                <p class="text-white text-sm truncate">{item.title}</p>
                             </div>
-                        {/if}
-                        <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2">
-                            <p class="text-white text-sm truncate">{item.title}</p>
-                        </div>
-                    </button>
-                {/each}
-            </div>
+                        </button>
+                    {/each}
+                </div>
+            {:else}
+                <div class="text-center py-4 text-white">No active representative content available</div>
+            {/if}
         </div>
     {/if}
 
@@ -229,7 +300,7 @@
     {/if}
 
     {#if !loading && content.length === 0}
-        <div class="text-center py-8 text-white">No content available</div>
+        <div class="text-center py-8 text-white">No content available for this room</div>
     {/if}
 </div>
 

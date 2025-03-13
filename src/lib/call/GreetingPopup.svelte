@@ -340,7 +340,7 @@
   }
   
   :global(.shepherd-theme-custom .shepherd-content) {
-    width: 100%;
+    /* width: 100%; */
     padding: 1rem;
     padding-bottom: 0;
     margin-left: 1rem;

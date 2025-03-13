@@ -317,7 +317,7 @@
                                     </div>
                                 {/each}
                         </div>
-                        <div class="w-[320px] flex items-center justify-center bg-[#D9D9D9] text-black font-['Inter'] text-xl p-4 rounded">
+                        <div class="w-[320px] flex items-center justify-center bg-[#D9D9D9] text-black  text-xl p-4 rounded">
                             These times are editable
                         </div>
                     </div>

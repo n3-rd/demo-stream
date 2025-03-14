@@ -58,7 +58,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.locals.session = session;
 
     // Protected routes pattern - adjust this based on your needs
-    const protectedRoutes = /^\/(?:dashboard|admin|profile)/;
+    const protectedRoutes = /^\/(?:dashboard|admin)/;
     
     if (protectedRoutes.test(event.url.pathname)) {
         // If accessing protected route without session

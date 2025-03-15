@@ -113,7 +113,7 @@
                 </Button>
             </div>
 
-            <div class="rounded-lg shadow">
+            <div class="rounded-lg ">
                 <!-- Table Header -->
                 <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 border-b text-sm  text-[#737373] bg-white rounded-lg mb-5 font-bold">
                     <div>Icon</div>

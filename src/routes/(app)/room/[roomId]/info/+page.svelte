@@ -13,6 +13,7 @@
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
     import { invalidateAll } from '$app/navigation';
     import { onMount } from 'svelte';
+    import * as Tooltip from "$lib/components/ui/tooltip";
     import { Play, Pencil, Trash2 } from 'lucide-svelte';
 
     export let data;
@@ -294,12 +295,31 @@
                     >
                         Edit Room
                     </Button>
-                    <Button 
-                        class="bg-[#577AB7] h-[39px] rounded-[3px] font-semibold text-[16px] text-white"
-                        on:click={handleJoinRoom}
+
+                    {#if room.is_active}
+                        <Button 
+                            class="bg-[#577AB7] h-[39px] rounded-[3px] font-semibold text-[16px] text-white"
+                            on:click={handleJoinRoom}
+                            disabled={!room.is_active}
                     >
-                        Join Room
-                    </Button>
+                            Join Room
+                        </Button>
+
+                        {:else}
+
+                        <Tooltip.Root >
+                            <Tooltip.Trigger> <Button 
+                                class="bg-[#577AB7] h-[39px] rounded-[3px] font-semibold text-[16px] text-white"
+                                on:click={handleJoinRoom}
+                                disabled={!room.is_active}
+                        >
+                                Join Room
+                            </Button></Tooltip.Trigger>
+                            <Tooltip.Content side="bottom">
+                              <p>Room is not active</p>
+                            </Tooltip.Content>
+                          </Tooltip.Root>
+                    {/if}
                 </div>
             </div>
 

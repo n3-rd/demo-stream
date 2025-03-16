@@ -348,6 +348,7 @@ function handleWebRTCCallback(info: string, obj: any) {
                         messageBody = JSON.parse(data.messageBody);
                         console.log('Successfully parsed message body:', messageBody);
                         
+                        // Handle video URL updates
                         if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {
                             console.log('Processing video_url_update event:', messageBody);
                             const videoUpdateData = JSON.parse(messageBody.messageBody);
@@ -365,18 +366,28 @@ function handleWebRTCCallback(info: string, obj: any) {
                                     }
                                 }
                             }
-                        } else if (messageBody.eventType === 'pdf_url_update' && messageBody.messageBody) {
+                        } 
+                        // Handle PDF URL updates
+                        else if (messageBody.eventType === 'pdf_url_update' && messageBody.messageBody) {
+                            console.log('Processing pdf_url_update event:', messageBody);
                             const pdfUpdateData = JSON.parse(messageBody.messageBody);
+                            console.log('PDF update data:', pdfUpdateData);
+                            
                             if (pdfUpdateData.fileUrl) {
+                                console.log('Setting PDF URL to:', pdfUpdateData.fileUrl);
                                 currentPdfUrl.set(pdfUpdateData.fileUrl);
                                 currentVideoUrl.set(''); // Clear video when PDF is shown
                             }
-                        } else if (messageBody.eventType === 'pdf_scroll_sync' && messageBody.messageBody) {
+                        } 
+                        // Handle PDF scroll sync
+                        else if (messageBody.eventType === 'pdf_scroll_sync' && messageBody.messageBody) {
                             const scrollData = JSON.parse(messageBody.messageBody);
                             if (scrollData.scrollPosition !== undefined) {
                                 pdfScrollPosition.set(scrollData.scrollPosition);
                             }
-                        } else if (messageBody.eventType === 'pdf_zoom_sync' && messageBody.messageBody) {
+                        } 
+                        // Handle PDF zoom sync
+                        else if (messageBody.eventType === 'pdf_zoom_sync' && messageBody.messageBody) {
                             const zoomData = JSON.parse(messageBody.messageBody);
                             if (zoomData.scale !== undefined) {
                                 // Update the PDF URL with the new scale parameter
@@ -429,6 +440,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                                         videoPlayer.currentTime = syncData.currentTime;
                                     }
 
+                                    // Update the playVideoStore to match the sync state
+                                    playVideoStore.set(syncData.isPlaying);
+                                    
                                     // Sync play/pause state
                                     if (syncData.isPlaying && videoPlayer.paused) {
                                         console.log('Playing video');
@@ -715,13 +729,18 @@ function handleVideoStateChange() {
     const isCurrentController = (syncSource === 'host' && isHost) || 
                               (syncSource === 'representative' && isRepresentative);
     
+    // Update the playVideoStore to match the current play state
+    const isPlaying = !videoPlayer.paused;
+    playVideoStore.set(isPlaying);
+    
     console.log('Video state change:', { 
         isHost, 
         isRepresentative, 
         syncSource,
         isCurrentController,
         currentTime: videoPlayer.currentTime,
-        isPlaying: !videoPlayer.paused
+        isPlaying: isPlaying,
+        playVideoStore: $playVideoStore
     });
     
     if (isCurrentController && webRTCAdaptor && isDataChannelOpen) {
@@ -729,7 +748,7 @@ function handleVideoStateChange() {
             eventType: 'video_sync',
             messageBody: JSON.stringify({
                 currentTime: videoPlayer.currentTime,
-                isPlaying: !videoPlayer.paused,
+                isPlaying: isPlaying,
                 syncSource,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative
@@ -760,8 +779,8 @@ $: if (videoPlayer) {
         }
     };
     
-    // Ensure video is paused initially
-    videoPlayer.pause();
+    // Don't automatically pause the video on initialization
+    // This was causing the video to pause after play
 }
 
 const handleScheduleClose = () => {
@@ -1107,10 +1126,13 @@ function handleVideoSelect(event) {
         currentVideoUrl.set(newUrl);
         currentPdfUrl.set(''); // Ensure PDF is cleared
         
+        // Set playVideoStore to false initially to prevent auto-play
+        playVideoStore.set(false);
+        
         if (videoPlayer) {
             console.log('Updating video player source');
             videoPlayer.src = newUrl;
-            videoPlayer.pause(); // Ensure video starts paused
+            // Don't force pause here, let the playVideoStore control it
         }
         
         // Send update to all participants
@@ -1160,15 +1182,21 @@ onMount(() => {
             hasVideoPlayer: !!videoPlayer,
             isHost,
             isRepresentative,
-            currentTime: videoPlayer?.currentTime
+            currentTime: videoPlayer?.currentTime,
+            playVideoStore: $playVideoStore
         });
         
         // If we have a video player and a URL, update it
         if (videoPlayer && value) {
             console.log('Updating video player source');
             videoPlayer.src = value;
+            
+            // Only play if playVideoStore is true
             if ($playVideoStore) {
+                console.log('Auto-playing video based on playVideoStore');
                 videoPlayer.play().catch(e => console.error('Error playing video:', e));
+            } else {
+                console.log('Not auto-playing video (playVideoStore is false)');
             }
         }
     });

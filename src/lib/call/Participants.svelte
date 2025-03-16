@@ -69,7 +69,7 @@ import Share from '$lib/components/room/share.svelte';
           >
             <UserRoundPlus size={18} />
             <span class="font-medium text-sm leading-[21px]">Invite people</span>
-          </button>tourg
+          </button>
         </Dialog.Trigger>
         <Dialog.Content class="p-4 rounded-lg shadow-lg">
           <Share {joinURL} representative={false} />

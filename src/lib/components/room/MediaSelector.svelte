@@ -157,6 +157,12 @@
     function broadcastMediaUpdate(eventType: string, messageData: any) {
         if (!room?.id) return;
         
+        // Ensure roomName is available
+        if (!roomName) {
+            console.error('Room name is not available for broadcasting media update');
+            return;
+        }
+        
         const message = {
             eventType,
             messageBody: JSON.stringify(messageData)
@@ -179,6 +185,8 @@
                 JSON.stringify(message),
                 targetRoom
             );
+            
+            console.log('Media update broadcast sent successfully');
         } catch (error) {
             console.error('Error broadcasting media update:', error);
         }

@@ -12,6 +12,11 @@ const config = {
 		},
 		cors: true, // Enable CORS for all origins
 	},
+	build: {
+		rollupOptions: {
+			external: ['canvas']
+		}
+	},
 	optimizeDeps: {
 		exclude: ['canvas']
 	},

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
     import { Card } from "$lib/components/ui/card";
-    import { PUBLIC_POCKETBASE_URL } from "$env/static/public";
+    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
     import { goto } from "$app/navigation";
     import { Share2, ArrowLeft } from "lucide-svelte";
     import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "$lib/components/ui/dialog";
@@ -62,8 +62,8 @@
             <Card class="overflow-hidden">
                 <div class="aspect-video w-full">
                     <video
-                        src={`${PUBLIC_POCKETBASE_URL}/api/files/content_library/${video.id}/${video.file}`}
-                        poster={video.thumbnail ? `${PUBLIC_POCKETBASE_URL}/api/files/content_library/${video.id}/${video.thumbnail}` : undefined}
+                        src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${video.id}/${video.file}`}
+                        poster={video.thumbnail ? `${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${video.id}/${video.thumbnail}` : undefined}
                         controls
                         class="w-full h-full"
                     >

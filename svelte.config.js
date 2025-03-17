@@ -10,7 +10,18 @@ const config = {
 		},
 		alias: {
 			"@/*": "./src/lib/*",
-		  },
+		},
+		prerender: {
+			handleHttpError: ({ path, message }) => {
+				// Ignore API routes
+				if (path.startsWith('/api')) {
+					return;
+				}
+				
+				// Otherwise, throw an error
+				throw new Error(message);
+			}
+		}
 	},
 	preprocess: vitePreprocess()
 };

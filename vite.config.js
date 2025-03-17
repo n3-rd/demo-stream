@@ -11,7 +11,7 @@ const config = {
 			interval: 300, // Adjust polling interval (milliseconds)
 		},
 		hmr: {
-			host: 'viewroom.ca', // Ensure it matches your deployed domain
+			host: 'localhost', // Ensure it matches your deployed domain
 			protocol: 'wss', // Use secure WebSockets
 			clientPort: 443, // Use standard HTTPS port for client connections
 		},

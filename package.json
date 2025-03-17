@@ -1,9 +1,6 @@
 {
 	"name": "svelte-call-object",
 	"version": "0.0.2",
-	"engines": {
-		"node": "18.x"
-	},
 	"scripts": {
 		"dev": "vite dev --host 0.0.0.0 --port 3001",
 		"build": "vite build",
@@ -47,6 +44,7 @@
 		"@sveltejs/adapter-static": "^3.0.6",
 		"@sveltejs/adapter-vercel": "^5.4.5",
 		"@types/node": "^22.7.5",
+		"@types/pdfjs-dist": "^2.10.378",
 		"bits-ui": "^0.21.16",
 		"clsx": "^2.1.1",
 		"cookie": "^0.5.0",
@@ -57,6 +55,10 @@
 		"ics": "^3.8.1",
 		"lucide-svelte": "^0.439.0",
 		"nodemailer": "^6.9.15",
+		"pdf.worker.min.js": "link:pdfjs-dist/build/pdf.worker.min.js",
+		"pdf.worker.min.js?url": "link:pdfjs-dist/build/pdf.worker.min.js?url",
+		"pdfjs-dist": "^3.11.174",
+		"pdfkit": "^0.16.0",
 		"pocketbase": "^0.21.5",
 		"shepherd.js": "^14.5.0",
 		"svelte-email": "^0.0.4",
@@ -71,4 +73,3 @@
 	},
 	"packageManager": "pnpm@9.9.0+sha512.60c18acd138bff695d339be6ad13f7e936eea6745660d4cc4a776d5247c540d0edee1a563695c183a66eb917ef88f2b4feb1fc25f32a7adcadc7aaf3438e99c1"
 }
-

@@ -92,6 +92,9 @@ importers:
       svelte-email:
         specifier: ^0.0.4
         version: 0.0.4
+      svelte-pdf-simple:
+        specifier: ^2.0.0
+        version: 2.0.0
       svelte-sonner:
         specifier: ^0.3.28
         version: 0.3.28(svelte@4.2.19)
@@ -2208,6 +2211,14 @@ packages:
     resolution: {integrity: sha512-ad/3bsalbbWhmBo0D6FZ4RNMwsLsPpL6gnvhuSaU5Vm7b06Kr5ubSltQQ0T7YKsiJQO+g22zJ4dJKNTXIyOXtA==}
     engines: {node: '>=8'}
 
+  pdfjs-dist@2.13.216:
+    resolution: {integrity: sha512-qn/9a/3IHIKZarTK6ajeeFXBkG15Lg1Fx99PxU09PAU2i874X8mTcHJYyDJxu7WDfNhV6hM7bRQBZU384anoqQ==}
+    peerDependencies:
+      worker-loader: ^3.0.8
+    peerDependenciesMeta:
+      worker-loader:
+        optional: true
+
   pdfjs-dist@3.11.174:
     resolution: {integrity: sha512-TdTZPf1trZ8/UFu5Cx/GXB7GZM30LT+wWUNfsi6Bq8ePLnb+woNKtDymI2mxZYBpMbonNFqKmiz684DIfnd8dA==}
     engines: {node: '>=18'}
@@ -2568,6 +2579,9 @@ packages:
     peerDependencies:
       svelte: ^3.19.0 || ^4.0.0
 
+  svelte-pdf-simple@2.0.0:
+    resolution: {integrity: sha512-XiRyw2vWt2VGBx7vpyUcEJ6Ug1T2yboVXVnsiqBmB8ApDxysfi/ju0OfHvHO3Yd6GJiX7hlloOHwIZn8d9FEPQ==}
+
   svelte-sonner@0.3.28:
     resolution: {integrity: sha512-K3AmlySeFifF/cKgsYNv5uXqMVNln0NBAacOYgmkQStLa/UoU0LhfAACU6Gr+YYC8bOCHdVmFNoKuDbMEsppJg==}
     peerDependencies:
@@ -2775,6 +2789,10 @@ packages:
     peerDependenciesMeta:
       vite:
         optional: true
+
+  web-streams-polyfill@3.3.3:
+    resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
+    engines: {node: '>= 8'}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -5377,6 +5395,10 @@ snapshots:
   path2d-polyfill@2.0.1:
     optional: true
 
+  pdfjs-dist@2.13.216:
+    dependencies:
+      web-streams-polyfill: 3.3.3
+
   pdfjs-dist@3.11.174:
     optionalDependencies:
       canvas: 2.11.2
@@ -5692,6 +5714,12 @@ snapshots:
     dependencies:
       svelte: 4.2.19
 
+  svelte-pdf-simple@2.0.0:
+    dependencies:
+      pdfjs-dist: 2.13.216
+    transitivePeerDependencies:
+      - worker-loader
+
   svelte-sonner@0.3.28(svelte@4.2.19):
     dependencies:
       svelte: 4.2.19
@@ -5888,6 +5916,8 @@ snapshots:
   vitefu@0.2.5(vite@5.4.9(@types/node@22.7.5)):
     optionalDependencies:
       vite: 5.4.9(@types/node@22.7.5)
+
+  web-streams-polyfill@3.3.3: {}
 
   webidl-conversions@3.0.1: {}
 

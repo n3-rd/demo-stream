@@ -1,0 +1,17 @@
+{
+  "buildCommand": "pnpm run build",
+  "installCommand": "pnpm install",
+  "framework": "sveltekit",
+  "outputDirectory": ".svelte-kit/output",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
+    }
+  ],
+  "build": {
+    "env": {
+      "VERCEL_FORCE_NO_BUILD_CACHE": "1"
+    }
+  }
+} 

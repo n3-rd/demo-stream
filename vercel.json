@@ -2,7 +2,7 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "framework": "sveltekit",
-  "outputDirectory": ".svelte-kit/output",
+  "outputDirectory": ".svelte-kit/build",
   "builds": [
     {
       "src": "package.json",

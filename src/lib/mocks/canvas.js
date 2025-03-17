@@ -1,5 +1,5 @@
 // Mock implementation of canvas for environments where native modules can't be built
-class Canvas {
+class CanvasElement {
   constructor() {
     this.width = 0;
     this.height = 0;
@@ -43,7 +43,7 @@ class Canvas {
   }
 }
 
-class Image {
+class CanvasImage {
   constructor() {
     this.src = '';
     this.onload = () => {};
@@ -53,19 +53,34 @@ class Image {
   }
 }
 
-// Export the mock implementations
-module.exports = {
-  createCanvas: (width, height) => new Canvas(width, height),
-  loadImage: () => Promise.resolve(new Image()),
+// Export the mock implementations using ES modules
+export const createCanvas = (width, height) => new CanvasElement(width, height);
+export const loadImage = () => Promise.resolve(new CanvasImage());
+export const Image = CanvasImage;
+export const Canvas = CanvasElement;
+export const registerFont = () => {};
+export const createImageData = () => ({ data: new Uint8ClampedArray() });
+export const parseFont = () => ({});
+export const PNGStream = class PNGStream {};
+export const JPEGStream = class JPEGStream {};
+export const PDFStream = class PDFStream {};
+export const DOMMatrix = class DOMMatrix {};
+export const DOMPoint = class DOMPoint {};
+export const version = '0.0.0-mock';
+
+// Default export for compatibility
+export default {
+  createCanvas,
+  loadImage,
   Image,
   Canvas,
-  registerFont: () => {},
-  createImageData: () => ({ data: new Uint8ClampedArray() }),
-  parseFont: () => ({}),
-  PNGStream: class PNGStream {},
-  JPEGStream: class JPEGStream {},
-  PDFStream: class PDFStream {},
-  DOMMatrix: class DOMMatrix {},
-  DOMPoint: class DOMPoint {},
-  version: '0.0.0-mock'
+  registerFont,
+  createImageData,
+  parseFont,
+  PNGStream,
+  JPEGStream,
+  PDFStream,
+  DOMMatrix,
+  DOMPoint,
+  version
 }; 

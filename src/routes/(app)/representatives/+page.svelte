@@ -200,14 +200,20 @@
                                                 <div class="space-y-[10px] text-[#808080]">
                                                     <div>Monday</div>
                                                     <div>Tuesday</div>
+                                                    <div>Wednesday</div>
+                                                    <div>Thursday</div>
                                                     <div>Friday</div>
                                                     <div>Saturday</div>
+                                                    <div>Sunday</div>
                                                 </div>
                                                 <div class="space-y-[10px] text-[#808080]">
                                                     <div>{rep.schedule?.monday || '8:00AM - 5:00PM'}</div>
                                                     <div>{rep.schedule?.tuesday || '8:00AM - 5:00PM'}</div>
+                                                    <div>{rep.schedule?.wednesday || '8:00AM - 5:00PM'}</div>
+                                                    <div>{rep.schedule?.thursday || '8:00AM - 5:00PM'}</div>
                                                     <div>{rep.schedule?.friday || '8:00AM - 5:00PM'}</div>
                                                     <div>{rep.schedule?.saturday || '9:00AM - 3:00PM'}</div>
+                                                    <div>{rep.schedule?.sunday || 'Closed'}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -244,7 +250,7 @@
 </div>
 
 <Dialog bind:open={showAddDialog}>
-    <DialogContent class="bg-white rounded-lg p-6 max-w-[1106.74px]">
+    <DialogContent class="bg-white rounded-lg p-6 max-w-[1106.74px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
             <DialogTitle class=" text-[18px] font-semibold text-[#737373]">{editingRep ? 'Edit' : 'Add'} Representative</DialogTitle>
         </DialogHeader>
@@ -316,9 +322,8 @@
                 <Label for="location" class=" text-[14px] text-[#737373]">Location</Label>
                 <Select.Root
                     onSelectedChange={handleLocationChange}
-                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] h-[38px]"
                 >
-                    <Select.Trigger class="w-full h-full">
+                    <Select.Trigger class="w-full h-full border border-[#9E9E9E] bg-white rounded-[5px] h-[38px]">
                         <Select.Value placeholder="Select a location" />
                     </Select.Trigger>
                     <Select.Content>
@@ -370,6 +375,26 @@
                         />
                     </div>
                     <div>
+                        <Label for="wednesday" class=" text-[14px] text-[#808080]">Wednesday</Label>
+                        <input 
+                            type="text" 
+                            id="wednesday" 
+                            name="wednesday" 
+                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
+                            value={editingRep?.schedule?.wednesday || '8:00AM - 5:00PM'} 
+                        />
+                    </div>
+                    <div>
+                        <Label for="thursday" class=" text-[14px] text-[#808080]">Thursday</Label>
+                        <input 
+                            type="text" 
+                            id="thursday" 
+                            name="thursday" 
+                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
+                            value={editingRep?.schedule?.thursday || '8:00AM - 5:00PM'} 
+                        />
+                    </div>
+                    <div>
                         <Label for="friday" class=" text-[14px] text-[#808080]">Friday</Label>
                         <input 
                             type="text" 
@@ -387,6 +412,16 @@
                             name="saturday" 
                             class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
                             value={editingRep?.schedule?.saturday || '9:00AM - 3:00PM'} 
+                        />
+                    </div>
+                    <div>
+                        <Label for="sunday" class=" text-[14px] text-[#808080]">Sunday</Label>
+                        <input 
+                            type="text" 
+                            id="sunday" 
+                            name="sunday" 
+                            class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2 "
+                            value={editingRep?.schedule?.sunday || 'Closed'} 
                         />
                     </div>
                 </div>

@@ -164,41 +164,76 @@ onMount(() => {
         syncSource = 'host';
         
         // Load default video for host
-        if (isHost && room?.expand?.selected_video) {
-            const selectedVideo = room.expand.selected_video;
-            const videoUrl = selectedVideo.file ? 
-                `${PUBLIC_POCKETBASE_INSTANCE}api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+        if (isHost && room) {
+            // Try to get video from selected_video field first
+            let videoToUse = null;
             
-            console.log('Setting default video for host:', {
-                selectedVideo,
-                videoUrl
-            });
-            
-            // Set the video URL in the store
-            currentVideoUrl.set(videoUrl);
-            
-            // Broadcast the video URL to all participants
-            if (webRTCAdaptor && isDataChannelOpen) {
-                const videoUrlUpdate = {
-                    eventType: 'video_url_update',
-                    messageBody: JSON.stringify({
-                        videoUrl,
-                        fromHost: true,
-                        fromRepresentative: false,
-                        shouldPlay: false // Explicitly set to not play
-                    })
-                };
+            if (room.expand?.selected_video) {
+                videoToUse = room.expand.selected_video;
+            } else if (room.expand?.host_content && Array.isArray(room.expand.host_content) && room.expand.host_content.length > 0) {
+                // Find the first video from expanded host_content
+                const hostVideos = room.expand.host_content.filter(item => 
+                    item.file && (item.file.endsWith('.mp4') || item.file.endsWith('.webm'))
+                );
                 
-                try {
-                    sendMessage(
-                        roomName,
-                        Date.now(),
-                        JSON.stringify(videoUrlUpdate),
-                        roomName
-                    );
-                } catch (error) {
-                    console.error('Error sending initial video URL update:', error);
+                if (hostVideos.length > 0) {
+                    // Use the first video
+                    videoToUse = hostVideos[0];
+                    console.log('Found first host video from expand:', videoToUse);
+                } else {
+                    console.log('No video files found in host_content:', room.expand.host_content);
                 }
+            } else if (room.host_content && Array.isArray(room.host_content) && room.host_content.length > 0) {
+                // We have host_content IDs but not expanded, get the first one
+                try {
+                    // Get the first host_content item
+                    const contentId = room.host_content[0];
+                    console.log('Fetching first host content item:', contentId);
+                    
+                    fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/content_library/records/${contentId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.file && (data.file.endsWith('.mp4') || data.file.endsWith('.webm'))) {
+                                console.log('Found first host video by ID:', data);
+                                
+                                // Create a video URL from the content
+                                const videoUrl = data.file ? 
+                                    `${PUBLIC_POCKETBASE_INSTANCE}api/files/${data.collectionId}/${data.id}/${data.file}` : '';
+                                
+                                if (videoUrl) {
+                                    console.log('Setting default video from host content by ID:', videoUrl);
+                                    // Set the video URL in the store
+                                    currentVideoUrl.set(videoUrl);
+                                    
+                                    // Broadcast the video URL to all participants
+                                    sendVideoUpdate(videoUrl);
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error fetching host content by ID:', err);
+                        });
+                } catch (err) {
+                    console.error('Error setting up host content fetch by ID:', err);
+                }
+            }
+            
+            // If we have a video from selected_video or host_content, use it directly
+            if (videoToUse) {
+                const videoUrl = videoToUse.file ? 
+                    `${PUBLIC_POCKETBASE_INSTANCE}api/files/${videoToUse.collectionId}/${videoToUse.id}/${videoToUse.file}` : '';
+                
+                console.log('Setting default video:', {
+                    source: room.expand?.selected_video ? 'selected_video' : 'host_content',
+                    videoToUse,
+                    videoUrl
+                });
+                
+                // Set the video URL in the store
+                currentVideoUrl.set(videoUrl);
+                
+                // Broadcast the video URL to all participants
+                sendVideoUpdate(videoUrl);
             }
         }
         
@@ -1217,6 +1252,32 @@ function handleNewParticipant(participant) {
     console.log("New participant joined:", participant);
     // You can add additional logic here if needed
     // For example, updating UI or sending notifications
+}
+
+// Helper function to send video updates
+function sendVideoUpdate(videoUrl) {
+    if (webRTCAdaptor && isDataChannelOpen) {
+        const videoUrlUpdate = {
+            eventType: 'video_url_update',
+            messageBody: JSON.stringify({
+                videoUrl,
+                fromHost: true,
+                fromRepresentative: false,
+                shouldPlay: false // Explicitly set to not play
+            })
+        };
+        
+        try {
+            sendMessage(
+                roomName,
+                Date.now(),
+                JSON.stringify(videoUrlUpdate),
+                roomName
+            );
+        } catch (error) {
+            console.error('Error sending video URL update:', error);
+        }
+    }
 }
 
 </script>

@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
         // Format the URL for Ant Media Server
         const host = PUBLIC_ANT_MEDIA_URL
-        const apiUrl = `http://${host}/WebRTCAppEE/rest/v2/broadcasts/${streamId}/subscribers`;
+        const apiUrl = `http://${host}WebRTCAppEE/rest/v2/broadcasts/${streamId}/subscribers`;
 
         const subscribeData = {
             subscriberId,

@@ -24,7 +24,6 @@
     const form = useForm();
 
     let showAddRoomDialog = false;
-    let selectedVideo: string = '';
     let selectedHostContent: string[] = [];
     let selectedRepContent: string[] = [];
     let selectedRepresentatives: string[] = [];
@@ -35,10 +34,6 @@
     let dialogTitle = '';
 
     $: ({ rooms, representatives, hostContent, repContent, locations } = data);
-
-    function handleVideoSelect(e: { value: string } | null) {
-        selectedVideo = e?.value || '';
-    }
 
     function handleHostContentSelect(event: CustomEvent<{ value: string }[]>) {
         selectedHostContent = event.detail.map(item => item.value);
@@ -251,7 +246,6 @@
     // Reset form when dialog is opened
     function openAddRoomDialog() {
         showAddRoomDialog = true;
-        selectedVideo = '';
         selectedHostContent = [];
         selectedRepContent = [];
         selectedRepresentatives = [];
@@ -424,35 +418,38 @@
                 </div>
 
                 <div class="space-y-2">
-                    <Label for="selected_video">Select Video</Label>
-                    <Select.Root
-                        onSelectedChange={e => {
-                            selectedVideo = String(e?.value || '');
-                        }}
-                    >
-                        <Select.Trigger class="w-full">
-                            <Select.Value placeholder="Select a video..." />
-                        </Select.Trigger>
-                        <Select.Content>
-                            {#each hostContent.filter(content => content.type === 'video') as content}
-                                <Select.Item value={content.id} label={content.title}>
-                                    <div class="flex items-center gap-2">
-                                        {#if content.thumbnail}
-                                            <img src={getThumbnailUrl(content)} alt="Thumbnail" class="w-6 h-6 object-cover rounded" />
-                                        {/if}
-                                        {content.title}
-                                    </div>
-                                </Select.Item>
-                            {/each}
-                        </Select.Content>
-                    </Select.Root>
-                </div>
-
-                <div class="space-y-2">
                     <Label for="representative">Representatives</Label>
                     <Select.Root>
-                        <Select.Trigger class="w-full {$form.representative && $form.representative.errors?.required ? 'border-red-500' : ''}">
-                            <Select.Value placeholder="Select representatives..." />
+                        <Select.Trigger class="w-full {$form['representative[]'] && $form['representative[]'].errors?.required ? 'border-red-500' : ''}">
+                          <div class="w-full flex justify-between items-center">
+                            {#if selectedRepresentatives.length > 0}
+                              <span class="truncate flex items-center gap-1 flex-wrap">
+                                {#each selectedRepresentatives.slice(0, 6) as repId, i}
+                                  <span class="inline-flex items-center gap-1">
+                                    {#if representatives.find(r => r.id === repId)?.avatar}
+                                      <img 
+                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${repId}/${representatives.find(r => r.id === repId)?.avatar}`}
+                                        alt="Avatar"
+                                        class="w-4 h-4 object-cover rounded-full"
+                                      />
+                                    {:else}
+                                      <div class="w-4 h-4 rounded-full bg-[#E0E8F5] flex items-center justify-center">
+                                        <span class="text-[10px] font-medium text-[#737373]">
+                                          {(representatives.find(r => r.id === repId)?.name || repId)[0]?.toUpperCase()}
+                                        </span>
+                                      </div>
+                                    {/if}
+                                    {representatives.find(r => r.id === repId)?.name || repId}{i < Math.min(selectedRepresentatives.slice(0, 6).length - 1, 5) ? ', ' : ''}
+                                  </span>
+                                {/each}
+                                {#if selectedRepresentatives.length > 6}
+                                  <span class="text-muted-foreground">...</span>
+                                {/if}
+                              </span>
+                            {:else}
+                              <span class="text-muted-foreground">Select representatives...</span>
+                            {/if}
+                          </div>
                         </Select.Trigger>
                         <Select.Content class="w-full">
                             <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
@@ -527,15 +524,52 @@
                     <Label for="host_content">Host Content</Label>
                     <Select.Root>
                         <Select.Trigger class="w-full {$form['host_content[]'] && $form['host_content[]'].errors?.required ? 'border-red-500' : ''}">
-                            <Select.Value placeholder="Select host content..." />
+                          <div class="w-full flex justify-between items-center">
+                            {#if selectedHostContent.length > 0}
+                              <span class="truncate flex items-center gap-1 flex-wrap">
+                                {#each selectedHostContent.slice(0, 6) as id, i}
+                                  <span class="inline-flex items-center gap-1">
+                                    {#if hostContent.find(c => c.id === id)?.thumbnail}
+                                      <img 
+                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${id}/${hostContent.find(c => c.id === id)?.thumbnail}`}
+                                        alt="Thumbnail"
+                                        class="w-4 h-4 object-cover rounded"
+                                      />
+                                    {/if}
+                                    {hostContent.find(c => c.id === id)?.title || id}{i < Math.min(selectedHostContent.slice(0, 6).length - 1, 5) ? ', ' : ''}
+                                  </span>
+                                {/each}
+                                {#if selectedHostContent.length > 6}
+                                  <span class="text-muted-foreground">...</span>
+                                {/if}
+                              </span>
+                            {:else}
+                              <span class="text-muted-foreground">Select host content...</span>
+                            {/if}
+                          </div>
                         </Select.Trigger>
                         <Select.Content class="w-full">
                             <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
                                 {#each hostContent as content}
                                     <div class="flex items-center justify-between gap-3 mb-3">
-                                        <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
-                                            {content.title}
-                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            {#if content.thumbnail}
+                                                <img 
+                                                    src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.thumbnail}`}
+                                                    alt={content.title}
+                                                    class="w-8 h-8 rounded object-cover"
+                                                />
+                                            {:else}
+                                                <div class="w-8 h-8 rounded bg-[#E0E8F5] flex items-center justify-center">
+                                                    <span class="text-sm font-medium text-[#737373]">
+                                                        {content.title[0].toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            {/if}
+                                            <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
+                                                {content.title}
+                                            </span>
+                                        </div>
                                         <div class="relative">
                                             <input 
                                                 type="checkbox" 
@@ -576,15 +610,53 @@
                     <Label for="representative_content">Representative Content</Label>
                     <Select.Root>
                         <Select.Trigger class="w-full {$form['representative_content[]'] && $form['representative_content[]'].errors?.required ? 'border-red-500' : ''}">
-                            <Select.Value placeholder="Select representative content..." />
+                          <div class="w-full flex justify-between items-center">
+                            {#if selectedRepContent.length > 0}
+                              <span class="truncate">
+                                {#if selectedRepContent.length <= 2}
+                                  {#each selectedRepContent as id, i}
+                                    <span class="inline-flex items-center gap-1">
+                                      {#if repContent.find(c => c.id === id)?.thumbnail}
+                                        <img 
+                                          src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${id}/${repContent.find(c => c.id === id)?.thumbnail}`}
+                                          alt="Thumbnail"
+                                          class="w-4 h-4 object-cover rounded"
+                                        />
+                                      {/if}
+                                      {repContent.find(c => c.id === id)?.title || id}{i < selectedRepContent.length - 1 ? ', ' : ''}
+                                    </span>
+                                  {/each}
+                                {:else}
+                                  {selectedRepContent.length} items selected
+                                {/if}
+                              </span>
+                            {:else}
+                              <span class="text-muted-foreground">Select representative content...</span>
+                            {/if}
+                          </div>
                         </Select.Trigger>
                         <Select.Content class="w-full">
                             <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
                                 {#each repContent as content}
                                     <div class="flex items-center justify-between gap-3 mb-3">
-                                        <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
-                                            {content.title}
-                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            {#if content.thumbnail}
+                                                <img 
+                                                    src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.thumbnail}`}
+                                                    alt={content.title}
+                                                    class="w-8 h-8 rounded object-cover"
+                                                />
+                                            {:else}
+                                                <div class="w-8 h-8 rounded bg-[#E0E8F5] flex items-center justify-center">
+                                                    <span class="text-sm font-medium text-[#737373]">
+                                                        {content.title[0].toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            {/if}
+                                            <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
+                                                {content.title}
+                                            </span>
+                                        </div>
                                         <div class="relative">
                                             <input 
                                                 type="checkbox" 
@@ -621,8 +693,6 @@
                     </HintGroup>
                 </div>
             </div>
-
-            <input type="hidden" name="selected_video" value={selectedVideo} />
 
             <Dialog.Footer>
                 <Button type="button" variant="outline" on:click={() => showAddRoomDialog = false}>

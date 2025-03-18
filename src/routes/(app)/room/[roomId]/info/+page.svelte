@@ -592,7 +592,22 @@
                             }}
                         >
                             <Select.Trigger class="w-full">
-                                <Select.Value placeholder={hostContent.find(c => c.id === selectedVideo)?.title || 'Select a video...'} />
+                              <div class="w-full flex justify-between items-center">
+                                {#if selectedVideo}
+                                  <span class="truncate flex items-center gap-2">
+                                    {#if hostContent.find(c => c.id === selectedVideo)?.thumbnail}
+                                      <img 
+                                        src={getThumbnailUrl(hostContent.find(c => c.id === selectedVideo))}
+                                        alt="Thumbnail"
+                                        class="w-6 h-6 object-cover rounded"
+                                      />
+                                    {/if}
+                                    {hostContent.find(c => c.id === selectedVideo)?.title || 'Selected video'}
+                                  </span>
+                                {:else}
+                                  <span class="text-muted-foreground">Select a video...</span>
+                                {/if}
+                              </div>
                             </Select.Trigger>
                             <Select.Content>
                                 {#each hostContent.filter(content => content.type === 'video') as content}
@@ -613,7 +628,35 @@
                         <Label for="representative">Representatives</Label>
                         <Select.Root>
                             <Select.Trigger class="w-full">
-                                <Select.Value placeholder="Select representatives..." />
+                              <div class="w-full flex justify-between items-center">
+                                {#if selectedRepresentatives.length > 0}
+                                  <span class="truncate flex items-center gap-1 flex-wrap">
+                                    {#each selectedRepresentatives.slice(0, 6) as repId, i}
+                                      <span class="inline-flex items-center gap-1">
+                                        {#if representatives.find(r => r.id === repId)?.avatar}
+                                          <img 
+                                            src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${repId}/${representatives.find(r => r.id === repId)?.avatar}`}
+                                            alt="Avatar"
+                                            class="w-4 h-4 object-cover rounded-full"
+                                          />
+                                        {:else}
+                                          <div class="w-4 h-4 rounded-full bg-[#E0E8F5] flex items-center justify-center">
+                                            <span class="text-[10px] font-medium text-[#737373]">
+                                              {(representatives.find(r => r.id === repId)?.name || repId)[0]?.toUpperCase()}
+                                            </span>
+                                          </div>
+                                        {/if}
+                                        {representatives.find(r => r.id === repId)?.name || repId}{i < Math.min(selectedRepresentatives.slice(0, 6).length - 1, 5) ? ', ' : ''}
+                                      </span>
+                                    {/each}
+                                    {#if selectedRepresentatives.length > 6}
+                                      <span class="text-muted-foreground">...</span>
+                                    {/if}
+                                  </span>
+                                {:else}
+                                  <span class="text-muted-foreground">Select representatives...</span>
+                                {/if}
+                              </div>
                             </Select.Trigger>
                             <Select.Content class="w-full">
                                 <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
@@ -679,7 +722,29 @@
                         <Label for="host_content">Host Content</Label>
                         <Select.Root>
                             <Select.Trigger class="w-full">
-                                <Select.Value placeholder="Select host content..." />
+                              <div class="w-full flex justify-between items-center">
+                                {#if selectedHostContent.length > 0}
+                                  <span class="truncate flex items-center gap-1 flex-wrap">
+                                    {#each selectedHostContent.slice(0, 6) as id, i}
+                                      <span class="inline-flex items-center gap-1">
+                                        {#if hostContent.find(c => c.id === id)?.thumbnail}
+                                          <img 
+                                            src={getThumbnailUrl(hostContent.find(c => c.id === id))}
+                                            alt="Thumbnail"
+                                            class="w-4 h-4 object-cover rounded"
+                                          />
+                                        {/if}
+                                        {hostContent.find(c => c.id === id)?.title || id}{i < Math.min(selectedHostContent.slice(0, 6).length - 1, 5) ? ', ' : ''}
+                                      </span>
+                                    {/each}
+                                    {#if selectedHostContent.length > 6}
+                                      <span class="text-muted-foreground">...</span>
+                                    {/if}
+                                  </span>
+                                {:else}
+                                  <span class="text-muted-foreground">Select host content...</span>
+                                {/if}
+                              </div>
                             </Select.Trigger>
                             <Select.Content class="w-full">
                                 <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
@@ -734,7 +799,29 @@
                         <Label for="representative_content">Representative Content</Label>
                         <Select.Root>
                             <Select.Trigger class="w-full">
-                                <Select.Value placeholder="Select representative content..." />
+                              <div class="w-full flex justify-between items-center">
+                                {#if selectedRepContent.length > 0}
+                                  <span class="truncate flex items-center gap-1 flex-wrap">
+                                    {#each selectedRepContent.slice(0, 6) as id, i}
+                                      <span class="inline-flex items-center gap-1">
+                                        {#if representativeContent.find(c => c.id === id)?.thumbnail}
+                                          <img 
+                                            src={getThumbnailUrl(representativeContent.find(c => c.id === id))}
+                                            alt="Thumbnail"
+                                            class="w-4 h-4 object-cover rounded"
+                                          />
+                                        {/if}
+                                        {representativeContent.find(c => c.id === id)?.title || id}{i < Math.min(selectedRepContent.slice(0, 6).length - 1, 5) ? ', ' : ''}
+                                      </span>
+                                    {/each}
+                                    {#if selectedRepContent.length > 6}
+                                      <span class="text-muted-foreground">...</span>
+                                    {/if}
+                                  </span>
+                                {:else}
+                                  <span class="text-muted-foreground">Select representative content...</span>
+                                {/if}
+                              </div>
                             </Select.Trigger>
                             <Select.Content class="w-full">
                                 <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">

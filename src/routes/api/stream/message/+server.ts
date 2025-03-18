@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ request }) => {
         });
 
         // Define the target URL
-        const url = `https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/rest/v2/broadcasts/${roomId}/data`;
+        const url = `https://${PUBLIC_ANT_MEDIA_URL}WebRTCAppEE/rest/v2/broadcasts/${roomId}/data`;
         
         console.log('Forwarding to Ant Media Server:', url);
 

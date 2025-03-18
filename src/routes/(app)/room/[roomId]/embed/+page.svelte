@@ -93,6 +93,7 @@
     </div>
 
     <div class="mt-8">
+        {#if room.is_active}
         <Button 
             on:click={handleJoinRoom}
             disabled={loading || anonymousUserId === '' || anonymousUserId === null || anonymousUserId.length < 3} 
@@ -100,6 +101,9 @@
         >
             {loading ? 'Joining...' : 'Host Room'}
         </Button>
+        {:else}
+        <p class="text-red-500">Room is not active</p>
+        {/if}
     </div>
 </div>
 {:else}

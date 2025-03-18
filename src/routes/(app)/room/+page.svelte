@@ -303,7 +303,7 @@
                     <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Date</div>
                     <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Room Name</div>
                     <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Active</div>
-                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Virtual Assistant</div>
+                    <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Representatives</div>
                     <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Host Content</div>
                     <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Rep Content</div>
                     <div class="text-[16px] font-semibold text-[#737373] flex items-center justify-center">Embed Code</div>
@@ -728,7 +728,7 @@
 
 <!-- Content Dialog -->
 <Dialog.Root bind:open={showContentDialog}>
-    <Dialog.Content class="sm:max-w-[600px]">
+    <Dialog.Content class="sm:max-w-[600px] max-h-[75vh] overflow-y-auto">
         <Dialog.Header>
             <Dialog.Title>{dialogTitle}</Dialog.Title>
         </Dialog.Header>

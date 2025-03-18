@@ -200,7 +200,7 @@
 
 <!-- Add/Edit Location Dialog -->
 <Dialog.Root bind:open={showAddLocationDialog}>
-    <Dialog.Content class="max-w-3xl bg-white rounded-lg p-6 shadow-lg">
+    <Dialog.Content class="max-w-3xl bg-white rounded-lg p-6 shadow-lg max-h-[75vh] overflow-y-auto">
         <Dialog.Header>
             <Dialog.Title class="font-['Poppins'] font-bold text-2xl text-[#808080]">{editingLocation ? 'Edit Location' : 'Add Location'}</Dialog.Title>
         </Dialog.Header>

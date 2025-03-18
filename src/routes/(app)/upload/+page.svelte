@@ -29,6 +29,8 @@
     let uploadedChunks: Set<number> = new Set();
     let thumbnailPreviewUrl: string | null = null;
     let showLibraryDialog = false;
+    let touched = false;
+    let filePreviewUrl: string | null = null;
 
     const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
 
@@ -85,6 +87,11 @@
         selectedLibraryType = event.detail;
     }
 
+    function handleRepresentativeSelect(event: CustomEvent<{ value: string }[]>) {
+        selectedRepresentatives = event.detail.map(item => item.value);
+        console.log('Selected representatives:', selectedRepresentatives);
+    }
+
     function handleRepresentativeChange(value: string) {
         const repId = value;
         if (selectedRepresentatives.includes(repId)) {
@@ -92,6 +99,21 @@
         } else {
             selectedRepresentatives = [...selectedRepresentatives, repId];
         }
+    }
+
+    function getRepresentativeName(repId: string) {
+        const rep = representatives.find(r => r.id === repId);
+        return rep ? rep.name : 'Unknown';
+    }
+
+    function getFilePreview() {
+        if (!selectedFile) return null;
+        
+        if (selectedType === 'video' && selectedFile.type.startsWith('video/')) {
+            return URL.createObjectURL(selectedFile);
+        }
+        
+        return null;
     }
 
     async function uploadChunk(chunk: Blob, index: number, filename: string, totalChunks: number) {
@@ -130,6 +152,7 @@
 
     async function handleSubmit(event: Event) {
         event.preventDefault();
+        touched = true;
         
         if (!$form.valid) {
             toast.error('Please fix the validation errors');
@@ -199,11 +222,27 @@
         }
     }
 
+    // Update any input to mark form as touched
+    function markAsTouched() {
+        touched = true;
+    }
+
     onDestroy(() => {
         if (thumbnailPreviewUrl) {
             URL.revokeObjectURL(thumbnailPreviewUrl);
         }
+        if (filePreviewUrl) {
+            URL.revokeObjectURL(filePreviewUrl);
+        }
     });
+
+    $: {
+        // Update file preview when file changes
+        if (selectedFile) {
+            if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+            filePreviewUrl = getFilePreview();
+        }
+    }
 </script>
 
 <div class="flex h-screen bg-[#F5F5F5]">
@@ -231,7 +270,8 @@
 
             <!-- Main Content -->
             <div class="bg-white rounded-[8px] p-8">
-                <form id="uploadForm" on:submit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8">
+                <form id="uploadForm" on:submit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8"
+                      novalidate>
                     <!-- Title -->
                     <div class="space-y-2">
                         <Label for="title" class="block  text-[14px] font-medium text-[#737373]">Title</Label>
@@ -241,11 +281,12 @@
                             name="title" 
                             required 
                             use:validators={[required]}
-                            class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {$form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
+                            on:blur={markAsTouched}
+                            class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {touched && $form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
                         />
-                        <HintGroup for="title">
-                            <Hint on="required" class="text-red-500 text-sm">Title is required</Hint>
-                        </HintGroup>
+                        {#if touched && $form.title && $form.title.errors?.required}
+                            <div class="text-red-500 text-sm">Title is required</div>
+                        {/if}
                     </div>
 
                     <!-- Type of Content -->
@@ -321,13 +362,14 @@
                                 id="description" 
                                 name="description" 
                                 use:validators={[required]}
-                                class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {$form.description && $form.description.errors?.required ? 'border-red-500' : ''}" 
+                                on:blur={markAsTouched}
+                                class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {touched && $form.description && $form.description.errors?.required ? 'border-red-500' : ''}" 
                             ></textarea>
                             <span class="absolute right-4 top-4  text-[18px] font-semibold text-[#737373]">Add Image</span>
                         </div>
-                        <HintGroup for="description">
-                            <Hint on="required" class="text-red-500 text-sm">Description is required</Hint>
-                        </HintGroup>
+                        {#if touched && $form.description && $form.description.errors?.required}
+                            <div class="text-red-500 text-sm">Description is required</div>
+                        {/if}
                     </div>
 
                     <!-- File Uploads -->
@@ -340,15 +382,15 @@
                                     id="file" 
                                     name="file" 
                                     accept={allowedFileTypes[selectedType]} 
-                                    on:change={handleFileChange}
+                                    on:change={(e) => { handleFileChange(e); markAsTouched(); }}
                                     required 
                                     class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                 />
-                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {!selectedFile ? 'border-red-500' : ''}">
+                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {touched && !selectedFile ? 'border-red-500' : ''}">
                                     <span class="text-[#737373]">{selectedFile?.name || 'No file chosen'}</span>
                                 </div>
                             </div>
-                            {#if !selectedFile}
+                            {#if touched && !selectedFile}
                                 <div class="text-red-500 text-sm">File is required</div>
                             {/if}
                         </div>
@@ -361,37 +403,96 @@
                                     id="thumbnail" 
                                     name="thumbnail" 
                                     accept="image/*"
-                                    on:change={handleThumbnailChange}
+                                    on:change={(e) => { handleThumbnailChange(e); markAsTouched(); }}
                                     required
                                     class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                 />
-                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {!thumbnailFile ? 'border-red-500' : ''}">
+                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {touched && !thumbnailFile ? 'border-red-500' : ''}">
                                     <span class="text-[#737373]">{thumbnailFile?.name || 'No file chosen'}</span>
                                 </div>
                             </div>
-                            {#if !thumbnailFile}
+                            {#if touched && !thumbnailFile}
                                 <div class="text-red-500 text-sm">Thumbnail is required</div>
                             {/if}
                         </div>
                     </div>
 
-                    <!-- Thumbnail Preview -->
-                    {#if thumbnailPreviewUrl}
-                        <div class="relative w-1/2 aspect-video">
-                            <img 
-                                src={thumbnailPreviewUrl} 
-                                alt="Thumbnail preview" 
-                                class="w-full h-full object-cover rounded-[5px]"
-                            />
-                            <button
-                                type="button"
-                                class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                                on:click={resetThumbnail}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
+                    <!-- Previews Section -->
+                    <div class="grid grid-cols-2 gap-5">
+                        <!-- Thumbnail Preview -->
+                        {#if thumbnailPreviewUrl}
+                            <div class="relative aspect-video">
+                                <img 
+                                    src={thumbnailPreviewUrl} 
+                                    alt="Thumbnail preview" 
+                                    class="w-full h-full object-cover rounded-[5px]"
+                                />
+                                <button
+                                    type="button"
+                                    class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                    on:click={resetThumbnail}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        {:else}
+                            <div class="relative aspect-video bg-gray-100 rounded-[5px] flex items-center justify-center">
+                                <span class="text-gray-400">Thumbnail preview</span>
+                            </div>
+                        {/if}
+
+                        <!-- File Preview -->
+                        {#if filePreviewUrl && selectedType === 'video'}
+                            <div class="relative aspect-video">
+                                <video 
+                                    src={filePreviewUrl} 
+                                    controls
+                                    class="w-full h-full object-contain rounded-[5px]"
+                                ></video>
+                            </div>
+                        {:else if selectedFile}
+                            <div class="relative aspect-video bg-gray-100 rounded-[5px] flex flex-col items-center justify-center">
+                                <div class="text-2xl mb-2">
+                                    {#if selectedType === 'pdf'}
+                                        📄
+                                    {:else if selectedType === 'document'}
+                                        📝
+                                    {:else}
+                                        📁
+                                    {/if}
+                                </div>
+                                <span class="text-gray-600">{selectedFile.name}</span>
+                                <span class="text-xs text-gray-400 mt-1">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                            </div>
+                        {:else}
+                            <div class="relative aspect-video bg-gray-100 rounded-[5px] flex items-center justify-center">
+                                <span class="text-gray-400">File preview</span>
+                            </div>
+                        {/if}
+                    </div>
+
+                    <!-- Selected Representatives Section -->
+                    {#if selectedRepresentatives.length > 0}
+                        <div class="space-y-2">
+                            <Label class="block text-[14px] font-medium text-[#737373]">Selected Representatives</Label>
+                            <div class="flex flex-wrap gap-2">
+                                {#each selectedRepresentatives as repId}
+                                    <div class="inline-flex items-center gap-2 bg-[#E0E8F5] px-3 py-1 rounded-full">
+                                        <span class="text-[#577AB7]">{getRepresentativeName(repId)}</span>
+                                        <button 
+                                            type="button"
+                                            class="text-[#577AB7] hover:text-[#3a5a9e]"
+                                            on:click={() => handleRepresentativeChange(repId)}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                {/each}
+                            </div>
                         </div>
                     {/if}
                 </form>

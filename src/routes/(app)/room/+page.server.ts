@@ -65,7 +65,6 @@ export const actions: Actions = {
         const formData = await request.formData();
         const title = formData.get('title')?.toString();
         const isActive = formData.has('is_active');
-        const selectedVideo = formData.get('selected_video')?.toString();
         
         // Get the arrays from the form data
         const hostContent = formData.get('host_content[]')?.toString().split(',').filter(Boolean) || [];
@@ -75,7 +74,6 @@ export const actions: Actions = {
         console.log('Host content:', hostContent);
         console.log('Representative content:', repContent);
         console.log('Representatives:', representatives);
-        console.log('Selected video:', selectedVideo);
 
         if (!title) {
             return fail(400, { error: 'Title is required' });
@@ -88,8 +86,7 @@ export const actions: Actions = {
                 host_content: hostContent,
                 representative_content: repContent,
                 representative: representatives,
-                owner_company: locals.pb.authStore.model.id,
-                selected_video: selectedVideo
+                owner_company: locals.pb.authStore.model.id
             };
 
             console.log('Creating room with data:', data);

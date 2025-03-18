@@ -20,6 +20,13 @@ const sanitizeAssociatedVideo = (videoRef: string) => {
 }
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
+
+    // check if the room is active
+    const roomId = await locals.pb.collection('rooms').getFirstListItem(`id = "${params.roomId}"`);
+    if (!roomId.is_active) {
+        throw redirect(303, '/');
+    }
+
     const representativeId = url.searchParams.get('repid');
     const user = locals.pb.authStore.model;
 

@@ -134,6 +134,9 @@ const mediaConstraints = {
 // Add near the top with other state variables
 let syncSource = 'host';
 
+// Add this variable with other state variables
+let inDataChannelOnlyMode = false;
+
 function getWebSocketURL() {
     return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
 }
@@ -262,27 +265,68 @@ onMount(() => {
 });
 
 function initializeWebRTC() {
-    webRTCAdaptor = new WebRTCAdaptor({
-        websocket_url: getWebSocketURL(),
-        mediaConstraints,
-        localVideoId: "localVideo",
-        isPlayMode: playOnly,
-        onlyDataChannel: dcOnly,
-        dataChannelEnabled: true,
-        debug: true,
-        callback: handleWebRTCCallback,
-        callbackError: handleWebRTCError,
-        bandwidth: 900,
-        publishMode: "camera",
-        audioBandwidth: 56,
-        micGainNode: 1.0,
-        audioSourceIndex: 0,
-        videoCodec: "H264",
-        sdpConstraints: {
-            OfferToReceiveAudio: true,
-            OfferToReceiveVideo: true
+    try {
+        // Check if mediaDevices is supported
+        const supportsMedia = !!(navigator && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function');
+        
+        // If media is not supported, force data channel only mode
+        const forceDcOnly = !supportsMedia || dcOnly;
+        inDataChannelOnlyMode = forceDcOnly;
+        
+        console.log('WebRTC initialization:', {
+            supportsMedia,
+            forceDcOnly,
+            originalDcOnly: dcOnly,
+            mediaConstraints
+        });
+        
+        // Update media constraints if needed
+        const actualMediaConstraints = forceDcOnly ? 
+            { video: false, audio: false } : 
+            mediaConstraints;
+        
+        webRTCAdaptor = new WebRTCAdaptor({
+            websocket_url: getWebSocketURL(),
+            mediaConstraints: actualMediaConstraints,
+            localVideoId: "localVideo",
+            isPlayMode: playOnly,
+            onlyDataChannel: forceDcOnly,
+            dataChannelEnabled: true,
+            debug: true,
+            callback: handleWebRTCCallback,
+            callbackError: handleWebRTCError,
+            bandwidth: 900,
+            publishMode: "camera",
+            audioBandwidth: 56,
+            micGainNode: 1.0,
+            audioSourceIndex: 0,
+            videoCodec: "H264",
+            sdpConstraints: {
+                OfferToReceiveAudio: true,
+                OfferToReceiveVideo: true
+            }
+        });
+    } catch (error) {
+        console.error('Error initializing WebRTC adapter:', error);
+        // Attempt fallback to data channel only mode
+        try {
+            console.log('Attempting fallback to data channel only mode');
+            webRTCAdaptor = new WebRTCAdaptor({
+                websocket_url: getWebSocketURL(),
+                mediaConstraints: { video: false, audio: false },
+                localVideoId: "localVideo",
+                isPlayMode: true,
+                onlyDataChannel: true,
+                dataChannelEnabled: true,
+                debug: true,
+                callback: handleWebRTCCallback,
+                callbackError: handleWebRTCError
+            });
+        } catch (fallbackError) {
+            console.error('Fallback initialization failed:', fallbackError);
+            alert('Your browser does not support the required features for this application. Please try a different browser.');
         }
-    });
+    }
 }
 
 function handleWebRTCCallback(info: string, obj: any) {
@@ -290,6 +334,28 @@ function handleWebRTCCallback(info: string, obj: any) {
         case "initialized":
             console.log("WebRTC initialized");
             joinRoom();
+            
+            // If we're in data channel only mode and not the host, trigger a delayed media state request
+            if (webRTCAdaptor && webRTCAdaptor.onlyDataChannel === true && !isHost) {
+                console.log('In data channel only mode, scheduling media state request');
+                setTimeout(() => {
+                    console.log('Sending delayed media state request');
+                    const mediaStateRequest = {
+                        streamId: roomName,
+                        eventType: 'media_state_request'
+                    };
+                    try {
+                        sendMessage(
+                            mediaStateRequest.streamId,
+                            Date.now(),
+                            JSON.stringify(mediaStateRequest),
+                            roomName
+                        );
+                    } catch (error) {
+                        console.error('Error requesting media state:', error);
+                    }
+                }, 3000); // Wait 3 seconds to allow connection to establish
+            }
             break;
         case "broadcastObject":
             if (obj.broadcast === undefined) return;
@@ -414,10 +480,34 @@ function handleWebRTCCallback(info: string, obj: any) {
                             if (state.videoUrl) {
                                 currentVideoUrl.set(state.videoUrl);
                                 if (videoPlayer) {
+                                    console.log('Updating video player with URL:', state.videoUrl);
                                     videoPlayer.src = state.videoUrl;
-                                    if (state.isPlaying) {
-                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                    
+                                    // Handle play state differently based on capabilities
+                                    if (inDataChannelOnlyMode) {
+                                        // In data-channel-only mode, we can't rely on autoplay
+                                        // so we need to manually control the video
+                                        if (state.isPlaying) {
+                                            console.log('Attempting to play video in data-channel-only mode');
+                                            // Use a user interaction event handler to play later
+                                            const playPromise = videoPlayer.play().catch(e => {
+                                                console.warn('Auto-play blocked in data-channel-only mode:', e);
+                                                // Set up a one-time click handler to play on user interaction
+                                                const playOnClick = () => {
+                                                    videoPlayer.play().catch(err => console.error('Play on click failed:', err));
+                                                    document.removeEventListener('click', playOnClick);
+                                                };
+                                                document.addEventListener('click', playOnClick, { once: true });
+                                            });
+                                        }
+                                    } else {
+                                        // Normal mode with full capabilities
+                                        if (state.isPlaying) {
+                                            videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                        }
                                     }
+                                    
+                                    // Set the current time
                                     videoPlayer.currentTime = state.currentTime || 0;
                                 }
                             }
@@ -638,18 +728,35 @@ function joinRoom() {
             displayName
         });
         
-        webRTCAdaptor.publish(
-            streamId,
-            null,
-            metadata,
-            null,
-            displayName,
-            room.id
-        );
+        try {
+            // Check if we're in data channel only mode
+            const inDataChannelOnlyMode = webRTCAdaptor.onlyDataChannel;
+            
+            if (!inDataChannelOnlyMode) {
+                webRTCAdaptor.publish(
+                    streamId,
+                    null,
+                    metadata,
+                    null,
+                    displayName,
+                    room.id
+                );
+            } else {
+                console.log('In data channel only mode, skipping media publish');
+                // We still want to join the room for data channel communication
+                isDataChannelOpen = true;
+            }
+        } catch (error) {
+            console.error('Error publishing stream:', error);
+        }
     }
 
     console.log('starting play with roomName:', sanitizedRoomName);
-    webRTCAdaptor.play(sanitizedRoomName);
+    try {
+        webRTCAdaptor.play(sanitizedRoomName);
+    } catch (error) {
+        console.error('Error playing stream:', error);
+    }
 }
 
 function leaveRoom() {
@@ -1345,6 +1452,12 @@ function sendVideoUpdate(videoUrl) {
     {/if}
     
     <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
+        {#if inDataChannelOnlyMode}
+            <div class="fixed top-0 left-0 right-0 z-50 bg-yellow-500 text-black py-2 px-4 text-center">
+                <p class="font-medium">Media access is not available. You can still view shared content but your camera and microphone are disabled.</p>
+            </div>
+        {/if}
+        
         <div id="players" class="hidden">
             <audio id="localAudio" autoplay playsinline></audio>
         </div>
@@ -1364,7 +1477,7 @@ function sendVideoUpdate(videoUrl) {
                     {#if isHost || isRepresentative}
                         <div class="video-container bg-transparent h-full w-full">
                             {#if isHost}
-                                <div class="absolute top-4 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
+                                <div class="absolute top-1 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
                                     <Button
                                         variant={syncSource === 'host' ? 'default' : 'secondary'}
                                         size="sm"

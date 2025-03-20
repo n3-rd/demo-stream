@@ -6,11 +6,11 @@ import { navigating } from '$app/stores';</script>
 
 <!-- <Header></Header> -->
 
-{#if $navigating}
+<!-- {#if $navigating}
   <div class="loader">
     <div class="spinner" />
   </div>
-{/if}
+{/if} -->
 
 <main>
 	<slot></slot>

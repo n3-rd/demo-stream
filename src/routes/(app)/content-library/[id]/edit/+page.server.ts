@@ -1,5 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { join } from 'path';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
     if (!locals.pb.authStore.isValid) {
@@ -59,25 +60,73 @@ export const actions: Actions = {
             // Get the file from the temp directory if we have a file reference
             if (fileRef) {
                 try {
-                    // Create a new FormData to send to our combine-chunks endpoint
-                    const chunkFormData = new FormData();
-                    chunkFormData.append('filename', fileRef);
+                    // First try direct file access (for Vercel environment)
+                    const tempPath = join('/tmp/upload', fileRef);
                     
-                    // Call our endpoint to get the file
-                    const fileResponse = await fetch(new URL('/api/combine-chunks', request.url), {
-                        method: 'POST',
-                        body: chunkFormData
-                    });
-                    
-                    if (!fileResponse.ok) {
-                        throw new Error('Failed to get file from chunks');
+                    // Check if the file exists in the temp directory
+                    console.log(`Checking if file exists at: ${tempPath}`);
+                    try {
+                        const { readFile } = await import('node:fs/promises');
+                        const { existsSync } = await import('node:fs');
+                        
+                        if (existsSync(tempPath)) {
+                            console.log(`File exists, reading directly from: ${tempPath}`);
+                            const buffer = await readFile(tempPath);
+                            console.log(`Successfully read file directly, size: ${buffer.length} bytes`);
+                            
+                            // Get the original filename from the temp filename (remove timestamp prefix)
+                            const originalFilename = fileRef.split('-').slice(1).join('-');
+                            
+                            // Determine the content type
+                            const contentType = getContentType(originalFilename);
+                            
+                            // Create a file object
+                            const file = new File([buffer], originalFilename, { type: contentType });
+                            console.log(`Created File object with name: ${originalFilename}, type: ${contentType}`);
+                            
+                            contentData.file = file;
+                        } else {
+                            console.log(`File not found at ${tempPath}, falling back to API endpoint`);
+                            await useApiEndpoint();
+                        }
+                    } catch (directReadError) {
+                        console.error(`Error reading file directly: ${directReadError.message}`);
+                        console.log('Falling back to API endpoint');
+                        await useApiEndpoint();
                     }
                     
-                    // Get the response FormData that contains our file
-                    const responseFormData = await fileResponse.formData();
-                    const file = responseFormData.get('file') as File;
-                    
-                    if (file) {
+                    // Helper function to use the API endpoint as a fallback
+                    async function useApiEndpoint() {
+                        // Create a new FormData to send to our combine-chunks endpoint
+                        const chunkFormData = new FormData();
+                        chunkFormData.append('filename', fileRef);
+                        
+                        // Get the base URL from the request
+                        const requestUrl = new URL(request.url);
+                        const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
+                        
+                        // Call our endpoint with absolute URL to ensure it works in serverless
+                        console.log(`Attempting to fetch chunks from ${baseUrl}/api/combine-chunks with filename: ${fileRef}`);
+                        const fileResponse = await fetch(`${baseUrl}/api/combine-chunks`, {
+                            method: 'POST',
+                            body: chunkFormData
+                        });
+                        
+                        if (!fileResponse.ok) {
+                            const errorText = await fileResponse.text();
+                            console.error(`Chunk combine failed with status ${fileResponse.status}: ${errorText}`);
+                            throw new Error(`Failed to get file from chunks: ${fileResponse.status} ${errorText}`);
+                        }
+                        
+                        // Get the response FormData that contains our file
+                        const responseFormData = await fileResponse.formData();
+                        const file = responseFormData.get('file') as File;
+                        
+                        if (!file) {
+                            throw new Error('No file returned from combine-chunks endpoint');
+                        }
+                        
+                        console.log(`Successfully retrieved file '${fileRef}' from chunks`);
                         contentData.file = file;
                     }
                 } catch (error) {
@@ -177,4 +226,33 @@ export const actions: Actions = {
             });
         }
     }
-}; 
+};
+
+// Helper function to determine content type based on file extension
+function getContentType(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    
+    switch (ext) {
+        case 'pdf':
+            return 'application/pdf';
+        case 'doc':
+        case 'docx':
+            return 'application/msword';
+        case 'xls':
+        case 'xlsx':
+            return 'application/vnd.ms-excel';
+        case 'mp4':
+            return 'video/mp4';
+        case 'webm':
+            return 'video/webm';
+        case 'mov':
+            return 'video/quicktime';
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg';
+        case 'png':
+            return 'image/png';
+        default:
+            return 'application/octet-stream';
+    }
+} 

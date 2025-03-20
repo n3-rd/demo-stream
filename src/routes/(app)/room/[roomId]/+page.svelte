@@ -349,21 +349,21 @@ function handleWebRTCCallback(info: string, obj: any) {
             console.log('Data channel opened'); // Debug log
             isDataChannelOpen = true;
             
-            // If we're not the host, request the current sync source
+            // If we're not the host, request the current media state
             if (!isHost) {
-                const syncSourceRequest = {
+                const mediaStateRequest = {
                     streamId: roomName,
-                    eventType: 'sync_source_request'
+                    eventType: 'media_state_request'
                 };
                 try {
                     sendMessage(
-                        syncSourceRequest.streamId,
+                        mediaStateRequest.streamId,
                         Date.now(),
-                        JSON.stringify(syncSourceRequest),
+                        JSON.stringify(mediaStateRequest),
                         roomName
                     );
                 } catch (error) {
-                    console.error('Error requesting sync source:', error);
+                    console.error('Error requesting media state:', error);
                 }
             }
             break;
@@ -382,6 +382,60 @@ function handleWebRTCCallback(info: string, obj: any) {
                         console.log('Attempting to parse message body:', data.messageBody);
                         messageBody = JSON.parse(data.messageBody);
                         console.log('Successfully parsed message body:', messageBody);
+                        
+                        // Handle media state request
+                        if (messageBody.eventType === 'media_state_request' && isHost) {
+                            console.log('Received media state request, sending current state');
+                            const currentState = {
+                                eventType: 'media_state_response',
+                                messageBody: JSON.stringify({
+                                    videoUrl: $currentVideoUrl,
+                                    pdfUrl: $currentPdfUrl,
+                                    pdfScrollPosition: $pdfScrollPosition,
+                                    isPlaying: $playVideoStore,
+                                    currentTime: videoPlayer?.currentTime || 0,
+                                    syncSource
+                                })
+                            };
+                            sendMessage(
+                                roomName,
+                                Date.now(),
+                                JSON.stringify(currentState),
+                                roomName
+                            );
+                        }
+                        
+                        // Handle media state response
+                        if (messageBody.eventType === 'media_state_response') {
+                            console.log('Received media state response:', messageBody);
+                            const state = JSON.parse(messageBody.messageBody);
+                            
+                            // Update video state
+                            if (state.videoUrl) {
+                                currentVideoUrl.set(state.videoUrl);
+                                if (videoPlayer) {
+                                    videoPlayer.src = state.videoUrl;
+                                    if (state.isPlaying) {
+                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                    }
+                                    videoPlayer.currentTime = state.currentTime || 0;
+                                }
+                            }
+                            
+                            // Update PDF state
+                            if (state.pdfUrl) {
+                                currentPdfUrl.set(state.pdfUrl);
+                                pdfScrollPosition.set(state.pdfScrollPosition || 0);
+                            }
+                            
+                            // Update sync source
+                            if (state.syncSource) {
+                                syncSource = state.syncSource;
+                            }
+                            
+                            // Update play state
+                            playVideoStore.set(state.isPlaying || false);
+                        }
                         
                         // Handle video URL updates
                         if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {

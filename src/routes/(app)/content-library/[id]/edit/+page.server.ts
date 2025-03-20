@@ -44,6 +44,7 @@ export const actions: Actions = {
             const description = formData.get('description') as string;
             const libraryType = formData.get('library_type') as string;
             const representatives = formData.get('representatives') as string;
+            const fileRef = formData.get('file_ref') as string;
             const repIds = representatives ? representatives.split(',') : [];
 
             // Base content data
@@ -55,10 +56,34 @@ export const actions: Actions = {
                 library_type: libraryType === 'both' ? ['host', 'representative'] : [libraryType]
             };
 
-            // Only include file if a new one was uploaded
-            const file = formData.get('file') as File;
-            if (file?.size > 0) {
-                contentData.file = file;
+            // Get the file from the temp directory if we have a file reference
+            if (fileRef) {
+                try {
+                    // Create a new FormData to send to our combine-chunks endpoint
+                    const chunkFormData = new FormData();
+                    chunkFormData.append('filename', fileRef);
+                    
+                    // Call our endpoint to get the file
+                    const fileResponse = await fetch(new URL('/api/combine-chunks', request.url), {
+                        method: 'POST',
+                        body: chunkFormData
+                    });
+                    
+                    if (!fileResponse.ok) {
+                        throw new Error('Failed to get file from chunks');
+                    }
+                    
+                    // Get the response FormData that contains our file
+                    const responseFormData = await fileResponse.formData();
+                    const file = responseFormData.get('file') as File;
+                    
+                    if (file) {
+                        contentData.file = file;
+                    }
+                } catch (error) {
+                    console.error('Error getting file from chunks:', error);
+                    throw error;
+                }
             }
 
             // Only include thumbnail if a new one was uploaded

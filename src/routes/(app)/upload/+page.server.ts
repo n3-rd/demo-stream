@@ -40,11 +40,38 @@ export const actions: Actions = {
             const type = formData.get('type') as string;
             const title = formData.get('title') as string;
             const description = formData.get('description') as string;
-            const file = formData.get('file') as File;
+            const fileRef = formData.get('file_ref') as string;
             const libraryType = formData.get('library_type') as string;
             const representatives = formData.get('representatives') as string;
             const thumbnail = formData.get('thumbnail') as File;
             const repIds = representatives ? representatives.split(',') : [];
+
+            // Get the file from the temp directory if we have a file reference
+            let file = null;
+            if (fileRef) {
+                try {
+                    // Create a new FormData to send to our combine-chunks endpoint
+                    const chunkFormData = new FormData();
+                    chunkFormData.append('filename', fileRef);
+                    
+                    // Call our endpoint to get the file
+                    const fileResponse = await fetch(new URL('/api/combine-chunks', request.url), {
+                        method: 'POST',
+                        body: chunkFormData
+                    });
+                    
+                    if (!fileResponse.ok) {
+                        throw new Error('Failed to get file from chunks');
+                    }
+                    
+                    // Get the response FormData that contains our file
+                    const responseFormData = await fileResponse.formData();
+                    file = responseFormData.get('file') as File;
+                } catch (error) {
+                    console.error('Error getting file from chunks:', error);
+                    throw error;
+                }
+            }
 
             // Base content data
             const contentData: Record<string, any> = {
@@ -52,10 +79,13 @@ export const actions: Actions = {
                 description,
                 type,
                 thumbnail,
-                owner_company: user.id,
-                file
+                owner_company: user.id
             };
-
+            
+            // Only add the file if we have one
+            if (file) {
+                contentData.file = file;
+            }
 
             // Create content based on library type
             if (libraryType === 'host') {

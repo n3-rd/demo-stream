@@ -188,7 +188,7 @@
             finalFormData.append('title', formData.get('title') as string);
             finalFormData.append('description', formData.get('description') as string);
             finalFormData.append('type', selectedType);
-            finalFormData.append('file', selectedFile!); // Send the actual file
+            // Don't send the entire file, just the reference to the chunked file
             finalFormData.append('file_ref', filename); // Send the chunked file reference
             finalFormData.append('library_type', libraryType);
             

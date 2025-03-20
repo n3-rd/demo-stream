@@ -145,7 +145,7 @@
             
             if (selectedFile) {
                 const filename = await uploadFile(selectedFile);
-                finalFormData.append('file', selectedFile);
+                // Don't send the file, just the reference to the chunked file
                 finalFormData.append('file_ref', filename);
             }
             

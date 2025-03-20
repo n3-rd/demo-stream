@@ -16,7 +16,8 @@ export async function POST({ request }) {
     const filename = data.get('filename') as string;
     const totalChunks = parseInt(data.get('totalChunks') as string);
 
-    const tempDir = 'static/video/temp';
+    // Use /tmp directory instead of static for Vercel compatibility
+    const tempDir = '/tmp/upload';
     await ensureDir(tempDir);
 
     const tempPath = join(tempDir, filename);

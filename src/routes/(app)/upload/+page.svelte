@@ -32,7 +32,7 @@
     let touched = false;
     let filePreviewUrl: string | null = null;
 
-    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+    const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
 
     const contentTypes = [
         { value: 'video', label: 'Video' },

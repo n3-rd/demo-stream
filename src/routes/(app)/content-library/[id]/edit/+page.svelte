@@ -27,7 +27,7 @@
     let uploadedChunks: Set<number> = new Set();
     let thumbnailPreviewUrl: string | null = content.thumbnail ? `${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.thumbnail}` : null;
 
-    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+    const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
 
     const contentTypes = [
         { value: 'video', label: 'Video' },

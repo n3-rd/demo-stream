@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "api/upload-chunk": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/upload-chunk",
+      "dest": "/api/upload-chunk",
+      "methods": ["POST"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    }
+  ]
+} 

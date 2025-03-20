@@ -1,6 +1,7 @@
 {
+  "version": 2,
   "functions": {
-    "api/**/*.js": {
+    ".svelte-kit/vercel/entry.js": {
       "memory": 1024,
       "maxDuration": 60
     }
@@ -8,7 +9,6 @@
   "routes": [
     {
       "src": "/api/upload-chunk",
-      "dest": "/api/upload-chunk",
       "methods": ["POST", "OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",

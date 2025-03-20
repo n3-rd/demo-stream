@@ -1,5 +1,6 @@
 import { writeFile, appendFile, rename, mkdir, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import type { RequestEvent } from '@sveltejs/kit';
 
 import { join } from 'path';
 async function ensureDir(dir: string) {
@@ -9,7 +10,7 @@ async function ensureDir(dir: string) {
 }
 
 // Add this new API route to handle chunk uploads
-export async function POST({ request }) {
+export async function POST({ request }: RequestEvent) {
     const data = await request.formData();
     const chunk = data.get('chunk') as Blob;
     const index = parseInt(data.get('index') as string);

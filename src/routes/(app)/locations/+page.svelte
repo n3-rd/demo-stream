@@ -218,7 +218,7 @@
 
 <!-- Add/Edit Location Dialog -->
 <Dialog.Root bind:open={showAddLocationDialog}>
-    <Dialog.Content class="max-w-3xl bg-white rounded-lg p-6 shadow-lg max-h-[75vh] overflow-y-auto">
+    <Dialog.Content class="max-w-5xl bg-white rounded-lg p-6 shadow-lg max-h-[75vh] overflow-y-auto">
         <Dialog.Header>
             <Dialog.Title class="font-['Poppins'] font-bold text-2xl text-[#808080]">{editingLocation ? 'Edit Location' : 'Add Location'}</Dialog.Title>
         </Dialog.Header>
@@ -310,15 +310,13 @@
 
                             <div class="grid gap-4">
                     <Label class="font-['Poppins'] font-medium text-lg text-[#808080]">Hours of Operation</Label>
-                    <div class="flex gap-6">
-                        <div class="w-28 space-y-4 pt-1">
+                    <div class="flex gap-6 ">
+                        <div class="w-1/2 space-y-4 pt-1 flex flex-col gap-2">
+                          
                             {#each Object.entries(currentLocation.hours) as [day, hours], i}
-                                <div class="font-['Poppins'] font-normal text-sm text-[#808080] h-6 flex items-center">{day}</div>
-                            {/each}
-                        </div>
-                        <div class="flex-1 space-y-2">
-                            {#each Object.entries(currentLocation.hours) as [day, hours], i}
-                                <div class="space-y-1">
+                            <div class="flex items-start justify-between">
+                               <span>{day}</span>
+                               <div class="flex flex-col gap-2">
                                             <Input 
                                                 id={day}
                                                 name={day}
@@ -337,12 +335,16 @@
                                             </button>
                                             {/each}
                                         </div>
-                                    </div>
+                                        </div>
+                             </div>
                                 {/each}
+
+                             
                         </div>
-                        <div class="w-[320px] flex items-center justify-center bg-[#D9D9D9] text-black  text-xl p-4 rounded">
-                            These times are editable
-                        </div>
+                     
+                        <div class="w-1/2 flex items-center justify-center  text-xl p-4 rounded">
+                            
+                                   </div>
                     </div>
                             </div>
                         </div>

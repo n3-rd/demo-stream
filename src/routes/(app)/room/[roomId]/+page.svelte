@@ -1651,10 +1651,13 @@ function toggleVideoMute() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            class="w-full hover:bg-red-700"
+                            class="w-full hover:bg-red-700 relative"
                             id="participants-button"
                             on:click={() => togglePanel("participantsPanel")}
                         >
+                            <div class="absolute -top-2 left-8 w-6 h-6 flex items-center justify-center bg-[#47484b] text-white rounded-full">
+                              {meetingParticipants.length}
+                            </div>
                             <img src="/icons/icon-participants.svg" alt="Participants" class="w-11 h-11" />
                         </Button>
                     </div>

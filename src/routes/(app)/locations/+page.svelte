@@ -41,6 +41,7 @@
 
     let showAddLocationDialog = false;
     let editingLocation: any = null;
+    let addAnother = false;
 
     const commonHours = [
         { label: "9-5", value: "9:00 am - 5:00 pm" },
@@ -101,6 +102,23 @@
             }
         };
         showAddLocationDialog = true;
+    }
+
+    function handleSubmitAndClose() {
+        addAnother = false;
+    }
+
+    function handleSubmitAndAddAnother() {
+        addAnother = true;
+    }
+
+    let formElement: HTMLFormElement;
+    
+    function submitForm(keepOpen = false) {
+        addAnother = keepOpen;
+        if (formElement) {
+            formElement.requestSubmit();
+        }
     }
 </script>
 
@@ -207,14 +225,18 @@
         
                     <form 
                         method="POST" 
-            action={editingLocation ? "?/update" : "?/create"}
+                        action={editingLocation ? "?/update" : "?/create"}
                         use:enhance={() => {
                             return async ({ result }) => {
                                 if (result.type === 'success') {
                                     await invalidateAll();
-                                    resetForm();
-                        showAddLocationDialog = false;
-                        toast.success(`Location ${editingLocation ? 'updated' : 'created'} successfully`);
+                                    if (!addAnother) {
+                                        resetForm();
+                                        showAddLocationDialog = false;
+                                    } else {
+                                        resetForm();
+                                    }
+                                    toast.success(`Location ${editingLocation ? 'updated' : 'created'} successfully`);
                                 } else if (result.type === 'failure') {
                         const errorMsg = typeof result.data?.message === 'string' 
                             ? result.data.message 
@@ -226,6 +248,7 @@
                             };
                         }}
                         class="space-y-6"
+                        bind:this={formElement}
                     >
             {#if editingLocation}
                 <input type="hidden" name="id" value={editingLocation.id} />
@@ -326,7 +349,7 @@
 
             <Dialog.Footer class="flex justify-between gap-4 pt-4 mt-4 border-t border-gray-200">
                 <div>
-                            <Button 
+                    <Button 
                         type="button" 
                         variant="outline" 
                         on:click={() => {
@@ -336,37 +359,50 @@
                         class="text-gray-500 border-gray-300"
                     >
                         Cancel
-                            </Button>
-                        </div>
+                    </Button>
+                </div>
                 <div class="flex gap-2">
                     {#if editingLocation}
-                                        <form
-                                            method="POST"
-                                            action="?/delete"
+                        <form
+                            method="POST"
+                            action="?/delete"
                             use:enhance={() => {
                                 return async ({ result }) => {
-                                                    if (result.type === 'success') {
+                                    if (result.type === 'success') {
                                         await invalidateAll();
                                         showAddLocationDialog = false;
-                                                        toast.success('Location deleted successfully');
-                                                    } else if (result.type === 'failure') {
+                                        toast.success('Location deleted successfully');
+                                    } else if (result.type === 'failure') {
                                         const errorMsg = typeof result.data?.message === 'string' ? result.data.message : 'Failed to delete location';
                                         toast.error(errorMsg);
-                                                    } else {
-                                                        toast.error('Failed to delete location');
-                                                    }
-                                                };
-                                            }}
-                                        >
+                                    } else {
+                                        toast.error('Failed to delete location');
+                                    }
+                                };
+                            }}
+                        >
                             <input type="hidden" name="id" value={editingLocation.id} />
                             <Button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-medium">
-                                                Delete
-                                            </Button>
-                                        </form>
+                                Delete
+                            </Button>
+                        </form>
                     {/if}
-                    <Button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-medium">
+                    <Button 
+                        type="button" 
+                        class="bg-primary hover:bg-primary/80 text-white font-medium"
+                        on:click={() => submitForm(false)}
+                    >
                         {editingLocation ? 'Update' : 'Save'}
                     </Button>
+                    {#if !editingLocation}
+                        <Button 
+                            type="button" 
+                            class="bg-primary hover:bg-primary/80 text-white font-medium"
+                            on:click={() => submitForm(true)}
+                        >
+                            Add Another Location
+                        </Button>
+                    {/if}
                 </div>
             </Dialog.Footer>
         </form>

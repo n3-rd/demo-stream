@@ -29,8 +29,16 @@
     let uploadedChunks: Set<number> = new Set();
     let thumbnailPreviewUrl: string | null = null;
     let showLibraryDialog = false;
-    let touched = false;
     let filePreviewUrl: string | null = null;
+    
+    // Track touched state per field instead of globally
+    let touchedFields = {
+        title: false,
+        description: false,
+        file: false,
+        thumbnail: false
+    };
+    let formSubmitAttempted = false;
 
     const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
 
@@ -57,6 +65,7 @@
         if (input.files && input.files[0]) {
             selectedFile = input.files[0];
         }
+        touchedFields.file = true;
     }
 
     function handleThumbnailChange(event: Event) {
@@ -65,6 +74,7 @@
             thumbnailFile = input.files[0];
             thumbnailPreviewUrl = URL.createObjectURL(input.files[0]);
         }
+        touchedFields.thumbnail = true;
     }
 
     function resetThumbnail() {
@@ -152,10 +162,16 @@
 
     async function handleSubmit(event: Event) {
         event.preventDefault();
-        touched = true;
+        formSubmitAttempted = true;
         
-        if (!$form.valid) {
-            toast.error('Please fix the validation errors');
+        // Check for specific validation errors and show appropriate toasts
+        if (!$form.title || $form.title.errors?.required) {
+            toast.error('Please provide a title');
+            return;
+        }
+        
+        if (!$form.description || $form.description.errors?.required) {
+            toast.error('Please provide a description');
             return;
         }
         
@@ -222,11 +238,6 @@
         }
     }
 
-    // Update any input to mark form as touched
-    function markAsTouched() {
-        touched = true;
-    }
-
     onDestroy(() => {
         if (thumbnailPreviewUrl) {
             URL.revokeObjectURL(thumbnailPreviewUrl);
@@ -256,7 +267,7 @@
                 <Button 
                     type="submit" 
                     form="uploadForm"
-                    disabled={isUploading || !selectedFile || !$form.valid} 
+                    disabled={isUploading} 
                     class="w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-semibold text-[16px] text-white flex items-center justify-center"
                 >
                     {#if isUploading}
@@ -281,10 +292,10 @@
                             name="title" 
                             required 
                             use:validators={[required]}
-                            on:blur={markAsTouched}
-                            class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {touched && $form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
+                            on:blur={() => touchedFields.title = true}
+                            class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {(touchedFields.title || formSubmitAttempted) && $form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
                         />
-                        {#if touched && $form.title && $form.title.errors?.required}
+                        {#if (touchedFields.title || formSubmitAttempted) && $form.title && $form.title.errors?.required}
                             <div class="text-red-500 text-sm">Title is required</div>
                         {/if}
                     </div>
@@ -362,12 +373,12 @@
                                 id="description" 
                                 name="description" 
                                 use:validators={[required]}
-                                on:blur={markAsTouched}
-                                class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {touched && $form.description && $form.description.errors?.required ? 'border-red-500' : ''}" 
+                                on:blur={() => touchedFields.description = true}
+                                class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {(touchedFields.description || formSubmitAttempted) && $form.description && $form.description.errors?.required ? 'border-red-500' : ''}" 
                             ></textarea>
                             <span class="absolute right-4 top-4  text-[18px] font-semibold text-[#737373]">Add Image</span>
                         </div>
-                        {#if touched && $form.description && $form.description.errors?.required}
+                        {#if (touchedFields.description || formSubmitAttempted) && $form.description && $form.description.errors?.required}
                             <div class="text-red-500 text-sm">Description is required</div>
                         {/if}
                     </div>
@@ -382,15 +393,15 @@
                                     id="file" 
                                     name="file" 
                                     accept={allowedFileTypes[selectedType]} 
-                                    on:change={(e) => { handleFileChange(e); markAsTouched(); }}
+                                    on:change={(e) => { handleFileChange(e); }}
                                     required 
                                     class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                 />
-                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {touched && !selectedFile ? 'border-red-500' : ''}">
+                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {(touchedFields.file || formSubmitAttempted) && !selectedFile ? 'border-red-500' : ''}">
                                     <span class="text-[#737373]">{selectedFile?.name || 'No file chosen'}</span>
                                 </div>
                             </div>
-                            {#if touched && !selectedFile}
+                            {#if (touchedFields.file || formSubmitAttempted) && !selectedFile}
                                 <div class="text-red-500 text-sm">File is required</div>
                             {/if}
                         </div>
@@ -403,15 +414,15 @@
                                     id="thumbnail" 
                                     name="thumbnail" 
                                     accept="image/*"
-                                    on:change={(e) => { handleThumbnailChange(e); markAsTouched(); }}
+                                    on:change={(e) => { handleThumbnailChange(e); }}
                                     required
                                     class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                 />
-                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {touched && !thumbnailFile ? 'border-red-500' : ''}">
+                                <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white {(touchedFields.thumbnail || formSubmitAttempted) && !thumbnailFile ? 'border-red-500' : ''}">
                                     <span class="text-[#737373]">{thumbnailFile?.name || 'No file chosen'}</span>
                                 </div>
                             </div>
-                            {#if touched && !thumbnailFile}
+                            {#if (touchedFields.thumbnail || formSubmitAttempted) && !thumbnailFile}
                                 <div class="text-red-500 text-sm">Thumbnail is required</div>
                             {/if}
                         </div>

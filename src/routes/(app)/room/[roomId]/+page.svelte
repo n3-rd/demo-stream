@@ -69,6 +69,7 @@ let scheduleOpen = false;
 let videoPlayer;
 let isVideoPlaying = false;
 let currentVideoTime = 0;
+let isVideoMuted = false;
 
 // Room data
 const room = data.roomId[0];
@@ -592,6 +593,25 @@ function handleWebRTCCallback(info: string, obj: any) {
                     switch (messageBody?.eventType) {
                         case 'chat_message':
                             handleChatMessage(messageBody);
+                            break;
+                        case 'video_mute_sync':
+                            try {
+                                // Parse the inner messageBody for video mute sync
+                                const muteData = JSON.parse(messageBody.messageBody);
+                                console.log('Video mute sync data:', muteData);
+                                
+                                // Only apply if we're not the controller
+                                const isCurrentController = (syncSource === 'host' && isHost) || 
+                                                               (syncSource === 'representative' && isRepresentative);
+                                
+                                if (!isCurrentController && videoPlayer) {
+                                    console.log('Applying mute sync as viewer');
+                                    isVideoMuted = muteData.isMuted;
+                                    videoPlayer.muted = isVideoMuted;
+                                }
+                            } catch (error) {
+                                console.error('Error handling video mute sync:', error);
+                            }
                             break;
                         case 'video_sync':
                             try {
@@ -1441,6 +1461,40 @@ function sendVideoUpdate(videoUrl) {
     }
 }
 
+// Add function to toggle video mute
+function toggleVideoMute() {
+    if (videoPlayer) {
+        isVideoMuted = !isVideoMuted;
+        videoPlayer.muted = isVideoMuted;
+        
+        // If we're a controller, sync mute state to other participants
+        const isCurrentController = (syncSource === 'host' && isHost) || 
+                                  (syncSource === 'representative' && isRepresentative);
+        
+        if (isCurrentController && webRTCAdaptor && isDataChannelOpen) {
+            const muteState = {
+                eventType: 'video_mute_sync',
+                messageBody: JSON.stringify({
+                    isMuted: isVideoMuted,
+                    fromHost: isHost,
+                    fromRepresentative: isRepresentative
+                })
+            };
+            
+            try {
+                sendMessage(
+                    roomName,
+                    Date.now(),
+                    JSON.stringify(muteState),
+                    roomName
+                );
+            } catch (error) {
+                console.error('Error sending video mute state:', error);
+            }
+        }
+    }
+}
+
 </script>
 
 
@@ -1505,6 +1559,7 @@ function sendVideoUpdate(videoUrl) {
                                         on:play={handleVideoStateChange}
                                         on:pause={handleVideoStateChange}
                                         on:seeking={handleVideoStateChange}
+                                        muted={isVideoMuted}
                                         loop
                                     >
                                         Your browser does not support the video element.
@@ -1515,6 +1570,7 @@ function sendVideoUpdate(videoUrl) {
                                         controls={false}
                                         src={$currentVideoUrl}
                                         bind:this={videoPlayer}
+                                        muted={isVideoMuted}
                                         loop
                                     >
                                         Your browser does not support the video element.
@@ -1628,9 +1684,11 @@ function sendVideoUpdate(videoUrl) {
                 joinURL={joinURL}
                 {isMicMuted}
                 {isCameraOff}
+                {isVideoMuted}
                 on:leaveRoom={leaveRoom}
                 on:toggleMicrophone={toggleMicrophone}
                 on:toggleCamera={toggleCamera}
+                on:toggleVideoMute={toggleVideoMute}
                 on:togglePanel={handlePanelToggle}
             />
 
@@ -1653,12 +1711,14 @@ function sendVideoUpdate(videoUrl) {
             <div class="hidden lg:block">
                     <BottomBar 
                         roomIdentityName={room.title} 
-                    {isMicMuted} 
-                    on:leaveRoom={leaveRoom} 
-                    on:toggleMicrophone={toggleMicrophone} 
-                    {isCameraOff} 
-                    on:toggleCamera={toggleCamera} 
-                />
+                        {isMicMuted} 
+                        on:leaveRoom={leaveRoom} 
+                        on:toggleMicrophone={toggleMicrophone} 
+                        {isCameraOff} 
+                        on:toggleCamera={toggleCamera}
+                        {isVideoMuted}
+                        on:toggleVideoMute={toggleVideoMute}
+                    />
             </div>
         </div>
     </div>

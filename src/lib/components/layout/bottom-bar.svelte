@@ -3,9 +3,10 @@
     export let isMicMuted;
     export let isCameraOff;
     import { Button } from "$lib/components/ui/button";
-    import { Mic, MicOff, Settings, CameraOffIcon, CameraIcon, Monitor } from "lucide-svelte";
+    import { Mic, MicOff, Settings, CameraOffIcon, CameraIcon, Monitor, Volume2, VolumeX } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
     export let isScreenSharing = false;
+    export let isVideoMuted = false;
     const dispatch = createEventDispatcher();
 </script>
  <!-- Bottom controls bar -->
@@ -38,6 +39,17 @@
              <CameraOffIcon color="#fff" size={24} class="hover:text-black" />
          {:else}
              <CameraIcon color="#fff" size={24} class="hover:text-black" />
+         {/if}
+     </button>
+
+     <button
+         class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
+         on:click={() => dispatch("toggleVideoMute")}
+     >
+         {#if isVideoMuted}
+             <VolumeX color="#fff" size={24} class="hover:text-black" />
+         {:else}
+             <Volume2 color="#fff" size={24} class="hover:text-black" />
          {/if}
      </button>
 

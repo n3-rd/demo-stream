@@ -6,11 +6,11 @@ import { navigating } from '$app/stores';</script>
 
 <!-- <Header></Header> -->
 
-<!-- {#if $navigating}
+{#if $navigating}
   <div class="loader">
-    <div class="spinner" />
+    <div class="progress-bar"></div>
   </div>
-{/if} -->
+{/if}
 
 <main>
 	<slot></slot>
@@ -24,22 +24,29 @@ import { navigating } from '$app/stores';</script>
     width: 100%;
     height: 3px;
     z-index: 9999;
+    pointer-events: none;
   }
 
-  .spinner {
+  .progress-bar {
     width: 100%;
     height: 100%;
     background: linear-gradient(90deg, #ff3e00 0%, #40b3ff 50%, #ff3e00 100%);
     background-size: 200% 100%;
-    animation: loading 1s infinite;
+    animation: loading 1.5s ease-in-out infinite;
+    transform-origin: 0% 50%;
   }
 
   @keyframes loading {
     0% {
       background-position: 200% 0;
+      transform: scaleX(0);
+    }
+    50% {
+      transform: scaleX(0.5);
     }
     100% {
       background-position: -200% 0;
+      transform: scaleX(1);
     }
   }
 </style>

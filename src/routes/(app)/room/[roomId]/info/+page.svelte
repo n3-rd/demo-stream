@@ -44,7 +44,8 @@
     }
 
     function handleJoinRoom() {
-        goto(`/room/${room.id}`);
+        // goto(`/room/${room.id}`);
+        window.open(`/room/${room.id}`, '_blank');
     }
 
     function handleRepCheckboxChange(e: Event, repId: string) {

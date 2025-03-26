@@ -38,9 +38,11 @@
             const sanitizedName = sanitizeStreamName(anonymousUserId);
             anonymousUser.set(sanitizedName);
             // Use the direct room path with anonymous host parameters
-            await goto(`/room/${room.id}?anonymousUserId=${sanitizedName}&isHost=true&anonymous=true`, {
-                replaceState: true
-            });
+            // await goto(`/room/${room.id}?anonymousUserId=${sanitizedName}&isHost=true&anonymous=true`, {
+            //     replaceState: true
+            // });
+
+             window.open(`/room/${room.id}?anonymousUserId=${sanitizedName}&isHost=true&anonymous=true`, '_blank');
         } catch (error) {
             console.error('Failed to join room:', error);
             toast.error('Failed to join room');

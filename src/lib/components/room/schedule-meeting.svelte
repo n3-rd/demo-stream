@@ -443,7 +443,7 @@
         <div class="mb-6">
           <Popover.Root>
             <Popover.Trigger class="p-0 w-full">
-              <Button class="w-full">Select Time</Button>
+              <Button class="w-full" on:click={() => console.log('Time selection opened')}>Select Time</Button>
             </Popover.Trigger>
             <Popover.Content class="p-4 rounded shadow-lg">
               <SveltyPicker 

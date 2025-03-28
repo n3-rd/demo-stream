@@ -14,6 +14,10 @@
 	import ScheduleMeeting from "../room/schedule-meeting.svelte";
 	import CreateQuote from "../room/create-quote.svelte";
     const dispatch = createEventDispatcher();
+    
+    // Add state variables for each dialog
+    let representativeDialogOpen = false;
+    let quoteDialogOpen = false;
 </script>
 <div class="w-14 h-full bg-red flex flex-col gap-4">
     <!-- <Dialog.Root>
@@ -42,7 +46,7 @@
     >
       <img src="/icons/icon-question.svg" alt="virtual-assistant" class="w-7 h-7"/>
     </Button>
-    <Dialog.Root>
+    <Dialog.Root bind:open={representativeDialogOpen}>
         <Dialog.Trigger>
             <Button
                 variant="ghost"
@@ -60,6 +64,7 @@
         <Dialog.Content class="p-4 rounded-lg shadow-lg">
             <InviteRepresentative
                 representatives={videoRepresentatives}
+                on:close={() => representativeDialogOpen = false}
             />
         </Dialog.Content>
     </Dialog.Root>
@@ -89,7 +94,7 @@
             </div>
         </Dialog.Content>
     </Dialog.Root>
-    <Dialog.Root>
+    <Dialog.Root bind:open={quoteDialogOpen}>
         <Dialog.Trigger>
             <Button
                 variant="ghost"
@@ -105,7 +110,7 @@
             </Button>
         </Dialog.Trigger>
         <Dialog.Content class="rounded-lg bg-transparent">
-            <CreateQuote />
+            <CreateQuote on:close={() => quoteDialogOpen = false} />
         </Dialog.Content>
     </Dialog.Root>
 </div>

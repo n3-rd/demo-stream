@@ -1541,89 +1541,69 @@ $: if (videoPlayer) {
                 
                 <!-- Main content area -->
                 <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
-                    <RepresentativeIndicator 
-                    participants={meetingParticipants} 
-                />
-                    {#if isHost || isRepresentative}
-                        <div class="video-container bg-transparent h-full w-full">
-                            {#if isHost}
-                                <div class="absolute top-1 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
-                                    <Button
-                                        variant={syncSource === 'host' ? 'default' : 'secondary'}
-                                        size="sm"
-                                        on:click={() => updateSyncSource('host')}
-                                    >
-                                        Host Ctrl
-                                    </Button>
-                                    <Button
-                                        variant={syncSource === 'representative' ? 'default' : 'secondary'}
-                                        size="sm"
-                                        on:click={() => updateSyncSource('representative')}
-                                    >
-                                        Rep Ctrl
-                                    </Button>
-                                </div>
-                            {/if}
-                         
-                            {#if $currentVideoUrl}
-                                {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
-                                    <video
-                                        class="w-full h-full object-contain absolute inset-0"
-                                        controls={true}
-                                        src={$currentVideoUrl}
-                                        bind:this={videoPlayer}
-                                        on:play={handleVideoStateChange}
-                                        on:pause={handleVideoStateChange}
-                                        on:seeking={handleVideoStateChange}
-                                        muted={isVideoMuted}
-                                        loop
-                                    >
-                                        Your browser does not support the video element.
-                                    </video>
-                                {:else}
-                                    <video
-                                        class="w-full h-full object-contain absolute inset-0"
-                                        controls={false}
-                                        src={$currentVideoUrl}
-                                        bind:this={videoPlayer}
-                                        muted={isVideoMuted}
-                                        loop
-                                    >
-                                        Your browser does not support the video element.
-                                    </video>
-                                {/if}
-                            {:else if $currentPdfUrl}
-                                <PdfViewer
-                                    roomName={roomName}
-                                    isController={(syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
-                                />
-                            {:else}
-                                <div class="absolute inset-0 flex items-center justify-center text-white text-xl">
-                                    No media selected
-                                </div>
-                            {/if}
-                        </div>
-                    {:else}
-                        <div class="w-full h-full flex items-center justify-center">
-                            {#if $currentVideoUrl}
+                    <div class="video-container bg-red h-full w-full relative">
+                        <RepresentativeIndicator 
+                        participants={meetingParticipants}
+                    />
+                        {#if isHost || isRepresentative}
+                            <div class="absolute top-1 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
+                                <Button
+                                    variant={syncSource === 'host' ? 'default' : 'secondary'}
+                                    size="sm"
+                                    on:click={() => updateSyncSource('host')}
+                                >
+                                    Host Ctrl
+                                </Button>
+                                <Button
+                                    variant={syncSource === 'representative' ? 'default' : 'secondary'}
+                                    size="sm"
+                                    on:click={() => updateSyncSource('representative')}
+                                >
+                                    Rep Ctrl
+                                </Button>
+                            </div>
+                        {/if}
+                        
+                        {#if $currentVideoUrl}
+                            {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
                                 <video
-                                    class="w-full h-full object-contain"
-                                    controls={false}
+                                    class="w-full h-full object-contain absolute inset-0"
+                                    controls={true}
                                     src={$currentVideoUrl}
                                     bind:this={videoPlayer}
+                                    on:play={handleVideoStateChange}
+                                    on:pause={handleVideoStateChange}
+                                    on:seeking={handleVideoStateChange}
+                                    muted={isVideoMuted}
+                                    loop
                                 >
                                     Your browser does not support the video element.
                                 </video>
-                            {:else if $currentPdfUrl}
-                                <PdfViewer
-                                    roomName={roomName}
-                                    isController={false}
-                                />
                             {:else}
-                                <div class="text-white text-xl">No media selected for this room</div>
+                                <video
+                                    class="w-full h-full object-contain absolute inset-0"
+                                    controls={false}
+                                    src={$currentVideoUrl}
+                                    bind:this={videoPlayer}
+                                    muted={isVideoMuted}
+                                    loop
+                                >
+                                    Your browser does not support the video element.
+                                </video>
                             {/if}
-                        </div>
-                    {/if}
+                        {:else if $currentPdfUrl}
+                            <PdfViewer
+                                roomName={roomName}
+                                isController={(syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+                            />
+                        {:else}
+                            <div class="absolute inset-0 flex items-center justify-center text-white text-xl">
+                                No media selected
+                            </div>
+                        {/if}
+                        
+                      
+                    </div>
 
                     <!-- Chat Panel -->
                     <div 

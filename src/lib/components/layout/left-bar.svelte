@@ -89,7 +89,10 @@
             <div class="w-full bg-transparent">
                 <ScheduleMeeting
                     userId={userId || ''}
-                    on:close={() => dispatch("closeSchedule")}
+                    on:close={() =>{
+                        dispatch("closeSchedule")
+                        scheduleOpen = false
+                    }}
                 />
             </div>
         </Dialog.Content>

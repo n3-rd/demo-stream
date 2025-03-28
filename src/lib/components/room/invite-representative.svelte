@@ -9,6 +9,7 @@
     import { ClipboardCopy } from "lucide-svelte";
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "$lib/components/ui/select";
     import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
+    import { createEventDispatcher } from "svelte";
 
     export let representatives;
     let showRepresentativeList = false;
@@ -18,6 +19,8 @@
     const joinURL = $page.url.href;
 
     let invitedRepresentative = '';
+
+    const dispatch = createEventDispatcher();
 
     $: {
         if (selectedRepresentative) {
@@ -35,6 +38,13 @@
         showRepresentativeList = false;
         showInitialDialog = true;
         selectedRepresentative = null;
+        dispatch('close');
+    }
+
+    function cancelDialog() {
+        showRepresentativeList = false;
+        showInitialDialog = true;
+        dispatch('close');
     }
 
     function selectRepresentative(representative: any) {
@@ -72,7 +82,7 @@
                 Select a representative to generate a unique invitation link. The representative will be able to join the room with their credentials and assist in the meeting.
             </p>
             <div class="flex justify-end space-x-4">
-                <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={() => showRepresentativeList = false}>Cancel</button>
+                <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={cancelDialog}>Cancel</button>
                 <button class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700" on:click={showNextModal}>Continue</button>
             </div>
         </div>
@@ -129,7 +139,7 @@
             {/if}
 
             <div class="flex justify-center space-x-4">
-                <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={() => showRepresentativeList = false}>Cancel</button>
+                <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={cancelDialog}>Cancel</button>
                 {#if selectedRepresentative}
                     <button 
                         class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700"

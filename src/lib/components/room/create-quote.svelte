@@ -17,7 +17,10 @@
     const dispatch = createEventDispatcher();
     const form = useForm();
 
-
+    // Handle cancel button click
+    function handleCancel() {
+        dispatch('close');
+    }
 </script>
 
 <div class="max-w-md p-6 bg-white rounded-lg shadow-lg">
@@ -129,13 +132,22 @@
             </HintGroup>
         </div>
 
-        <button
-            type="submit"
-            class="w-full py-3 bg-primary text-white font-semibold rounded-md hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-            disabled={!$form.valid}
-        >
-            SUBMIT QUOTE REQUEST
-        </button>
+        <div class="flex space-x-4 mt-4">
+            <button
+                type="button"
+                on:click={handleCancel}
+                class="flex-1 py-3 bg-gray-200 text-sm text-gray-800 font-semibold rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+                CANCEL
+            </button>
+            <button
+                type="submit"
+                class="flex-1 py-3 bg-primary text-white text-sm font-semibold rounded-md hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                disabled={!$form.valid}
+            >
+                SUBMIT QUOTE REQUEST
+            </button>
+        </div>
     </form>
 </div>
 

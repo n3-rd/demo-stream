@@ -462,8 +462,21 @@
     </Tabs.Root>
 
     <div class="flex justify-end space-x-4 mt-6">
-      <Button on:click={handleCancel} color="gray" variant="destructive">Cancel</Button>
-      <Button on:click={handleButtonClick} color="blue" class="bg-primary text-white" disabled={!isFormValid}>Schedule Event</Button>
+      <Button 
+        on:click={() =>{handleCancel()}} 
+        color="gray" 
+        variant="destructive"
+      >
+        Cancel
+      </Button>
+      <Button 
+        on:click={handleButtonClick} 
+        color="blue" 
+        class="bg-primary text-white" 
+        disabled={!isFormValid}
+      >
+        Schedule Event
+      </Button>
     </div>
   </div>
 </div>

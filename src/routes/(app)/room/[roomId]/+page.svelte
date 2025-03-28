@@ -138,6 +138,8 @@ let syncSource = 'host';
 // Add this variable with other state variables
 let inDataChannelOnlyMode = false;
 
+let videoVolume = 1.0; // Add this with your other state variables
+
 function getWebSocketURL() {
     return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
 }
@@ -1495,6 +1497,20 @@ function toggleVideoMute() {
     }
 }
 
+function handleVolumeChange(event) {
+    const { volume } = event.detail;
+    if (videoPlayer) {
+        videoPlayer.volume = volume;
+        // Store the volume level
+        videoVolume = volume;
+    }
+}
+
+// Add this to ensure volume is set when video player is initialized
+$: if (videoPlayer) {
+    videoPlayer.volume = videoVolume;
+}
+
 </script>
 
 
@@ -1720,7 +1736,9 @@ function toggleVideoMute() {
                         {isCameraOff} 
                         on:toggleCamera={toggleCamera}
                         {isVideoMuted}
+                        {videoVolume}
                         on:toggleVideoMute={toggleVideoMute}
+                        on:volumeChange={handleVolumeChange}
                     />
             </div>
         </div>

@@ -45,7 +45,8 @@
     const contentTypes = [
         { value: 'video', label: 'Video' },
         { value: 'pdf', label: 'PDF' },
-        { value: 'document', label: 'Document' }
+        { value: 'document', label: 'Document' },
+        { value: 'word', label: 'Word' }
     ];
 
     const libraryTypes = [
@@ -57,7 +58,8 @@
     const allowedFileTypes = {
         video: 'video/*',
         pdf: 'application/pdf',
-        document: '.doc,.docx,.xls,.xlsx'
+        document: '.doc,.docx,.xls,.xlsx',
+        word: '.doc,.docx'
     };
 
     function handleFileChange(event: Event) {
@@ -189,6 +191,13 @@
         showLibraryDialog = true;
     }
 
+    function getBackendContentType(frontendType) {
+        if (frontendType === 'word') {
+            return 'document';
+        }
+        return frontendType;
+    }
+
     async function handleLibrarySelect(libraryType: string) {
         showLibraryDialog = false;
         isUploading = true;
@@ -203,7 +212,15 @@
             const finalFormData = new FormData();
             finalFormData.append('title', formData.get('title') as string);
             finalFormData.append('description', formData.get('description') as string);
-            finalFormData.append('type', selectedType);
+            
+            // Store as document type but add file_subtype for Word documents
+            if (selectedType === 'word') {
+                finalFormData.append('type', 'document');
+                finalFormData.append('file_subtype', 'word');
+            } else {
+                finalFormData.append('type', selectedType);
+            }
+            
             // Don't send the entire file, just the reference to the chunked file
             finalFormData.append('file_ref', filename); // Send the chunked file reference
             finalFormData.append('library_type', libraryType);
@@ -356,11 +373,10 @@
                                         checked={selectedType === 'word'}
                                         on:change={() => handleTypeChange('word')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
-                                        disabled
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'word' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
-                                <span class=" text-[14px] text-[#737373]">Word</span>
+                                <span class="text-[14px] text-[#737373]">Word</span>
                             </label>
                         </div>
                     </div>
@@ -468,7 +484,7 @@
                                 <div class="text-2xl mb-2">
                                     {#if selectedType === 'pdf'}
                                         📄
-                                    {:else if selectedType === 'document'}
+                                    {:else if selectedType === 'document' || selectedType === 'word'}
                                         📝
                                     {:else}
                                         📁

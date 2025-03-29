@@ -15,7 +15,7 @@ import {
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
-	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition } from '$lib/callStores';
+	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition, currentDocxUrl, docxScrollPosition } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
@@ -34,6 +34,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     } from '$lib/stores/playStore';
     import PdfViewer from '$lib/components/room/PdfViewer.svelte';
 	import GreetingPopup from '$lib/call/GreetingPopup.svelte';
+    import DocxViewer from '$lib/components/room/DocxViewer.svelte';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -259,6 +260,9 @@ onMount(() => {
         }, 500);
     }
     
+    // Add the docxScrollPosition to the onMount initialization
+    docxScrollPosition.set(0);
+    
     return () => {
         if (webRTCAdaptor) {
             webRTCAdaptor.stop(publishStreamId);
@@ -460,7 +464,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 messageBody: JSON.stringify({
                                     videoUrl: $currentVideoUrl,
                                     pdfUrl: $currentPdfUrl,
+                                    docxUrl: $currentDocxUrl,
                                     pdfScrollPosition: $pdfScrollPosition,
+                                    docxScrollPosition: $docxScrollPosition,
                                     isPlaying: $playVideoStore,
                                     currentTime: videoPlayer?.currentTime || 0,
                                     syncSource
@@ -478,6 +484,11 @@ function handleWebRTCCallback(info: string, obj: any) {
                         if (messageBody.eventType === 'media_state_response') {
                             console.log('Received media state response:', messageBody);
                             const state = JSON.parse(messageBody.messageBody);
+                            
+                            // First clear all media to avoid conflicts
+                            currentVideoUrl.set('');
+                            currentPdfUrl.set('');
+                            currentDocxUrl.set('');
                             
                             // Update video state
                             if (state.videoUrl) {
@@ -521,6 +532,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 pdfScrollPosition.set(state.pdfScrollPosition || 0);
                             }
                             
+                            // Update DOCX state
+                            if (state.docxUrl) {
+                                currentDocxUrl.set(state.docxUrl);
+                                docxScrollPosition.set(state.docxScrollPosition || 0);
+                            }
+                            
                             // Update sync source
                             if (state.syncSource) {
                                 syncSource = state.syncSource;
@@ -557,8 +574,11 @@ function handleWebRTCCallback(info: string, obj: any) {
                             
                             if (pdfUpdateData.fileUrl) {
                                 console.log('Setting PDF URL to:', pdfUpdateData.fileUrl);
+                                // Clear all media types first
+                                currentVideoUrl.set('');
+                                currentDocxUrl.set('');
+                                // Then set the new PDF URL
                                 currentPdfUrl.set(pdfUpdateData.fileUrl);
-                                currentVideoUrl.set(''); // Clear video when PDF is shown
                             }
                         } 
                         // Handle PDF scroll sync
@@ -579,6 +599,28 @@ function handleWebRTCCallback(info: string, obj: any) {
                                     urlObj.searchParams.set('scale', zoomData.scale.toString());
                                     return urlObj.toString();
                                 });
+                            }
+                        }
+                        // Handle DOCX URL updates
+                        else if (messageBody.eventType === 'docx_url_update' && messageBody.messageBody) {
+                            console.log('Processing docx_url_update event:', messageBody);
+                            const docxUpdateData = JSON.parse(messageBody.messageBody);
+                            console.log('DOCX update data:', docxUpdateData);
+                            
+                            if (docxUpdateData.fileUrl) {
+                                console.log('Setting DOCX URL to:', docxUpdateData.fileUrl);
+                                // Clear all media types first
+                                currentVideoUrl.set('');
+                                currentPdfUrl.set('');
+                                // Then set the new DOCX URL
+                                currentDocxUrl.set(docxUpdateData.fileUrl);
+                            }
+                        } 
+                        // Handle DOCX scroll sync
+                        else if (messageBody.eventType === 'docx_scroll_sync' && messageBody.messageBody) {
+                            const scrollData = JSON.parse(messageBody.messageBody);
+                            if (scrollData.scrollPosition !== undefined) {
+                                docxScrollPosition.set(scrollData.scrollPosition);
                             }
                         }
                     }
@@ -1591,6 +1633,11 @@ $: if (videoPlayer) {
                                     Your browser does not support the video element.
                                 </video>
                             {/if}
+                        {:else if $currentDocxUrl}
+                            <DocxViewer
+                                roomName={roomName}
+                                isController={(syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+                            />
                         {:else if $currentPdfUrl}
                             <PdfViewer
                                 roomName={roomName}

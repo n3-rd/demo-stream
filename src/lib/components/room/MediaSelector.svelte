@@ -1,7 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-    import { currentVideoUrl, currentPdfUrl } from '$lib/callStores';
+    import { currentVideoUrl, currentPdfUrl, currentDocxUrl } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
 
     export let isHost: boolean;
@@ -113,18 +113,21 @@
             hasRoomId: !!room?.id
         });
         
-        // Clear both stores first
+        // Clear ALL stores first
         currentVideoUrl.set('');
         currentPdfUrl.set('');
+        currentDocxUrl.set('');
         
         const fileUrl = getFileUrl(item);
         const isVideo = item.file.endsWith('.mp4') || item.file.endsWith('.webm');
         const isPdf = item.file.endsWith('.pdf');
+        const isDocx = item.file.endsWith('.docx') || item.file.endsWith('.doc');
         
         console.log('File details:', {
             fileUrl,
             isVideo,
             isPdf,
+            isDocx,
             fileName: item.file
         });
         
@@ -147,6 +150,16 @@
             
             console.log('Broadcasting PDF update');
             broadcastMediaUpdate('pdf_url_update', {
+                fileUrl: fileUrl,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative
+            });
+        } else if (isDocx) {
+            console.log('Setting DOCX URL:', fileUrl);
+            currentDocxUrl.set(fileUrl);
+            
+            console.log('Broadcasting DOCX update');
+            broadcastMediaUpdate('docx_url_update', {
                 fileUrl: fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative
@@ -207,6 +220,7 @@
     function getFileType(filename: string): string {
         if (filename.endsWith('.mp4') || filename.endsWith('.webm')) return 'video';
         if (filename.endsWith('.pdf')) return 'pdf';
+        if (filename.endsWith('.docx') || filename.endsWith('.doc')) return 'docx';
         return 'unknown';
     }
 
@@ -247,6 +261,10 @@
                             {:else if fileType === 'pdf'}
                                 <div class="w-full h-full flex items-center justify-center bg-white text-white">
                                     <img src="/icons/pdf.svg" alt="PDF" class="w-[90px] h-[90px]" />
+                                </div>
+                            {:else if fileType === 'docx'}
+                                <div class="w-full h-full flex items-center justify-center bg-blue-600 text-white">
+                                    <img src="/icons/word.svg" alt="DOCX" class="w-[90px] h-[90px]" />
                                 </div>
                             {/if}
                             
@@ -289,6 +307,10 @@
                             {:else if fileType === 'pdf'}
                                 <div class="w-full h-full flex items-center justify-center bg-red-600 text-white">
                                     PDF
+                                </div>
+                            {:else if fileType === 'docx'}
+                                <div class="w-full h-full flex items-center justify-center bg-blue-600 text-white">
+                                    <img src="/icons/word.svg" alt="DOCX" class="w-[90px] h-[90px]" />
                                 </div>
                             {/if}
                             <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2">

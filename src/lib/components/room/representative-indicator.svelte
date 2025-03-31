@@ -2,6 +2,7 @@
 	import { PUBLIC_ANT_MEDIA_URL } from '$env/static/public';
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
+    import { createEventDispatcher } from 'svelte';
     
     export let participants;
     
@@ -19,6 +20,8 @@ console.log("participants from representative-indicator.svelte", participants);
     let containerHeight = 150;
     let containerElement;
     let videoContainerElement;
+
+    const dispatch = createEventDispatcher();
 
     function getVideoContainer() {
         // Try to find the video container
@@ -116,6 +119,16 @@ console.log("participants from representative-indicator.svelte", participants);
             const repCount = visibleRepresentatives.length;
             // Base height for each rep + padding
             containerHeight = repCount * 120;
+        }
+    }
+
+    $: {
+        if (visibleRepresentatives) {
+            // Dispatch event when visible representatives change
+            dispatch('representativesUpdate', {
+                representatives: visibleRepresentatives,
+                count: visibleRepresentatives.length
+            });
         }
     }
 

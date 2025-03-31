@@ -3,6 +3,7 @@
     export let joinURL;
     export let videoRepresentatives;
     export let userId;
+    export let availableRepresentatives = [];
     import { Button } from "$lib/components/ui/button";
     import { MessageCircleQuestion, ShareIcon } from "lucide-svelte";
     import * as Dialog from "$lib/components/ui/dialog";
@@ -18,6 +19,9 @@
     // Add state variables for each dialog
     let representativeDialogOpen = false;
     let quoteDialogOpen = false;
+    
+    // Calculate if scheduling should be enabled
+    $: canSchedule = availableRepresentatives.length > 0;
 </script>
 <div class="w-14 h-full bg-red flex flex-col gap-4">
     <!-- <Dialog.Root>
@@ -73,8 +77,10 @@
             <Button
                 variant="ghost"
                 size="icon"
-                class="w-full hover:bg-red-700"
+                class="w-full hover:bg-red-700 {!canSchedule ? 'opacity-50' : ''}"
                 id="schedule-meeting"
+                disabled={!canSchedule}
+                title={canSchedule ? 'Schedule Meeting' : 'No representatives available for scheduling'}
             >
                 <img
                     src="/icons/icon-calendar.svg"
@@ -89,6 +95,7 @@
             <div class="w-full bg-transparent">
                 <ScheduleMeeting
                     userId={userId || ''}
+                    availableRepresentatives={videoRepresentatives}
                     on:close={() =>{
                         dispatch("closeSchedule")
                         scheduleOpen = false

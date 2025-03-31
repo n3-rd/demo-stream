@@ -142,6 +142,9 @@ let inDataChannelOnlyMode = false;
 
 let videoVolume = 1.0; // Add this with your other state variables
 
+// Add state for available representatives
+let availableRepresentatives = [];
+
 function getWebSocketURL() {
     return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
 }
@@ -1585,6 +1588,12 @@ $: if (videoPlayer) {
     videoPlayer.volume = videoVolume;
 }
 
+// Handle representative updates
+function handleRepresentativesUpdate(event) {
+    availableRepresentatives = event.detail.representatives;
+    console.log('Available representatives updated:', availableRepresentatives);
+}
+
 </script>
 
 
@@ -1610,15 +1619,23 @@ $: if (videoPlayer) {
             <div class="flex items-center md:items-start h-full pt-6 pb-24">
                 <!-- left sidebar -->
                 <div class="hidden lg:flex">
-                    <LeftBar joinURL={joinURL} videoRepresentatives={representatives} userId={user?.id || ''} {scheduleOpen} on:closeSchedule={handleScheduleClose} />
+                    <LeftBar 
+                        joinURL={joinURL} 
+                        videoRepresentatives={representatives} 
+                        userId={user?.id || ''} 
+                        {scheduleOpen} 
+                        availableRepresentatives={availableRepresentatives}
+                        on:closeSchedule={handleScheduleClose} 
+                    />
                 </div>
                 
                 <!-- Main content area -->
                 <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
                     <div class="video-container bg-red h-full w-full relative">
                         <RepresentativeIndicator 
-                        participants={meetingParticipants}
-                    />
+                            participants={meetingParticipants}
+                            on:representativesUpdate={handleRepresentativesUpdate}
+                        />
                         {#if isHost || isRepresentative}
                             <div class="absolute top-1 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
                                 <Button
@@ -1762,6 +1779,7 @@ $: if (videoPlayer) {
             <MobileBottomBar 
                 roomIdentityName={room.title}
                 videoRepresentatives={representatives}
+                availableRepresentatives={availableRepresentatives}
                 scheduleOpen={scheduleOpen}
                 userId={user?.id || ''}
                 joinURL={joinURL}

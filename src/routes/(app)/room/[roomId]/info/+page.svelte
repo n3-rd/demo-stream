@@ -15,6 +15,7 @@
     import { onMount } from 'svelte';
     import * as Tooltip from "$lib/components/ui/tooltip";
     import { Play, Pencil, Trash2 } from 'lucide-svelte';
+    import * as Switch from "$lib/components/ui/switch";
 
     export let data;
     let showEmbed = false;
@@ -259,17 +260,9 @@
     }
 
     // Check if content is active in a room
-    function isContentActive(contentId, isHost) {
-        if (!room) return true; // Default to active if room not found
-        
-        const contentField = isHost ? 'host_content_active' : 'representative_content_active';
-        
-        // If the field doesn't exist or the content isn't explicitly set to inactive, consider it active
-        if (!room[contentField] || room[contentField][contentId] === undefined) {
-            return true;
-        }
-        
-        return room[contentField][contentId];
+    function isContentActive(contentId: string) {
+        const content = [...hostContent, ...representativeContent].find(c => c.id === contentId);
+        return content?.active !== false; // Default to true if not explicitly set to false
     }
 </script>
 
@@ -450,15 +443,29 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <div 
-                                            class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
-                                            on:click={() => {
-                                                const currentStatus = isContentActive(content.id, true);
-                                                toggleContentActive(content.id, true, currentStatus);
-                                            }}
-                                        >
-                                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {isContentActive(content.id, true) ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
-                                        </div>
+                                        <form method="POST" action="?/toggle-content-active" use:enhance={() => {
+                                            return async ({ result }) => {
+                                                if (result.type === 'success') {
+                                                    toast.success('Content status updated');
+                                                    await invalidateAll();
+                                                } else {
+                                                    toast.error('Failed to update content status');
+                                                }
+                                            };
+                                        }}>
+                                            <input type="hidden" name="contentId" value={content.id} />
+                                            <input type="hidden" name="active" value={!isContentActive(content.id)} />
+                                            
+                                            <button
+                                                type="submit" 
+                                                class="relative w-[38.71px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
+                                            >
+                                                <div class="absolute top-1/2 left-0 -translate-y-1/2 w-[13.4px] h-[13.5px] rounded-full 
+                                                    {isContentActive(content.id) ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} 
+                                                    transition-all duration-200">
+                                                </div>
+                                            </button>
+                                        </form>
                                     </td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</td>
                                     <td class="py-3 px-4 text-right flex justify-end">
@@ -496,15 +503,29 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <div 
-                                            class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
-                                            on:click={() => {
-                                                const currentStatus = isContentActive(content.id, false);
-                                                toggleContentActive(content.id, false, currentStatus);
-                                            }}
-                                        >
-                                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {isContentActive(content.id, false) ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
-                                        </div>
+                                        <form method="POST" action="?/toggle-content-active" use:enhance={() => {
+                                            return async ({ result }) => {
+                                                if (result.type === 'success') {
+                                                    toast.success('Content status updated');
+                                                    await invalidateAll();
+                                                } else {
+                                                    toast.error('Failed to update content status');
+                                                }
+                                            };
+                                        }}>
+                                            <input type="hidden" name="contentId" value={content.id} />
+                                            <input type="hidden" name="active" value={!isContentActive(content.id)} />
+                                            
+                                            <button
+                                                type="submit" 
+                                                class="relative w-[38.71px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
+                                            >
+                                                <div class="absolute top-1/2 left-0 -translate-y-1/2 w-[13.4px] h-[13.5px] rounded-full 
+                                                    {isContentActive(content.id) ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} 
+                                                    transition-all duration-200">
+                                                </div>
+                                            </button>
+                                        </form>
                                     </td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080] text-center">{i + 1}</td>
                                     <td class="py-3 px-4 text-right flex justify-end">

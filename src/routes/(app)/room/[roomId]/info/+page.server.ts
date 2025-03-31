@@ -119,5 +119,37 @@ export const actions: Actions = {
             console.error('Error toggling room status:', err);
             return { error: 'Failed to update room status' };
         }
+    },
+
+    'toggle-content-active': async ({ request, locals }) => {
+        if (!locals.pb.authStore.isValid) {
+            return { type: 'error', message: 'Unauthorized' };
+        }
+
+        const formData = await request.formData();
+        const contentId = formData.get('contentId')?.toString();
+        const active = formData.get('active') === 'true';
+
+        if (!contentId) {
+            return { type: 'error', message: 'Content ID is required' };
+        }
+
+        try {
+            // Update the content's active status directly
+            await locals.pb.collection('content_library').update(contentId, {
+                active: active
+            });
+
+            return { 
+                type: 'success', 
+                message: `Content ${active ? 'activated' : 'deactivated'}`
+            };
+        } catch (error) {
+            console.error('Error toggling content active status:', error);
+            return { 
+                type: 'error', 
+                message: 'Failed to update content status' 
+            };
+        }
     }
 };

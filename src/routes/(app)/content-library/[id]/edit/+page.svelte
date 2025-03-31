@@ -12,6 +12,7 @@
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
+    import * as Switch from "$lib/components/ui/switch";
 
     export let data;
     const { user, representatives, content } = data;
@@ -26,6 +27,7 @@
     let uploadProgress = 0;
     let uploadedChunks: Set<number> = new Set();
     let thumbnailPreviewUrl: string | null = content.thumbnail ? `${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.thumbnail}` : null;
+    let isContentActive = content.active === undefined ? true : !!content.active;
 
     const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
 
@@ -143,6 +145,9 @@
             finalFormData.append('type', selectedType);
             finalFormData.append('library_type', selectedLibraryType);
             
+            // Explicitly add the active status as a string "true" or "false"
+            finalFormData.append('active', isContentActive.toString());
+            
             if (selectedFile) {
                 const filename = await uploadFile(selectedFile);
                 // Don't send the file, just the reference to the chunked file
@@ -237,25 +242,40 @@
             <!-- Main Content -->
             <div class="bg-white rounded-[8px] p-8">
                 <form id="editForm" on:submit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8">
-                    <!-- Title -->
-                    <div class="space-y-2">
-                        <Label for="title" class="block  text-[14px] font-medium text-[#737373]">Title</Label>
-                        <input 
-                            type="text" 
-                            id="title" 
-                            name="title" 
-                            required 
-                            value={content.title}
-                            use:validators={[required]}
-                            class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {$form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
-                        />
-                        <HintGroup for="title">
-                            <Hint on="required" class="text-red-500 text-sm">Title is required</Hint>
-                        </HintGroup>
+                    <!-- Title and id -->
+                    <div class="space-y-2 flex justify-between items-center gap-24">
+                        <div class="title w-1/2">
+                            <Label for="title" class="block  text-[14px] font-medium text-[#737373]">Title</Label>
+                            <input 
+                                type="text" 
+                                id="title" 
+                                name="title" 
+                                required 
+                                value={content.title}
+                                use:validators={[required]}
+                                class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {$form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
+                            />
+                            <HintGroup for="title">
+                                <Hint on="required" class="text-red-500 text-sm">Title is required</Hint>
+                            </HintGroup>
+                        </div>
+                        <div class="id w-1/2 pb-[0.5rem]">
+                            <Label for="id" class="block  text-[14px] font-medium text-[#737373]">Assigned ID</Label>
+                            <input 
+                                type="text" 
+                                id="id" 
+                                name="id" 
+                                required 
+                                value={content.id}
+                               disabled
+                                class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2"
+                            />
+                        </div>
                     </div>
 
                     <!-- Type of Content -->
-                    <div class="space-y-2">
+                    <div class="space-y-2 flex justify-between items-center gap-24">
+                        <div class="type w-1/2">
                         <Label class="block  text-[14px] font-medium text-[#737373]">Type of Content</Label>
                         <div class="flex gap-8 items-center">
                             {#each contentTypes as type}
@@ -274,12 +294,33 @@
                                     <span class=" text-[14px] text-[#737373]">{type.label}</span>
                                 </label>
                             {/each}
+                            </div>
+
+                           
                         </div>
+                        <div class="status w-1/2">
+                            <!-- Content Status -->
+              
+                     <Label class="block text-[14px] font-medium text-[#737373]">Content Status</Label>
+                     <div class="flex items-center gap-3">
+                         <Switch.Root 
+                             checked={isContentActive} 
+                             onCheckedChange={(checked) => isContentActive = checked}
+                         >
+                             <Switch.Thumb class="bg-[#01eb71]" />
+                         </Switch.Root>
+                         <span class="text-[14px] text-[#737373]">{isContentActive ? 'Active' : 'Inactive'}</span>
+                     </div>
+                     
+                     <!-- Hidden input to ensure the value is properly submitted -->
+                     <input type="hidden" name="active" value={isContentActive ? 'true' : 'false'} />
+               
+                         </div>
                     </div>
 
                     <!-- Description -->
                     <div class="space-y-2">
-                        <Label for="description" class="block  text-[14px] font-medium text-[#737373]">Description</Label>
+                        <Label for="description" class="block  text-[14px] font-medium text-[#737373]">Brief Description</Label>
                         <textarea 
                             id="description" 
                             name="description" 
@@ -291,6 +332,9 @@
                         </HintGroup>
                     </div>
 
+<div class="flex justify-between gap-24">
+
+<div class="w-1/2 flex flex-col gap-3">
                     <!-- File Upload -->
                     <div class="space-y-2">
                         <Label for="file" class="block  text-[14px] font-medium text-[#737373]">Replace File (Optional)</Label>
@@ -304,12 +348,39 @@
                                 class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                             />
                             <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white">
-                                <span class="text-[#737373]">{selectedFile?.name || content.file || 'No file chosen'}</span>
+                                <span class="text-[#737373]">{selectedFile?.name.slice(0, 40) || content.file.slice(0, 40) || 'No file chosen'}</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Thumbnail -->
+                    <!-- Library Type Selection -->
+                    <div class="space-y-2">
+                        <Label class="block  text-[14px] font-medium text-[#737373]">Library Type</Label>
+                        <div class="flex gap-8 items-center">
+                            {#each libraryTypes as type}
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <div class="relative w-[15px] h-[15px]">
+                                        <input 
+                                            type="radio" 
+                                            name="library_type" 
+                                            value={type.value}
+                                            checked={selectedLibraryType === type.value}
+                                            on:change={() => selectedLibraryType = type.value}
+                                            class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                            required
+                                        />
+                                        <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedLibraryType === type.value ? 'ring-2 ring-[#577AB7]' : ''}"></div>
+                                    </div>
+                                    <span class=" text-[14px] text-[#737373]">{type.label}</span>
+                                </label>
+                            {/each}
+                        </div>
+                    </div>
+
+                 </div>
+
+                 <div class="w-1/2 flex flex-col gap-3">
+                                      <!-- Thumbnail -->
                     <div class="space-y-2">
                         <Label for="thumbnail" class="block  text-[14px] font-medium text-[#737373]">Content Thumbnail</Label>
                         <div class="relative h-[38px]">
@@ -350,30 +421,7 @@
                             </button>
                         </div>
                     {/if}
-
-                    <!-- Library Type Selection -->
-                    <div class="space-y-2">
-                        <Label class="block  text-[14px] font-medium text-[#737373]">Library Type</Label>
-                        <div class="flex gap-8 items-center">
-                            {#each libraryTypes as type}
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <div class="relative w-[15px] h-[15px]">
-                                        <input 
-                                            type="radio" 
-                                            name="library_type" 
-                                            value={type.value}
-                                            checked={selectedLibraryType === type.value}
-                                            on:change={() => selectedLibraryType = type.value}
-                                            class="absolute inset-0 opacity-0 z-10 cursor-pointer"
-                                            required
-                                        />
-                                        <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedLibraryType === type.value ? 'ring-2 ring-[#577AB7]' : ''}"></div>
-                                    </div>
-                                    <span class=" text-[14px] text-[#737373]">{type.label}</span>
-                                </label>
-                            {/each}
-                        </div>
-                    </div>
+                 </div>
                 </form>
             </div>
         </div>

@@ -13,6 +13,7 @@
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import LibrarySelectDialog from './LibrarySelectDialog.svelte';
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
+    import * as Switch from "$lib/components/ui/switch";
 
     export let data;
     const { user, representatives } = data;
@@ -43,7 +44,6 @@
     const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
 
     const contentTypes = [
-        { value: 'image', label: 'Image' },
         { value: 'video', label: 'Video' },
         { value: 'pdf', label: 'PDF' },
         { value: 'document', label: 'Document' },
@@ -57,12 +57,13 @@
     ];
 
     const allowedFileTypes = {
-        image: 'image/*',
         video: 'video/*',
         pdf: 'application/pdf',
         document: '.doc,.docx,.xls,.xlsx',
         word: '.doc,.docx'
     };
+
+    let isContentActive = true; // Default to active
 
     function handleFileChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -124,10 +125,6 @@
         if (!selectedFile) return null;
         
         if (selectedType === 'video' && selectedFile.type.startsWith('video/')) {
-            return URL.createObjectURL(selectedFile);
-        }
-        
-        if (selectedType === 'image' && selectedFile.type.startsWith('image/')) {
             return URL.createObjectURL(selectedFile);
         }
         
@@ -239,6 +236,9 @@
                 finalFormData.append('thumbnail', thumbnailFile);
             }
 
+            // Explicitly add the active status as a string "true" or "false"
+            finalFormData.append('active', isContentActive.toString());
+
             const response = await fetch('?/uploadContent', {
                 method: 'POST',
                 body: finalFormData
@@ -336,10 +336,11 @@
                                         checked={selectedType === 'image'}
                                         on:change={() => handleTypeChange('image')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
+                                        disabled
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'image' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
-                                <span class="text-[14px] text-[#737373]">Image</span>
+                                <span class=" text-[14px] text-[#737373]">Image</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <div class="relative w-[15px] h-[15px]">
@@ -476,21 +477,13 @@
                         {/if}
 
                         <!-- File Preview -->
-                        {#if filePreviewUrl && (selectedType === 'video' || selectedType === 'image')}
+                        {#if filePreviewUrl && selectedType === 'video'}
                             <div class="relative aspect-video">
-                                {#if selectedType === 'video'}
-                                    <video 
-                                        src={filePreviewUrl} 
-                                        controls
-                                        class="w-full h-full object-contain rounded-[5px]"
-                                    ></video>
-                                {:else}
-                                    <img 
-                                        src={filePreviewUrl} 
-                                        alt="File preview"
-                                        class="w-full h-full object-contain rounded-[5px]"
-                                    />
-                                {/if}
+                                <video 
+                                    src={filePreviewUrl} 
+                                    controls
+                                    class="w-full h-full object-contain rounded-[5px]"
+                                ></video>
                             </div>
                         {:else if selectedFile}
                             <div class="relative aspect-video bg-gray-100 rounded-[5px] flex flex-col items-center justify-center">
@@ -499,8 +492,6 @@
                                         📄
                                     {:else if selectedType === 'document' || selectedType === 'word'}
                                         📝
-                                    {:else if selectedType === 'image'}
-                                        🖼️
                                     {:else}
                                         📁
                                     {/if}
@@ -537,6 +528,22 @@
                             </div>
                         </div>
                     {/if}
+
+                    <!-- After Library Type Selection -->
+                    <div class="space-y-2">
+                        <Label class="block text-[14px] font-medium text-[#737373]">Content Status</Label>
+                        <div class="flex items-center gap-3">
+                            <Switch.Root 
+                                checked={isContentActive} 
+                                onCheckedChange={(checked) => isContentActive = checked}
+                            >
+                                <Switch.Thumb />
+                            </Switch.Root>
+                            <span class="text-[14px] text-[#737373]">{isContentActive ? 'Active' : 'Inactive'}</span>
+                        </div>
+                        
+                        <input type="hidden" name="active" value={isContentActive ? 'true' : 'false'} />
+                    </div>
                 </form>
             </div>
         </div>

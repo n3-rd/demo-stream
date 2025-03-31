@@ -53,9 +53,14 @@ export const actions: Actions = {
                 title,
                 description,
                 type,
-                owner_company: user.id,
-                library_type: libraryType === 'both' ? ['host', 'representative'] : [libraryType]
+                library_type: libraryType === 'both' ? ['host', 'representative'] : [libraryType],
+                active: formData.get('active') === 'true',
+                owner_company: user.id
             };
+
+            // Debug logging to check the value
+            console.log('Active status from form:', formData.get('active'));
+            console.log('Parsed active status:', contentData.active);
 
             // Get the file from the temp directory if we have a file reference
             if (fileRef) {

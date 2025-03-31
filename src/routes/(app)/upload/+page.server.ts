@@ -129,8 +129,13 @@ export const actions: Actions = {
                 description,
                 type,
                 thumbnail,
-                owner_company: user.id
+                owner_company: user.id,
+                active: formData.get('active') === 'true'
             };
+            
+            // Debug logging to check the value
+            console.log('Active status from form:', formData.get('active'));
+            console.log('Parsed active status:', contentData.active);
             
             // Only add the file if we have one
             if (file) {

@@ -250,6 +250,7 @@
             {#if hostContent.length > 0}
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each hostContent as item}
+                    {#if item.active}
                         {@const fileType = getFileType(item.file)}
                         <div class="flex flex-col gap-3">
                             <button
@@ -303,6 +304,7 @@
                             <p class="text-white text-sm truncate font-semibold">{item.title}</p>
                             
                         </div>
+                        {/if}
                     {/each}
                 </div>
             {:else}
@@ -317,6 +319,7 @@
             {#if repContent.length > 0}
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each repContent as item}
+                    {#if item.active}
                         {@const fileType = getFileType(item.file)}
                         <button
                             class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
@@ -347,6 +350,7 @@
                                 <p class="text-white text-sm truncate">{item.title}</p>
                             </div>
                         </button>
+                        {/if}
                     {/each}
                 </div>
             {:else}

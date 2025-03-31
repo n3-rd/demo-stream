@@ -43,6 +43,7 @@
     const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
 
     const contentTypes = [
+        { value: 'image', label: 'Image' },
         { value: 'video', label: 'Video' },
         { value: 'pdf', label: 'PDF' },
         { value: 'document', label: 'Document' },
@@ -56,6 +57,7 @@
     ];
 
     const allowedFileTypes = {
+        image: 'image/*',
         video: 'video/*',
         pdf: 'application/pdf',
         document: '.doc,.docx,.xls,.xlsx',
@@ -122,6 +124,10 @@
         if (!selectedFile) return null;
         
         if (selectedType === 'video' && selectedFile.type.startsWith('video/')) {
+            return URL.createObjectURL(selectedFile);
+        }
+        
+        if (selectedType === 'image' && selectedFile.type.startsWith('image/')) {
             return URL.createObjectURL(selectedFile);
         }
         
@@ -330,11 +336,10 @@
                                         checked={selectedType === 'image'}
                                         on:change={() => handleTypeChange('image')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
-                                        disabled
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'image' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>
-                                <span class=" text-[14px] text-[#737373]">Image</span>
+                                <span class="text-[14px] text-[#737373]">Image</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <div class="relative w-[15px] h-[15px]">
@@ -471,13 +476,21 @@
                         {/if}
 
                         <!-- File Preview -->
-                        {#if filePreviewUrl && selectedType === 'video'}
+                        {#if filePreviewUrl && (selectedType === 'video' || selectedType === 'image')}
                             <div class="relative aspect-video">
-                                <video 
-                                    src={filePreviewUrl} 
-                                    controls
-                                    class="w-full h-full object-contain rounded-[5px]"
-                                ></video>
+                                {#if selectedType === 'video'}
+                                    <video 
+                                        src={filePreviewUrl} 
+                                        controls
+                                        class="w-full h-full object-contain rounded-[5px]"
+                                    ></video>
+                                {:else}
+                                    <img 
+                                        src={filePreviewUrl} 
+                                        alt="File preview"
+                                        class="w-full h-full object-contain rounded-[5px]"
+                                    />
+                                {/if}
                             </div>
                         {:else if selectedFile}
                             <div class="relative aspect-video bg-gray-100 rounded-[5px] flex flex-col items-center justify-center">
@@ -486,6 +499,8 @@
                                         📄
                                     {:else if selectedType === 'document' || selectedType === 'word'}
                                         📝
+                                    {:else if selectedType === 'image'}
+                                        🖼️
                                     {:else}
                                         📁
                                     {/if}

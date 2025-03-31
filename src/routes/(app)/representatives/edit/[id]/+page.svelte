@@ -191,12 +191,14 @@
                       type="time" 
                       name="{day.toLowerCase()}_start"
                       value={parsedSchedule?.[day.toLowerCase()]?.start || ''}
+                      placeholder=" "
                       class="w-[101.24px] h-[26px] bg-[#E0E8F5] border-none rounded-[3px] px-2 text-sm"
                     />
                     <input 
                       type="time" 
                       name="{day.toLowerCase()}_end"
                       value={parsedSchedule?.[day.toLowerCase()]?.end || ''}
+                      placeholder=" "
                       class="w-[101.24px] h-[26px] bg-[#E0E8F5] border-none rounded-[3px] px-2 text-sm"
                     />
                   </div>
@@ -240,3 +242,9 @@
     </div>
   </div>
 </div> 
+
+<style>
+
+
+  
+</style>

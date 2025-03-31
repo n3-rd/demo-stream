@@ -10,6 +10,7 @@
 	export let value: $$Props["value"] = undefined;
 	export let placeholder: $$Props["placeholder"] = undefined;
 	export let weekdayFormat: $$Props["weekdayFormat"] = "short";
+	export let renderDate = null;
 
 	let className: $$Props["class"] = undefined;
 	export { className as class };

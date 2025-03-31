@@ -15,7 +15,7 @@ import {
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
-	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition, currentDocxUrl, docxScrollPosition } from '$lib/callStores';
+	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition, currentDocxUrl, docxScrollPosition, currentImageUrl, imageZoomLevel } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
@@ -35,6 +35,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     import PdfViewer from '$lib/components/room/PdfViewer.svelte';
 	import GreetingPopup from '$lib/call/GreetingPopup.svelte';
     import DocxViewer from '$lib/components/room/DocxViewer.svelte';
+    import ImageViewer from '$lib/components/room/ImageViewer.svelte';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -465,6 +466,8 @@ function handleWebRTCCallback(info: string, obj: any) {
                                     videoUrl: $currentVideoUrl,
                                     pdfUrl: $currentPdfUrl,
                                     docxUrl: $currentDocxUrl,
+                                    imageUrl: $currentImageUrl,
+                                    imageZoomLevel: $imageZoomLevel,
                                     pdfScrollPosition: $pdfScrollPosition,
                                     docxScrollPosition: $docxScrollPosition,
                                     isPlaying: $playVideoStore,
@@ -489,6 +492,7 @@ function handleWebRTCCallback(info: string, obj: any) {
                             currentVideoUrl.set('');
                             currentPdfUrl.set('');
                             currentDocxUrl.set('');
+                            currentImageUrl.set('');
                             
                             // Update video state
                             if (state.videoUrl) {
@@ -536,6 +540,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                             if (state.docxUrl) {
                                 currentDocxUrl.set(state.docxUrl);
                                 docxScrollPosition.set(state.docxScrollPosition || 0);
+                            }
+                            
+                            // Update image state
+                            if (state.imageUrl) {
+                                currentImageUrl.set(state.imageUrl);
+                                imageZoomLevel.set(state.imageZoomLevel || 1);
                             }
                             
                             // Update sync source
@@ -621,6 +631,28 @@ function handleWebRTCCallback(info: string, obj: any) {
                             const scrollData = JSON.parse(messageBody.messageBody);
                             if (scrollData.scrollPosition !== undefined) {
                                 docxScrollPosition.set(scrollData.scrollPosition);
+                            }
+                        }
+                        // Handle image URL updates
+                        else if (messageBody.eventType === 'image_url_update' && messageBody.messageBody) {
+                            console.log('Processing image_url_update event:', messageBody);
+                            const imageUpdateData = JSON.parse(messageBody.messageBody);
+                            
+                            if (imageUpdateData.fileUrl) {
+                                console.log('Setting image URL to:', imageUpdateData.fileUrl);
+                                // Clear all media types first
+                                currentVideoUrl.set('');
+                                currentPdfUrl.set('');
+                                currentDocxUrl.set('');
+                                // Then set the new image URL
+                                currentImageUrl.set(imageUpdateData.fileUrl);
+                            }
+                        } 
+                        // Handle image zoom sync
+                        else if (messageBody.eventType === 'image_zoom_sync' && messageBody.messageBody) {
+                            const zoomData = JSON.parse(messageBody.messageBody);
+                            if (zoomData.zoomLevel !== undefined) {
+                                imageZoomLevel.set(zoomData.zoomLevel);
                             }
                         }
                     }
@@ -1633,6 +1665,11 @@ $: if (videoPlayer) {
                                     Your browser does not support the video element.
                                 </video>
                             {/if}
+                        {:else if $currentImageUrl}
+                            <ImageViewer
+                                roomName={roomName}
+                                isController={(syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+                            />
                         {:else if $currentDocxUrl}
                             <DocxViewer
                                 roomName={roomName}

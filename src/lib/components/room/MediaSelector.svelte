@@ -1,7 +1,7 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-    import { currentVideoUrl, currentPdfUrl, currentDocxUrl } from '$lib/callStores';
+    import { currentVideoUrl, currentPdfUrl, currentDocxUrl, currentImageUrl } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
 
     export let isHost: boolean;
@@ -117,21 +117,34 @@
         currentVideoUrl.set('');
         currentPdfUrl.set('');
         currentDocxUrl.set('');
+        currentImageUrl.set('');
         
         const fileUrl = getFileUrl(item);
         const isVideo = item.file.endsWith('.mp4') || item.file.endsWith('.webm');
         const isPdf = item.file.endsWith('.pdf');
         const isDocx = item.file.endsWith('.docx') || item.file.endsWith('.doc');
+        const isImage = getFileType(item.file) === 'image';
         
         console.log('File details:', {
             fileUrl,
             isVideo,
             isPdf,
             isDocx,
+            isImage,
             fileName: item.file
         });
         
-        if (isVideo) {
+        if (isImage) {
+            console.log('Setting image URL:', fileUrl);
+            currentImageUrl.set(fileUrl);
+            
+            console.log('Broadcasting image update');
+            broadcastMediaUpdate('image_url_update', {
+                fileUrl: fileUrl,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative
+            });
+        } else if (isVideo) {
             console.log('Setting video URL:', fileUrl);
             // Set the video URL directly in the store
             currentVideoUrl.set(fileUrl);
@@ -221,6 +234,7 @@
         if (filename.endsWith('.mp4') || filename.endsWith('.webm')) return 'video';
         if (filename.endsWith('.pdf')) return 'pdf';
         if (filename.endsWith('.docx') || filename.endsWith('.doc')) return 'docx';
+        if (filename.endsWith('.jpg') || filename.endsWith('.jpeg') || filename.endsWith('.png') || filename.endsWith('.gif')) return 'image';
         return 'unknown';
     }
 
@@ -266,8 +280,24 @@
                                 <div class="w-full h-full flex items-center justify-center bg-blue-600 text-white">
                                     <img src="/icons/word.svg" alt="DOCX" class="w-[90px] h-[90px]" />
                                 </div>
+                            {:else if fileType === 'image'}
+                                {#if item.thumbnail}
+                                    <img
+                                        src={getThumbnailUrl(item)}
+                                        alt={item.title}
+                                        class="w-full h-full object-cover"
+                                    />
+                                {:else}
+                                    <img
+                                        src={getFileUrl(item)}
+                                        alt={item.title}
+                                        class="w-full h-full object-cover"
+                                    />
+                                {/if}
+                                <div class="absolute inset-0 flex items-center justify-center shadow-lg">
+                                    <img src="/icons/image.svg" alt="View" class="w-10 h-10" />
+                                </div>
                             {/if}
-                            
                         </button>
                             
                             <p class="text-white text-sm truncate font-semibold">{item.title}</p>

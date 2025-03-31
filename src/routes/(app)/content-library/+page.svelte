@@ -2,7 +2,7 @@
     import { Button } from "$lib/components/ui/button";
     import { goto } from "$app/navigation";
     import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
-    import { FileVideo, FileText, FilePen, Trash2, Pencil, Play, ChevronLeft, ChevronRight } from "lucide-svelte";
+    import { FileVideo, FileText, FilePen, Trash2, Pencil, Play, ChevronLeft, ChevronRight, Image, Eye } from "lucide-svelte";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import { onMount } from 'svelte';
     import * as Dialog from "$lib/components/ui/dialog";
@@ -12,11 +12,12 @@
     let { content } = data;
 
     let selectedTab = 'host';
-    let contentTypes = ['video', 'pdf', 'document'];
+    let contentTypes = ['video', 'pdf', 'document', 'image'];
     let contentTypeLabels = {
         'video': 'Videos',
         'pdf': 'PDF Files',
-        'document': 'Word Document Files'
+        'document': 'Word Document Files',
+        'image': 'Images'
     };
     
     // Store references to carousel containers
@@ -55,14 +56,16 @@
                 return FilePen;
             case 'document':
                 return FileText;
+            case 'image':
+                return Image;
             default:
                 return FileText;
         }
     }
 
     function handleContentClick(item) {
-        if (item.type === 'video') {
-           window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`, '_blank');
+        if (item.type === 'video' || item.type === 'image') {
+            window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`, '_blank');
         } else {
             window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`, '_blank');
         }
@@ -228,6 +231,12 @@
                                                         alt={item.title}
                                                         class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]"
                                                     />
+                                                {:else if item.type === 'image'}
+                                                    <img
+                                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`}
+                                                        alt={item.title}
+                                                        class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]"
+                                                    />
                                                 {:else}
                                                     <div class="w-[217.66px] h-[128.22px] bg-[#ECEFF3] rounded-[1px] flex items-center justify-center">
                                                         <svelte:component 
@@ -236,18 +245,25 @@
                                                         />
                                                     </div>
                                                 {/if}
+                                                
                                                 {#if item.type === 'video'}
                                                     <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                                                    on:click={()=>{
-                                                        handleContentClick(item);
-                                                    }}
+                                                        on:click={() => handleContentClick(item)}
                                                     >
                                                         <div class="w-[37.16px] h-[35.04px] bg-white rounded-full flex items-center justify-center shadow-md">
-                                                           <Play class="w-[17px] h-[27.53px] text-[#577AB7]" 
-                                                           />
+                                                            <Play class="w-[17px] h-[27.53px] text-[#577AB7]" />
+                                                        </div>
+                                                    </div>
+                                                {:else if item.type === 'image'}
+                                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                                                        on:click={() => handleContentClick(item)}
+                                                    >
+                                                        <div class="w-[37.16px] h-[35.04px] bg-white rounded-full flex items-center justify-center shadow-md">
+                                                            <Eye class="w-[17px] h-[27.53px] text-[#577AB7]" />
                                                         </div>
                                                     </div>
                                                 {/if}
+                                                
                                                 <div class="absolute top-2 right-2 flex gap-2">
                                                     <button 
                                                         class="w-[21.23px] h-[19.11px] bg-[#577AB7] rounded-full flex items-center justify-center shadow-sm"

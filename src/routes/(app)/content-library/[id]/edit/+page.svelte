@@ -34,7 +34,8 @@
     const contentTypes = [
         { value: 'video', label: 'Video' },
         { value: 'pdf', label: 'PDF' },
-        { value: 'document', label: 'Document' }
+        { value: 'document', label: 'Document' },
+        { value: 'image', label: 'Image' }
     ];
 
     const libraryTypes = [
@@ -46,7 +47,8 @@
     const allowedFileTypes = {
         video: 'video/*',
         pdf: 'application/pdf',
-        document: '.doc,.docx,.xls,.xlsx'
+        document: '.doc,.docx,.xls,.xlsx',
+        image: 'image/*'
     };
 
     function handleFileChange(event: Event) {

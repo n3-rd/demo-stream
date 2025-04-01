@@ -585,21 +585,25 @@
 
   async function sendEmailNotifications(data) {
     try {
-      // This would typically be a server API endpoint to handle email sending
-      // const response = await fetch('/api/send-booking-notifications', {
-      //     method: 'POST',
-      //     headers: { 'Content-Type': 'application/json' },
-      //     body: JSON.stringify(data)
-      // });
+      console.log('schedule console: Sending email notifications with data:', data);
       
-      // For now, just log the data that would be sent
-      console.log('Email notification data:', data);
-      console.log('your email:', data.customerEmail)
-      console.log('rep email:', data.repEmail)
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
       
+      const result = await response.json();
+      
+      if (!result.success) {
+        console.error('schedule console: Error sending email notifications:', result.error);
+        return false;
+      }
+      
+      console.log('schedule console: Email notifications sent successfully');
       return true;
     } catch (error) {
-      console.error('Error sending email notifications:', error);
+      console.error('schedule console: Error sending email notifications:', error);
       return false;
     }
   }

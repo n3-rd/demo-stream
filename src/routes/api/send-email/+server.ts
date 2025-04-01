@@ -1,50 +1,68 @@
-import { render } from 'svelte-email';
 import nodemailer from 'nodemailer';
-import Invite from '$lib/components/email/invite.svelte';
-import type { RequestHandler } from '@sveltejs/kit';
-import { PUBLIC_ELASTICE_MAIL_EMAIL, PUBLIC_ELASTICE_MAIL_HOST, PUBLIC_ELASTICE_MAIL_PASS } from '$env/static/public';
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 
+// Configure email transporter
 const transporter = nodemailer.createTransport({
-    host: PUBLIC_ELASTICE_MAIL_HOST,
-    port: 2525,
-    secure: false,
-    auth: {
-        user: PUBLIC_ELASTICE_MAIL_EMAIL,
-        pass: PUBLIC_ELASTICE_MAIL_PASS
-    }
+  host: process.env.SMTP_HOST || 'smtp.example.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER || 'user@example.com',
+    pass: process.env.SMTP_PASS || 'password'
+  }
 });
 
 export const POST: RequestHandler = async ({ request }) => {
-    try {
-        const { url, name, receipient } = await request.json();
+  try {
+    const data = await request.json();
+    const { customerName, customerEmail, repName, repEmail, bookingDate, bookingTime, roomName, dayOfWeek } = data;
 
-        const emailHtml = render({
-            template: Invite,
-            props: {
-                name: name,
-                url: url
-            }
-        });
+    // Format date for email
+    const formattedDate = new Date(bookingDate).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
 
-        const options = {
-            from: PUBLIC_ELASTICE_MAIL_EMAIL,
-            to: receipient,
-            subject: 'Invite',
-            html: emailHtml
-        };
+    // Send email to customer
+    await transporter.sendMail({
+      from: `"Meeting Scheduler" <${process.env.SMTP_FROM || 'noreply@example.com'}>`,
+      to: customerEmail,
+      subject: `Your appointment with ${repName} has been scheduled`,
+      html: `
+        <h2>Appointment Confirmation</h2>
+        <p>Hello ${customerName},</p>
+        <p>Your appointment has been scheduled successfully!</p>
+        <p><strong>Date:</strong> ${formattedDate}</p>
+        <p><strong>Time:</strong> ${bookingTime}</p>
+        <p><strong>Representative:</strong> ${repName}</p>
+        <p><strong>Room Name:</strong> ${roomName}</p>
+        <p>Thank you for scheduling with us.</p>
+      `
+    });
 
-        await transporter.sendMail(options);
+    // Send email to representative
+    await transporter.sendMail({
+      from: `"Meeting Scheduler" <${process.env.SMTP_FROM || 'noreply@example.com'}>`,
+      to: repEmail,
+      subject: `New appointment scheduled on ${formattedDate}`,
+      html: `
+        <h2>New Appointment</h2>
+        <p>Hello ${repName},</p>
+        <p>A new appointment has been scheduled with you:</p>
+        <p><strong>Date:</strong> ${formattedDate}</p>
+        <p><strong>Time:</strong> ${bookingTime}</p>
+        <p><strong>Customer:</strong> ${customerName}</p>
+        <p><strong>Customer Email:</strong> ${customerEmail}</p>
+        <p><strong>Room Name:</strong> ${roomName}</p>
+      `
+    });
 
-        console.log('Email sent successfully from /api/send-email');
-        return {
-            status: 200,
-            body: { message: 'Email sent successfully' }
-        };
-    } catch (error) {
-        console.error('Failed to send email from /api/send-email', error);
-        return {
-            status: 500,
-            body: { error: 'Failed to send email' }
-        };
-    }
+    return json({ success: true });
+  } catch (error) {
+    console.error('Email sending error:', error);
+    return json({ success: false, error: error.message }, { status: 500 });
+  }
 };

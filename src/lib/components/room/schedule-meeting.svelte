@@ -49,6 +49,7 @@
   let representativeDetails = null;
   let formError = '';
   let activeTab = 'personal-info';
+  let selectedSlot = null;
 
   // Sync fullName with firstName + lastName 
   $: fullName = `${firstName} ${lastName}`.trim();
@@ -82,7 +83,12 @@
     selectedYear = value.year;
     
     // Convert to date object for the scheduling
-    selectedDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
+    selectedDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, selectedDay));
+    
+    // Log to verify the correct date is being set
+    console.log('Selected date value:', value);
+    console.log('Setting selectedDate to:', selectedDate.toISOString());
+    console.log('Date components:', { selectedDay, selectedMonth, selectedYear });
   }
 
   // Function to validate room name
@@ -259,15 +265,23 @@
     return false; // If no schedule is available, allow all dates
   }
 
-  // Fix the fetchAvailableSlots function to correctly handle days with existing bookings
+  // Fix fetchAvailableSlots function to properly disable booked slots
   async function fetchAvailableSlots(rep, date) {
+    console.log('schedule console: Fetching available slots for:', { rep, date });
     try {
       // Format date to YYYY-MM-DD
       const formattedDate = new Date(date).toISOString().split('T')[0];
       
       // First get the representative details to access their schedule
-      if (!representativeDetails) {
-        await fetchRepresentativeDetails(rep);
+      if (!representativeDetails || !representativeDetails.scheduled_meetings) {
+        // Fetch fresh data to make sure we have the latest scheduled_meetings
+        const repId = typeof rep === 'object' && rep.id ? rep.id : null;
+        if (repId) {
+          representativeDetails = await pb.collection('representatives').getOne(repId);
+          console.log('schedule console: Fetched fresh representative details:', representativeDetails);
+        } else {
+          await fetchRepresentativeDetails(rep);
+        }
       }
       
       // Initialize an empty array for slots
@@ -288,11 +302,12 @@
           // If this day exists in the schedule, parse the hours
           if (scheduleData[dayName]) {
             const hours = scheduleData[dayName];
-            console.log(`Schedule for ${dayName}: ${hours}`);
+            console.log(`schedule console: Schedule for ${dayName}: ${hours}`);
             
             // Check if the schedule is empty
             if (!hours || hours === "") {
-              console.log(`No schedule for ${dayName}`);
+              console.log(`schedule console: No schedule for ${dayName}`);
+              availableSlots = [];
               return; // No slots to generate
             }
             
@@ -302,12 +317,14 @@
             if (startStr && endStr) {
               // Parse times to generate hourly slots
               const parseTime = (timeStr) => {
-                const match = timeStr.match(/(\d+):(\d+)([AP]M)/);
+                // Handle different time formats by normalizing
+                timeStr = timeStr.replace(/\s+/g, ''); // Remove spaces
+                const match = timeStr.match(/(\d+):(\d+)([AP]M)/i);
                 if (match) {
                   let [_, hours, minutes, ampm] = match;
                   hours = parseInt(hours);
-                  if (ampm === 'PM' && hours < 12) hours += 12;
-                  if (ampm === 'AM' && hours === 12) hours = 0;
+                  if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
+                  if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
                   return { hours, minutes: parseInt(minutes) };
                 }
                 return null;
@@ -344,22 +361,20 @@
                 // Generate hourly slots from start time to end time 
                 let slotId = 1;
                 let currentHour = startTime.hours;
-                let currentMinutes = startTime.minutes;
+                let currentMinutes = 0; // Always start at XX:00
                 
                 // Get existing scheduled meetings for this date
-                let existingMeetings = [];
+                let scheduledMeetings = {};
                 if (representativeDetails.scheduled_meetings) {
                   try {
-                    const scheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string'
+                    scheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string'
                       ? JSON.parse(representativeDetails.scheduled_meetings)
                       : representativeDetails.scheduled_meetings;
-                      
-                    if (scheduledMeetings[formattedDate]) {
-                      existingMeetings = scheduledMeetings[formattedDate];
-                      console.log(`Found ${existingMeetings.length} existing meetings for ${formattedDate}:`, existingMeetings);
-                    }
+                    
+                    console.log('schedule console: Parsed scheduled meetings:', scheduledMeetings);
                   } catch (e) {
-                    console.error('Error parsing scheduled meetings:', e);
+                    console.error('schedule console: Error parsing scheduled meetings:', e);
+                    scheduledMeetings = {};
                   }
                 }
                 
@@ -388,31 +403,10 @@
                   const endTimeStr = formatTime(displayEndHour, endMinutes);
                   const timeSlot = `${startTimeStr} - ${endTimeStr}`;
                   
-                  // Check if this SPECIFIC slot overlaps with any existing meetings
-                  const isBooked = existingMeetings.some(meeting => {
-                    // Direct match
-                    if (meeting.time === timeSlot) {
-                      return true;
-                    }
-                    
-                    // Parse the meeting time to compare start times
-                    if (meeting.time && meeting.time.includes(' - ')) {
-                      try {
-                        const meetingTimeStart = meeting.time.split(' - ')[0];
-                        const meetingTimeStartParsed = parseTime(meetingTimeStart);
-                        
-                        if (meetingTimeStartParsed) {
-                          // Compare start times
-                          return meetingTimeStartParsed.hours === displayHour && 
-                                 meetingTimeStartParsed.minutes === currentMinutes;
-                        }
-                      } catch (err) {
-                        console.error('Error parsing meeting time:', err);
-                      }
-                    }
-                    
-                    return false;
-                  });
+                  // Check if this slot is booked
+                  const isBooked = checkTimeSlotBooked(formattedDate, timeSlot, scheduledMeetings);
+                  
+                  console.log(`schedule console: Generated slot: ${timeSlot}, isBooked: ${isBooked}`);
                   
                   generatedSlots.push({
                     id: slotId++,
@@ -424,27 +418,53 @@
                     available: !isBooked
                   });
                   
-                  // Move to next hour
+                  // Move to next hour (always on the hour)
                   currentHour++;
                 }
               }
             }
           }
         } catch (error) {
-          console.error('Error parsing schedule hours:', error);
+          console.error('schedule console: Error parsing schedule hours:', error);
         }
       }
       
       // Update available slots
+      console.log('schedule console: Final generated slots:', generatedSlots);
       availableSlots = generatedSlots;
-      console.log('Generated slots:', availableSlots);
     } catch (error) {
-      console.error('Error fetching available slots:', error);
+      console.error('schedule console: Error fetching available slots:', error);
       availableSlots = [];
     }
   }
 
+  // Helper function to check if a time slot is booked
+  function checkTimeSlotBooked(dateStr, timeSlot, scheduledMeetings) {
+    if (!scheduledMeetings[dateStr] || !scheduledMeetings[dateStr].length) {
+      return false;
+    }
+    
+    // Normalize the time slot string
+    const normalizedTimeSlot = timeSlot.replace(/\s+/g, '').toUpperCase();
+    
+    // Check each meeting on this date
+    for (const meeting of scheduledMeetings[dateStr]) {
+      if (!meeting.time) continue;
+      
+      // Normalize meeting time
+      const normalizedMeetingTime = meeting.time.replace(/\s+/g, '').toUpperCase();
+      
+      if (normalizedMeetingTime === normalizedTimeSlot) {
+        console.log(`schedule console: MATCH FOUND - Slot ${timeSlot} is booked by meeting ${meeting.time}`);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
   async function handleSubmit() {
+    console.log('schedule console: Starting handleSubmit');
     // Clear previous error
     formError = '';
     
@@ -488,92 +508,55 @@
     }
     
     try {
-      // Get the representative info including their email
-      if (!representativeDetails) {
-        await fetchRepresentativeDetails(selectedRepresentative);
+      console.log('schedule console: Current representative details:', representativeDetails);
+      const currentRep = await pb.collection('representatives').getOne(representativeDetails.id);
+      console.log('schedule console: Fetched current rep data:', currentRep);
+      
+      let scheduledMeetings = {};
+      if (currentRep.scheduled_meetings) {
+        try {
+          scheduledMeetings = typeof currentRep.scheduled_meetings === 'string' 
+            ? JSON.parse(currentRep.scheduled_meetings) 
+            : { ...currentRep.scheduled_meetings };
+          console.log('schedule console: Parsed existing meetings:', scheduledMeetings);
+        } catch (e) {
+          console.error('schedule console: Error parsing existing meetings:', e);
+        }
       }
-      
-      // If we couldn't get representative details, show an error
-      if (!representativeDetails) {
-        formError = 'Could not find representative details. Please try again.';
-        return;
+
+      const bookingDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+      console.log('schedule console: Booking date:', bookingDate);
+
+      if (!scheduledMeetings[bookingDate]) {
+        scheduledMeetings[bookingDate] = [];
       }
-      
-      const selectedSlot = availableSlots.find(slot => slot.id === selectedTimeSlot);
-      const slotTime = selectedSlot ? selectedSlot.time : '';
-      
-      // Format the date for storing in the database
-      const bookingDate = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD
-      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const dayOfWeek = days[selectedDate.getDay()];
-      
-      // Create booking record
-      const bookingData = {
+
+      // Make sure we have a selected slot
+      if (!selectedSlot) {
+        console.error('schedule console: No time slot selected');
+        throw new Error('Please select a time slot');
+      }
+
+      const newMeeting = {
+        time: selectedSlot.time,
         customer_name: fullName,
         customer_email: email,
         customer_phone: phoneNumber,
-        representative: representativeDetails.id, // Reference to the representative
-        booking_date: bookingDate,
-        booking_time: slotTime,
-        status: 'pending',
-        notes: `Booking created from room session by ${fullName}`,
         room_name: roomName
       };
-      
-      console.log('Booking data to submit:', bookingData);
-      
-      // Update the representative's scheduled_meetings field
-      try {
-        // Get current scheduled meetings or initialize empty object
-        let scheduledMeetings = {};
-        if (representativeDetails.scheduled_meetings) {
-          try {
-            scheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string' 
-              ? JSON.parse(representativeDetails.scheduled_meetings) 
-              : representativeDetails.scheduled_meetings;
-          } catch (e) {
-            console.error('Error parsing existing scheduled meetings:', e);
-          }
-        }
-        
-        // Create date key in format YYYY-MM-DD
-        if (!scheduledMeetings[bookingDate]) {
-          scheduledMeetings[bookingDate] = [];
-        }
-        
-        // Add new meeting to this date
-        scheduledMeetings[bookingDate].push({
-          time: slotTime,
-          customer_name: fullName,
-          customer_email: email,
-          customer_phone: phoneNumber,
-          room_name: roomName
-        });
-        
-        // Update the representative record with new scheduled meetings
-        const updateData = {
-          scheduled_meetings: JSON.stringify(scheduledMeetings)
-        };
-        
-        console.log('Updating representative with scheduled meetings:', updateData);
-        
-        // Actually update the database
-        if (pb && representativeDetails.id) {
-          try {
-            const updatedRep = await pb.collection('representatives')
-              .update(representativeDetails.id, updateData);
-            console.log('Representative record updated:', updatedRep);
-          } catch (updateError) {
-            console.error('Error updating representative record:', updateError);
-            throw new Error('Failed to update representative schedule');
-          }
-        } else {
-          throw new Error('Missing representative ID or database connection');
-        }
-      } catch (updateError) {
-        console.error('Error updating representative scheduled meetings:', updateError);
-        throw updateError;
-      }
+      console.log('schedule console: New meeting to add:', newMeeting);
+
+      scheduledMeetings[bookingDate].push(newMeeting);
+      console.log('schedule console: Updated meetings for date:', scheduledMeetings[bookingDate]);
+
+      const updateData = {
+        scheduled_meetings: JSON.stringify(scheduledMeetings)
+      };
+      console.log('schedule console: Sending update data:', updateData);
+
+      const updatedRep = await pb.collection('representatives')
+        .update(representativeDetails.id, updateData);
+      console.log('schedule console: Successfully updated meetings:', updatedRep);
       
       // Send email notifications
       await sendEmailNotifications({
@@ -583,22 +566,20 @@
         repName: representativeDetails.name,
         repEmail: representativeDetails.email,
         bookingDate: bookingDate,
-        bookingTime: slotTime,
+        bookingTime: selectedSlot.time,
         roomName: roomName,
-        dayOfWeek: dayOfWeek
+        dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()]
       });
       
       // Show confirmation dialog with rep's info instead of alert
-      showConfirmationToast(representativeDetails.name, bookingDate, slotTime, representativeDetails.location || 'Online');
+      showConfirmationToast(representativeDetails.name, bookingDate, selectedSlot.time, representativeDetails.location || 'Online');
       
       // Close the dialog
       dispatch('close');
     } catch (error) {
-      console.error('Error submitting booking:', error);
-      formError = 'There was an error scheduling your appointment. Please try again.';
-      
-      // Show error toast
-      toast.error('There was an error scheduling your appointment. Please try again.');
+      console.error('schedule console: Error updating meetings:', error);
+      formError = 'Failed to schedule the meeting. Please try again.';
+      toast.error('Failed to schedule the meeting');
     }
   }
 
@@ -728,6 +709,111 @@
     return {
       hasBookings: hasExistingBookings
     };
+  }
+
+  // Function to round time to nearest hour
+  function roundToHour(timeStr) {
+    const [time, period] = timeStr.split(' ');
+    const [hour, minute] = time.split(':').map(Number);
+    
+    // Round to nearest hour
+    let roundedHour = minute >= 30 ? hour + 1 : hour;
+    if (roundedHour === 0) roundedHour = 12;
+    if (roundedHour > 12) roundedHour = roundedHour % 12;
+    
+    return `${roundedHour}:00 ${period}`;
+  }
+
+  // Function to format schedule with even hours
+  function formatSchedule(schedule) {
+    const formattedSchedule = {};
+    
+    for (const [day, timeRange] of Object.entries(schedule)) {
+      if (!timeRange) {
+        formattedSchedule[day] = "";
+        continue;
+      }
+      
+      const [start, end] = timeRange.split(' - ');
+      const formattedStart = roundToHour(start);
+      const formattedEnd = roundToHour(end);
+      
+      formattedSchedule[day] = `${formattedStart} - ${formattedEnd}`;
+    }
+    
+    return formattedSchedule;
+  }
+
+  // Update the isTimeSlotBooked function to be more robust
+  function isTimeSlotBooked(date, timeSlot, scheduledMeetings) {
+    console.log('schedule console: Checking if slot is booked:', { date, timeSlot });
+    
+    const dateStr = date.toISOString().split('T')[0];
+    if (!scheduledMeetings[dateStr]) return false;
+    
+    const normalizedTimeSlot = timeSlot.replace(/\s+/g, '').toUpperCase();
+    
+    return scheduledMeetings[dateStr].some(meeting => {
+      if (!meeting.time) return false;
+      const normalizedMeetingTime = meeting.time.replace(/\s+/g, '').toUpperCase();
+      const isBooked = normalizedMeetingTime === normalizedTimeSlot;
+      
+      if (isBooked) {
+        console.log('schedule console: Found booking match:', { timeSlot, meetingTime: meeting.time });
+      }
+      
+      return isBooked;
+    });
+  }
+
+  // Make sure the slot generation includes the available property
+  function generateTimeSlots(startTime, endTime) {
+    console.log('schedule console: Generating time slots between:', { startTime, endTime });
+    const slots = [];
+    const [startHour, startPeriod] = startTime.split(' ');
+    const [endHour, endPeriod] = endTime.split(' ');
+    
+    let currentHour = parseInt(startHour.split(':')[0]);
+    const startPM = startPeriod === 'PM' && currentHour !== 12;
+    const endHourNum = parseInt(endHour.split(':')[0]) + (endPeriod === 'PM' && endHour.split(':')[0] !== '12' ? 12 : 0);
+    
+    // Convert to 24-hour for easier calculation
+    let current24Hour = startPM ? currentHour + 12 : currentHour;
+    if (startPeriod === 'AM' && currentHour === 12) current24Hour = 0;
+    
+    while (current24Hour < endHourNum) {
+      const nextHour = current24Hour + 1;
+      
+      // Convert back to 12-hour for display
+      const displayHour = current24Hour % 12 || 12;
+      const displayNextHour = nextHour % 12 || 12;
+      const currentPeriod = current24Hour >= 12 ? 'PM' : 'AM';
+      const nextPeriod = nextHour >= 12 ? 'PM' : 'AM';
+      
+      slots.push({
+        id: slots.length + 1,
+        time: `${displayHour}:00 ${currentPeriod} - ${displayNextHour}:00 ${nextPeriod}`,
+        available: true // This will be updated when checking against booked slots
+      });
+      
+      current24Hour = nextHour;
+    }
+    
+    return slots;
+  }
+
+  // Function to get available time slots for a specific date
+  function getAvailableTimeSlots(date, schedule, scheduledMeetings) {
+    const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
+    const daySchedule = schedule[dayOfWeek];
+    
+    if (!daySchedule) return []; // No availability for this day
+    
+    const [startTime, endTime] = daySchedule.split(' - ');
+    const allTimeSlots = generateTimeSlots(startTime, endTime);
+    
+    // Filter out booked slots
+    return allTimeSlots.filter(slot => !isTimeSlotBooked(date, slot.time, scheduledMeetings));
   }
 </script>
 
@@ -893,7 +979,11 @@
                   class="p-2 border rounded-md transition-colors relative
                         {selectedTimeSlot === slot.id ? 'bg-blue-500 text-white' : ''} 
                         {!slot.available ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'hover:bg-gray-100'}"
-                  on:click={() => selectedTimeSlot = slot.id}
+                  on:click={() => {
+                    selectedTimeSlot = slot.id;
+                    selectedSlot = slot; // Store the full slot object
+                    console.log('schedule console: Selected time slot:', slot);
+                  }}
                 >
                   {slot.time}
                   {#if !slot.available}

@@ -1,15 +1,16 @@
 import nodemailer from 'nodemailer';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { PUBLIC_SMTP_HOST, PUBLIC_SMTP_PORT, PUBLIC_SMTP_SECURE, PUBLIC_SMTP_USER, PUBLIC_SMTP_PASS, PUBLIC_SMTP_FROM } from '$env/static/public';
 
 // Configure email transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.example.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
+  host: PUBLIC_SMTP_HOST || 'smtp.example.com',
+  port: parseInt(PUBLIC_SMTP_PORT || '587'),
+  secure: PUBLIC_SMTP_SECURE === 'true',
   auth: {
-    user: process.env.SMTP_USER || 'user@example.com',
-    pass: process.env.SMTP_PASS || 'password'
+    user: PUBLIC_SMTP_USER || 'user@example.com',
+    pass: PUBLIC_SMTP_PASS || 'password'
   }
 });
 
@@ -28,7 +29,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // Send email to customer
     await transporter.sendMail({
-      from: `"Meeting Scheduler" <${process.env.SMTP_FROM || 'noreply@example.com'}>`,
+      from: `"Meeting Scheduler" <${PUBLIC_SMTP_FROM || 'noreply@example.com'}>`,
       to: customerEmail,
       subject: `Your appointment with ${repName} has been scheduled`,
       html: `
@@ -45,7 +46,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // Send email to representative
     await transporter.sendMail({
-      from: `"Meeting Scheduler" <${process.env.SMTP_FROM || 'noreply@example.com'}>`,
+      from: `"Meeting Scheduler" <${PUBLIC_SMTP_FROM || 'noreply@example.com'}>`,
       to: repEmail,
       subject: `New appointment scheduled on ${formattedDate}`,
       html: `

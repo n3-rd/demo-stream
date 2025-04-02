@@ -3,6 +3,7 @@
   import { ShareIcon, MicOff, Mic, UserRoundPlus, AudioLines } from 'lucide-svelte';
   import * as Dialog from "$lib/components/ui/dialog";
   import { Button } from '$lib/components/ui/button';
+  export let shareURL: string;
 import { page } from '$app/stores';
 import Share from '$lib/components/room/share.svelte';
 
@@ -72,7 +73,7 @@ import Share from '$lib/components/room/share.svelte';
           </button>
         </Dialog.Trigger>
         <Dialog.Content class="p-4 rounded-lg shadow-lg">
-          <Share {joinURL} representative={false} />
+          <Share {shareURL} representative={false} />
         </Dialog.Content>
       </Dialog.Root>
     </div>

@@ -1,5 +1,8 @@
-export async function getStreamInfo(roomId: string) {
-    const apiUrl = `/api/stream/info?roomId=${roomId}`;
+export async function getStreamInfo(roomId: string, uid?: string) {
+    // Include uid parameter if provided
+    const apiUrl = uid 
+        ? `/api/stream/info?roomId=${roomId}&uid=${uid}`
+        : `/api/stream/info?roomId=${roomId}`;
 
     try {
         const response = await fetch(apiUrl, {
@@ -7,7 +10,6 @@ export async function getStreamInfo(roomId: string) {
             headers: {
                 'Content-Type': 'application/json'
             },
-
         });
 
         if (!response.ok) {
@@ -18,6 +20,10 @@ export async function getStreamInfo(roomId: string) {
         return streamInfo;
     } catch (error) {
         console.error('Error fetching stream info:', error);
-        throw error;
+        
+        // Return a default empty structure instead of throwing
+        return {
+            subTrackStreamIds: []
+        };
     }
 }

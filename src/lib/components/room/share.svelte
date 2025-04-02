@@ -5,11 +5,66 @@
 	import { toast } from 'svelte-sonner';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-    export let joinURL: string;
+    export let shareURL: string;
     export let representative: boolean;
     export let representativeId: string = '';
     import { page } from '$app/stores';
+
+    // More robust uid extraction function
+    function extractUid(url) {
+        try {
+            const urlObj = new URL(url);
+            return urlObj.searchParams.get('uid') || '';
+        } catch (error) {
+            console.error('Invalid URL format:', url, error);
+            return '';
+        }
+    }
+
+    // Extract uid from URL if present - this should handle complex URLs better
+    $: currentUid = extractUid(shareURL);
+    
+    // Add debugging
+    $: console.log('Share component URL info:', { 
+        shareURL, 
+        currentUid,
+        hasUid: !!currentUid,
+        urlParts: shareURL.split('?')
+    });
+    
+    // Function to clean URL but preserve uid parameter
+    function cleanUrlPreserveUid(url: string) {
+        try {
+            // First create a URL object
+            const urlObj = new URL(url);
+            const params = urlObj.searchParams;
+            
+            // Get uid if it exists
+            const uid = params.get('uid');
+            
+            // Clear all query parameters we don't want
+            params.delete('anonymousUserId');
+            params.delete('representativeId');
+            params.delete('representativeName');
+            params.delete('isHost');
+            params.delete('anonymous');
+            
+            // Keep only the uid parameter if it exists
+            if (uid) {
+                // Clear all params and re-add only uid
+                urlObj.search = `?uid=${uid}`;
+            } else {
+                urlObj.search = '';
+            }
+            
+            return urlObj.toString();
+        } catch (error) {
+            console.error('Error in cleanUrlPreserveUid:', error);
+            return url; // Return original URL if there's an error
+        }
+    }
 </script>
+
 <div class="w-full rounded-lg p-6">
     <!-- Dialog content styled to match the provided image -->
 
@@ -29,9 +84,7 @@
         <div class="flex items-center rounded-lg bg-gray-100 p-2 w-full">
             <input
                 type="text"
-                value={
-                     joinURL.replace(/\?anonymousUserId=[^&]+/, '').replace(/\?representativeId=[^&]+&representativeName=[^&]+/, '')
-                }
+                value={cleanUrlPreserveUid(shareURL)}
                 class="flex-1 border-none bg-transparent text-gray-700 outline-none text-sm overflow-x-auto"
                 disabled
             />
@@ -39,19 +92,38 @@
                 class="ml-2 shrink-0"
                 on:click={() => {
                     try {
-                        if(representative){
-                            const cleanURL = joinURL.replace(/\?anonymousUserId=[^&]+/, '').replace(/\?representativeId=[^&]+&representativeName=[^&]+/, '');
-                            copyText(`${cleanURL}/representative?id=${representativeId}`);
+                        // Get base URL without query parameters - handle URL parsing more carefully
+                        let baseUrl;
+                        try {
+                            baseUrl = new URL(shareURL).origin + new URL(shareURL).pathname;
+                        } catch (e) {
+                            baseUrl = shareURL.split('?')[0];
                         }
-                        else{
-                           
-                            const cleanURL = joinURL.replace(/\?anonymousUserId=[^&]+/, '').replace(/\?representativeId=[^&]+&representativeName=[^&]+/, '');
-
-                            copyText(cleanURL);
+                        
+                        console.log('Copy link details:', { 
+                            baseUrl, 
+                            currentUid, 
+                            representative,
+                            representativeId
+                        });
+                        
+                        if(representative) {
+                            // For representatives, construct URL with both rep ID and uid
+                            const uidParam = currentUid ? `&uid=${currentUid}` : '';
+                            const repLink = `${baseUrl}/representative?id=${representativeId}${uidParam}`;
+                            console.log('Copying rep link:', repLink);
+                            copyText(repLink);
+                        } else {
+                            // For regular users, just pass the uid
+                            const uidParam = currentUid ? `?uid=${currentUid}` : '';
+                            const regularLink = `${baseUrl}${uidParam}`;
+                            console.log('Copying regular link:', regularLink);
+                            copyText(regularLink);
                         }
                         toast.success('Link copied to clipboard');
                     } catch (error) {
                         toast.error('Failed to copy link');
+                        console.error('Error copying link:', error);
                     }
                 }}><ClipboardCopy /></Button
             >
@@ -100,7 +172,7 @@
         />
         <input
                 type="text"
-                value={joinURL}
+                value={shareURL}
                 name="url"
                 class="flex-1 border-none bg-transparent text-gray-700 outline-none hidden"
                 

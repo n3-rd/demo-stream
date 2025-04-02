@@ -64,8 +64,8 @@ let reconnecting = false;
 let publishReconnected = false;
 let playReconnected = false;
 let isNoStreamExist = false;
-const joinURL = $page.url.href;
 let scheduleOpen = false;
+let shareURL = $page.url.href;
 
 // Add video state management
 let videoPlayer;
@@ -75,7 +75,15 @@ let isVideoMuted = false;
 
 // Room data
 const room = data.roomId[0];
-const roomName = $page.url.pathname.split("/").pop().split("&")[0];
+
+// Get the base room name from the URL
+const baseRoomName = $page.url.pathname.split("/").pop().split("&")[0];
+
+// Near the top with other state variables
+let uniqueSessionId = '';
+
+// Room data
+$: roomName = uniqueSessionId ? `${baseRoomName}-${uniqueSessionId}` : baseRoomName;
 const user = data.user;
 const isAuthenticated = !!user;
 const name = isAuthenticated ? user.company_name : "";
@@ -150,6 +158,35 @@ function getWebSocketURL() {
 }
 
 onMount(() => {
+    // Generate a unique session ID if 'uid' isn't already in the URL
+    if (!$page.url.searchParams.get('uid')) {
+        uniqueSessionId = generateRandomString(8); // Generate a short random string
+        
+        // Create a new URL object to modify the current URL
+        const newUrl = new URL(window.location.href);
+        
+        // Add the uid parameter
+        newUrl.searchParams.set('uid', uniqueSessionId);
+        
+        // Update browser history without reloading the page
+        window.history.replaceState({}, '', newUrl.toString());
+        
+        // Also update our shareURL immediately
+        shareURL = newUrl.toString();
+        
+        console.log('Updated URL with unique session ID:', newUrl.toString());
+    } else {
+        // Use the existing uid from URL
+        uniqueSessionId = $page.url.searchParams.get('uid');
+        
+        // Make sure shareURL has the uid parameter
+        const urlObj = new URL(window.location.href);
+        shareURL = urlObj.toString();
+    }
+    
+    // Force log the shareURL for debugging
+    console.log('Share URL after initialization:', shareURL);
+    
     const params = new URLSearchParams(window.location.search);
     const representativeName = params.get('repid');
 
@@ -814,6 +851,7 @@ function joinRoom() {
     }
 
     const sanitizedName = sanitizeStreamName(displayName);
+    // Use the unique room name with uid for the stream
     const sanitizedRoomName = sanitizeStreamName(roomName);
 
     if (!playOnly) {
@@ -824,7 +862,9 @@ function joinRoom() {
             isCameraOff,
             isMicMuted,
             isRepresentative: !!data.representativeName,
-            displayName
+            displayName,
+            roomId: room.id, // Add the base room ID for reference
+            uid: uniqueSessionId // Fix: Use uniqueSessionId instead of uid
         });
         
         try {
@@ -838,7 +878,7 @@ function joinRoom() {
                     metadata,
                     null,
                     displayName,
-                    room.id
+                    sanitizedRoomName // Use the unique room name
                 );
             } else {
                 console.log('In data channel only mode, skipping media publish');
@@ -850,7 +890,14 @@ function joinRoom() {
         }
     }
 
-    console.log('starting play with roomName:', sanitizedRoomName);
+    console.log('Room connection details:', {
+        uniqueSessionId,
+        roomName,
+        sanitizedRoomName,
+        baseRoomName,
+        shareURL,
+        currentPage: window.location.href
+    });
     try {
         webRTCAdaptor.play(sanitizedRoomName);
     } catch (error) {
@@ -872,8 +919,13 @@ function generateRandomString(length: number): string {
 }
 
 setInterval(() => {
-    getStreamInfo(roomName).then(streamInfo => {
-        meetingParticipants = streamInfo.subTrackStreamIds;
+    // Pass uid parameter to getStreamInfo
+    getStreamInfo(baseRoomName, uniqueSessionId).then(streamInfo => {
+        meetingParticipants = streamInfo.subTrackStreamIds || [];
+    }).catch(err => {
+        console.error('Error getting stream info:', err);
+        // Set empty array on error
+        meetingParticipants = [];
     });
 }, 5000);
 
@@ -1594,6 +1646,26 @@ function handleRepresentativesUpdate(event) {
     console.log('Available representatives updated:', availableRepresentatives);
 }
 
+// Update the shareURL reactive declaration to ensure it's always up-to-date:
+$: {
+    // Only update if uniqueSessionId is set and different from what's in the URL
+    if (uniqueSessionId) {
+        try {
+            const shareUrlObj = new URL(window.location.href);
+            const currentUrlUid = shareUrlObj.searchParams.get('uid');
+            
+            // Only update if the uid is different or missing
+            if (currentUrlUid !== uniqueSessionId) {
+                shareUrlObj.searchParams.set('uid', uniqueSessionId);
+                shareURL = shareUrlObj.toString();
+                console.log('Updated share URL:', shareURL);
+            }
+        } catch (error) {
+            console.error('Error updating share URL:', error);
+        }
+    }
+}
+
 </script>
 
 
@@ -1620,7 +1692,7 @@ function handleRepresentativesUpdate(event) {
                 <!-- left sidebar -->
                 <div class="hidden lg:flex">
                     <LeftBar 
-                        joinURL={joinURL} 
+                        joinURL={shareURL} 
                         videoRepresentatives={representatives} 
                         userId={user?.id || ''} 
                         {scheduleOpen} 
@@ -1736,7 +1808,7 @@ function handleRepresentativesUpdate(event) {
                                     <X scale={1.3} color="#fff" />
                                 </Button>
                             </div>
-                            <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} />
+                            <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} shareURL={shareURL} />
                         </div>
                     </div>
                 </div>
@@ -1782,7 +1854,7 @@ function handleRepresentativesUpdate(event) {
                 availableRepresentatives={availableRepresentatives}
                 scheduleOpen={scheduleOpen}
                 userId={user?.id || ''}
-                joinURL={joinURL}
+                joinURL={shareURL}
                 {isMicMuted}
                 {isCameraOff}
                 {isVideoMuted}

@@ -32,6 +32,12 @@
             return;
         }
 
+        if (!requirements && !steps && !keep) {
+            toast.error('Please fill in at least one note section (Requirements, Steps, or Keep).');
+            loading = false;
+            return;
+        }
+
         loading = true;
         try {
             const response = await fetch('/api/send-note-email', {

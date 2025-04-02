@@ -1,52 +1,69 @@
-import { render } from 'svelte-email';
 import nodemailer from 'nodemailer';
-import NoteEmail from '../../../lib/components/email/note_email.svelte';
-import type { RequestHandler } from '@sveltejs/kit';
-import { PUBLIC_ELASTICE_MAIL_EMAIL, PUBLIC_ELASTICE_MAIL_HOST, PUBLIC_ELASTICE_MAIL_PASS } from '$env/static/public';
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { PUBLIC_SMTP_HOST, PUBLIC_SMTP_PORT, PUBLIC_SMTP_SECURE, PUBLIC_SMTP_USER, PUBLIC_SMTP_PASS, PUBLIC_SMTP_FROM } from '$env/static/public';
 
+// Reuse the same email transporter configuration
 const transporter = nodemailer.createTransport({
-    host: PUBLIC_ELASTICE_MAIL_HOST,
-    port: 2525,
-    secure: false,
-    auth: {
-        user: PUBLIC_ELASTICE_MAIL_EMAIL,
-        pass: PUBLIC_ELASTICE_MAIL_PASS
-    }
+  host: PUBLIC_SMTP_HOST || 'smtp.example.com',
+  port: parseInt(PUBLIC_SMTP_PORT || '587'),
+  secure: PUBLIC_SMTP_SECURE === 'true',
+  auth: {
+    user: PUBLIC_SMTP_USER || 'user@example.com',
+    pass: PUBLIC_SMTP_PASS || 'password'
+  }
 });
 
 export const POST: RequestHandler = async ({ request }) => {
-    try {
-        const { title, requirements, steps, keep, recipient } = await request.json();
+  try {
+    const data = await request.json();
+    const { title, requirements, steps, keep, recipient } = data;
 
-        const emailHtml = render({
-            template: NoteEmail,
-            props: {
-                title: title,
-                requirements: requirements,
-                steps: steps,
-                keep: keep
-            }
-        });
+    // Create sections for the email content
+    const requirementsSection = requirements ? `
+      <div style="margin-bottom: 20px;">
+        <h3 style="color: #333; margin-bottom: 10px;">Requirements</h3>
+        <p style="white-space: pre-line;">${requirements}</p>
+      </div>
+    ` : '';
 
-        const options = {
-            from: PUBLIC_ELASTICE_MAIL_EMAIL,
-            to: recipient,
-            subject: 'Notes',
-            html: emailHtml
-        };
+    const stepsSection = steps ? `
+      <div style="margin-bottom: 20px;">
+        <h3 style="color: #333; margin-bottom: 10px;">Steps</h3>
+        <p style="white-space: pre-line;">${steps}</p>
+      </div>
+    ` : '';
 
-        await transporter.sendMail(options);
+    const keepSection = keep ? `
+      <div style="margin-bottom: 20px;">
+        <h3 style="color: #333; margin-bottom: 10px;">Keep</h3>
+        <p style="white-space: pre-line;">${keep}</p>
+      </div>
+    ` : '';
 
-        console.log('Email sent successfully from /api/send-note-email');
-        return new Response(JSON.stringify({ message: 'Email sent successfully' }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    } catch (error) {
-        console.error('Failed to send email from /api/send-note-email', error);
-        return new Response(JSON.stringify({ error: 'Failed to send email' }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
+    // Send the email
+    await transporter.sendMail({
+      from: `"Notes Service" <${PUBLIC_SMTP_FROM || 'noreply@example.com'}>`,
+      to: recipient,
+      subject: `Notes: ${title}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
+          <h2 style="color: #4a5568; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee;">${title}</h2>
+          
+          ${requirementsSection}
+          ${stepsSection}
+          ${keepSection}
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #718096; font-size: 0.8em;">
+            <p>This email was sent from your notes application.</p>
+          </div>
+        </div>
+      `
+    });
+
+    return json({ success: true });
+  } catch (error) {
+    console.error('Error sending notes email:', error);
+    return json({ success: false, error: error.message }, { status: 500 });
+  }
 };

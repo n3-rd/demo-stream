@@ -74,7 +74,7 @@
             />
         </Dialog.Content>
     </Dialog.Root>
-    <Dialog.Root bind:open={scheduleOpen}>
+    <Dialog.Root bind:open={scheduleOpen} class="max-w-[80vw]">
         <Dialog.Trigger>
             <Button
                 variant="ghost"
@@ -92,7 +92,7 @@
             </Button>
         </Dialog.Trigger>
         <Dialog.Content
-            class="p-4 rounded-lg w-auto bg-transparent"
+            class="p-4 rounded-lg w-full bg-transparent max-w-[80vw]"
         >
             <div class="w-full bg-transparent">
                 <ScheduleMeeting

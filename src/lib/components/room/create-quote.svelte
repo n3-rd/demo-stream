@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
     import { enhance } from '$app/forms';
     import { createEventDispatcher } from 'svelte';
     import { toast } from 'svelte-sonner';
@@ -6,6 +7,11 @@
     import HintValidate from '$lib/components/layout/hint-validate.svelte';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
+    import { browser } from '$app/environment';
+    import PocketBase from 'pocketbase';
+
+    // Initialize PocketBase
+    const pb = browser ? new PocketBase(PUBLIC_POCKETBASE_INSTANCE) : null;
 
     // Form state
     let firstName = '';
@@ -13,6 +19,10 @@
     let phone = '';
     let emailAddress = '';
     let quoteRequest = '';
+    let isSubmitting = false;
+    
+    // Company owner's email for receiving quote requests
+    const OWNER_EMAIL = pb.authStore.model?.email;
 
     const dispatch = createEventDispatcher();
     const form = useForm();
@@ -20,6 +30,203 @@
     // Handle cancel button click
     function handleCancel() {
         dispatch('close');
+    }
+    
+    // Function to send email notifications
+    async function sendQuoteEmails(data, maxRetries = 2) {
+        let attempt = 0;
+        while (attempt < maxRetries) {
+            try {
+                console.log('Attempt', attempt + 1, 'sending quote email');
+                
+                // Create the email data structure for the dedicated quote API
+                const emailApiData = {
+                    customerName: data.customerName,
+                    customerEmail: data.customerEmail,
+                    customerPhone: phone,
+                    quoteDescription: data.quoteDescription || quoteRequest,
+                    tags: data.tags || ['quote'],
+                    ownerEmail: OWNER_EMAIL,
+                    isCustomerConfirmation: data.isCustomerConfirmation || false
+                };
+                
+                // Use the dedicated quote email endpoint
+                const response = await fetch('/api/send-quote-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(emailApiData)
+                });
+                
+                // Get the full response text
+                const responseText = await response.text();
+                let responseData;
+                
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (e) {
+                    responseData = { text: responseText };
+                    console.error('Failed to parse response as JSON:', responseText);
+                }
+                
+                if (!response.ok) {
+                    console.error('Quote email API error:', response.status, responseData);
+                    
+                    if (attempt === maxRetries - 1) {
+                        toast.error(`Email service error: ${responseData.error || response.statusText}`);
+                        return false;
+                    }
+                } else {
+                    if (responseData.success) {
+                        console.log('Quote email sent successfully:', responseData);
+                        return true;
+                    } else {
+                        console.error('Quote email sending failed:', responseData);
+                        if (attempt === maxRetries - 1) {
+                            toast.error(responseData.error || 'Failed to send email');
+                            return false;
+                        }
+                    }
+                }
+                
+                // Wait before retrying
+                attempt++;
+                await new Promise(r => setTimeout(r, 1000 * attempt)); 
+            } catch (error) {
+                console.error('Error sending quote email (attempt ' + (attempt + 1) + '):', error);
+                
+                if (attempt === maxRetries - 1) {
+                    toast.error(`Network error: ${error.message}`);
+                    return false;
+                }
+                
+                attempt++;
+                await new Promise(r => setTimeout(r, 1000 * attempt));
+            }
+        }
+        
+        return false;
+    }
+    
+    // Create quote in PocketBase
+    async function createQuoteRecord(quoteData) {
+        try {
+            if (!pb) {
+                console.error('PocketBase not initialized');
+                return null;
+            }
+            
+            // Get the company ID from auth if available
+            let companyId = null;
+            try {
+                if (pb.authStore.model) {
+                    console.log('Company ID:', pb.authStore.model.id);
+                    companyId = pb.authStore.model.id;
+                }
+            } catch (e) {
+                console.warn('Could not get company ID:', e);
+            }
+            
+            // Prepare data for PocketBase
+            const pbData = {
+                first_name: quoteData.first_name,
+                last_name: quoteData.last_name,
+                phone: quoteData.phone,
+                email: quoteData.email,
+                description: quoteData.description,
+                to_company: companyId
+            };
+            
+            // Add company relation if we have a company ID
+            if (companyId) {
+                pbData.to_company = companyId;
+            }
+            
+            console.log('Creating quote record with data:', pbData);
+            
+            // Create the record
+            const record = await pb.collection('quotes').create(pbData);
+            console.log('Quote record created:', record);
+            
+            return record;
+        } catch (error) {
+            console.error('Error creating quote record:', error);
+            return null;
+        }
+    }
+    
+    // Function to handle form submission with email
+    async function handleSubmitWithEmail(event) {
+        event.preventDefault();
+        
+        if (!$form.valid) {
+            toast.error('Please fill out all required fields correctly');
+            return;
+        }
+        
+        isSubmitting = true;
+        
+        try {
+            // Prepare data for PocketBase
+            const quoteData = {
+                first_name: firstName,
+                last_name: lastName,
+                phone: phone,
+                email: emailAddress,
+                description: quoteRequest
+            };
+            
+            // Create the quote record in PocketBase
+            const record = await createQuoteRecord(quoteData);
+            
+            if (!record) {
+                toast.error('Error saving quote data. Please try again.');
+                isSubmitting = false;
+                return;
+            }
+            
+            // Send emails if the record was created successfully
+            const customerEmailSent = await sendQuoteEmails({
+                customerName: `${firstName} ${lastName}`,
+                customerEmail: emailAddress,
+                quoteDescription: quoteRequest,
+                tags: ['quote', 'customer_confirmation'],
+                isCustomerConfirmation: true
+            });
+            
+            const ownerEmailSent = await sendQuoteEmails({
+                customerName: `${firstName} ${lastName}`,
+                customerEmail: emailAddress,
+                quoteDescription: quoteRequest,
+                tags: ['quote', 'internal_notification'],
+                isCustomerConfirmation: false
+            });
+            
+            // Show appropriate notifications
+            toast.success('Quote request submitted successfully');
+            
+            if (!customerEmailSent && !ownerEmailSent) {
+                toast.warning('We received your quote but email notifications failed to send.');
+            } else if (!customerEmailSent) {
+                toast.warning('Your quote was submitted, but we couldn\'t send you a confirmation email.');
+            } else if (!ownerEmailSent) {
+                console.warn('Owner notification email failed to send');
+            }
+            
+            // Clear form fields after successful submission
+            firstName = '';
+            lastName = '';
+            phone = '';
+            emailAddress = '';
+            quoteRequest = '';
+            
+            // Close the form
+            dispatch('close');
+        } catch (error) {
+            console.error('Error processing quote:', error);
+            toast.error('An error occurred. Please try again later.');
+        } finally {
+            isSubmitting = false;
+        }
     }
 </script>
 
@@ -31,19 +238,8 @@
 
     <form
         class="space-y-4"
-        action="?/request-quote"
-        method="POST"
+        on:submit={handleSubmitWithEmail}
         use:form
-        use:enhance={() => {
-            return async ({ result }) => {
-                console.log('quote request results', result);
-                if ((result.status = 200)) {
-                    toast.success('successfully created quote');
-                } else {
-                    toast.error('error creating quote');
-                }
-            };
-        }}
     >
         <div class="flex gap-4">
             <div class="flex-1">
@@ -137,19 +333,33 @@
                 type="button"
                 on:click={handleCancel}
                 class="flex-1 py-3 bg-gray-200 text-sm text-gray-800 font-semibold rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                disabled={isSubmitting}
             >
                 CANCEL
             </button>
             <button
                 type="submit"
                 class="flex-1 py-3 bg-primary text-white text-sm font-semibold rounded-md hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                disabled={!$form.valid}
+                disabled={!$form.valid || isSubmitting}
             >
-                SUBMIT QUOTE REQUEST
+                {isSubmitting ? 'SUBMITTING...' : 'SUBMIT QUOTE REQUEST'}
             </button>
         </div>
     </form>
 </div>
+
+<!-- Loading indicator -->
+{#if isSubmitting}
+<div class="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+    <h3 class="text-lg font-semibold mb-4 text-center">Submitting Quote Request</h3>
+    <div class="flex items-center justify-center mb-4">
+      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+    </div>
+    <p class="text-center text-gray-600">Please wait while we process your quote request...</p>
+  </div>
+</div>
+{/if}
 
 <style>
     /* Additional styles can go here if needed */

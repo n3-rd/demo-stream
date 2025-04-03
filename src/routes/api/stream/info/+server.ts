@@ -15,7 +15,7 @@ export const GET: RequestHandler = async ({ url }) => {
     // Construct the stream ID with uid if provided - use hyphen format
     const streamId = uid ? `${roomId}-${uid}` : roomId;
     
-    console.log(`Fetching stream info for ${streamId} (base room: ${roomId}, uid: ${uid || 'none'})`);
+    // console.log(`Fetching stream info for ${streamId} (base room: ${roomId}, uid: ${uid || 'none'})`);
     
     // Fix the URL format - use proper structure and remove extra slash if present
     const apiBaseUrl = PUBLIC_ANT_MEDIA_URL.endsWith('/') ? 
@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ url }) => {
     const apiUrl = `${apiBaseUrl}${streamId}`;
     
     try {
-        console.log(`Making API request to: ${apiUrl}`);
+        // console.log(`Making API request to: ${apiUrl}`);
         const response = await fetch(apiUrl);
         
         if (!response.ok) {
@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ url }) => {
         }
 
         const data = await response.json();
-        console.log(`API response received for ${streamId}`);
+        // console.log(`API response received for ${streamId}`);
         return new Response(JSON.stringify(data), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }

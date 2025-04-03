@@ -4,6 +4,7 @@ import type PocketBase from 'pocketbase';
 declare module '$env/static/public' {
 	export const PUBLIC_DAILY_API_KEY: string;
 	export const PUBLIC_POCKETBASE_INSTANCE: string;
+	export const PUBLIC_BREVO_API_KEY: string;
 }
 
 declare global {
@@ -19,7 +20,11 @@ declare global {
 		}
 		// interface PageData {}
 		// interface PageState {}
-		// interface Platform {}
+		interface Platform {}
+		interface PrivateEnv {}
+		interface PublicEnv {
+			PUBLIC_BREVO_API_KEY: string;
+		}
 	}
 }
 

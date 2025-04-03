@@ -329,23 +329,23 @@
             if (startStr && endStr) {
               // Generate the time slots with fixed 1-hour intervals
               generatedSlots = generateFixedTimeSlots();
-              
-              // Get existing scheduled meetings for this date
-              let scheduledMeetings = {};
-              if (representativeDetails.scheduled_meetings) {
-                try {
-                  scheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string'
-                    ? JSON.parse(representativeDetails.scheduled_meetings)
-                    : representativeDetails.scheduled_meetings;
-                  
+                
+                // Get existing scheduled meetings for this date
+                let scheduledMeetings = {};
+                if (representativeDetails.scheduled_meetings) {
+                  try {
+                    scheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string'
+                      ? JSON.parse(representativeDetails.scheduled_meetings)
+                      : representativeDetails.scheduled_meetings;
+                    
                   console.log('All meetings:', scheduledMeetings);
                   console.log('Meetings for this date:', scheduledMeetings[formattedDate]);
-                } catch (e) {
+                  } catch (e) {
                   console.error('Error parsing scheduled meetings:', e);
-                  scheduledMeetings = {};
+                    scheduledMeetings = {};
+                  }
                 }
-              }
-              
+                
               // Mark slots as booked if they're already scheduled
               for (const slot of generatedSlots) {
                 const isBooked = checkTimeSlotBooked(formattedDate, slot.time, scheduledMeetings);
@@ -412,6 +412,15 @@
     return false;
   }
 
+  // Add these variables to your existing script section
+  let isEmailSending = false;
+  let showEmailConfirmModal = false;
+  let emailErrorMessage = '';
+  let pendingAppointmentData = null;
+  let showAppointmentConfirmation = false;
+  let appointmentDetails = null;
+
+  // Update handleSubmit to show confirmation first
   async function handleSubmit() {
     console.log('schedule console: Starting handleSubmit');
     // Clear previous error state
@@ -507,46 +516,68 @@
         representativeDetails,
         currentRep
       };
-
-      // Prepare email data
-      const emailData = {
-        customerName: fullName,
-        customerEmail: email,
-        customerPhone: phoneNumber,
-        appointmentTitle: appointmentTitle || 'Meeting with ' + representativeDetails.name,
-        repName: representativeDetails.name,
-        repEmail: representativeDetails.email,
-        bookingDate: bookingDate,
-        bookingTime: selectedSlot.time,
-        roomName: roomName,
-        dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
-        customerAddress: {
-          street: address.street || '',
-          city: address.city || '',
-          state: address.state || '',
-          zip: address.zip || '',
-          country: address.country || ''
-        }
+      
+      // Show the confirmation dialog first
+      appointmentDetails = {
+        date: selectedDate.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}),
+        time: selectedSlot.time,
+        representativeName: representativeDetails.name,
+        location: representativeDetails.location || 'Online'
       };
+      showAppointmentConfirmation = true;
       
-      // Show loading state and try to send email
-      isEmailSending = true;
-      const emailSuccess = await sendEmailNotifications(emailData);
-      isEmailSending = false;
-      
-      if (emailSuccess) {
-        // Email sent successfully, create the appointment
-        await createAppointment();
-      } else {
-        // Email failed, show confirmation popup
-        showEmailConfirmModal = true;
-        emailErrorMessage = 'The server could not send the confirmation email.';
-      }
     } catch (error) {
-      isEmailSending = false;
       console.error('schedule console: Error in scheduling process:', error);
       toast.error('Failed to schedule the meeting. Please try again.');
     }
+  }
+  
+  // Add this function to handle confirmation
+  function confirmAppointment() {
+    showAppointmentConfirmation = false;
+    
+    // Prepare email data
+    const emailData = {
+      customerName: fullName,
+      customerEmail: email,
+      customerPhone: phoneNumber,
+      appointmentTitle: appointmentTitle || 'Meeting with ' + pendingAppointmentData.representativeDetails.name,
+      repName: pendingAppointmentData.representativeDetails.name,
+      repEmail: pendingAppointmentData.representativeDetails.email,
+      bookingDate: pendingAppointmentData.bookingDate,
+      bookingTime: selectedSlot.time,
+      roomName: roomName,
+      dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
+      customerAddress: {
+        street: address.street || '',
+        city: address.city || '',
+        state: address.state || '',
+        zip: address.zip || '',
+        country: address.country || ''
+      }
+    };
+    
+    // Show loading state and try to send email
+    isEmailSending = true;
+    sendEmailNotifications(emailData)
+      .then(emailSuccess => {
+        isEmailSending = false;
+        
+        if (emailSuccess) {
+          // Email sent successfully, create the appointment
+          return createAppointment();
+        } else {
+          // Email failed, show confirmation popup
+          showEmailConfirmModal = true;
+          emailErrorMessage = 'The server could not send the confirmation email.';
+        }
+      })
+      .catch(error => {
+        isEmailSending = false;
+        console.error('schedule console: Error in email sending process:', error);
+        showEmailConfirmModal = true;
+        emailErrorMessage = 'The server could not send the confirmation email.';
+      });
   }
 
   async function retryEmailSending() {
@@ -617,24 +648,24 @@
     const { scheduledMeetings, bookingDate, newMeeting, representativeDetails, currentRep } = pendingAppointmentData;
     
     // Add the new meeting to scheduled meetings
-    scheduledMeetings[bookingDate].push(newMeeting);
-    console.log('schedule console: Updated meetings for date:', scheduledMeetings[bookingDate]);
+      scheduledMeetings[bookingDate].push(newMeeting);
+      console.log('schedule console: Updated meetings for date:', scheduledMeetings[bookingDate]);
 
-    const updateData = {
-      scheduled_meetings: JSON.stringify(scheduledMeetings)
-    };
-    console.log('schedule console: Sending update data:', updateData);
+      const updateData = {
+        scheduled_meetings: JSON.stringify(scheduledMeetings)
+      };
+      console.log('schedule console: Sending update data:', updateData);
 
-    const updatedRep = await pb.collection('representatives')
-      .update(representativeDetails.id, updateData);
-    console.log('schedule console: Successfully updated meetings:', updatedRep);
-    
+      const updatedRep = await pb.collection('representatives')
+        .update(representativeDetails.id, updateData);
+      console.log('schedule console: Successfully updated meetings:', updatedRep);
+      
     // Show confirmation toast
-    showConfirmationToast(representativeDetails.name, bookingDate, selectedSlot.time, representativeDetails.location || 'Online');
-    
+      showConfirmationToast(representativeDetails.name, bookingDate, selectedSlot.time, representativeDetails.location || 'Online');
+      
     // Clear pending data and close the dialog
     pendingAppointmentData = null;
-    dispatch('close');
+      dispatch('close');
   }
 
   async function sendEmailNotifications(data, maxRetries = 2) {
@@ -658,8 +689,8 @@
         
         // Use the Brevo API endpoint
         const response = await fetch('/api/send-brevo-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(emailData)
         });
         
@@ -685,7 +716,7 @@
           if (responseData.success) {
             console.log('schedule console: Email sent successfully:', responseData);
             toast.success('Appointment confirmation email sent successfully');
-            return true;
+      return true;
           } else {
             console.error('schedule console: Email sending failed:', responseData);
             if (attempt === maxRetries - 1) {
@@ -698,13 +729,13 @@
         // Wait before retrying
         attempt++;
         await new Promise(r => setTimeout(r, 1000 * attempt)); // Exponential backoff
-      } catch (error) {
+    } catch (error) {
         console.error('schedule console: Error sending email (attempt ' + (attempt + 1) + '):', error);
         
         if (attempt === maxRetries - 1) {
           toast.error(`Network error: ${error.message}`);
-          return false;
-        }
+      return false;
+    }
         
         attempt++;
         await new Promise(r => setTimeout(r, 1000 * attempt));
@@ -922,12 +953,6 @@
     // Filter out booked slots
     return allTimeSlots.filter(slot => !isTimeSlotBooked(date, slot.time, scheduledMeetings));
   }
-
-  // Add these variables to your existing script section
-  let isEmailSending = false;
-  let showEmailConfirmModal = false;
-  let emailErrorMessage = '';
-  let pendingAppointmentData = null;
 </script>
 
 
@@ -938,7 +963,7 @@
       <button on:click={handleCancel} class="text-gray-500 hover:text-gray-700">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
-    </div>
+      </div>
     <p class="text-sm text-gray-500 mb-6">Please fill out this form to make an appointment</p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -984,46 +1009,46 @@
           <!-- Phone Number -->
           <div class="mb-4">
             <label for="phoneNumber" class="block text-sm mb-1">Phone Number</label>
-            <input
-              id="phoneNumber"
-              name="phoneNumber"
-              type="tel"
+              <input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
               placeholder="Enter you Number"
-              bind:value={phoneNumber}
+                bind:value={phoneNumber}
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              use:validators={[required]}
-            />
-            <HintGroup for="phoneNumber">
-              <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-                <Hint on="required"><HintValidate>Phone Number is required</HintValidate></Hint>
-              </div>
-            </HintGroup>
-          </div>
+                use:validators={[required]}
+              />
+              <HintGroup for="phoneNumber">
+                <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+                  <Hint on="required"><HintValidate>Phone Number is required</HintValidate></Hint>
+                </div>
+              </HintGroup>
+            </div>
 
           <!-- Email Address -->
           <div class="mb-4">
             <label for="email" class="block text-sm mb-1">Email Address</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
+              <input
+                id="email"
+                name="email"
+                type="email"
               placeholder="example@mail.com"
-              bind:value={email}
+                bind:value={email}
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              use:validators={[required, emailValidator]}
-            />
-            <HintGroup for="email">
-              <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-                <Hint on="required"><HintValidate>Email is required</HintValidate></Hint>
-                <Hint on="email" hideWhenRequired><HintValidate>Email is not valid</HintValidate></Hint>
-              </div>
-            </HintGroup>
-          </div>
+                use:validators={[required, emailValidator]}
+              />
+              <HintGroup for="email">
+                <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+                  <Hint on="required"><HintValidate>Email is required</HintValidate></Hint>
+                  <Hint on="email" hideWhenRequired><HintValidate>Email is not valid</HintValidate></Hint>
+                </div>
+              </HintGroup>
+            </div>
 
           <!-- Full Address -->
           <div class="mb-4">
             <label class="block text-sm mb-1">Full Address</label>
-            <input
+              <input
               placeholder="Street Address"
               bind:value={address.street}
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm mb-2"
@@ -1040,7 +1065,7 @@
                 bind:value={address.state}
                 class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
-            </div>
+                </div>
             
             <div class="grid grid-cols-2 gap-4">
               <input
@@ -1092,8 +1117,8 @@
           {:else}
             <p class="text-red-500 text-sm">No representatives currently available</p>
           {/if}
-        </div>
-        
+          </div>
+
         <!-- Date Selection -->
         <div class="mb-4">
           <div class="flex justify-between items-center mb-1">
@@ -1127,11 +1152,11 @@
             
             {#if calendarVisible}
               <div class="absolute z-10 mt-1 bg-white border border-gray-300 rounded-md shadow-lg w-full">
-                <Calendar 
-                  bind:value 
+            <Calendar 
+              bind:value 
                   class="rounded-md w-full" 
-                  isDateDisabled={isDateDisabled}
-                  renderDate={customDateCell}
+              isDateDisabled={isDateDisabled}
+              renderDate={customDateCell}
                   on:datechange={() => {
                     selectedDate = new Date(value.year, value.month - 1, value.day);
                     calendarVisible = false;
@@ -1155,18 +1180,18 @@
             
             <!-- Add debug info to see what's happening -->
             <p class="text-xs text-gray-500 mb-2">Available slots: {availableSlots.length}</p>
-            
-            {#if availableSlots.length > 0}
+
+        {#if availableSlots.length > 0}
               <div class="grid grid-cols-3 gap-2 mb-3">
                 {#each availableSlots.slice(0, 6) as slot, i}
-                  <button 
-                    type="button"
-                    disabled={!slot.available}
+                <button 
+                  type="button"
+                  disabled={!slot.available}
                     class="p-2 border rounded-md text-center text-xs relative
                           {selectedTimeSlot === slot.id ? 'bg-primary/80 text-white' : ''} 
-                          {!slot.available ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'hover:bg-gray-100'}"
-                    on:click={() => {
-                      selectedTimeSlot = slot.id;
+                        {!slot.available ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'hover:bg-gray-100'}"
+                  on:click={() => {
+                    selectedTimeSlot = slot.id;
                       selectedSlot = slot;
                       console.log('Selected time slot:', slot);
                     }}
@@ -1183,14 +1208,14 @@
                       <div>Slot</div>
                     {/if}
                     
-                    {#if !slot.available}
-                      <div class="absolute inset-0 flex items-center justify-center bg-gray-200 bg-opacity-80 rounded-md">
-                        <span class="text-xs font-medium text-gray-600">Booked</span>
-                      </div>
-                    {/if}
-                  </button>
-                {/each}
-              </div>
+                  {#if !slot.available}
+                    <div class="absolute inset-0 flex items-center justify-center bg-gray-200 bg-opacity-80 rounded-md">
+                      <span class="text-xs font-medium text-gray-600">Booked</span>
+                    </div>
+                  {/if}
+                </button>
+              {/each}
+            </div>
               
               {#if availableSlots.length > 6}
                 <div class="grid grid-cols-3 gap-2">
@@ -1222,15 +1247,15 @@
                       {#if !slot.available}
                         <div class="absolute inset-0 flex items-center justify-center bg-gray-200 bg-opacity-80 rounded-md">
                           <span class="text-xs font-medium text-gray-600">Booked</span>
-                        </div>
+        </div>
                       {/if}
                     </button>
                   {/each}
                 </div>
               {/if}
-            {:else}
+        {:else}
               <p class="text-red-500 text-sm">No available time slots for this date. Please select another date.</p>
-            {/if}
+        {/if}
           </div>
         {/if}
 
@@ -1258,7 +1283,7 @@
       </button>
       <button 
         type="button"
-        on:click={handleButtonClick}
+        on:click={handleButtonClick} 
         class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/80"
       >
         SCHEDULE EVENT
@@ -1313,6 +1338,30 @@
         on:click={retryEmailSending}
       >
         Retry Sending Email
+      </button>
+    </div>
+  </div>
+</div>
+{/if}
+
+<!-- Appointment confirmation modal -->
+{#if showAppointmentConfirmation && appointmentDetails}
+<div class="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
+    <h3 class="text-lg font-semibold mb-4">Appointment Confirmation</h3>
+    <div class="mb-4">
+      <p class="mb-1"><strong>DATE:</strong> {appointmentDetails.date}</p>
+      <p class="mb-1"><strong>Time Slot:</strong> {appointmentDetails.time}</p>
+      <p class="mb-1"><strong>Representative Name:</strong> {appointmentDetails.representativeName}</p>
+      <p class="mb-1"><strong>Location:</strong> {appointmentDetails.location}</p>
+    </div>
+    <div class="flex justify-between items-center">
+      <p class="text-sm text-gray-600">By clicking yes, you are confirming your appointment</p>
+      <button 
+        class="px-6 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+        on:click={confirmAppointment}
+      >
+        YES
       </button>
     </div>
   </div>

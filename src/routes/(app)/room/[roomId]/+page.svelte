@@ -1695,6 +1695,7 @@ $: {
                         joinURL={shareURL} 
                         videoRepresentatives={representatives} 
                         userId={user?.id || ''} 
+                        shareURL={shareURL}
                         {scheduleOpen} 
                         availableRepresentatives={availableRepresentatives}
                         on:closeSchedule={handleScheduleClose} 

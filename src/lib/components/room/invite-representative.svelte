@@ -10,6 +10,7 @@
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "$lib/components/ui/select";
     import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
     import { createEventDispatcher } from "svelte";
+    export let shareURL: string;
 
     export let representatives;
     let showRepresentativeList = false;
@@ -19,6 +20,9 @@
     const joinURL = $page.url.href;
 
     let invitedRepresentative = '';
+
+    let uidExtracted = shareURL.split('?')[1].split('&').find(param => param.startsWith('uid=')).split('=')[1];
+    console.log('uidExtracted', uidExtracted);
 
     const dispatch = createEventDispatcher();
 
@@ -119,7 +123,7 @@
                     <div class="flex items-center gap-2 bg-gray-50 p-2 rounded">
                         <input 
                             type="text" 
-                            value={`${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}`}
+                            value={`${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}&uid=${uidExtracted}`}
                             class="flex-1 bg-transparent border-none text-sm text-gray-600 focus:outline-none"
                             readonly
                         />
@@ -127,7 +131,7 @@
                             variant="ghost"
                             size="sm"
                             on:click={() => {
-                                navigator.clipboard.writeText(`${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}`);
+                                navigator.clipboard.writeText(`${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}&uid=${uidExtracted}`);
                                 toast.success('Link copied to clipboard');
                             }}
                         >

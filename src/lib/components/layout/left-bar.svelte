@@ -15,6 +15,7 @@
 	import ScheduleMeeting from "../room/schedule-meeting.svelte";
 	import CreateQuote from "../room/create-quote.svelte";
     const dispatch = createEventDispatcher();
+    export let shareURL;
     
     // Add state variables for each dialog
     let representativeDialogOpen = false;
@@ -68,6 +69,7 @@
         <Dialog.Content class="p-4 rounded-lg shadow-lg">
             <InviteRepresentative
                 representatives={videoRepresentatives}
+                shareURL={shareURL}
                 on:close={() => representativeDialogOpen = false}
             />
         </Dialog.Content>

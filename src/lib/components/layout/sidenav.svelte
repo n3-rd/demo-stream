@@ -10,7 +10,7 @@
         {name: 'Content Library', active: activePage === 'content-library', href: '/content-library'},
         { name: 'View Room List', active: activePage === 'rooms', href: '/room' },
         { name: 'AI Assistants', active: activePage === 'ai-assistants', href: '/ai-assistants' },
-
+        { name: 'AI Room Designer', active: activePage === 'ai-room-designer', href: '/ai-room-designer' },
     ];
 </script>
 

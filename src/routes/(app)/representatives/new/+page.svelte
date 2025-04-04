@@ -216,7 +216,7 @@
 
         <div class="grid grid-cols-2 gap-6">
           <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-[18px] font-semibold text-[#737373] mb-4">Schedule (Optional)</h2>
+            <h2 class="text-[18px] font-semibold text-[#737373] mb-4">Schedule - Time Zone: EST (Eastern Standard Time)</h2>
             <div class="space-y-4">
               {#each days as day}
                 <div class="flex items-center">

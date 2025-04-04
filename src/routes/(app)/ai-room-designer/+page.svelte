@@ -250,6 +250,13 @@
                             </Button>
                         </div>
                     </div>
+
+                </div>
+               <div class="w-full">
+                <div class="h-[30rem] w-[45rem] bg-gray-300 flex justify-center items-center mx-auto">
+
+                    <h1>Image Preview</h1>
+                </div>
                 </div>
             </div>
 

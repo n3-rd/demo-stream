@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Bell } from 'lucide-svelte';
+  import { Bell, Download } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from "$lib/components/ui/card";
   import { Input } from "$lib/components/ui/input";
@@ -648,24 +648,27 @@
     const { scheduledMeetings, bookingDate, newMeeting, representativeDetails, currentRep } = pendingAppointmentData;
     
     // Add the new meeting to scheduled meetings
-      scheduledMeetings[bookingDate].push(newMeeting);
-      console.log('schedule console: Updated meetings for date:', scheduledMeetings[bookingDate]);
+    scheduledMeetings[bookingDate].push(newMeeting);
+    console.log('schedule console: Updated meetings for date:', scheduledMeetings[bookingDate]);
 
-      const updateData = {
-        scheduled_meetings: JSON.stringify(scheduledMeetings)
-      };
-      console.log('schedule console: Sending update data:', updateData);
+    const updateData = {
+      scheduled_meetings: JSON.stringify(scheduledMeetings)
+    };
+    console.log('schedule console: Sending update data:', updateData);
 
-      const updatedRep = await pb.collection('representatives')
-        .update(representativeDetails.id, updateData);
-      console.log('schedule console: Successfully updated meetings:', updatedRep);
-      
+    const updatedRep = await pb.collection('representatives')
+      .update(representativeDetails.id, updateData);
+    console.log('schedule console: Successfully updated meetings:', updatedRep);
+    
     // Show confirmation toast
-      showConfirmationToast(representativeDetails.name, bookingDate, selectedSlot.time, representativeDetails.location || 'Online');
-      
+    showConfirmationToast(representativeDetails.name, bookingDate, selectedSlot.time, representativeDetails.location || 'Online');
+    
+    // Download calendar file automatically
+    generateICSFile();
+    
     // Clear pending data and close the dialog
     pendingAppointmentData = null;
-      dispatch('close');
+    dispatch('close');
   }
 
   async function sendEmailNotifications(data, maxRetries = 2) {
@@ -759,6 +762,12 @@
 
   function handleCancel() {
     dispatch('close'); // Dispatch close event to close the dialog
+    
+    // Also directly close/reset state if parent doesn't handle event
+    calendarVisible = false;
+    pendingAppointmentData = null;
+    showEmailConfirmModal = false;
+    showAppointmentConfirmation = false;
   }
 
   // Function to check if a date is in the past
@@ -952,6 +961,78 @@
     
     // Filter out booked slots
     return allTimeSlots.filter(slot => !isTimeSlotBooked(date, slot.time, scheduledMeetings));
+  }
+
+  // Add this function to your script section
+  function generateICSFile() {
+    if (!selectedDate || !selectedSlot || !representativeDetails) {
+      toast.error('Please complete scheduling your appointment first');
+      return;
+    }
+    
+    // Parse the time slot
+    const [startTimeStr, endTimeStr] = selectedSlot.time.split(' - ');
+    
+    // Create start and end date objects
+    const startDate = new Date(selectedDate);
+    const endDate = new Date(selectedDate);
+    
+    // Parse start time
+    const [startHour, startMinPeriod] = startTimeStr.split(':');
+    const [startMin, startPeriod] = startMinPeriod.split(' ');
+    let startHour24 = parseInt(startHour);
+    if (startPeriod === 'PM' && startHour24 < 12) startHour24 += 12;
+    if (startPeriod === 'AM' && startHour24 === 12) startHour24 = 0;
+    
+    startDate.setHours(startHour24, parseInt(startMin) || 0, 0);
+    
+    // Parse end time
+    const [endHour, endMinPeriod] = endTimeStr.split(':');
+    const [endMin, endPeriod] = endMinPeriod.split(' ');
+    let endHour24 = parseInt(endHour);
+    if (endPeriod === 'PM' && endHour24 < 12) endHour24 += 12;
+    if (endPeriod === 'AM' && endHour24 === 12) endHour24 = 0;
+    
+    endDate.setHours(endHour24, parseInt(endMin) || 0, 0);
+    
+    // Format dates for ICS
+    const formatDateForICS = (date) => {
+      return date.toISOString().replace(/-|:|\.\d+/g, '');
+    };
+    
+    const title = appointmentTitle || `Meeting with ${representativeDetails.name}`;
+    const location = representativeDetails.location || 'Online';
+    const description = `Appointment with ${representativeDetails.name}.\nContact: ${phoneNumber}\nRoom: ${roomName || 'TBD'}`;
+    
+    // Create ICS content
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `SUMMARY:${title}`,
+      `DTSTART:${formatDateForICS(startDate)}`,
+      `DTEND:${formatDateForICS(endDate)}`,
+      `LOCATION:${location}`,
+      `DESCRIPTION:${description.replace(/\n/g, '\\n')}`,
+      'STATUS:CONFIRMED',
+      `ORGANIZER;CN=${representativeDetails.name}:mailto:${representativeDetails.email || 'noreply@example.com'}`,
+      `ATTENDEE;CN=${fullName}:mailto:${email}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+    
+    // Create and download the file
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${title.replace(/\s+/g, '_')}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Calendar file downloaded successfully');
   }
 </script>
 
@@ -1152,12 +1233,23 @@
             
             {#if calendarVisible}
               <div class="absolute z-10 mt-1 bg-white border border-gray-300 rounded-md shadow-lg w-full">
-            <Calendar 
-              bind:value 
+                <div class="flex justify-end p-2">
+                  <button 
+                    class="text-gray-500 hover:text-gray-700"
+                    on:click={() => {
+                      calendarVisible = false;
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                </div>
+                <Calendar 
+                  bind:value 
                   class="rounded-md w-full" 
-              isDateDisabled={isDateDisabled}
-              renderDate={customDateCell}
-                  on:datechange={() => {
+                  isDateDisabled={isDateDisabled}
+                  renderDate={customDateCell}
+                  on:click={() => {
+                    console.log('Calendar click event triggered'); // Debug log
                     selectedDate = new Date(value.year, value.month - 1, value.day);
                     calendarVisible = false;
                     // Fetch slots after date selection
@@ -1269,6 +1361,8 @@
             Set Reminder
           </button>
         </div>
+
+       
       </div>
     </div>
 
@@ -1355,13 +1449,13 @@
       <p class="mb-1"><strong>Representative Name:</strong> {appointmentDetails.representativeName}</p>
       <p class="mb-1"><strong>Location:</strong> {appointmentDetails.location}</p>
     </div>
-    <div class="flex justify-between items-center">
-      <p class="text-sm text-gray-600">By clicking yes, you are confirming your appointment</p>
+    <div class="flex justify-end mt-4 space-x-3">
+
       <button 
-        class="px-6 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+        class="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/80"
         on:click={confirmAppointment}
       >
-        YES
+        Confirm
       </button>
     </div>
   </div>

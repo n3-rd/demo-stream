@@ -225,12 +225,12 @@
                     <input 
                       type="time" 
                       name="{day.toLowerCase()}_start"
-                      class="w-[101.24px] h-[26px] bg-[#E0E8F5] border-none rounded-[3px] px-2 text-sm"
+                      class="w-[120.24px] h-[26px] bg-[#E0E8F5] border-none rounded-[3px] px-2 text-sm"
                     />
                     <input 
                       type="time" 
                       name="{day.toLowerCase()}_end"
-                      class="w-[101.24px] h-[26px] bg-[#E0E8F5] border-none rounded-[3px] px-2 text-sm"
+                      class="w-[120.24px] h-[26px] bg-[#E0E8F5] border-none rounded-[3px] px-2 text-sm"
                     />
                   </div>
                 </div>

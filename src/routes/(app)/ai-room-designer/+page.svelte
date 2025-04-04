@@ -107,17 +107,6 @@
                         {/if}
                     </div>
 
-                    <!-- Assigned ID -->
-                    <div class="space-y-2">
-                        <Label for="assignedId" class="block text-[14px] font-medium text-[#737373]">Assigned ID</Label>
-                        <Input 
-                            type="text" 
-                            id="assignedId" 
-                            name="assignedId" 
-                            class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px]"
-                        />
-                    </div>
-
                     <!-- Type of Content -->
                     <div class="space-y-2">
                         <Label class="block text-[14px] font-medium text-[#737373]">Type of Content</Label>

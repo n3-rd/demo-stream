@@ -282,7 +282,7 @@
 <div class="flex h-screen bg-[#F5F5F5]">
     <Sidenav activePage="content-library" />
     
-    <div class="flex-1 overflow-auto p-6 mt-[6rem]">
+    <div class="flex-1 p-6 mt-[6rem]">
         <div class=" mx-auto space-y-6">
             <!-- Header -->
             <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
@@ -398,7 +398,6 @@
                                 on:blur={() => touchedFields.description = true}
                                 class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {(touchedFields.description || formSubmitAttempted) && $form.description && $form.description.errors?.required ? 'border-red-500' : ''}" 
                             ></textarea>
-                            <span class="absolute right-4 top-4  text-[18px] font-semibold text-[#737373]">Add Image</span>
                         </div>
                         {#if (touchedFields.description || formSubmitAttempted) && $form.description && $form.description.errors?.required}
                             <div class="text-red-500 text-sm">Description is required</div>

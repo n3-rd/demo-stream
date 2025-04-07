@@ -43,7 +43,7 @@
     }
 </script>
 
-<div class="flex h-screen bg-gray-100">
+<div class="flex h-screen bg-[#eceef3]">
     <Sidenav activePage="content-library" />
     
     <div class="flex-1 overflow-auto">

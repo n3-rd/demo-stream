@@ -70,7 +70,7 @@
     }
 </script>
 
-<div class="flex h-screen bg-[#F5F5F5]">
+<div class="flex h-screen bg-[#eceef3]">
     <Sidenav activePage="ai-room-designer" />
     
     <div class="flex-1 p-6 mt-[6rem]">

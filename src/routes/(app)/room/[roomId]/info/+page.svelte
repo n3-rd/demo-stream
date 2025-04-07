@@ -266,7 +266,7 @@
     }
 </script>
 
-<div class="flex bg-[#F5F5F5] overflow-hidden ">
+<div class="flex bg-[#eceef3] overflow-hidden ">
     <Sidenav activePage="rooms" />
     
     <div class="flex-1 overflow-y-auto pb-6">

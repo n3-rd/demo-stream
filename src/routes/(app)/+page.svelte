@@ -250,55 +250,7 @@
     if (content.length === 0) {
       console.log('No content available, adding mock data');
       
-      // Mock data for host content
-      hostContent = [
-        {
-          id: 'mock-host-video-1',
-          title: 'Sample Host Video',
-          collectionId: 'content_library',
-          type: 'video',
-          library_type: 'host'
-        },
-        {
-          id: 'mock-host-pdf-1',
-          title: 'Sample Host PDF',
-          collectionId: 'content_library',
-          type: 'pdf',
-          library_type: 'host'
-        },
-        {
-          id: 'mock-host-document-1',
-          title: 'Sample Host Document',
-          collectionId: 'content_library',
-          type: 'document',
-          library_type: 'host'
-        }
-      ];
-      
-      // Mock data for representative content
-      representativeContent = [
-        {
-          id: 'mock-rep-video-1',
-          title: 'Sample Representative Video',
-          collectionId: 'content_library',
-          type: 'video',
-          library_type: 'representative'
-        },
-        {
-          id: 'mock-rep-pdf-1',
-          title: 'Sample Representative PDF',
-          collectionId: 'content_library',
-          type: 'pdf',
-          library_type: 'representative'
-        },
-        {
-          id: 'mock-rep-document-1',
-          title: 'Sample Representative Document',
-          collectionId: 'content_library',
-          type: 'document',
-          library_type: 'representative'
-        }
-      ];
+ 
       
       // Update content array
       content = selectedTab === 'host' ? [...hostContent] : [...representativeContent];
@@ -308,7 +260,7 @@
   });
 </script>
 
-<div class="flex bg-[#F5F5F5] overflow-hidden">
+<div class="flex bg-[#eceef3] overflow-hidden">
   <Sidenav activePage="dashboard" />
   
   <div class="flex-1 overflow-auto mt-[6rem]">

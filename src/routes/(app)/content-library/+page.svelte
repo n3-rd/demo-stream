@@ -162,7 +162,7 @@
     }
 </script>
 
-<div class="flex bg-[#F5F5F5]">
+<div class="flex bg-[#eceef3]">
     <Sidenav activePage="content-library" />
     
     <div class="flex-1 overflow-auto mt-[6rem]">

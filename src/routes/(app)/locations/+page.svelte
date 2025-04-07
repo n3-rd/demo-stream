@@ -122,7 +122,7 @@
     }
 </script>
 
-<div class="flex bg-gray-100">
+<div class="flex bg-[#eceef3]">
     <Sidenav activePage="locations" />
     
     <div class="flex-1 overflow-auto mt-[6rem]">

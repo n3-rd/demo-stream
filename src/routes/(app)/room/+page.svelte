@@ -281,7 +281,7 @@
 </script>
 
 <!-- Header -->
-<div class="flex h-screen bg-[#F5F5F5]">
+<div class="flex h-screen bg-[#eceef3]">
     <Sidenav activePage="rooms" />
     
     <div class="flex-1 overflow-auto p-6 mt-[6rem]">

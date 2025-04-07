@@ -17,6 +17,8 @@
     };
     let formSubmitAttempted = false;
     let thumbnailFile: File | null = null;
+    let uploading = false;
+    let generatedImage = null;
 
     function handleThumbnailChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -59,9 +61,40 @@
         console.log('Generating room with:', { selectedRoomType, selectedDesignStyle });
     }
     
-    function handleSubmit() {
-        // Submit final design
-        console.log('Submitting with custom prompt:', customPrompt);
+    async function handleSubmit() {
+        if (!selectedFile) {
+            alert('Please upload an image first');
+            return;
+        }
+        
+        try {
+            uploading = true;
+            
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+            formData.append('roomType', selectedRoomType);
+            formData.append('designStyle', selectedDesignStyle);
+            formData.append('userPrompt', customPrompt);
+            
+            const response = await fetch('/api/generate-room', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                generatedImage = result.imageUrl;
+                // You might want to scroll to the result or show a success message
+            } else {
+                throw new Error(result.error || 'Failed to generate design');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert(`Error generating design: ${error.message}`);
+        } finally {
+            uploading = false;
+        }
     }
     
     function saveToViewroom() {
@@ -243,10 +276,11 @@
                         
                         <div class="flex justify-between">
                             <Button 
-                                on:click={generateRoom}
+                                on:click={handleSubmit}
                                 class="bg-primary hover:bg-primary/80 text-white font-medium py-2 px-4 rounded-md w-full"
+                                disabled={!selectedFile || uploading}
                             >
-                                Generate Room
+                                {uploading ? 'Generating...' : 'Generate Design'}
                             </Button>
                         </div>
                     </div>
@@ -254,14 +288,36 @@
                 </div>
                <div class="w-full">
                 <div class="h-[30rem] w-[45rem] bg-gray-300 flex justify-center items-center mx-auto">
-
-                    <h1>Image Preview</h1>
+                    {#if generatedImage}
+                        <img src={generatedImage[0]} alt="Generated room design" class="h-full w-full object-contain" />
+                    {:else}
+                        <h1>Image Preview</h1>
+                    {/if}
                 </div>
-                </div>
+                
+                {#if generatedImage}
+                    <div class="flex justify-center mt-4">
+                        <a href={generatedImage[0]} class="btn bg-primary text-white px-4 py-2 rounded-md" download="room-design.png">Download Image</a>
+                    </div>
+                    {#if generatedImage.length > 1}
+                    <div class="mt-6">
+                        <details class="mb-4">
+                            <summary class="cursor-pointer font-semibold">View processed raw images</summary>
+                            <div class="grid grid-cols-2 gap-4 mt-3">
+                                {#each generatedImage.slice(1) as img, i}
+                                    <div>
+                                        <img src={img} alt={`Debug image ${i+1}`} class="rounded-lg w-full" />
+                                        <a href={img} class="btn btn-sm btn-outline mt-2" download={`room-design-extra-${i+1}.png`}>Download</a>
+                                    </div>
+                                {/each}
+                            </div>
+                        </details>
+                    </div>
+                {/if}
+                {/if}
             </div>
 
-
-
         </div>
+    </div>
     </div>
 </div>

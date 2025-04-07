@@ -64,6 +64,7 @@
 		"pdfjs-dist": "^3.11.174",
 		"pdfkit": "^0.16.0",
 		"pocketbase": "^0.21.5",
+		"replicate": "^1.0.1",
 		"shepherd.js": "^14.5.0",
 		"svelte-email": "^0.0.4",
 		"svelte-pdf-simple": "^2.0.0",

@@ -1,24 +1,22 @@
 // src/routes/api/representatives.ts
-import type { RequestHandler } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 
-export const GET: RequestHandler = async ({ locals }) => {
-    try {
-        const representatives = await locals.pb.collection('users').getFullList({
-            filter: 'representative = true',
-        });
-        return new Response(JSON.stringify({ representatives }), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-    } catch (error) {
-        console.error('Failed to fetch representatives:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch representatives' }), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
+export async function GET({ locals }) {
+    if (!locals.pb.authStore.isValid) {
+        return json([], { status: 401 });
     }
-};
+
+    const user = locals.pb.authStore.model;
+
+    try {
+        const representatives = await locals.pb.collection('representatives').getFullList({
+            filter: `company = "${user.id}"`,
+            sort: '-created'
+        });
+
+        return json(representatives);
+    } catch (err) {
+        console.error('Error fetching representatives:', err);
+        return json([], { status: 500 });
+    }
+}

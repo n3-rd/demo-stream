@@ -4,8 +4,13 @@
     import { Button } from "$lib/components/ui/button";
     import { Input } from "$lib/components/ui/input";
     import { useForm, validators, required } from 'svelte-use-form';
+    import { onMount } from 'svelte';
+    import LibrarySelectDialog from '../upload/LibrarySelectDialog.svelte';
 
     const form = useForm();
+    export let data;
+    let user = data.user;
+    console.log(user)
     let selectedFile: File | null = null;
     let filePreviewUrl: string | null = null;
     let customPrompt = '';
@@ -19,6 +24,33 @@
     let thumbnailFile: File | null = null;
     let uploading = false;
     let generatedImage = null;
+
+    // Add these variables for the content library modal
+    let showLibraryModal = false;
+    let libraryType = 'both'; // Default to both
+    let selectedRepresentatives: string[] = [];
+    let isSaving = false;
+    let saveSuccess = false;
+    let saveError = false;
+
+    // Add this for typed form elements
+    let titleInput: HTMLInputElement;
+    let descriptionTextarea: HTMLTextAreaElement;
+    
+    // Add this to store representatives
+    let representatives: any[] = [];
+    
+    // Fetch representatives on mount
+    onMount(async () => {
+        try {
+            const response = await fetch('/api/representatives');
+            if (response.ok) {
+                representatives = await response.json();
+            }
+        } catch (error) {
+            console.error('Error fetching representatives:', error);
+        }
+    });
 
     function handleThumbnailChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -101,6 +133,186 @@
         // Logic to save to viewroom
         console.log('Saving to viewroom');
     }
+
+    // Add dialog state
+    let showLibraryDialog = false;
+    
+    // Add this function to fix the linter error
+    async function handleSaveToLibrary() {
+        if (!generatedImage) return;
+        
+        try {
+            isSaving = true;
+            
+            // Fetch the image from the URL
+            const response = await fetch(generatedImage[0]);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${response.status}`);
+            }
+            
+            const blob = await response.blob();
+            
+            // Create a proper file object that PocketBase can process
+            const fileName = `room-design-${Date.now()}.png`;
+            const file = new File([blob], fileName, { type: 'image/png' });
+            
+            // Create formData with all required fields
+            const formData = new FormData();
+            formData.append('title', `${selectedDesignStyle} ${roomTypes.find(r => r.value === selectedRoomType)?.label || 'room'}`);
+            formData.append('description', customPrompt || `AI generated room design with ${selectedDesignStyle} style`);
+            formData.append('type', 'image');
+            formData.append('file', file);
+            formData.append('thumbnail', file);
+            formData.append('library_type', libraryType);
+            formData.append('active', 'true');
+            
+            // Add representatives if selected
+            if (libraryType !== 'host' && selectedRepresentatives.length > 0) {
+                formData.append('representatives', selectedRepresentatives.join(','));
+            }
+            
+            // Submit to the upload endpoint
+            const uploadResponse = await fetch('/upload?/uploadContent', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!uploadResponse.ok) {
+                console.error('Upload response not OK:', await uploadResponse.text());
+                throw new Error(`Upload failed with status: ${uploadResponse.status}`);
+            }
+            
+            const result = await uploadResponse.json();
+            
+            if (result.type === 'success') {
+                saveSuccess = true;
+                setTimeout(() => {
+                    showLibraryModal = false;
+                    saveSuccess = false;
+                }, 2000);
+            } else {
+                saveError = true;
+                console.error('Error saving to content library:', result);
+            }
+        } catch (error) {
+            saveError = true;
+            console.error('Error saving to content library:', error);
+        } finally {
+            isSaving = false;
+        }
+    }
+    
+    // For the LibrarySelectDialog approach
+    async function handleLibrarySelect(type: string) {
+        if (!generatedImage) return;
+        
+        try {
+            // Fetch the image from the URL
+            const response = await fetch(generatedImage[0]);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${response.status}`);
+            }
+            
+            const blob = await response.blob();
+            
+            // Create a proper file object
+            const fileName = `room-design-${Date.now()}.png`;
+            const file = new File([blob], fileName, { type: 'image/png' });
+            
+            // Create formData with all required fields
+            const formData = new FormData();
+            
+            // Use the current room details for title and description
+            const roomLabel = roomTypes.find(r => r.value === selectedRoomType)?.label || 'Room';
+            const styleLabel = designStyles.find(s => s.value === selectedDesignStyle)?.label || 'Style';
+            
+            formData.append('title', `${styleLabel} ${roomLabel}`);
+            formData.append('description', customPrompt || `AI generated ${roomLabel.toLowerCase()} with ${styleLabel.toLowerCase()} style`);
+            formData.append('type', 'image');
+            formData.append('file', file);
+            formData.append('thumbnail', file);
+            formData.append('library_type', type);
+            formData.append('active', 'true');
+            formData.append('owner_company', user.id); 
+            
+            // Make the request
+            const uploadResponse = await fetch('/upload?/uploadContent', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!uploadResponse.ok) {
+                const errorText = await uploadResponse.text();
+                console.error('Error response:', errorText);
+                throw new Error(`Upload failed with status: ${uploadResponse.status}`);
+            }
+            
+            const result = await uploadResponse.json();
+            
+            if (result.type === 'success') {
+                alert('Successfully saved to content library!');
+            } else {
+                alert('Error saving to content library');
+                console.error('Error saving to content library:', result);
+            }
+        } catch (error) {
+            alert(`Error saving to content library: ${error.message}`);
+            console.error('Error saving to content library:', error);
+        } finally {
+            showLibraryDialog = false;
+        }
+    }
+
+    // Library selection dialog
+    let librarySelectOpen = false;
+    let selectedLibraryType = '';
+
+    // Function to open the library dialog
+    function openLibraryDialog() {
+        librarySelectOpen = true;
+    }
+    
+    // Handle library type selection
+    async function handleLibraryTypeSelect(type: string) {
+        if (!generatedImage) {
+            alert('No image generated yet');
+            return;
+        }
+        
+        // Get room and style labels
+        const roomLabel = roomTypes.find(r => r.value === selectedRoomType)?.label || 'Room';
+        const styleLabel = designStyles.find(s => s.value === selectedDesignStyle)?.label || 'Style';
+        
+        // Create form data
+        const formData = new FormData();
+        formData.append('imageUrl', generatedImage[0]);
+        formData.append('libraryType', type);
+        formData.append('title', `${styleLabel} ${roomLabel}`);
+        formData.append('description', customPrompt || `AI generated ${roomLabel.toLowerCase()} with ${styleLabel.toLowerCase()} style`);
+        
+        try {
+            // Submit the form using the form action
+            const response = await fetch('?/saveToLibrary', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            console.log("Server response:", result);
+            
+            // Fix the response handling
+            if (result.type === 'success') {
+                alert('Successfully saved to content library!');
+            } else {
+                alert(`Error saving to content library: ${result.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            alert(`Error: ${error.message}`);
+            console.error(error);
+        } finally {
+            librarySelectOpen = false;
+        }
+    }
 </script>
 
 <div class="flex h-screen bg-[#eceef3]">
@@ -133,6 +345,7 @@
                             required 
                             use:validators={[required]}
                             on:blur={() => touchedFields.title = true}
+                            bind:this={titleInput}
                             class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 {(touchedFields.title || formSubmitAttempted) && $form.title?.errors?.required ? 'border-red-500' : ''}"
                         />
                         {#if (touchedFields.title || formSubmitAttempted) && $form.title?.errors?.required}
@@ -165,6 +378,7 @@
                             name="description" 
                             use:validators={[required]}
                             on:blur={() => touchedFields.description = true}
+                            bind:this={descriptionTextarea}
                             class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {(touchedFields.description || formSubmitAttempted) && $form.description?.errors?.required ? 'border-red-500' : ''}" 
                         ></textarea>
                     </div>
@@ -298,6 +512,14 @@
                 {#if generatedImage}
                     <div class="flex justify-center mt-4">
                         <a href={generatedImage[0]} class="btn bg-primary text-white px-4 py-2 rounded-md" download="room-design.png">Download Image</a>
+                        
+                        <!-- This is the simplified button to open the dialog -->
+                        <button 
+                            on:click={openLibraryDialog}
+                            class="btn bg-primary text-white px-4 py-2 rounded-md ml-4"
+                        >
+                            Save to Content Library
+                        </button>
                     </div>
                     {#if generatedImage.length > 1}
                     <div class="mt-6">
@@ -321,3 +543,104 @@
     </div>
     </div>
 </div>
+
+{#if showLibraryModal}
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-[400px] max-w-full">
+            <h3 class="text-xl font-bold mb-4">Save to Content Library</h3>
+            
+            {#if saveSuccess}
+                <div class="bg-green-100 text-green-800 p-3 rounded mb-4">
+                    Successfully saved to content library!
+                </div>
+            {/if}
+            
+            {#if saveError}
+                <div class="bg-red-100 text-red-800 p-3 rounded mb-4">
+                    Error saving to content library. Please try again.
+                </div>
+            {/if}
+            
+            <div class="mb-4">
+                <Label class="block text-[14px] font-medium text-[#737373]">Library Type</Label>
+                <div class="flex gap-4 items-center mt-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input 
+                            type="radio" 
+                            name="library_type" 
+                            value="host"
+                            bind:group={libraryType}
+                            class="w-[15px] h-[15px]"
+                        />
+                        <span class="text-[14px] text-[#737373]">Host Only</span>
+                    </label>
+                    
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input 
+                            type="radio" 
+                            name="library_type" 
+                            value="representative"
+                            bind:group={libraryType}
+                            class="w-[15px] h-[15px]"
+                        />
+                        <span class="text-[14px] text-[#737373]">Representative Only</span>
+                    </label>
+                    
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input 
+                            type="radio" 
+                            name="library_type" 
+                            value="both"
+                            bind:group={libraryType}
+                            class="w-[15px] h-[15px]"
+                        />
+                        <span class="text-[14px] text-[#737373]">Both</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Only show representatives selection if not "host only" -->
+            {#if libraryType !== 'host'}
+                <div class="mb-4">
+                    <Label class="block text-[14px] font-medium text-[#737373]">Select Representatives</Label>
+                    <select
+                        multiple
+                        bind:value={selectedRepresentatives}
+                        class="w-full border border-gray-300 rounded p-2 h-[100px]"
+                    >
+                        {#if representatives.length === 0}
+                            <option disabled>No representatives found</option>
+                        {:else}
+                            {#each representatives as rep}
+                                <option value={rep.id}>{rep.name}</option>
+                            {/each}
+                        {/if}
+                    </select>
+                </div>
+            {/if}
+            
+            <div class="flex justify-end gap-3 mt-6">
+                <button 
+                    on:click={() => showLibraryModal = false}
+                    class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                >
+                    Cancel
+                </button>
+                
+                <button 
+                    on:click={handleSaveToLibrary}
+                    class="px-4 py-2 bg-primary text-white rounded hover:bg-primary/80"
+                    disabled={isSaving}
+                >
+                    {isSaving ? 'Saving...' : 'Save'}
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Use the exact same LibrarySelectDialog component -->
+<LibrarySelectDialog 
+    bind:open={librarySelectOpen} 
+    onSelect={handleLibraryTypeSelect} 
+/>

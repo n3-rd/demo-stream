@@ -336,7 +336,7 @@
                                         checked={selectedType === 'image'}
                                         on:change={() => handleTypeChange('image')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
-                                        disabled
+                                        
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'image' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
                                 </div>

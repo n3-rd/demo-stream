@@ -12,9 +12,7 @@
   import { slide } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
 	import { toast } from 'svelte-sonner';
-  // Import workaround - the linter will still show an error but it should work at runtime
-  // Alternatively, you could mock this for local development
-  const PUBLIC_POCKETBASE_INSTANCE = import.meta.env.PUBLIC_POCKETBASE_INSTANCE || 'http://localhost:8090';
+  import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
   
   // Use dynamic import for PocketBase to avoid issues during build
   import('pocketbase').then(module => {
@@ -52,6 +50,7 @@
   let selectedSlot = null;
   let calendarVisible = false;
   let appointmentTitle = '';
+  let additionalInformation = '';
 
   // Sync fullName with firstName + lastName 
   $: fullName = `${firstName} ${lastName}`.trim();
@@ -498,6 +497,7 @@
         customer_phone: phoneNumber,
         room_name: roomName,
         appointment_title: appointmentTitle || '',
+        additional_information: additionalInformation || '',
         customer_address: {
           street: address.street || '',
           city: address.city || '',
@@ -548,6 +548,7 @@
       bookingTime: selectedSlot.time,
       roomName: roomName,
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
+      additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
         street: address.street || '',
         city: address.city || '',
@@ -599,6 +600,7 @@
       bookingTime: selectedSlot.time,
       roomName: roomName,
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
+      additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
         street: address.street || '',
         city: address.city || '',
@@ -1198,171 +1200,114 @@
           {:else}
             <p class="text-red-500 text-sm">No representatives currently available</p>
           {/if}
-          </div>
+        </div>
 
-        <!-- Date Selection -->
+        <!-- Date and Appointment Title -->
         <div class="mb-4">
-          <div class="flex justify-between items-center mb-1">
+          <div class="flex justify-between items-center mb-2">
             <label class="block text-sm">Select Time and Date</label>
-            <label class="block text-sm">
+            <div>
               <input
                 type="text"
                 placeholder="Appointment Title"
                 bind:value={appointmentTitle}
-                class="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                class="rounded-md border border-gray-300 px-3 py-2 text-sm w-[180px]"
               />
-            </label>
-          </div>
-
-          <div class="relative">
-            <button 
-              type="button"
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-left flex items-center"
-              class:border-red-500={!selectedDate && formError}
-              on:click={() => {
-                calendarVisible = !calendarVisible;
-              }}
-            >
-              <svg class="mr-2" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-              {selectedDate ? selectedDate.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'}) : 'Select a date'}
-            </button>
-            
-            {#if !selectedDate && formError}
-              <div class="text-red-500 text-xs mt-1">Please select a date</div>
-            {/if}
-            
-            {#if calendarVisible}
-              <div class="absolute z-10 mt-1 bg-white border border-gray-300 rounded-md shadow-lg w-full">
-                <div class="flex justify-end p-2">
-                  <button 
-                    class="text-gray-500 hover:text-gray-700"
-                    on:click={() => {
-                      calendarVisible = false;
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
-                </div>
-                <Calendar 
-                  bind:value 
-                  class="rounded-md w-full" 
-                  isDateDisabled={isDateDisabled}
-                  renderDate={customDateCell}
-                  on:click={() => {
-                    console.log('Calendar click event triggered'); // Debug log
-                    selectedDate = new Date(value.year, value.month - 1, value.day);
-                    calendarVisible = false;
-                    // Fetch slots after date selection
-                    if (selectedRepresentative) {
-                      fetchAvailableSlots(selectedRepresentative, selectedDate);
-                    }
-                  }}
-                />
-              </div>
-            {/if}
-          </div>
-        </div>
-
-        <!-- Display selected date and time slots -->
-        {#if selectedDate}
-          <div class="mb-4">
-            <p class="text-sm font-medium mb-2">
-              {selectedDate.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'})}
-            </p>
-            
-            <!-- Add debug info to see what's happening -->
-            <p class="text-xs text-gray-500 mb-2">Available slots: {availableSlots.length}</p>
-
-        {#if availableSlots.length > 0}
-              <div class="grid grid-cols-3 gap-2 mb-3">
-                {#each availableSlots.slice(0, 6) as slot, i}
-                <button 
-                  type="button"
-                  disabled={!slot.available}
-                    class="p-2 border rounded-md text-center text-xs relative
-                          {selectedTimeSlot === slot.id ? 'bg-primary/80 text-white' : ''} 
-                        {!slot.available ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'hover:bg-gray-100'}"
-                  on:click={() => {
-                    selectedTimeSlot = slot.id;
-                      selectedSlot = slot;
-                      console.log('Selected time slot:', slot);
-                    }}
-                  >
-                    {#if slot.time}
-                      <!-- Parse and display the actual time -->
-                      {@const [startTime, endTime] = slot.time.split(' - ')}
-                      <div>{startTime}</div>
-                      <div>to</div>
-                      <div>{endTime}</div>
-                    {:else}
-                      <div>Unknown</div>
-                      <div>Time</div>
-                      <div>Slot</div>
-                    {/if}
-                    
-                  {#if !slot.available}
-                    <div class="absolute inset-0 flex items-center justify-center bg-gray-200 bg-opacity-80 rounded-md">
-                      <span class="text-xs font-medium text-gray-600">Booked</span>
-                    </div>
-                  {/if}
-                </button>
-              {/each}
             </div>
+          </div>
+
+          <!-- Selected Date Display -->
+          {#if selectedDate}
+            <p class="text-sm font-medium mb-4">
+              {selectedDate.toLocaleDateString('en-US', {weekday: 'short', month: 'long', day: 'numeric', year: 'numeric'})}
+            </p>
+          {/if}
+
+          <div class="flex calender-and-time-slots">
+              <!-- Calendar UI -->
+          <div class="relative mb-4 w-1/2">
+            <div class="calendar-container bg-white rounded-md shadow-sm border border-gray-200">
+              <Calendar 
+                bind:value 
+                class="rounded-md w-full" 
+                isDateDisabled={isDateDisabled}
+                renderDate={customDateCell}
+                on:click={() => {
+                  console.log('Calendar click event triggered');
+                  selectedDate = new Date(value.year, value.month - 1, value.day);
+                  
+                  // Fetch slots after date selection
+                  if (selectedRepresentative) {
+                    fetchAvailableSlots(selectedRepresentative, selectedDate);
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          <!-- Time Slots Section -->
+          {#if selectedDate && availableSlots.length > 0}
+            <div class="time-slots-container w-1/2">
+              <div class="flex justify-between items-center mb-2">
+                <p class="text-sm font-medium">Available time slots:</p>
+                {#if selectedTimeSlot}
+                  <button 
+                    class="text-sm text-primary hover:text-primary/80"
+                    on:click={() => {
+                      selectedTimeSlot = null;
+                      selectedSlot = null;
+                    }}
+                  >
+                    Clear selection
+                  </button>
+                {/if}
+              </div>
               
-              {#if availableSlots.length > 6}
-                <div class="grid grid-cols-3 gap-2">
-                  {#each availableSlots.slice(6) as slot, i}
+              <div class="time-slots-grid">
+                <!-- Time slots as vertical list -->
+                <div class="space-y-2 max-h-[250px] overflow-y-auto pr-2">
+                  {#each availableSlots as slot, i}
                     <button 
                       type="button"
                       disabled={!slot.available}
-                      class="p-2 border rounded-md text-center text-xs relative
-                            {selectedTimeSlot === slot.id ? 'bg-primary/80 text-white' : ''} 
-                            {!slot.available ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'hover:bg-gray-100'}"
+                      class="w-full p-3 border rounded-md text-center text-sm relative transition-colors duration-150
+                            {selectedTimeSlot === slot.id ? 'bg-primary text-white' : ''} 
+                            {!slot.available ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50'}"
                       on:click={() => {
                         selectedTimeSlot = slot.id;
                         selectedSlot = slot;
                         console.log('Selected time slot:', slot);
                       }}
                     >
-                      {#if slot.time}
-                        <!-- Parse and display the actual time -->
-                        {@const [startTime, endTime] = slot.time.split(' - ')}
-                        <div>{startTime}</div>
-                        <div>to</div>
-                        <div>{endTime}</div>
-                      {:else}
-                        <div>Unknown</div>
-                        <div>Time</div>
-                        <div>Slot</div>
-                      {/if}
+                      {slot.time}
                       
                       {#if !slot.available}
-                        <div class="absolute inset-0 flex items-center justify-center bg-gray-200 bg-opacity-80 rounded-md">
-                          <span class="text-xs font-medium text-gray-600">Booked</span>
-        </div>
+                        <div class="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-80 rounded-md">
+                          <span class="text-xs font-medium text-gray-500">Booked</span>
+                        </div>
                       {/if}
                     </button>
                   {/each}
                 </div>
-              {/if}
-        {:else}
-              <p class="text-red-500 text-sm">No available time slots for this date. Please select another date.</p>
-        {/if}
+              </div>
+            </div>
+          {:else if selectedDate}
+            <p class="text-red-500 text-sm mt-3 px-2">No available time slots for this date. Please select another date.</p>
+          {/if}
+        </div>
           </div>
-        {/if}
+        
 
         <!-- Set Reminder -->
-        <div class="mb-4">
+        <div class="mt-4 mb-4">
           <button 
             type="button"
-            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-left flex items-center"
+            class="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
           >
-            <svg class="mr-2" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <Bell size={16} />
             Set Reminder
           </button>
         </div>
-
-       
       </div>
     </div>
 
@@ -1377,7 +1322,29 @@
       </button>
       <button 
         type="button"
-        on:click={handleButtonClick} 
+        on:click={() => {
+          console.log("Schedule event clicked, isFormValid:", isFormValid);
+          
+          if (!isFormValid) {
+            // Show validation errors
+            if (!firstName || !lastName) {
+              toast.error('Please enter your full name (first and last name)');
+            } else if (!email) {
+              toast.error('Please enter your email address');
+            } else if (!phoneNumber) {
+              toast.error('Please enter your phone number');
+            } else if (!selectedRepresentative) {
+              toast.error('Please select a representative');
+            } else if (!selectedDate) {
+              toast.error('Please select a date');
+            } else if (!selectedTimeSlot) {
+              toast.error('Please select a time slot');
+            }
+          } else {
+            // Skip handleButtonClick and go straight to showing confirmation
+            handleSubmit();
+          }
+        }} 
         class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/80"
       >
         SCHEDULE EVENT
@@ -1441,22 +1408,123 @@
 <!-- Appointment confirmation modal -->
 {#if showAppointmentConfirmation && appointmentDetails}
 <div class="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
-  <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-    <h3 class="text-lg font-semibold mb-4">Appointment Confirmation</h3>
-    <div class="mb-4">
-      <p class="mb-1"><strong>DATE:</strong> {appointmentDetails.date}</p>
-      <p class="mb-1"><strong>Time Slot:</strong> {appointmentDetails.time}</p>
-      <p class="mb-1"><strong>Representative Name:</strong> {appointmentDetails.representativeName}</p>
-      <p class="mb-1"><strong>Location:</strong> {appointmentDetails.location}</p>
-    </div>
-    <div class="flex justify-end mt-4 space-x-3">
-
-      <button 
-        class="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary/80"
-        on:click={confirmAppointment}
-      >
-        Confirm
-      </button>
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl w-full">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Left Column - Meeting Details -->
+      <div class="border-r pr-6">
+        <div class="flex items-center mb-4">
+          <button on:click={() => { showAppointmentConfirmation = false; }} class="text-primary hover:text-primary/80 mr-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+        </div>
+        
+        {#if representativeDetails}
+        <div class="flex items-center mb-5">
+          <div class="mr-3 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+            {#if representativeDetails.avatar}
+              <img 
+                src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/${representativeDetails.collectionId}/${representativeDetails.id}/${representativeDetails.avatar}`} 
+                alt="{representativeDetails.name}'s Avatar" 
+                class="w-full h-full object-cover object-center"
+              />
+            {:else}
+              <img 
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(representativeDetails.name)}&background=random`} 
+                alt="{representativeDetails.name}'s Avatar" 
+                class="w-full h-full object-cover object-center"
+              />
+            {/if}
+          </div>
+          <div>
+            <p class="font-medium">{representativeDetails.name || "Representative"}</p>
+          </div>
+        </div>
+        {/if}
+        
+        <h2 class="text-xl font-bold mb-5">{appointmentTitle || "60 minute meeting"}</h2>
+        
+        <div class="space-y-4">
+          <div class="flex items-start">
+            <div class="mr-3 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-700">60 min</p>
+            </div>
+          </div>
+          
+          <!-- Virtual meeting info with room link -->
+          <div class="flex items-start">
+            <div class="mr-3 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-700">
+                Virtual meeting
+                {#if roomName}
+                <br />
+                <span class="text-primary break-all text-xs">{`https://viewroom.ca/room/${roomName}`}</span>
+                {/if}
+              </p>
+            </div>
+          </div>
+          
+          <div class="flex items-start">
+            <div class="mr-3 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-700">{appointmentDetails.time}</p>
+              <p class="text-sm text-gray-700">{appointmentDetails.date}</p>
+            </div>
+          </div>
+          
+          <div class="flex items-start">
+            <div class="mr-3 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            </div>
+            <div>
+              <p class="text-sm text-gray-700">Eastern Time - US & Canada</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Column - Confirmation Details -->
+      <div class="pl-2">
+        <h3 class="text-lg font-semibold mb-4">Confirm Appointment</h3>
+        
+        <div class="space-y-4 mb-6">
+          <div>
+            <label class="block text-sm mb-1">Email</label>
+            <div class="py-2 px-3 border border-gray-300 rounded-md bg-gray-50">
+              {email}
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm mb-1">Additional Information</label>
+            <textarea 
+              placeholder="Please share anything that will help prepare for our meeting." 
+              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm h-24"
+              bind:value={additionalInformation}
+            ></textarea>
+          </div>
+        </div>
+        
+        <div class="text-xs text-gray-500 mb-4">
+          By proceeding, you confirm that you have read and agree to our 
+          <a href="#" class="text-primary">Terms of Use</a> and 
+          <a href="#" class="text-primary">Privacy Notice</a>.
+        </div>
+        
+        <button 
+          class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80 font-medium"
+          on:click={confirmAppointment}
+        >
+          Schedule Event
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -1482,5 +1550,17 @@
     content: "Booked";
     font-size: 10px;
     color: #666;
+  }
+  
+  /* New styles for time slots */
+  .time-slots-container {
+    background-color: #f9f9f9;
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .time-slots-grid {
+    display: flex;
+    flex-direction: column;
   }
 </style>

@@ -92,7 +92,7 @@
             </Button>
         </Dialog.Trigger>
         <Dialog.Content
-            class="p-4 rounded-lg w-full bg-transparent max-w-[80vw]"
+            class="p-4 rounded-lg w-full bg-transparent max-w-[90vw]"
         >
             <div class="w-full bg-transparent">
                 <ScheduleMeeting

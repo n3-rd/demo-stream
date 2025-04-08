@@ -18,7 +18,7 @@
 	{month}
 	class={cn(
 		buttonVariants({ variant: "ghost" }),
-		"h-9 w-9 p-0 font-normal ",
+		"h-9 w-9 p-0 rounded-full text-primary font-bold bg-primary/20",
 		"[&[data-today]:not([data-selected])]:bg-accent [&[data-today]:not([data-selected])]:text-accent-foreground",
 		// Selected
 		"data-[selected]:bg-primary data-[selected]:text-primary-foreground data-[selected]:hover:bg-primary data-[selected]:hover:text-primary-foreground data-[selected]:focus:bg-primary data-[selected]:focus:text-primary-foreground data-[selected]:opacity-100",

@@ -6,6 +6,7 @@
     import { useForm, validators, required } from 'svelte-use-form';
     import { onMount } from 'svelte';
     import LibrarySelectDialog from '../upload/LibrarySelectDialog.svelte';
+	import { toast } from 'svelte-sonner';
 
     const form = useForm();
     export let data;
@@ -95,7 +96,7 @@
     
     async function handleSubmit() {
         if (!selectedFile) {
-            alert('Please upload an image first');
+            toast.error('Please upload an image first');
             return;
         }
         
@@ -123,7 +124,7 @@
             }
         } catch (error) {
             console.error('Error:', error);
-            alert(`Error generating design: ${error.message}`);
+            toast.error(`Error generating design: ${error.message}`);
         } finally {
             uploading = false;
         }
@@ -250,13 +251,13 @@
             const result = await uploadResponse.json();
             
             if (result.type === 'success') {
-                alert('Successfully saved to content library!');
+                toast.success('Successfully saved to content library!');
             } else {
-                alert('Error saving to content library');
+                toast.error('Error saving to content library');
                 console.error('Error saving to content library:', result);
             }
         } catch (error) {
-            alert(`Error saving to content library: ${error.message}`);
+            toast.error(`Error saving to content library: ${error.message}`);
             console.error('Error saving to content library:', error);
         } finally {
             showLibraryDialog = false;
@@ -275,7 +276,7 @@
     // Handle library type selection
     async function handleLibraryTypeSelect(type: string) {
         if (!generatedImage) {
-            alert('No image generated yet');
+            toast.error('No image generated yet');
             return;
         }
         
@@ -302,12 +303,12 @@
             
             // Fix the response handling
             if (result.type === 'success') {
-                alert('Successfully saved to content library!');
+                toast.success('Successfully saved to content library!');
             } else {
-                alert(`Error saving to content library: ${result.message || 'Unknown error'}`);
+                toast.error(`Error saving to content library: ${result.message || 'Unknown error'}`);
             }
         } catch (error) {
-            alert(`Error: ${error.message}`);
+            toast.error(`Error: ${error.message}`);
             console.error(error);
         } finally {
             librarySelectOpen = false;

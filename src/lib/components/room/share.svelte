@@ -10,6 +10,9 @@
     export let representativeId: string = '';
     import { page } from '$app/stores';
 
+    // Add this at the top of your script section
+    let emailSent = false;
+
     // More robust uid extraction function
     function extractUid(url) {
         try {
@@ -139,50 +142,73 @@
         >
     </div> -->
 
-    <!-- Email Form
+    <!-- Email Form with updated visibility logic -->
     <form class="space-y-4"
-    action="?/send-email"
-    method="POST"
-    use:enhance
-    use:enhance={() => {
-        return async ({ result }) => {
-            if (result.status === 200) {
-                // Handle success case
-                toast.success("Invite mail sent sucessfully");
-                invalidateAll();
-            } else {
-                // Handle error case
-                toast.error("error sending invite mail");
-            }
-        };
-    }}
+        action="?/send-email"
+        method="POST"
+        use:enhance
+        use:enhance={() => {
+            return async ({ result }) => {
+                if (result.status === 200) {
+                    // Handle success case
+                    toast.success("Invite mail sent successfully");
+                    // Don't hide the form, keep it visible after sending
+                    emailSent = true;
+                    invalidateAll();
+                } else {
+                    // Handle error case
+                    toast.error("Error sending invite mail");
+                }
+            };
+        }}
     >
-    <div class="flex flex-col gap-4">
-        <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            class="flex-1 rounded-lg border px-4 py-2"
-        />
-        <input
-            type="email"
-            name="receipient"
-            placeholder="example@mail.com"
-            class="flex-1 rounded-lg border px-4 py-2"
-        />
-        <input
+        <div class="flex flex-col gap-4">
+            <input
+                type="text"
+                name="name"
+                placeholder="Full Name"
+                class="flex-1 rounded-lg border px-4 py-2"
+            />
+            <input
+                type="email"
+                name="receipient"
+                placeholder="example@mail.com"
+                class="flex-1 rounded-lg border px-4 py-2"
+            />
+            <input
                 type="text"
                 value={shareURL}
                 name="url"
                 class="flex-1 border-none bg-transparent text-gray-700 outline-none hidden"
-                
                 disabled
             />
-    </div>
+        </div>
 
-    <Button class="w-full rounded-lg bg-primary py-2 text-white"
-    type="submit"
-    >Invite</Button>
-</form> -->
-{/if}
+        <Button class="w-full rounded-lg bg-primary py-2 text-white"
+        type="submit"
+        >Invite</Button>
+    </form>
+
+    <!-- Show confirmation after sending email with the room link -->
+    {#if emailSent}
+        <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p class="text-green-700 font-medium mb-2">Email sent successfully!</p>
+            <p class="text-sm text-gray-600 mb-2">Your guest can use this link to join the scheduled meeting:</p>
+            <div class="flex items-center rounded-lg bg-gray-100 p-2 w-full">
+                <input
+                    type="text"
+                    value={cleanUrlPreserveUid(shareURL)}
+                    class="flex-1 border-none bg-transparent text-gray-700 outline-none text-sm overflow-x-auto"
+                    disabled
+                />
+                <Button
+                    class="ml-2 shrink-0"
+                    on:click={() => {
+                        copyText(cleanUrlPreserveUid(shareURL));
+                        toast.success('Link copied to clipboard');
+                    }}><ClipboardCopy /></Button>
+            </div>
+        </div>
+    {/if}
+    {/if}
 </div>

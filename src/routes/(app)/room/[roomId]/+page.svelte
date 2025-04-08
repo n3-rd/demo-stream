@@ -74,7 +74,7 @@ let currentVideoTime = 0;
 let isVideoMuted = false;
 
 // Room data
-const room = data.roomId[0];
+const room = data && data.roomId && data.roomId.length > 0 ? data.roomId[0] : null;
 
 // Get the base room name from the URL
 const baseRoomName = $page.url.pathname.split("/").pop().split("&")[0];
@@ -84,15 +84,45 @@ let uniqueSessionId = '';
 
 // Room data
 $: roomName = uniqueSessionId ? `${baseRoomName}-${uniqueSessionId}` : baseRoomName;
-const user = data.user;
+const user = data?.user;
 const isAuthenticated = !!user;
-const name = isAuthenticated ? user.company_name : "";
-const representatives = data.representatives;
-const users = data.users;
+const name = isAuthenticated ? user?.company_name : "";
+const representatives = data?.representatives || [];
+const users = data?.users || [];
 let isAnonymousHost = false;
 let isHost = false;
 const host = $page.url.pathname.split("/").pop().split("-").pop();
 let showGreetingPopup = false;
+
+// Add retry state
+let webrtcInitAttempts = 0;
+const MAX_WEBRTC_INIT_ATTEMPTS = 3;
+
+// Add connection status state
+let connectionStatus = 'initializing'; // 'initializing', 'connected', 'error', 'disconnected'
+
+// Add this variable to track join attempts
+let joinAttempts = 0;
+const MAX_JOIN_ATTEMPTS = 3;
+
+function calculateTimeRemaining(scheduledTime) {
+    const now = new Date();
+    const diff = scheduledTime.getTime() - now.getTime();
+    
+    if (diff <= 0) return "Now";
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ${hours % 24} hr${hours % 24 !== 1 ? 's' : ''}`;
+    } else if (hours > 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''} ${minutes % 60} min${minutes % 60 !== 1 ? 's' : ''}`;
+    } else {
+      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    }
+  }
 
 let isRepresentative = false;
 $: {
@@ -160,7 +190,7 @@ function getWebSocketURL() {
 onMount(() => {
     // Generate a unique session ID if 'uid' isn't already in the URL
     if (!$page.url.searchParams.get('uid')) {
-        uniqueSessionId = generateRandomString(8); // Generate a short random string
+        uniqueSessionId = generateRandomString(8);
         
         // Create a new URL object to modify the current URL
         const newUrl = new URL(window.location.href);
@@ -190,6 +220,7 @@ onMount(() => {
     const params = new URLSearchParams(window.location.search);
     const representativeName = params.get('repid');
 
+    // Initialize WebRTC even for scheduled meetings - we'll join a waiting room
     if ($anonymousUser || isAuthenticated) {
         // Start with camera on for representatives, off for others
         isCameraOff = !isRepresentative;
@@ -206,7 +237,8 @@ onMount(() => {
             };
         }
 
-        initializeWebRTC();
+        // Start the initialization with retry mechanism
+        initWithRetry();
         
         // Always initialize as host control
         syncSource = 'host';
@@ -306,14 +338,21 @@ onMount(() => {
     
     return () => {
         if (webRTCAdaptor) {
-            webRTCAdaptor.stop(publishStreamId);
-            webRTCAdaptor.stop(roomName);
+            try {
+                webRTCAdaptor.stop(publishStreamId);
+                webRTCAdaptor.stop(roomName);
+            } catch (e) {
+                console.error('Error stopping WebRTC:', e);
+            }
         }
     };
 });
 
 function initializeWebRTC() {
     try {
+        // Reset join attempts
+        joinAttempts = 0;
+        
         // Check if mediaDevices is supported
         const supportsMedia = !!(navigator && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function');
         
@@ -321,11 +360,14 @@ function initializeWebRTC() {
         const forceDcOnly = !supportsMedia || dcOnly;
         inDataChannelOnlyMode = forceDcOnly;
         
-        console.log('WebRTC initialization:', {
+        console.log('WebRTC initialization starting:', {
             supportsMedia,
             forceDcOnly,
             originalDcOnly: dcOnly,
-            mediaConstraints
+            mediaConstraints,
+            roomName,
+            hasRoom: !!room,
+            dataError: data?.error
         });
         
         // Update media constraints if needed
@@ -341,8 +383,14 @@ function initializeWebRTC() {
             onlyDataChannel: forceDcOnly,
             dataChannelEnabled: true,
             debug: true,
-            callback: handleWebRTCCallback,
-            callbackError: handleWebRTCError,
+            callback: (info, obj) => {
+                console.log('WebRTC callback:', info);
+                handleWebRTCCallback(info, obj);
+            },
+            callbackError: (error, message) => {
+                console.error('WebRTC error callback:', {error, message});
+                handleWebRTCError(error, message);
+            },
             bandwidth: 900,
             publishMode: "camera",
             audioBandwidth: 56,
@@ -378,33 +426,64 @@ function initializeWebRTC() {
 }
 
 function handleWebRTCCallback(info: string, obj: any) {
+    console.log(`WebRTC callback: ${info}`, obj);
+    
+    // Check for scheduled meeting
+    const isScheduledMeeting = data?.error && data?.scheduledTime;
+    
     switch (info) {
         case "initialized":
-            console.log("WebRTC initialized");
-            joinRoom();
+            console.log("WebRTC initialized successfully, attempting to join room...");
+            connectionStatus = 'initializing';
+            joinRoomWithRetry(); // Use retry version
+            break;
+        
+        case "publish_started":
+            console.log("Publishing started successfully:", obj);
+            connectionStatus = 'connected';
+            isPlaying = true;
             
-            // If we're in data channel only mode and not the host, trigger a delayed media state request
-            if (webRTCAdaptor && webRTCAdaptor.onlyDataChannel === true && !isHost) {
-                console.log('In data channel only mode, scheduling media state request');
-                setTimeout(() => {
-                    console.log('Sending delayed media state request');
-                    const mediaStateRequest = {
-                        streamId: roomName,
-                        eventType: 'media_state_request'
-                    };
-                    try {
-                        sendMessage(
-                            mediaStateRequest.streamId,
-                            Date.now(),
-                            JSON.stringify(mediaStateRequest),
-                            roomName
-                        );
-                    } catch (error) {
-                        console.error('Error requesting media state:', error);
-                    }
-                }, 3000); // Wait 3 seconds to allow connection to establish
+            // If this is a scheduled meeting in the future, show appropriate UI overlay
+            if (isScheduledMeeting) {
+                console.log("Connected to waiting room for scheduled meeting");
+            } else {
+                // Get the broadcast object to learn about other participants
+                webRTCAdaptor.getBroadcastObject(roomName);
+            }
+            
+            // Enable local audio after publishing starts
+            const localAudio = document.getElementById("localAudio") as HTMLAudioElement;
+            if (localAudio && !isMicMuted && webRTCAdaptor.localStream) {
+                localAudio.srcObject = webRTCAdaptor.localStream;
             }
             break;
+        
+        case "publish_finished":
+            console.log("Publishing finished:", obj);
+            break;
+            
+        case "play_started":
+            console.log("Playing started successfully:", obj);
+            connectionStatus = 'connected';
+            isPlaying = true;
+            isNoStreamExist = false;
+            webRTCAdaptor.getBroadcastObject(roomName);
+            break;
+            
+        case "play_finished":
+            console.log("Play finished:", obj);
+            removeAllRemoteVideos();
+            isPlaying = false;
+            break;
+            
+        case "stream_created":
+            console.log("Stream created successfully:", obj);
+            break;
+            
+        case "stream_not_found":
+            console.log("Stream not found, attempting to create:", obj);
+            break;
+
         case "broadcastObject":
             if (obj.broadcast === undefined) return;
             let broadcastObject = JSON.parse(obj.broadcast);
@@ -440,24 +519,6 @@ function handleWebRTCCallback(info: string, obj: any) {
                 };
                 handleNewParticipant(participant);
             }
-            break;
-        case "publish_started":
-            isPlaying = true;
-            webRTCAdaptor.getBroadcastObject(roomName);
-            // Enable local audio after publishing starts
-            const localAudio = document.getElementById("localAudio") as HTMLAudioElement;
-            if (localAudio && !isMicMuted) {
-                localAudio.srcObject = webRTCAdaptor.localStream;
-            }
-            break;
-        case "play_started":
-            isPlaying = true;
-            isNoStreamExist = false;
-            webRTCAdaptor.getBroadcastObject(roomName);
-            break;
-        case "play_finished":
-            removeAllRemoteVideos();
-            isPlaying = false;
             break;
         case "data_channel_opened":
             console.log('Data channel opened'); // Debug log
@@ -812,13 +873,26 @@ function handleWebRTCCallback(info: string, obj: any) {
         case "sdp_received":
             console.log("SDP received for", obj);
             break;
+        case "closed":
+            console.log("Connection closed");
+            connectionStatus = 'disconnected';
+            break;
             // Add other cases as needed
     }
 }
 
 function handleWebRTCError(error: string, message: string) {
     console.error("WebRTC Error:", error, message);
-    // Implement error handling
+    connectionStatus = 'error';
+    
+    // Show user-friendly error based on error type
+    if (error === "WebSocketNotConnected") {
+      toast.error("Connection to media server failed. Please check your internet connection and try again.");
+    } else if (error === "UserMediaError") {
+      toast.error("Cannot access camera or microphone. Please check your device permissions.");
+    } else {
+      toast.error(`Connection error: ${message}`);
+    }
 }
 
 function sanitizeStreamName(name: string): string {
@@ -836,6 +910,30 @@ function formatDisplayName(name: string, isRepresentative = false): string {
 }
 
 function joinRoom() {
+    // For scheduled meetings, we'll create a waiting room stream
+    const isScheduledMeeting = data?.error && data?.scheduledTime;
+    
+    // Always use URL param as fallback for any type of meeting
+    const baseRoomId = isScheduledMeeting 
+        ? (data?.scheduledRoomId || $page.params.roomId) 
+        : (room?.id || $page.params.roomId);
+    
+    if (!baseRoomId) {
+        console.error('Cannot join room: No valid room ID available');
+        return;
+    }
+    
+    console.log('Joining room with ID:', baseRoomId);
+    
+    console.log('Joining room:', {
+        roomName,
+        sanitizedRoomName: sanitizeStreamName(roomName),
+        publishStreamId: publishStreamId || 'not set',
+        displayName: isAuthenticated ? name : $anonymousUser,
+        isRepresentative,
+        isScheduledMeeting
+    });
+
     if (!publishStreamId) {
         publishStreamId = generateRandomString(12);            
     }
@@ -854,54 +952,61 @@ function joinRoom() {
     // Use the unique room name with uid for the stream
     const sanitizedRoomName = sanitizeStreamName(roomName);
 
-    if (!playOnly) {
-        const streamId = `${publishStreamId}-${sanitizedName}`;
-        console.log('starting publish with streamId:', streamId);
-        
-        const metadata = JSON.stringify({
-            isCameraOff,
-            isMicMuted,
-            isRepresentative: !!data.representativeName,
-            displayName,
-            roomId: room.id, // Add the base room ID for reference
-            uid: uniqueSessionId // Fix: Use uniqueSessionId instead of uid
-        });
-        
-        try {
-            // Check if we're in data channel only mode
-            const inDataChannelOnlyMode = webRTCAdaptor.onlyDataChannel;
-            
-            if (!inDataChannelOnlyMode) {
-                webRTCAdaptor.publish(
-                    streamId,
-                    null,
-                    metadata,
-                    null,
-                    displayName,
-                    sanitizedRoomName // Use the unique room name
-                );
-            } else {
-                console.log('In data channel only mode, skipping media publish');
-                // We still want to join the room for data channel communication
-                isDataChannelOpen = true;
-            }
-        } catch (error) {
-            console.error('Error publishing stream:', error);
-        }
-    }
-
-    console.log('Room connection details:', {
-        uniqueSessionId,
-        roomName,
-        sanitizedRoomName,
-        baseRoomName,
-        shareURL,
-        currentPage: window.location.href
-    });
+    // First check if the stream exists
+    console.log('Checking if stream exists:', sanitizedRoomName);
+    
     try {
-        webRTCAdaptor.play(sanitizedRoomName);
+        // First check if we need to publish (not in playOnly mode)
+        if (!playOnly) {
+            const streamId = `${publishStreamId}-${sanitizedName}`;
+            console.log('Starting publish with streamId:', streamId);
+            
+            const metadata = JSON.stringify({
+                isCameraOff,
+                isMicMuted,
+                isRepresentative: !!data.representativeName,
+                displayName,
+                roomId: baseRoomId,
+                uid: uniqueSessionId,
+                isScheduledMeeting
+            });
+            
+            try {
+                // Check if we're in data channel only mode
+                const inDataChannelOnlyMode = webRTCAdaptor.onlyDataChannel;
+                
+                if (!inDataChannelOnlyMode) {
+                    // Always create our stream
+                    webRTCAdaptor.publish(
+                        streamId,
+                        null,
+                        metadata,
+                        null,
+                        displayName,
+                        sanitizedRoomName
+                    );
+                    
+                    console.log('Stream publish initiated with:', {
+                        streamId,
+                        displayName,
+                        roomId: sanitizedRoomName,
+                        isScheduledMeeting
+                    });
+                } else {
+                    console.log('In data channel only mode, skipping media publish');
+                    isDataChannelOpen = true;
+                }
+            } catch (error) {
+                console.error('Error publishing stream:', error);
+            }
+        }
+
+        // Always play the main room
+        console.log('Playing room stream:', sanitizedRoomName);
+        webRTCAdaptor.play(sanitizedRoomName, null, null, [], null);
+        
     } catch (error) {
-        console.error('Error playing stream:', error);
+        console.error('Error in room joining process:', error);
     }
 }
 
@@ -1666,14 +1771,81 @@ $: {
     }
 }
 
+function joinRoomWithRetry() {
+    joinAttempts++;
+    console.log(`Attempt ${joinAttempts} to join room...`);
+    
+    try {
+        joinRoom();
+    } catch (error) {
+        console.error(`Error joining room (attempt ${joinAttempts}):`, error);
+        
+        if (joinAttempts < MAX_JOIN_ATTEMPTS) {
+            console.log(`Will retry joining room in ${joinAttempts * 2} seconds...`);
+            setTimeout(joinRoomWithRetry, joinAttempts * 2000);
+        } else {
+            console.error('Failed to join room after maximum attempts');
+            connectionStatus = 'error';
+        }
+    }
+}
+
+function initWithRetry() {
+    webrtcInitAttempts++;
+    console.log(`Initializing WebRTC attempt ${webrtcInitAttempts}/${MAX_WEBRTC_INIT_ATTEMPTS}`);
+    
+    try {
+        initializeWebRTC();
+    } catch (error) {
+        console.error(`Error initializing WebRTC (attempt ${webrtcInitAttempts}):`, error);
+        
+        if (webrtcInitAttempts < MAX_WEBRTC_INIT_ATTEMPTS) {
+            console.log(`Will retry WebRTC initialization in ${webrtcInitAttempts * 2} seconds...`);
+            setTimeout(initWithRetry, webrtcInitAttempts * 2000);
+        } else {
+            console.error('Failed to initialize WebRTC after maximum attempts');
+            connectionStatus = 'error';
+        }
+    }
+}
+
 </script>
 
 
-{#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data.representativeName}
-    <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
+{#if data?.error && data?.scheduledTime}
+  <!-- Keep displaying the countdown UI for scheduled meetings -->
+  <div class="flex flex-col items-center justify-center h-screen bg-[#eceef3] p-6 text-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg max-w-md">
+      <h2 class="text-xl font-semibold text-red-600 mb-4">Meeting Not Available Yet</h2>
+      <p class="mb-4">{data.message}</p>
+      
+      {#if data.scheduledTime}
+        <div class="mb-6">
+          <p class="text-sm font-medium">Scheduled For:</p>
+          <p class="text-lg">{new Date(data.scheduledTime).toLocaleString()}</p>
+        </div>
+        
+        <div class="mb-6">
+          <p class="text-sm text-gray-500">Time remaining:</p>
+          <p class="text-2xl font-bold">
+            {calculateTimeRemaining(new Date(data.scheduledTime))}
+          </p>
+        </div>
+      {/if}
+      
+      <button 
+        class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80"
+        on:click={() => window.location.reload()}
+      >
+        Refresh Page
+      </button>
+    </div>
+  </div>
+{:else if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName}
+  <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
     {#if showGreetingPopup}
-        <GreetingPopup name={data.representativeName} host={isHost} on:dismissed={handleGreetingDismissed} />
+        <GreetingPopup name={data?.representativeName} host={isHost} on:dismissed={handleGreetingDismissed} />
     {/if}
     
     <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
@@ -1850,7 +2022,7 @@ $: {
 
             <!-- Mobile Bottom Bar -->
             <MobileBottomBar 
-                roomIdentityName={room.title}
+                roomIdentityName={room?.title || 'Meeting Room'}
                 videoRepresentatives={representatives}
                 availableRepresentatives={availableRepresentatives}
                 scheduleOpen={scheduleOpen}
@@ -1867,7 +2039,7 @@ $: {
             />
 
             <!-- MediaSelector -->
-            {#if isHost || isRepresentative}
+            {#if (isHost || isRepresentative) && room}
                 <div class="h-72 ">
                     <MediaSelector 
                         {isHost} 
@@ -1884,7 +2056,7 @@ $: {
             <!-- Desktop Bottom Bar -->
             <div class="hidden lg:block">
                     <BottomBar 
-                        roomIdentityName={room.title} 
+                        roomIdentityName={room?.title || 'Meeting Room'}
                         {isMicMuted} 
                         on:leaveRoom={leaveRoom} 
                         on:toggleMicrophone={toggleMicrophone} 
@@ -1898,6 +2070,26 @@ $: {
             </div>
         </div>
     </div>
+
+    <!-- Add a connection status indicator to the UI -->
+    {#if !data?.error && (connectionStatus === 'initializing' || connectionStatus === 'disconnected')}
+      <div class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-500 text-black py-2 px-4 rounded-full shadow-lg">
+        <p class="font-medium flex items-center">
+          <span class="animate-pulse mr-2 h-3 w-3 bg-black rounded-full inline-block"></span>
+          {connectionStatus === 'initializing' ? 'Connecting to room...' : 'Disconnected. Reconnecting...'}
+        </p>
+      </div>
+    {:else if connectionStatus === 'error'}
+      <div class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white py-2 px-4 rounded-full shadow-lg">
+        <p class="font-medium flex items-center">
+          <span class="mr-2">⚠️</span>
+          Connection error. 
+          <button class="ml-2 underline" on:click={() => window.location.reload()}>
+            Reload page
+          </button>
+        </p>
+      </div>
+    {/if}
 {/if}
 
 <style>
@@ -1962,3 +2154,4 @@ $: {
     }
 }
 </style>
+

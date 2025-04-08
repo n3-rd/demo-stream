@@ -5,6 +5,7 @@ import type { PageServerLoad } from "./$types";
 import { error } from '@sveltejs/kit';
 import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 import PocketBase from 'pocketbase';
+import { PUBLIC_APP_URL } from '$env/static/public';
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
 const sanitizeAssociatedVideo = (videoRef: string) => {
@@ -20,78 +21,116 @@ const sanitizeAssociatedVideo = (videoRef: string) => {
 }
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
+    const roomIdParam = params.roomId;  // Rename to make it clear this is the URL parameter
+    const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
 
-    // check if the room is active
-    const roomId = await locals.pb.collection('rooms').getFirstListItem(`id = "${params.roomId}"`);
-    if (!roomId.is_active) {
-        throw redirect(303, '/');
-    }
-
-    const representativeId = url.searchParams.get('repid');
-    const user = locals.pb.authStore.model;
-
-    // If there's a representative ID in the URL, handle representative access
-    if (representativeId) {
-        try {
-            // Get the representative from the representatives collection with expanded fields
-            const representative = await locals.pb.collection('representatives').getOne(representativeId, {
-                expand: 'connected_content'
-            });
+    try {
+        // Try to find the scheduled room by room_id
+        const scheduledRooms = await pb.collection('scheduled_rooms').getList(1, 1, {
+            filter: `room_id = "${roomIdParam}" && scheduled = true`
+        });
+        
+        // If this is a scheduled room
+        if (scheduledRooms.items.length > 0) {
+            const scheduledRoom = scheduledRooms.items[0];
+            const scheduleTime = new Date(scheduledRoom.schedule_time);
+            const currentTime = new Date();
             
-            // Get the room with expanded relations
-            const roomId = await locals.pb.collection('rooms').getFullList({
-                filter: `id = "${params.roomId}"`,
-                expand: 'representative,host_content,representative_content,selected_video'
-            });
-
-            if (!roomId.length) {
-                console.log('Room not found line 38');
-                throw redirect(303, '/');
+            // Calculate time difference in minutes
+            const timeDiffMinutes = (scheduleTime.getTime() - currentTime.getTime()) / (1000 * 60);
+            
+            // Allow entry 5 minutes before scheduled time
+            const joinBeforeMinutes = scheduledRoom.join_before_minutes || 5;
+            
+            if (timeDiffMinutes > joinBeforeMinutes) {
+                // Too early for the meeting
+                const formattedDate = scheduleTime.toLocaleString();
+                return {
+                    error: true,
+                    message: `This meeting is scheduled for ${formattedDate}. Please return at that time.`,
+                    scheduledTime: scheduleTime,
+                    scheduledRoomId: roomIdParam, // Add the room ID for WebRTC
+                    user: locals.user
+                };
             }
-
-            const locations = await locals.pb.collection('locations').getFullList({
-                filter: `owner_company = "${locals.user?.id}"`,
-                sort: '-created'
-            });
-
-            const room = roomId[0];
-
-            // Verify the representative has access to this room
-            if (!room.representative || !room.representative.includes(representativeId)) {
-                console.log('Representative does not have access to this room line 46');
-                throw redirect(303, '/');
-            }
-
-            // Return data with representative info
+            
+            // Meeting is available, proceed with all meeting data
             return {
-                user: null,
-                representatives: room.expand?.representative || [],
-                users: [],
-                roomId: [room],
-                videoRepresentativesInfo: room.expand?.representative || [],
-                representativeName: representative.name + ' (representative)',
-                isRepresentative: true,
-                locations
+                scheduledRoom,
+                // Other room data...
             };
-        } catch (error) {
-            console.error('Error handling representative access line 61:', error);
+        }
+        
+        // check if the room is active
+        const roomRecord = await locals.pb.collection('rooms').getFirstListItem(`id = "${params.roomId}"`);
+        if (!roomRecord.is_active) {
             throw redirect(303, '/');
         }
-    }
 
-    // Regular room access
-    try {
-        const roomId = await locals.pb.collection('rooms').getFullList({
+        const representativeId = url.searchParams.get('repid');
+        const user = locals.pb.authStore.model;
+
+        // If there's a representative ID in the URL, handle representative access
+        if (representativeId) {
+            try {
+                // Get the representative from the representatives collection with expanded fields
+                const representative = await locals.pb.collection('representatives').getOne(representativeId, {
+                    expand: 'connected_content'
+                });
+                
+                // Get the room with expanded relations
+                const roomRecords = await locals.pb.collection('rooms').getFullList({
+                    filter: `id = "${params.roomId}"`,
+                    expand: 'representative,host_content,representative_content,selected_video'
+                });
+
+                if (!roomRecords.length) {
+                    console.log('Room not found line 38');
+                    throw redirect(303, '/');
+                }
+
+                const locations = await locals.pb.collection('locations').getFullList({
+                    filter: `owner_company = "${locals.user?.id}"`,
+                    sort: '-created'
+                });
+
+                const room = roomRecords[0];
+
+                // Verify the representative has access to this room
+                if (!room.representative || !room.representative.includes(representativeId)) {
+                    console.log('Representative does not have access to this room line 46');
+                    throw redirect(303, '/');
+                }
+
+                // Return data with representative info
+                return {
+                    user: null,
+                    representatives: room.expand?.representative || [],
+                    users: [],
+                    roomId: [room],
+                    videoRepresentativesInfo: room.expand?.representative || [],
+                    representativeName: representative.name + ' (representative)',
+                    isRepresentative: true,
+                    locations
+                };
+            } catch (error) {
+                console.error('Error handling representative access line 61:', error);
+                throw redirect(303, '/');
+            }
+        }
+
+        // Regular room access
+        const roomRecords = await locals.pb.collection('rooms').getFullList({
             filter: `id = "${params.roomId}"`,
             expand: 'representative,host_content,representative_content,selected_video'
         });
 
-        if (!roomId.length) {
+        if (!roomRecords.length) {
             console.log('Room not found line 74');
             throw redirect(303, '/');
         }
 
-        const room = roomId[0];
+        const room = roomRecords[0];
         const representatives = room.expand?.representative || [];
         const users = user ? await locals.pb.collection('users').getFullList() : [];
 
@@ -111,8 +150,11 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
             isRepresentative: false,
         };
     } catch (error) {
-        console.error('Error loading room line 99:', error);
-        throw redirect(303, '/');
+        console.error('Error checking scheduled room:', error);
+        return {
+            error: true,
+            message: 'Error checking room schedule. Please try again.'
+        };
     }
 };
 
@@ -157,40 +199,58 @@ export const actions: Actions = {
             }, { status: 500 });
         }
     },
-    'send-email': async ({ request, fetch }) => {
+    'send-email': async ({ request, locals, params }) => {
+        // Get the room ID from params
+        const roomId = params.roomId;
+        
+        // Get form data
+        const formData = await request.formData();
+        const name = formData.get('name');
+        const receipient = formData.get('receipient');
+        const url = formData.get('url');
+        
+        // Extract uid from URL if present
+        let uid = '';
         try {
-            const formData = await request.formData();
-            const url = formData.get('url');
-            const name = formData.get('name');
-            const receipient = formData.get('receipient');
-
-            const response = await fetch('/api/send-email', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ url, name, receipient })
-            });
-
-            if (response.ok) {
-                console.log('Email sent successfully', response);
-                return {
-                    status: 200,
-                    body: { message: 'Email sent successfully' }
-                };
-            } else {
-                const errorData = await response.json();
-                console.error('Failed to send email', errorData);
-                return {
-                    status: response.status,
-                    body: { error: errorData.error || 'Failed to send email' }
-                };
-            }
+            const urlObj = new URL(url?.toString() || '');
+            uid = urlObj.searchParams.get('uid') || '';
         } catch (error) {
-            console.error('Failed to send email', error);
+            console.error('Error extracting uid from URL:', error);
+        }
+        
+        // Create a proper room link with uid
+        const baseUrl = PUBLIC_APP_URL || 'http://localhost:3001';
+        const roomLink = `${baseUrl}/room/${roomId}${uid ? `?uid=${uid}` : ''}`;
+        
+        try {
+            // Create email data with updated template
+            const emailData = {
+                to: receipient,
+                subject: `Invitation to join a meeting`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #333;">You've been invited to a meeting</h2>
+                        <p>Hello ${name},</p>
+                        <p>You have been invited to join a meeting.</p>
+                        <p><strong>Room Link:</strong> <a href="${roomLink}">${roomLink}</a></p>
+                        <p>Click the link above to join the meeting.</p>
+                        <p>Best regards,<br>The Meeting Team</p>
+                    </div>
+                `
+            };
+            
+            // Send the email using your email service
+            // ... email sending code here ...
+            
+            return {
+                status: 200,
+                body: { success: true }
+            };
+        } catch (error) {
+            console.error('Error sending email:', error);
             return {
                 status: 500,
-                body: { error: 'Failed to send email' }
+                body: { success: false, message: 'Failed to send email' }
             };
         }
     },

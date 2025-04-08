@@ -15,6 +15,26 @@
     import Embed from "$lib/components/room/embed.svelte";
     import { onMount } from 'svelte';
 
+    // Add the calculateTimeRemaining function here
+    function calculateTimeRemaining(scheduledTime) {
+        const now = new Date();
+        const diff = scheduledTime.getTime() - now.getTime();
+        
+        if (diff <= 0) return "Now";
+        
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        
+        if (days > 0) {
+            return `${days} day${days > 1 ? 's' : ''} ${hours % 24} hr${hours % 24 !== 1 ? 's' : ''}`;
+        } else if (hours > 0) {
+            return `${hours} hour${hours > 1 ? 's' : ''} ${minutes % 60} min${minutes % 60 !== 1 ? 's' : ''}`;
+        } else {
+            return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+        }
+    }
+
     interface SelectItem {
         value: string;
         label: string;
@@ -33,7 +53,16 @@
     let contentToShow: any[] = [];
     let dialogTitle = '';
 
-    $: ({ rooms, representatives, hostContent, repContent, locations } = data);
+    $: ({ 
+        rooms = [], 
+        representatives = [], 
+        hostContent = [], 
+        repContent = [], 
+        locations = [] 
+    } = data || {});
+
+    // Fix the undefined error by adding conditional initialization
+    const room = data?.roomId && data.roomId.length > 0 ? data.roomId[0] : null;
 
     function handleHostContentSelect(event: CustomEvent<{ value: string }[]>) {
         selectedHostContent = event.detail.map(item => item.value);
@@ -311,60 +340,94 @@
             </div>
 
             <!-- Table Rows -->
-            {#each rooms as room}
-                <div class="bg-white rounded-[8px] h-[73px] flex items-center px-6">
-                    <div class="grid grid-cols-7 w-full gap-4">
-                        <div class="text-[16px] font-normal text-[#808080] flex items-center justify-center">
-                            {formatDate(room.created)}
-                        </div>
-                        <div class="text-[16px] font-medium text-[#7798D2] flex items-center justify-center">
-                            <button 
-                                class="hover:underline"
-                                on:click={() => goto(`/room/${room.id}/info`)}
-                            >
-                                {room.title}
-                            </button>
-                        </div>
-                        <div class="flex items-center justify-center">
-                            <div 
-                                class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
-                                on:click={() => toggleRoomActive(room)}
-                            >
-                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
+            {#if data.error}
+                <div class="flex flex-col items-center justify-center h-[calc(100vh-80px)] p-6 text-center">
+                    <div class="bg-white p-8 rounded-lg shadow-lg max-w-md">
+                        <h2 class="text-xl font-semibold text-red-600 mb-4">Meeting Not Available Yet</h2>
+                        <p class="mb-4">{data.message}</p>
+                        
+                        {#if data.scheduledTime}
+                            <div class="mb-6">
+                                <p class="text-sm font-medium">Scheduled For:</p>
+                                <p class="text-lg">{new Date(data.scheduledTime).toLocaleString()}</p>
                             </div>
-                        </div>
-                        <div class="text-[16px] font-normal text-[#808080] flex items-center justify-center">
-                            {#if room.expand?.representative}
-                                {room.expand.representative.map(rep => rep.name).join(', ')}
-                            {/if}
-                        </div>
-                        <div class="flex items-center justify-center">
-                            <button 
-                                class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
-                                on:click={() => showHostContent(room.host_content)}
-                            >
-                                show
-                            </button>
-                        </div>
-                        <div class="flex items-center justify-center">
-                            <button 
-                                class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
-                                on:click={() => showRepContent(room.representative_content)}
-                            >
-                                show
-                            </button>
-                        </div>
-                        <div class="flex items-center justify-center">
-                            <button 
-                                class="text-[16px] font-normal text-[#808080]"
-                                on:click={() => showEmbedDialog(room.id)}
-                            >
-                                show
-                            </button>
-                        </div>
+                            
+                            <div class="mb-6">
+                                <p class="text-sm text-gray-500">Time remaining:</p>
+                                <p class="text-2xl font-bold">
+                                    {calculateTimeRemaining(new Date(data.scheduledTime))}
+                                </p>
+                            </div>
+                        {/if}
+                        
+                        <button 
+                            class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80"
+                            on:click={() => window.location.reload()}
+                        >
+                            Refresh Page
+                        </button>
                     </div>
                 </div>
-            {/each}
+            {:else if rooms && rooms.length > 0}
+                {#each rooms as room}
+                    <div class="bg-white rounded-[8px] h-[73px] flex items-center px-6">
+                        <div class="grid grid-cols-7 w-full gap-4">
+                            <div class="text-[16px] font-normal text-[#808080] flex items-center justify-center">
+                                {formatDate(room.created)}
+                            </div>
+                            <div class="text-[16px] font-medium text-[#7798D2] flex items-center justify-center">
+                                <button 
+                                    class="hover:underline"
+                                    on:click={() => goto(`/room/${room.id}/info`)}
+                                >
+                                    {room.title}
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-center">
+                                <div 
+                                    class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
+                                    on:click={() => toggleRoomActive(room)}
+                                >
+                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
+                                </div>
+                            </div>
+                            <div class="text-[16px] font-normal text-[#808080] flex items-center justify-center">
+                                {#if room.expand?.representative}
+                                    {room.expand.representative.map(rep => rep.name).join(', ')}
+                                {/if}
+                            </div>
+                            <div class="flex items-center justify-center">
+                                <button 
+                                    class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
+                                    on:click={() => showHostContent(room.host_content)}
+                                >
+                                    show
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-center">
+                                <button 
+                                    class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
+                                    on:click={() => showRepContent(room.representative_content)}
+                                >
+                                    show
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-center">
+                                <button 
+                                    class="text-[16px] font-normal text-[#808080]"
+                                    on:click={() => showEmbedDialog(room.id)}
+                                >
+                                    show
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {/each}
+            {:else}
+                <div class="p-6 text-center">
+                    <p>No rooms available. Please create a new room.</p>
+                </div>
+            {/if}
         </div>
     </div>
 </div>

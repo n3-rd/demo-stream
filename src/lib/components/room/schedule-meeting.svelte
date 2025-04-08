@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Bell, Download } from 'lucide-svelte';
+  import { Bell, Download, ClipboardCopy } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from "$lib/components/ui/card";
   import { Input } from "$lib/components/ui/input";
@@ -419,6 +419,11 @@
   let showAppointmentConfirmation = false;
   let appointmentDetails = null;
 
+  // Add state for success confirmation dialog
+  let showSuccessConfirmation = false;
+  let createdRoomId = '';
+  let createdRoomUrl = '';
+
   // Update handleSubmit to show confirmation first
   async function handleSubmit() {
     console.log('schedule console: Starting handleSubmit');
@@ -536,6 +541,13 @@
   function confirmAppointment() {
     showAppointmentConfirmation = false;
     
+    // Create a unique room ID if not provided
+    const roomId = roomName || generateUniqueRoomId();
+    
+    // Construct the room URL
+    const origin = window.location.origin;
+    const roomUrl = `${origin}/room/${roomId}`;
+    
     // Prepare email data
     const emailData = {
       customerName: fullName,
@@ -546,7 +558,8 @@
       repEmail: pendingAppointmentData.representativeDetails.email,
       bookingDate: pendingAppointmentData.bookingDate,
       bookingTime: selectedSlot.time,
-      roomName: roomName,
+      roomName: roomId,
+      roomUrl: roomUrl,  // Add the full room URL
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
       additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
@@ -588,7 +601,10 @@
       return;
     }
     
-    // Prepare email data again
+    // Similar update to include roomUrl in the emailData here...
+    const origin = window.location.origin;
+    const roomUrl = `${origin}/room/${roomName || pendingAppointmentData.roomId}`;
+    
     const emailData = {
       customerName: fullName,
       customerEmail: email,
@@ -598,7 +614,8 @@
       repEmail: pendingAppointmentData.representativeDetails.email,
       bookingDate: pendingAppointmentData.bookingDate,
       bookingTime: selectedSlot.time,
-      roomName: roomName,
+      roomName: roomId,
+      roomUrl: roomUrl,
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
       additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
@@ -649,28 +666,100 @@
     
     const { scheduledMeetings, bookingDate, newMeeting, representativeDetails, currentRep } = pendingAppointmentData;
     
-    // Add the new meeting to scheduled meetings
-    scheduledMeetings[bookingDate].push(newMeeting);
-    console.log('schedule console: Updated meetings for date:', scheduledMeetings[bookingDate]);
+    try {
+      // First update the representative's scheduled meetings
+      scheduledMeetings[bookingDate].push(newMeeting);
+      console.log('schedule console: Updated meetings for date:', scheduledMeetings[bookingDate]);
 
-    const updateData = {
-      scheduled_meetings: JSON.stringify(scheduledMeetings)
-    };
-    console.log('schedule console: Sending update data:', updateData);
+      const updateData = {
+        scheduled_meetings: JSON.stringify(scheduledMeetings)
+      };
+      
+      const updatedRep = await pb.collection('representatives')
+        .update(representativeDetails.id, updateData);
+      console.log('schedule console: Successfully updated meetings:', updatedRep);
+      
+      // Create a unique room ID if not provided
+      const roomId = roomName || generateUniqueRoomId();
+      
+      // Format the date and time for PocketBase
+      const scheduleDateTime = formatScheduleDateTime(bookingDate, newMeeting.time);
+      
+      // Create a scheduled room record
+      const scheduledRoomData = {
+        title: appointmentTitle || `Meeting with ${representativeDetails.name}`,
+        representative: [representativeDetails.id], // Array of relation IDs
+        scheduled: true,
+        schedule_time: scheduleDateTime,
+        customer_name: fullName,
+        customer_email: email,
+        customer_phone: phoneNumber,
+        additional_information: additionalInformation || '',
+        room_id: roomId
+      };
+      
+      console.log('Creating scheduled room with data:', scheduledRoomData);
+      
+      const scheduledRoom = await pb.collection('scheduled_rooms').create(scheduledRoomData);
+      console.log('Successfully created scheduled room:', scheduledRoom);
+      
+      // Construct the room URL
+      const origin = window.location.origin;
+      const roomUrl = `${origin}/room/${roomId}`;
+      
+      // Set variables for the success dialog
+      createdRoomId = roomId;
+      createdRoomUrl = roomUrl;
+      
+      // Show confirmation toast
+      showConfirmationToast(representativeDetails.name, bookingDate, newMeeting.time, representativeDetails.location || 'Online', roomId);
+      
+      // Show the success confirmation dialog
+      showSuccessConfirmation = true;
+      
+      // Clear pending data and close the appointment dialog
+      pendingAppointmentData = null;
+      dispatch('close');
+      
+      // Return the room ID for redirection (if needed)
+      return roomId;
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      toast.error('Failed to schedule the meeting. Please try again.');
+      throw error;
+    }
+  }
 
-    const updatedRep = await pb.collection('representatives')
-      .update(representativeDetails.id, updateData);
-    console.log('schedule console: Successfully updated meetings:', updatedRep);
+  // Helper function to generate a unique room ID
+  function generateUniqueRoomId() {
+    // Generate a random string of 10 characters (alphanumeric)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 10; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  // Format the date and time for PocketBase
+  function formatScheduleDateTime(date, timeSlot) {
+    // Example timeSlot: "9:00 AM - 10:00 AM"
+    const [startTime] = timeSlot.split(' - ');
+    const [hourStr, minutePeriod] = startTime.split(':');
+    const [minuteStr, period] = minutePeriod.split(' ');
     
-    // Show confirmation toast
-    showConfirmationToast(representativeDetails.name, bookingDate, selectedSlot.time, representativeDetails.location || 'Online');
+    let hour = parseInt(hourStr);
+    if (period === 'PM' && hour < 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
     
-    // Download calendar file automatically
-    generateICSFile();
+    // Parse the date string (format: YYYY-MM-DD)
+    const [year, month, day] = date.split('-').map(Number);
     
-    // Clear pending data and close the dialog
-    pendingAppointmentData = null;
-    dispatch('close');
+    // Create a UTC date object
+    const dateObj = new Date(Date.UTC(year, month - 1, day, hour, parseInt(minuteStr)));
+    
+    // Return ISO string
+    return dateObj.toISOString();
   }
 
   async function sendEmailNotifications(data, maxRetries = 2) {
@@ -805,7 +894,7 @@
   }
 
   // Update the showConfirmationToast function to use the toast component
-  function showConfirmationToast(repName, date, time, location) {
+  function showConfirmationToast(repName, date, time, location, roomId) {
     // Format the date in a more readable way
     const readableDate = new Date(date).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -815,11 +904,18 @@
     });
     
     const title = appointmentTitle ? `"${appointmentTitle}"` : '';
-    const message = `Your appointment ${title} with ${repName} is scheduled for ${readableDate} at ${time}. ${location ? `Location: ${location}` : ''}`;
+    const message = `Your appointment ${title} with ${repName} is scheduled for ${readableDate} at ${time}. Use room ID: ${roomId} to join.`;
     
     toast.success(message, {
       duration: 6000, // Show for 6 seconds
-      position: 'top-center'
+      position: 'top-center',
+      action: {
+        label: 'Copy Room Link',
+        onClick: () => {
+          navigator.clipboard.writeText(`https://viewroom.ca/room/${roomId}`);
+          toast.success('Room link copied to clipboard');
+        }
+      }
     });
   }
 
@@ -966,11 +1062,15 @@
   }
 
   // Add this function to your script section
-  function generateICSFile() {
+  function generateICSFile(roomId) {
     if (!selectedDate || !selectedSlot || !representativeDetails) {
       toast.error('Please complete scheduling your appointment first');
       return;
     }
+    
+    // Construct the room URL
+    const origin = window.location.origin;
+    const roomUrl = `${origin}/room/${roomId}`;
     
     // Parse the time slot
     const [startTimeStr, endTimeStr] = selectedSlot.time.split(' - ');
@@ -1004,7 +1104,7 @@
     
     const title = appointmentTitle || `Meeting with ${representativeDetails.name}`;
     const location = representativeDetails.location || 'Online';
-    const description = `Appointment with ${representativeDetails.name}.\nContact: ${phoneNumber}\nRoom: ${roomName || 'TBD'}`;
+    const description = `Appointment with ${representativeDetails.name}.\nContact: ${phoneNumber}\nRoom Link: ${roomUrl}\n\nAdditional Information: ${additionalInformation || 'None provided.'}\n\nJoin the meeting at the scheduled time using the link above.`;
     
     // Create ICS content
     const icsContent = [
@@ -1034,7 +1134,7 @@
     link.click();
     document.body.removeChild(link);
     
-    toast.success('Calendar file downloaded successfully');
+    toast.success('Calendar file with meeting link downloaded successfully');
   }
 </script>
 
@@ -1525,6 +1625,69 @@
           Schedule Event
         </button>
       </div>
+    </div>
+  </div>
+</div>
+{/if}
+
+<!-- Success confirmation dialog -->
+{#if showSuccessConfirmation}
+<div class="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+    <div class="mb-4 flex items-center justify-between text-[#464646]">
+      <h2 class="text-lg font-semibold">Appointment Scheduled</h2>
+      <button on:click={() => { showSuccessConfirmation = false; }} class="text-gray-500 hover:text-gray-700">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    
+    <p class="text-sm text-gray-600 mb-4">
+      Your appointment has been successfully scheduled. Please save the meeting link to join at the scheduled time.
+    </p>
+    
+    <!-- Link Input -->
+    <div class="mb-4">
+      <label class="mb-2 block text-sm text-gray-700">
+        Meeting Link
+      </label>
+      <div class="flex items-center rounded-lg bg-gray-100 p-2 w-full">
+        <input
+          type="text"
+          value={createdRoomUrl}
+          class="flex-1 border-none bg-transparent text-gray-700 outline-none text-sm overflow-x-auto"
+          readonly
+        />
+        <Button
+          class="ml-2 shrink-0"
+          on:click={() => {
+            navigator.clipboard.writeText(createdRoomUrl);
+            toast.success('Link copied to clipboard');
+          }}
+        >
+          <ClipboardCopy size={16} />
+        </Button>
+      </div>
+      <p class="text-xs text-gray-500 mt-1">Share this link with participants to join the meeting</p>
+    </div>
+    
+    <div class="flex justify-between mt-6">
+      <Button
+        variant="outline"
+        on:click={() => {
+          generateICSFile(createdRoomId);
+        }}
+      >
+        <Download size={16} class="mr-2" />
+        Download Calendar
+      </Button>
+      
+      <Button
+        on:click={() => {
+          showSuccessConfirmation = false;
+        }}
+      >
+        Done
+      </Button>
     </div>
   </div>
 </div>

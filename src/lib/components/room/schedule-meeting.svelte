@@ -424,6 +424,10 @@
   let createdRoomId = '';
   let createdRoomUrl = '';
 
+  // Add this to your script section at the top
+  let showConfirmationPopup = false;
+  let roomUrl = ""; // This will store the meeting URL
+
   // Update handleSubmit to show confirmation first
   async function handleSubmit() {
     console.log('schedule console: Starting handleSubmit');
@@ -711,15 +715,11 @@
       createdRoomId = roomId;
       createdRoomUrl = roomUrl;
       
-      // Show confirmation toast
+      // Show confirmation popup instead of toast
       showConfirmationToast(representativeDetails.name, bookingDate, newMeeting.time, representativeDetails.location || 'Online', roomId);
       
-      // Show the success confirmation dialog
-      showSuccessConfirmation = true;
-      
-      // Clear pending data and close the appointment dialog
-      pendingAppointmentData = null;
-      dispatch('close');
+      // DON'T dispatch close here - it might be closing our dialog
+      // dispatch('close');
       
       // Return the room ID for redirection (if needed)
       return roomId;
@@ -893,7 +893,7 @@
     }
   }
 
-  // Update the showConfirmationToast function to use the toast component
+  // Update the showConfirmationToast function to include uid in the URL
   function showConfirmationToast(repName, date, time, location, roomId) {
     // Format the date in a more readable way
     const readableDate = new Date(date).toLocaleDateString('en-US', {
@@ -903,20 +903,26 @@
       year: 'numeric'
     });
     
-    const title = appointmentTitle ? `"${appointmentTitle}"` : '';
-    const message = `Your appointment ${title} with ${repName} is scheduled for ${readableDate} at ${time}. Use room ID: ${roomId} to join.`;
+    // Get unique ID from URL or generate one
+    const urlParams = new URLSearchParams(window.location.search);
+    const uid = urlParams.get('uid') || generateUniqueRoomId();
     
-    toast.success(message, {
-      duration: 6000, // Show for 6 seconds
-      position: 'top-center',
-      action: {
-        label: 'Copy Room Link',
-        onClick: () => {
-          navigator.clipboard.writeText(`https://viewroom.ca/room/${roomId}`);
-          toast.success('Room link copied to clipboard');
-        }
-      }
-    });
+    // Set values for the confirmation popup with complete URL including uid
+    roomUrl = `https://viewroom.ca/room/${roomId}?uid=${uid}`;
+    
+    // Store the appointment details for the popup
+    pendingAppointmentData = {
+      ...pendingAppointmentData,
+      bookingDate: date,
+      formattedDate: readableDate,
+      representativeName: repName,
+      timeSlot: time,
+      roomId: roomId,
+      uid: uid
+    };
+    
+    // Show the confirmation popup
+    showConfirmationPopup = true;
   }
 
   // Add helper function to extract rep ID
@@ -1135,6 +1141,25 @@
     document.body.removeChild(link);
     
     toast.success('Calendar file with meeting link downloaded successfully');
+  }
+
+  // Helper functions for formatting
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  }
+
+  function formatTimeRange(timeRange) {
+    // If timeRange is already formatted, return it
+    if (typeof timeRange === 'string') {
+      return timeRange;
+    }
+    // Handle other formats as needed
+    return timeRange;
   }
 </script>
 
@@ -1691,6 +1716,51 @@
     </div>
   </div>
 </div>
+{/if}
+
+<!-- Replace the existing showConfirmationPopup dialog -->
+{#if showConfirmationPopup && pendingAppointmentData}
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-[400px] max-w-full shadow-xl">
+      <h2 class="text-xl font-semibold mb-4">Appointment Confirmation</h2>
+      
+      <div class="space-y-2 mb-5">
+        <p class="font-medium">DATE: {pendingAppointmentData.formattedDate || formatDate(pendingAppointmentData.bookingDate)}</p>
+        <p>Time Slot: {selectedSlot?.time || pendingAppointmentData.timeSlot}</p>
+        <p>Representative Name: {pendingAppointmentData.representativeName || representativeDetails?.name || 'Representative'}</p>
+        {#if pendingAppointmentData.location}
+          <p>Location: {pendingAppointmentData.location}</p>
+        {/if}
+      </div>
+      
+      <!-- Add the room link section -->
+      <div class="mt-3 mb-5 pt-3 border-t border-gray-200">
+        <p class="text-sm font-medium mb-2">Room Link:</p>
+        <a href={roomUrl} target="_blank" class="text-primary underline text-sm break-all">{roomUrl}</a>
+        <Button
+          class="ml-2 shrink-0"
+          on:click={() => {
+            navigator.clipboard.writeText(roomUrl);
+            toast.success('Link copied to clipboard');
+          }}
+        >
+          <ClipboardCopy size={16} />
+        </Button>
+      </div>
+      
+      <div class="flex justify-between items-center pt-3 border-t border-gray-200">
+        <p class="text-sm text-gray-600">By clicking yes, you are confirming your appointment</p>
+        <button 
+          class="bg-green-600 text-white px-4 py-1 rounded"
+          on:click={() => {
+            showConfirmationPopup = false;
+          }}
+        >
+          YES
+        </button>
+      </div>
+    </div>
+  </div>
 {/if}
 
 <style>

@@ -211,6 +211,68 @@ export const actions: Actions = {
                 message: 'Failed to upload content'
             });
         }
+    },
+
+    // Add a new action for AI room designs
+    uploadAiRoomDesign: async ({ request, locals }) => {
+        const formData = await request.formData();
+        
+        try {
+            // Get form values
+            const title = formData.get('title')?.toString() || 'AI Room Design';
+            const description = formData.get('description')?.toString() || '';
+            const libraryType = formData.get('library_type')?.toString() || 'both';
+            const ownerCompany = formData.get('owner_company')?.toString() || '';
+            
+            // Get both files
+            const originalFile = formData.get('original_file');
+            const generatedFile = formData.get('generated_file');
+            
+            if (!originalFile || !generatedFile || 
+                !(originalFile instanceof File) || 
+                !(generatedFile instanceof File)) {
+                return { type: 'error', message: 'Missing or invalid files' };
+            }
+            
+            // Create the records for both images
+            const pb = locals.pb;
+            
+            // Create record for original image
+            const originalData = new FormData();
+            originalData.append('title', `${title} - Original`);
+            originalData.append('description', `Original image for ${description}`);
+            originalData.append('type', 'image');
+            originalData.append('file', originalFile);
+            originalData.append('library_type', libraryType);
+            originalData.append('active', 'true');
+            originalData.append('owner_company', ownerCompany);
+            
+            const originalRecord = await pb.collection('content_library').create(originalData);
+            
+            // Create record for generated image
+            const generatedData = new FormData();
+            generatedData.append('title', `${title} - AI Generated`);
+            generatedData.append('description', description);
+            generatedData.append('type', 'image');
+            generatedData.append('file', generatedFile);
+            generatedData.append('library_type', libraryType);
+            generatedData.append('active', 'true');
+            generatedData.append('owner_company', ownerCompany);
+            
+            const generatedRecord = await pb.collection('content_library').create(generatedData);
+            
+            return {
+                type: 'success',
+                originalId: originalRecord.id,
+                generatedId: generatedRecord.id
+            };
+        } catch (error) {
+            console.error('Error uploading AI room design:', error);
+            return { 
+                type: 'error', 
+                message: error.message || 'Error uploading content' 
+            };
+        }
     }
 };
 

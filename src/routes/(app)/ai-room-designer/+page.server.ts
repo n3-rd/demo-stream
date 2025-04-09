@@ -1,6 +1,7 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, json } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { join } from 'path';
+import { POCKETBASE_URL } from '$env/static/private';
 
 export const load: PageServerLoad = async ({ locals }) => {
     if (!locals.pb.authStore.isValid) {
@@ -30,112 +31,78 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
     saveToLibrary: async ({ request, locals }) => {
-        if (!locals.pb.authStore.isValid) {
-            throw error(401, 'Unauthorized');
-        }
-
-        const user = locals.pb.authStore.model;
-        const formData = await request.formData();
-
+        const data = await request.formData();
+        // Or if using JSON
+        const jsonData = await request.json();
+        
         try {
-            const imageUrl = formData.get('imageUrl') as string;
-            const libraryType = formData.get('libraryType') as string;
-            const title = formData.get('title') as string;
-            const description = formData.get('description') as string;
+            // Get user session/auth info
+            const user = locals.pb.authStore.model;
             
-            if (!imageUrl) {
-                return fail(400, { success: false, message: 'No image URL provided' });
+            if (!user) {
+                throw error(401, 'Unauthorized');
             }
             
-            // Fetch the image from the Replicate URL
-            const response = await fetch(imageUrl);
-            if (!response.ok) {
-                return fail(400, { success: false, message: 'Failed to fetch image from URL' });
+            // Get the original and generated image data
+            const originalImage = jsonData.originalImage;
+            const generatedImage = jsonData.generatedImage;
+            
+            if (!originalImage || !generatedImage) {
+                throw error(400, 'Missing image data');
             }
             
-            const imageBlob = await response.arrayBuffer();
-            const fileName = `room-design-${Date.now()}.png`;
+            // Save original image to content library
+            const originalFormData = new FormData();
+            originalFormData.append('title', `${jsonData.title || 'AI Room Design'} - Original`);
+            originalFormData.append('file', await fetchAndCreateFile(originalImage, 'original.png'));
+            originalFormData.append('user', user.id);
+            originalFormData.append('type', 'image');
             
-            // Prepare content data
-            const contentData: Record<string, any> = {
-                title,
-                description,
-                type: 'image',
-                owner_company: user.id,
-                active: true
-            };
+            // Save generated image to content library
+            const generatedFormData = new FormData();
+            generatedFormData.append('title', `${jsonData.title || 'AI Room Design'} - Generated`);
+            generatedFormData.append('file', await fetchAndCreateFile(generatedImage, 'generated.png'));
+            generatedFormData.append('user', user.id);
+            generatedFormData.append('type', 'image');
+            generatedFormData.append('prompt', jsonData.prompt || '');
             
-            // Create a file from the blob
-            const fileBuffer = Buffer.from(imageBlob);
-            
-            // Create the content based on library type
-            if (libraryType === 'host' || libraryType === 'both') {
-                contentData.library_type = libraryType === 'both' ? ['host', 'representative'] : 'host';
-                contentData.file = new File([fileBuffer], fileName, { type: 'image/png' });
-                contentData.thumbnail = new File([fileBuffer], fileName, { type: 'image/png' });
-                
-                const record = await locals.pb.collection('content_library').create(contentData);
-                
-                // If 'both' type, update representatives
-                if (libraryType === 'both') {
-                    const repIds = formData.get('representatives') as string;
-                    if (repIds) {
-                        const repIdArray = repIds.split(',');
-                        for (const repId of repIdArray) {
-                            // Get current representative data
-                            const rep = await locals.pb.collection('representatives').getOne(repId);
-                            
-                            // Create a new array with existing content plus the new one
-                            const connectedContent = Array.isArray(rep.connected_content) 
-                                ? [...rep.connected_content, record.id]
-                                : [record.id];
-                            
-                            // Update the representative
-                            await locals.pb.collection('representatives').update(repId, {
-                                "connected_content": connectedContent
-                            });
-                        }
-                    }
+            // Make API calls to save both images
+            const originalResponse = await fetch(`${POCKETBASE_URL}/api/collections/content_library/records`, {
+                method: 'POST',
+                body: originalFormData,
+                headers: {
+                    'Authorization': `Bearer ${locals.pb.authStore.token}`
                 }
-            } else if (libraryType === 'representative') {
-                // Representative only
-                contentData.library_type = 'representative';
-                contentData.file = new File([fileBuffer], fileName, { type: 'image/png' });
-                contentData.thumbnail = new File([fileBuffer], fileName, { type: 'image/png' });
-                
-                const record = await locals.pb.collection('content_library').create(contentData);
-                
-                // Update representatives
-                const repIds = formData.get('representatives') as string;
-                if (repIds) {
-                    const repIdArray = repIds.split(',');
-                    for (const repId of repIdArray) {
-                        // Get current representative data
-                        const rep = await locals.pb.collection('representatives').getOne(repId);
-                        
-                        // Create a new array with existing content plus the new one
-                        const connectedContent = Array.isArray(rep.connected_content) 
-                            ? [...rep.connected_content, record.id]
-                            : [record.id];
-                        
-                        // Update the representative
-                        await locals.pb.collection('representatives').update(repId, {
-                            "connected_content": connectedContent
-                        });
-                    }
-                }
-            }
-
-            // Return a simple success response
-            return {
-                type: 'success'
-            };
-        } catch (err) {
-            console.error('Error saving to library:', err);
-            return fail(400, { 
-                type: 'error',
-                message: 'Failed to save to library' 
             });
+            
+            const generatedResponse = await fetch(`${POCKETBASE_URL}/api/collections/content_library/records`, {
+                method: 'POST',
+                body: generatedFormData,
+                headers: {
+                    'Authorization': `Bearer ${locals.pb.authStore.token}`
+                }
+            });
+            
+            if (!originalResponse.ok || !generatedResponse.ok) {
+                throw error(500, 'Failed to save images to content library');
+            }
+            
+            return json({
+                success: true,
+                message: 'Both images saved to content library',
+                originalId: (await originalResponse.json()).id,
+                generatedId: (await generatedResponse.json()).id
+            });
+        } catch (err) {
+            console.error('Error saving to content library:', err);
+            throw error(500, 'Server error saving to content library');
         }
     }
 };
+
+// Helper function to fetch image from URL and convert to File object
+async function fetchAndCreateFile(url, filename) {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new File([blob], filename, { type: blob.type });
+}

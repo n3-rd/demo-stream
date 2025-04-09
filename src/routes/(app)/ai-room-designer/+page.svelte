@@ -140,63 +140,129 @@
     
     // Add this function to fix the linter error
     async function handleSaveToLibrary() {
-        if (!generatedImage) return;
+        if (!generatedImage) {
+            toast.error('No generated image');
+            return;
+        }
+        
+        if (!filePreviewUrl) {
+            toast.error('No original image available');
+            return;
+        }
         
         try {
             isSaving = true;
             
-            // Fetch the image from the URL
-            const response = await fetch(generatedImage[0]);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch image: ${response.status}`);
+            // Get room and style labels
+            const roomLabel = roomTypes.find(r => r.value === selectedRoomType)?.label || 'Room';
+            const styleLabel = designStyles.find(s => s.value === selectedDesignStyle)?.label || 'Style';
+            const title = `${styleLabel} ${roomLabel}`;
+            const description = customPrompt || `AI generated ${roomLabel.toLowerCase()} with ${styleLabel.toLowerCase()} style`;
+            
+            // 1. Fetch the generated image
+            const genResponse = await fetch(generatedImage[0]);
+            if (!genResponse.ok) {
+                throw new Error(`Failed to fetch generated image: ${genResponse.status}`);
+            }
+            const genBlob = await genResponse.blob();
+            const genFile = new File([genBlob], `generated-room-${Date.now()}.png`, { type: 'image/png' });
+            
+            // 2. Get the original image
+            let origFile;
+            if (selectedFile) {
+                // If we have the original file already, use it
+                origFile = selectedFile;
+            } else {
+                // Otherwise fetch from blob URL
+                const blobUrl = filePreviewUrl.startsWith('blob:') ? 
+                    filePreviewUrl : 
+                    filePreviewUrl;
+                    
+                const origResponse = await fetch(blobUrl);
+                if (!origResponse.ok) {
+                    throw new Error(`Failed to fetch original image: ${origResponse.status}`);
+                }
+                const origBlob = await origResponse.blob();
+                origFile = new File([origBlob], `original-room-${Date.now()}.png`, { type: 'image/png' });
             }
             
-            const blob = await response.blob();
+            // 3. Create two FormData objects (one for each image)
+            // Original image
+            const origFormData = new FormData();
+            origFormData.append('title', `${title} - Original`);
+            origFormData.append('description', `Original image for ${description}`);
+            origFormData.append('type', 'image');
+            origFormData.append('file', origFile);
+            origFormData.append('thumbnail', origFile);
+            origFormData.append('library_type', libraryType);
+            origFormData.append('active', 'true');
+            origFormData.append('owner_company', user.id);
             
-            // Create a proper file object that PocketBase can process
-            const fileName = `room-design-${Date.now()}.png`;
-            const file = new File([blob], fileName, { type: 'image/png' });
-            
-            // Create formData with all required fields
-            const formData = new FormData();
-            formData.append('title', `${selectedDesignStyle} ${roomTypes.find(r => r.value === selectedRoomType)?.label || 'room'}`);
-            formData.append('description', customPrompt || `AI generated room design with ${selectedDesignStyle} style`);
-            formData.append('type', 'image');
-            formData.append('file', file);
-            formData.append('thumbnail', file);
-            formData.append('library_type', libraryType);
-            formData.append('active', 'true');
-            
-            // Add representatives if selected
+            // For representative-specific uploads
             if (libraryType !== 'host' && selectedRepresentatives.length > 0) {
-                formData.append('representatives', selectedRepresentatives.join(','));
+                // Add selected representatives
+                selectedRepresentatives.forEach(repId => {
+                    origFormData.append('representatives', repId);
+                });
             }
             
-            // Submit to the upload endpoint
-            const uploadResponse = await fetch('/upload?/uploadContent', {
+            // Generated image
+            const genFormData = new FormData();
+            genFormData.append('title', `${title} - AI Generated`);
+            genFormData.append('description', description);
+            genFormData.append('type', 'image');
+            genFormData.append('file', genFile);
+            genFormData.append('thumbnail', genFile);
+            genFormData.append('library_type', libraryType);
+            genFormData.append('active', 'true');
+            genFormData.append('owner_company', user.id);
+            
+            // For representative-specific uploads
+            if (libraryType !== 'host' && selectedRepresentatives.length > 0) {
+                // Add selected representatives
+                selectedRepresentatives.forEach(repId => {
+                    genFormData.append('representatives', repId);
+                });
+            }
+            
+            // 4. Upload both files
+            const origUploadResponse = await fetch('/upload?/uploadContent', {
                 method: 'POST',
-                body: formData
+                body: origFormData
             });
             
-            if (!uploadResponse.ok) {
-                console.error('Upload response not OK:', await uploadResponse.text());
-                throw new Error(`Upload failed with status: ${uploadResponse.status}`);
+            if (!origUploadResponse.ok) {
+                throw new Error(`Original image upload failed: ${origUploadResponse.status}`);
             }
             
-            const result = await uploadResponse.json();
+            const genUploadResponse = await fetch('/upload?/uploadContent', {
+                method: 'POST',
+                body: genFormData
+            });
             
-            if (result.type === 'success') {
+            if (!genUploadResponse.ok) {
+                throw new Error(`Generated image upload failed: ${genUploadResponse.status}`);
+            }
+            
+            // 5. Process results
+            const origResult = await origUploadResponse.json();
+            const genResult = await genUploadResponse.json();
+            
+            if (origResult.type === 'success' && genResult.type === 'success') {
                 saveSuccess = true;
+                toast.success('Both original and generated images saved to content library!');
                 setTimeout(() => {
                     showLibraryModal = false;
                     saveSuccess = false;
                 }, 2000);
             } else {
                 saveError = true;
-                console.error('Error saving to content library:', result);
+                toast.error('Error saving one or both images to content library');
+                console.error('Upload results:', { origResult, genResult });
             }
         } catch (error) {
             saveError = true;
+            toast.error(`Error: ${error.message}`);
             console.error('Error saving to content library:', error);
         } finally {
             isSaving = false;
@@ -270,6 +336,18 @@
 
     // Function to open the library dialog
     function openLibraryDialog() {
+        // Instead of just setting librarySelectOpen, we'll create a new form submission
+        if (!generatedImage) {
+            toast.error('No image generated yet');
+            return;
+        }
+        
+        if (!filePreviewUrl) {
+            toast.error('No original image available');
+            return;
+        }
+        
+        // Open the library type selection dialog
         librarySelectOpen = true;
     }
     
@@ -280,38 +358,96 @@
             return;
         }
         
-        // Get room and style labels
-        const roomLabel = roomTypes.find(r => r.value === selectedRoomType)?.label || 'Room';
-        const styleLabel = designStyles.find(s => s.value === selectedDesignStyle)?.label || 'Style';
-        
-        // Create form data
-        const formData = new FormData();
-        formData.append('imageUrl', generatedImage[0]);
-        formData.append('libraryType', type);
-        formData.append('title', `${styleLabel} ${roomLabel}`);
-        formData.append('description', customPrompt || `AI generated ${roomLabel.toLowerCase()} with ${styleLabel.toLowerCase()} style`);
+        if (!filePreviewUrl) {
+            toast.error('No original image available');
+            return;
+        }
         
         try {
-            // Submit the form using the form action
-            const response = await fetch('?/saveToLibrary', {
+            // Show loading state
+            librarySelectOpen = false;
+            toast.loading('Saving to content library...');
+            
+            // Get room and style labels
+            const roomLabel = roomTypes.find(r => r.value === selectedRoomType)?.label || 'Room';
+            const styleLabel = designStyles.find(s => s.value === selectedDesignStyle)?.label || 'Style';
+            const title = `${styleLabel} ${roomLabel}`;
+            const description = customPrompt || `AI generated ${roomLabel.toLowerCase()} with ${styleLabel.toLowerCase()} style`;
+            
+            // 1. Fetch the generated image
+            const genResponse = await fetch(generatedImage[0]);
+            if (!genResponse.ok) {
+                throw new Error(`Failed to fetch generated image: ${genResponse.status}`);
+            }
+            const genBlob = await genResponse.blob();
+            
+            // 2. Get the original image from the file input or blob URL
+            let origBlob;
+            if (selectedFile) {
+                // If we have the original file already, use it
+                const fileReader = new FileReader();
+                origBlob = await new Promise<Blob>((resolve) => {
+                    fileReader.onload = () => {
+                        resolve(new Blob([fileReader.result], { type: selectedFile.type }));
+                    };
+                    fileReader.readAsArrayBuffer(selectedFile);
+                });
+            } else {
+                // Otherwise fetch from blob URL
+                const blobUrl = filePreviewUrl;
+                try {
+                    const origResponse = await fetch(blobUrl);
+                    if (!origResponse.ok) {
+                        throw new Error(`Failed to fetch original image: ${origResponse.status}`);
+                    }
+                    origBlob = await origResponse.blob();
+                } catch (error) {
+                    console.error('Error fetching original image:', error);
+                    toast.error('Could not access original image');
+                    return;
+                }
+            }
+            
+            // 3. Create a single FormData object with both images
+            const formData = new FormData();
+            
+            // Add metadata
+            formData.append('title', `${title} (AI Room Design)`);
+            formData.append('description', description);
+            formData.append('type', 'image');
+            formData.append('library_type', type);
+            formData.append('active', 'true');
+            formData.append('owner_company', user.id);
+            
+            // Add BOTH images as separate files
+            formData.append('original_file', new File([origBlob], `original-room-${Date.now()}.png`, { type: 'image/png' }));
+            formData.append('generated_file', new File([genBlob], `generated-room-${Date.now()}.png`, { type: 'image/png' }));
+            
+            // Upload both files at once
+            const response = await fetch('/upload?/uploadAiRoomDesign', {
                 method: 'POST',
                 body: formData
             });
             
-            const result = await response.json();
-            console.log("Server response:", result);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Upload error response:', errorText);
+                throw new Error(`Upload failed with status: ${response.status}`);
+            }
             
-            // Fix the response handling
+            const result = await response.json();
+            
+            toast.dismiss();
             if (result.type === 'success') {
-                toast.success('Successfully saved to content library!');
+                toast.success('Both original and generated images saved to content library!');
             } else {
-                toast.error(`Error saving to content library: ${result.message || 'Unknown error'}`);
+                toast.error('Error saving images to content library');
+                console.error('Error saving to content library:', result);
             }
         } catch (error) {
+            toast.dismiss();
             toast.error(`Error: ${error.message}`);
-            console.error(error);
-        } finally {
-            librarySelectOpen = false;
+            console.error('Upload error:', error);
         }
     }
 </script>

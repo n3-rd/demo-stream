@@ -62,20 +62,29 @@
     
     // Options for dropdowns
     const roomTypes = [
-        { value: 'living', label: 'Living Room' },
-        { value: 'bedroom', label: 'Bedroom' },
-        { value: 'kitchen', label: 'Kitchen' },
-        { value: 'bathroom', label: 'Bathroom' },
-        { value: 'office', label: 'Office' }
+        { value: 'Living Room', label: 'Living Room' },
+        { value: 'Bedroom', label: 'Bedroom' },
+        { value: 'Kitchen', label: 'Kitchen' },
+        { value: 'Dining Room', label: 'Dining Room' },
+        { value: 'Basement Rec. Room', label: 'Basement Rec. Room' },
+        { value: 'Bathroom', label: 'Bathroom' },
+        { value: 'Master Bedroom', label: 'Master Bedroom' },
+        { value: 'Office', label: 'Office' }
     ];
     
     const designStyles = [
         { value: 'modern', label: 'Modern' },
+        { value: 'contemporary', label: 'Contemporary' },
         { value: 'minimalist', label: 'Minimalist' },
         { value: 'scandinavian', label: 'Scandinavian' },
         { value: 'industrial', label: 'Industrial' },
-        { value: 'traditional', label: 'Traditional' },
-        { value: 'bohemian', label: 'Bohemian' }
+        { value: 'farmhouse', label: 'Farmhouse' },
+        { value: 'coastal', label: 'Coastal' },
+        { value: 'transitional', label: 'Transitional' },
+        { value: 'rustic', label: 'Rustic' },
+        { value: 'art deco', label: 'Art Deco' },
+        { value: 'mid-century modern', label: 'Mid-Century Modern' },
+        { value: 'japanese', label: 'Japanese' }
     ];
     
     let selectedRoomType = roomTypes[0].value;
@@ -367,10 +376,10 @@
             // Show loading state
             librarySelectOpen = false;
             toast.loading('Saving to content library...');
-            
-            // Get room and style labels
-            const roomLabel = roomTypes.find(r => r.value === selectedRoomType)?.label || 'Room';
-            const styleLabel = designStyles.find(s => s.value === selectedDesignStyle)?.label || 'Style';
+        
+        // Get room and style labels
+        const roomLabel = roomTypes.find(r => r.value === selectedRoomType)?.label || 'Room';
+        const styleLabel = designStyles.find(s => s.value === selectedDesignStyle)?.label || 'Style';
             const title = `${styleLabel} ${roomLabel}`;
             const description = customPrompt || `AI generated ${roomLabel.toLowerCase()} with ${styleLabel.toLowerCase()} style`;
             
@@ -409,7 +418,7 @@
             }
             
             // 3. Create a single FormData object with both images
-            const formData = new FormData();
+        const formData = new FormData();
             
             // Add metadata
             formData.append('title', `${title} (AI Room Design)`);

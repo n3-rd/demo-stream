@@ -548,9 +548,13 @@
     // Create a unique room ID if not provided
     const roomId = roomName || generateUniqueRoomId();
     
-    // Construct the room URL
+    // Get unique ID from URL or generate one
+    const urlParams = new URLSearchParams(window.location.search);
+    const uid = urlParams.get('uid') || generateUniqueRoomId();
+    
+    // Construct the room URL WITH uid parameter
     const origin = window.location.origin;
-    const roomUrl = `${origin}/room/${roomId}`;
+    const roomUrl = `${origin}/room/${roomId}?uid=${uid}`;
     
     // Prepare email data
     const emailData = {
@@ -563,7 +567,7 @@
       bookingDate: pendingAppointmentData.bookingDate,
       bookingTime: selectedSlot.time,
       roomName: roomId,
-      roomUrl: roomUrl,  // Add the full room URL
+      roomUrl: roomUrl,  // Now includes UID
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
       additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
@@ -605,9 +609,13 @@
       return;
     }
     
-    // Similar update to include roomUrl in the emailData here...
+    // Get unique ID from URL or generate one
+    const urlParams = new URLSearchParams(window.location.search);
+    const uid = urlParams.get('uid') || pendingAppointmentData.uid || generateUniqueRoomId();
+    
+    // Properly construct room URL with uid
     const origin = window.location.origin;
-    const roomUrl = `${origin}/room/${roomName || pendingAppointmentData.roomId}`;
+    const roomUrl = `${origin}/room/${roomName || pendingAppointmentData.roomId}?uid=${uid}`;
     
     const emailData = {
       customerName: fullName,
@@ -618,8 +626,8 @@
       repEmail: pendingAppointmentData.representativeDetails.email,
       bookingDate: pendingAppointmentData.bookingDate,
       bookingTime: selectedSlot.time,
-      roomName: roomId,
-      roomUrl: roomUrl,
+      roomName: roomName || pendingAppointmentData.roomId,
+      roomUrl: roomUrl, // Now includes UID
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
       additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
@@ -686,34 +694,17 @@
       // Create a unique room ID if not provided
       const roomId = roomName || generateUniqueRoomId();
       
-      // Format the date and time for PocketBase
-      const scheduleDateTime = formatScheduleDateTime(bookingDate, newMeeting.time);
+      // Get unique ID from URL or generate one
+      const urlParams = new URLSearchParams(window.location.search);
+      const uid = urlParams.get('uid') || generateUniqueRoomId();
       
-      // Create a scheduled room record
-      const scheduledRoomData = {
-        title: appointmentTitle || `Meeting with ${representativeDetails.name}`,
-        representative: [representativeDetails.id], // Array of relation IDs
-        scheduled: true,
-        schedule_time: scheduleDateTime,
-        customer_name: fullName,
-        customer_email: email,
-        customer_phone: phoneNumber,
-        additional_information: additionalInformation || '',
-        room_id: roomId
-      };
-      
-      console.log('Creating scheduled room with data:', scheduledRoomData);
-      
-      const scheduledRoom = await pb.collection('scheduled_rooms').create(scheduledRoomData);
-      console.log('Successfully created scheduled room:', scheduledRoom);
-      
-      // Construct the room URL
+      // Construct the room URL with uid parameter
       const origin = window.location.origin;
-      const roomUrl = `${origin}/room/${roomId}`;
+      const roomUrl = `${origin}/room/${roomId}?uid=${uid}`;
       
       // Set variables for the success dialog
       createdRoomId = roomId;
-      createdRoomUrl = roomUrl;
+      createdRoomUrl = roomUrl; // Now includes UID
       
       // Show confirmation popup instead of toast
       showConfirmationToast(representativeDetails.name, bookingDate, newMeeting.time, representativeDetails.location || 'Online', roomId);

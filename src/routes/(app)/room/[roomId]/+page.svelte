@@ -187,6 +187,31 @@ function getWebSocketURL() {
     return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
 }
 
+// Update the isWithinOneHour function for more reliable comparison
+function isWithinOneHour(scheduledTime) {
+  if (!scheduledTime) return false;
+  
+  // Make sure we're working with Date objects
+  const scheduleDate = scheduledTime instanceof Date ? scheduledTime : new Date(scheduledTime);
+  const now = new Date();
+  
+  // Calculate time difference in milliseconds
+  const timeDiff = scheduleDate.getTime() - now.getTime();
+  
+  // Convert to minutes (60,000 milliseconds in a minute)
+  const minutesLeft = Math.floor(timeDiff / 60000);
+  
+  console.log('Time check:', {
+    now: now.toISOString(),
+    scheduledTime: scheduleDate.toISOString(),
+    timeDiff,
+    minutesLeft,
+    canJoin: minutesLeft <= 60
+  });
+  
+  return minutesLeft <= 60;
+}
+
 onMount(() => {
     // Generate a unique session ID if 'uid' isn't already in the URL
     if (!$page.url.searchParams.get('uid')) {
@@ -220,8 +245,24 @@ onMount(() => {
     const params = new URLSearchParams(window.location.search);
     const representativeName = params.get('repid');
 
-    // Initialize WebRTC even for scheduled meetings - we'll join a waiting room
-    if ($anonymousUser || isAuthenticated) {
+    // Check if this is a scheduled meeting based on the correct data structure
+    const hasScheduledRoom = !!data?.scheduledRoom;
+    const scheduleTime = hasScheduledRoom ? data.scheduledRoom.schedule_time : null;
+    
+    // Get meeting status based on the correct data structure
+    const status = getMeetingStatus(data);
+    
+    console.log('Meeting status:', {
+        hasScheduledRoom,
+        scheduleTime,
+        canJoin: status.canJoin,
+        isPast: status.isPast,
+        joinBeforeMinutes: status.joinBeforeMinutes,
+        minutesLeft: status.minutesLeft
+    });
+    
+    // Only initialize WebRTC if we can join the waiting room and it's not a past meeting
+    if (!status.isPast && status.canJoin && ($anonymousUser || isAuthenticated)) {
         // Start with camera on for representatives, off for others
         isCameraOff = !isRepresentative;
         mediaConstraints.video = isRepresentative;
@@ -1809,26 +1850,105 @@ function initWithRetry() {
     }
 }
 
+// Replace the getMeetingStatus function with this improved version
+function getMeetingStatus(data) {
+  // If no data, meeting is available now (not scheduled)
+  if (!data) return { canJoin: true, isPast: false };
+  
+  // Extract the scheduled room data from the nested structure
+  const scheduledRoom = data.scheduledRoom || data;
+  
+  // Get schedule time from the correct location
+  const scheduleTime = scheduledRoom?.schedule_time || scheduledRoom?.scheduledTime;
+  if (!scheduleTime) return { canJoin: true, isPast: false };
+  
+  // Make sure we're working with Date objects
+  const scheduleDate = scheduleTime instanceof Date ? scheduleTime : new Date(scheduleTime);
+  const now = new Date();
+  
+  // Calculate time difference in milliseconds
+  const timeDiff = scheduleDate.getTime() - now.getTime();
+  
+  // Convert to minutes
+  const minutesLeft = Math.floor(timeDiff / 60000);
+  
+  // If negative, meeting has passed
+  const isPast = minutesLeft < 0;
+  
+  // Get the join_before_minutes from the scheduled room data or default to 60
+  // Note the nested structure access
+  const joinBeforeMinutes = scheduledRoom?.join_before_minutes ?? 60;
+  
+  // Can join if it's not in the past and scheduled to start within the allowed time
+  const canJoin = !isPast && minutesLeft <= joinBeforeMinutes;
+  
+  console.log('Meeting status check:', {
+    now: now.toISOString(),
+    scheduledTime: scheduleDate.toISOString(),
+    timeDiff,
+    minutesLeft,
+    joinBeforeMinutes,
+    isPast,
+    canJoin
+  });
+  
+  return { canJoin, isPast, minutesLeft, joinBeforeMinutes };
+}
+
 </script>
 
 
-{#if data?.error && data?.scheduledTime}
-  <!-- Keep displaying the countdown UI for scheduled meetings -->
+{#if data?.scheduledRoom}
+  <!-- Display different UI based on meeting status -->
+  {@const status = getMeetingStatus(data)}
+  {@const scheduledTime = new Date(data.scheduledRoom.schedule_time)}
+  
   <div class="flex flex-col items-center justify-center h-screen bg-[#eceef3] p-6 text-center">
     <div class="bg-white p-8 rounded-lg shadow-lg max-w-md">
-      <h2 class="text-xl font-semibold text-red-600 mb-4">Meeting Not Available Yet</h2>
-      <p class="mb-4">{data.message}</p>
+      <h2 class="text-xl font-semibold mb-4" class:text-red-600={status.isPast} class:text-yellow-600={!status.canJoin && !status.isPast} class:text-green-600={status.canJoin && !status.isPast}>
+        {status.isPast ? 'Meeting Has Ended' : (status.canJoin ? 'Waiting Room Open' : 'Meeting Not Available Yet')}
+      </h2>
+      <p class="mb-4">This meeting is scheduled and {status.isPast ? 'has already taken place' : 'is not yet available'}.</p>
       
-      {#if data.scheduledTime}
-        <div class="mb-6">
-          <p class="text-sm font-medium">Scheduled For:</p>
-          <p class="text-lg">{new Date(data.scheduledTime).toLocaleString()}</p>
+      <div class="mb-6">
+        <p class="text-sm font-medium">Scheduled For:</p>
+        <p class="text-lg">{scheduledTime.toLocaleString()}</p>
+      </div>
+      
+      {#if status.isPast}
+        <div class="mb-6 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p class="text-red-800">
+            This meeting has already taken place and is no longer available.
+          </p>
         </div>
-        
+      {:else if !status.canJoin}
         <div class="mb-6">
           <p class="text-sm text-gray-500">Time remaining:</p>
           <p class="text-2xl font-bold">
-            {calculateTimeRemaining(new Date(data.scheduledTime))}
+            {calculateTimeRemaining(scheduledTime)}
+          </p>
+        </div>
+        
+        <div class="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p class="text-yellow-800">
+            {#if status.joinBeforeMinutes === 0}
+              You'll be able to join this meeting when it starts.
+            {:else}
+              You'll be able to join the waiting room {status.joinBeforeMinutes} minute{status.joinBeforeMinutes !== 1 ? 's' : ''} before the scheduled start time.
+            {/if}
+          </p>
+        </div>
+      {:else}
+        <div class="mb-6">
+          <p class="text-sm text-gray-500">Time remaining:</p>
+          <p class="text-2xl font-bold">
+            {calculateTimeRemaining(scheduledTime)}
+          </p>
+        </div>
+        
+        <div class="mb-6 p-3 bg-green-50 border border-green-200 rounded-md">
+          <p class="text-green-800">
+            You're now in the waiting room. The meeting will start soon.
           </p>
         </div>
       {/if}

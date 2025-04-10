@@ -110,6 +110,9 @@ function generateEmailTemplate(data) {
     .footer { background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 14px; color: #666666; }
     h1 { margin: 0; font-size: 24px; }
     h2 { font-size: 18px; margin-top: 20px; }
+    .meeting-link { background-color: #e9ecef; padding: 10px; border-radius: 5px; margin: 15px 0; word-break: break-all; }
+    .meeting-link a { color: #4f46e5; text-decoration: none; }
+    .meeting-link a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -128,8 +131,13 @@ function generateEmailTemplate(data) {
           <li><strong>Date:</strong> ${formattedDate}</li>
           <li><strong>Time:</strong> ${data.bookingTime}</li>
           <li><strong>Representative:</strong> ${data.repName}</li>
-          <li><strong>Room:</strong> ${data.roomName}</li>
         </ul>
+      </div>
+      
+      <div class="meeting-link">
+        <h2>Meeting Link</h2>
+        <p>Please use the following link to join the meeting at the scheduled time:</p>
+        <p><a href="${data.roomUrl}">${data.roomUrl}</a></p>
       </div>
       
       <p>If you need to reschedule or cancel your appointment, please contact us.</p>

@@ -527,11 +527,24 @@
       };
       
       // Show the confirmation dialog first
+      const urlParams = new URLSearchParams(window.location.search);
+      const uid = urlParams.get('uid') || generateUniqueRoomId();
+      const roomId = roomName || generateUniqueRoomId();
+
+      // Store the roomId for consistent usage
+      pendingAppointmentData.roomId = roomId;
+      pendingAppointmentData.uid = uid;
+
+      // Use the same domain in both places
+      const domain = window.location.hostname === 'localhost' ? 'https://viewroom.ca' : window.location.origin;
+      const roomUrl = `${domain}/room/${roomId}?uid=${uid}`;
+
       appointmentDetails = {
         date: selectedDate.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}),
         time: selectedSlot.time,
         representativeName: representativeDetails.name,
-        location: representativeDetails.location || 'Online'
+        location: representativeDetails.location || 'Online',
+        roomUrl: roomUrl
       };
       showAppointmentConfirmation = true;
       
@@ -541,20 +554,17 @@
     }
   }
   
-  // Add this function to handle confirmation
+  // Update the confirmAppointment function to properly include the UID in the room URL
   function confirmAppointment() {
     showAppointmentConfirmation = false;
     
-    // Create a unique room ID if not provided
-    const roomId = roomName || generateUniqueRoomId();
+    // Use the same roomId that was shown in the confirmation
+    const roomId = pendingAppointmentData.roomId || roomName || generateUniqueRoomId();
+    const uid = pendingAppointmentData.uid || new URLSearchParams(window.location.search).get('uid') || generateUniqueRoomId();
     
-    // Get unique ID from URL or generate one
-    const urlParams = new URLSearchParams(window.location.search);
-    const uid = urlParams.get('uid') || generateUniqueRoomId();
-    
-    // Construct the room URL WITH uid parameter
-    const origin = window.location.origin;
-    const roomUrl = `${origin}/room/${roomId}?uid=${uid}`;
+    // Use the same domain for consistency
+    const domain = window.location.hostname === 'localhost' ? 'https://viewroom.ca' : window.location.origin;
+    const roomUrl = `${domain}/room/${roomId}?uid=${uid}`;
     
     // Prepare email data
     const emailData = {
@@ -567,7 +577,7 @@
       bookingDate: pendingAppointmentData.bookingDate,
       bookingTime: selectedSlot.time,
       roomName: roomId,
-      roomUrl: roomUrl,  // Now includes UID
+      roomUrl: roomUrl,  // Now uses consistent URL
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
       additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
@@ -602,6 +612,7 @@
       });
   }
 
+  // Also update the retryEmailSending function to use the same URL format
   async function retryEmailSending() {
     if (!pendingAppointmentData) {
       toast.error('Missing appointment data for retry');
@@ -609,13 +620,13 @@
       return;
     }
     
-    // Get unique ID from URL or generate one
-    const urlParams = new URLSearchParams(window.location.search);
-    const uid = urlParams.get('uid') || pendingAppointmentData.uid || generateUniqueRoomId();
+    // Use the same roomId and uid that was used in confirmation
+    const roomId = pendingAppointmentData.roomId || roomName || generateUniqueRoomId();
+    const uid = pendingAppointmentData.uid || new URLSearchParams(window.location.search).get('uid') || generateUniqueRoomId();
     
-    // Properly construct room URL with uid
-    const origin = window.location.origin;
-    const roomUrl = `${origin}/room/${roomName || pendingAppointmentData.roomId}?uid=${uid}`;
+    // Use consistent domain
+    const domain = window.location.hostname === 'localhost' ? 'https://viewroom.ca' : window.location.origin;
+    const roomUrl = `${domain}/room/${roomId}?uid=${uid}`;
     
     const emailData = {
       customerName: fullName,
@@ -626,8 +637,8 @@
       repEmail: pendingAppointmentData.representativeDetails.email,
       bookingDate: pendingAppointmentData.bookingDate,
       bookingTime: selectedSlot.time,
-      roomName: roomName || pendingAppointmentData.roomId,
-      roomUrl: roomUrl, // Now includes UID
+      roomName: roomId,
+      roomUrl: roomUrl,
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
       additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
@@ -691,20 +702,17 @@
         .update(representativeDetails.id, updateData);
       console.log('schedule console: Successfully updated meetings:', updatedRep);
       
-      // Create a unique room ID if not provided
-      const roomId = roomName || generateUniqueRoomId();
+      // Use the roomId and uid that were stored in pendingAppointmentData
+      const roomId = pendingAppointmentData.roomId || generateUniqueRoomId();
+      const uid = pendingAppointmentData.uid || new URLSearchParams(window.location.search).get('uid') || generateUniqueRoomId();
       
-      // Get unique ID from URL or generate one
-      const urlParams = new URLSearchParams(window.location.search);
-      const uid = urlParams.get('uid') || generateUniqueRoomId();
-      
-      // Construct the room URL with uid parameter
-      const origin = window.location.origin;
-      const roomUrl = `${origin}/room/${roomId}?uid=${uid}`;
+      // Use consistent domain
+      const domain = window.location.hostname === 'localhost' ? 'https://viewroom.ca' : window.location.origin;
+      const roomUrl = `${domain}/room/${roomId}?uid=${uid}`;
       
       // Set variables for the success dialog
       createdRoomId = roomId;
-      createdRoomUrl = roomUrl; // Now includes UID
+      createdRoomUrl = roomUrl;
       
       // Show confirmation popup instead of toast
       showConfirmationToast(representativeDetails.name, bookingDate, newMeeting.time, representativeDetails.location || 'Online', roomId);
@@ -899,7 +907,7 @@
     const uid = urlParams.get('uid') || generateUniqueRoomId();
     
     // Set values for the confirmation popup with complete URL including uid
-    roomUrl = `https://viewroom.ca/room/${roomId}?uid=${uid}`;
+    roomUrl = `${origin}/room/${roomId}?uid=${uid}`;
     
     // Store the appointment details for the popup
     pendingAppointmentData = {
@@ -1577,10 +1585,8 @@
             <div>
               <p class="text-sm text-gray-700">
                 Virtual meeting
-                {#if roomName}
                 <br />
-                <span class="text-primary break-all text-xs">{`https://viewroom.ca/room/${roomName}`}</span>
-                {/if}
+                <span class="text-primary break-all text-xs">{appointmentDetails.roomUrl || `${origin}/${roomName}`}</span>
               </p>
             </div>
           </div>

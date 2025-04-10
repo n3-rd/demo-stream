@@ -141,15 +141,6 @@ $: {
         isRepresentative = (urlRepName !== null && urlRepName !== '') || 
                           representatives?.some(rep => rep.id === user?.id) || false;
         
-        console.log('Role determination:', {
-            isHost,
-            isAnonymousHost,
-            isRepresentative,
-            userId: user?.id,
-            roomOwner: room.owner_company,
-            representatives: representatives?.map(r => r.id),
-            urlRepName
-        });
     }
 }
 
@@ -202,13 +193,6 @@ function isWithinOneHour(scheduledTime) {
   // Convert to minutes (60,000 milliseconds in a minute)
   const minutesLeft = Math.floor(timeDiff / 60000);
   
-  console.log('Time check:', {
-    now: now.toISOString(),
-    scheduledTime: scheduleDate.toISOString(),
-    timeDiff,
-    minutesLeft,
-    canJoin: minutesLeft <= 60
-  });
   
   return minutesLeft <= 60;
 }
@@ -230,7 +214,6 @@ onMount(() => {
         // Also update our shareURL immediately
         shareURL = newUrl.toString();
         
-        console.log('Updated URL with unique session ID:', newUrl.toString());
     } else {
         // Use the existing uid from URL
         uniqueSessionId = $page.url.searchParams.get('uid');
@@ -240,9 +223,7 @@ onMount(() => {
         shareURL = urlObj.toString();
     }
     
-    // Force log the shareURL for debugging
-    console.log('Share URL after initialization:', shareURL);
-    
+  
     const params = new URLSearchParams(window.location.search);
     const representativeName = params.get('repid');
 
@@ -253,14 +234,7 @@ onMount(() => {
     // Get meeting status based on the correct data structure
     const status = getMeetingStatus(data);
     
-    console.log('Meeting status:', {
-        hasScheduledRoom,
-        scheduleTime,
-        canJoin: status.canJoin,
-        isPast: status.isPast,
-        joinBeforeMinutes: status.joinBeforeMinutes,
-        minutesLeft: status.minutesLeft
-    });
+
     
     // Only initialize WebRTC if we can join the waiting room and it's not a past meeting
     if (!status.isPast && status.canJoin && ($anonymousUser || isAuthenticated)) {
@@ -301,29 +275,24 @@ onMount(() => {
                 if (hostVideos.length > 0) {
                     // Use the first video
                     videoToUse = hostVideos[0];
-                    console.log('Found first host video from expand:', videoToUse);
-                } else {
-                    console.log('No video files found in host_content:', room.expand.host_content);
+                   
                 }
             } else if (room.host_content && Array.isArray(room.host_content) && room.host_content.length > 0) {
                 // We have host_content IDs but not expanded, get the first one
                 try {
                     // Get the first host_content item
                     const contentId = room.host_content[0];
-                    console.log('Fetching first host content item:', contentId);
                     
                     fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/content_library/records/${contentId}`)
                         .then(response => response.json())
                         .then(data => {
                             if (data && data.file && (data.file.endsWith('.mp4') || data.file.endsWith('.webm'))) {
-                                console.log('Found first host video by ID:', data);
                                 
                                 // Create a video URL from the content
                                 const videoUrl = data.file ? 
                                     `${PUBLIC_POCKETBASE_INSTANCE}api/files/${data.collectionId}/${data.id}/${data.file}` : '';
                                 
                                 if (videoUrl) {
-                                    console.log('Setting default video from host content by ID:', videoUrl);
                                     // Set the video URL in the store
                                     currentVideoUrl.set(videoUrl);
                                     
@@ -345,11 +314,6 @@ onMount(() => {
                 const videoUrl = videoToUse.file ? 
                     `${PUBLIC_POCKETBASE_INSTANCE}api/files/${videoToUse.collectionId}/${videoToUse.id}/${videoToUse.file}` : '';
                 
-                console.log('Setting default video:', {
-                    source: room.expand?.selected_video ? 'selected_video' : 'host_content',
-                    videoToUse,
-                    videoUrl
-                });
                 
                 // Set the video URL in the store
                 currentVideoUrl.set(videoUrl);
@@ -370,7 +334,6 @@ onMount(() => {
                     participantsPanel.style.width = "30rem";
                 }
                 participantsPanel.style.transform = "translateX(0%)";
-                console.log('Participants panel opened by default');
             }
         }, 500);
     }
@@ -402,15 +365,7 @@ function initializeWebRTC() {
         const forceDcOnly = !supportsMedia || dcOnly;
         inDataChannelOnlyMode = forceDcOnly;
         
-        console.log('WebRTC initialization starting:', {
-            supportsMedia,
-            forceDcOnly,
-            originalDcOnly: dcOnly,
-            mediaConstraints,
-            roomName,
-            hasRoom: !!room,
-            dataError: data?.error
-        });
+        
         
         // Update media constraints if needed
         const actualMediaConstraints = forceDcOnly ? 
@@ -426,11 +381,9 @@ function initializeWebRTC() {
             dataChannelEnabled: true,
             debug: true,
             callback: (info, obj) => {
-                console.log('WebRTC callback:', info);
                 handleWebRTCCallback(info, obj);
             },
             callbackError: (error, message) => {
-                console.error('WebRTC error callback:', {error, message});
                 handleWebRTCError(error, message);
             },
             bandwidth: 900,
@@ -448,7 +401,6 @@ function initializeWebRTC() {
         console.error('Error initializing WebRTC adapter:', error);
         // Attempt fallback to data channel only mode
         try {
-            console.log('Attempting fallback to data channel only mode');
             webRTCAdaptor = new WebRTCAdaptor({
                 websocket_url: getWebSocketURL(),
                 mediaConstraints: { video: false, audio: false },
@@ -468,27 +420,22 @@ function initializeWebRTC() {
 }
 
 function handleWebRTCCallback(info: string, obj: any) {
-    console.log(`WebRTC callback: ${info}`, obj);
     
     // Check for scheduled meeting
     const isScheduledMeeting = data?.error && data?.scheduledTime;
     
     switch (info) {
         case "initialized":
-            console.log("WebRTC initialized successfully, attempting to join room...");
             connectionStatus = 'initializing';
             joinRoomWithRetry(); // Use retry version
             break;
         
         case "publish_started":
-            console.log("Publishing started successfully:", obj);
             connectionStatus = 'connected';
             isPlaying = true;
             
             // If this is a scheduled meeting in the future, show appropriate UI overlay
-            if (isScheduledMeeting) {
-                console.log("Connected to waiting room for scheduled meeting");
-            } else {
+            if (!isScheduledMeeting) {
                 // Get the broadcast object to learn about other participants
                 webRTCAdaptor.getBroadcastObject(roomName);
             }
@@ -501,11 +448,9 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
         
         case "publish_finished":
-            console.log("Publishing finished:", obj);
             break;
             
         case "play_started":
-            console.log("Playing started successfully:", obj);
             connectionStatus = 'connected';
             isPlaying = true;
             isNoStreamExist = false;
@@ -513,17 +458,14 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
             
         case "play_finished":
-            console.log("Play finished:", obj);
             removeAllRemoteVideos();
             isPlaying = false;
             break;
             
         case "stream_created":
-            console.log("Stream created successfully:", obj);
             break;
             
         case "stream_not_found":
-            console.log("Stream not found, attempting to create:", obj);
             break;
 
         case "broadcastObject":
@@ -540,7 +482,6 @@ function handleWebRTCCallback(info: string, obj: any) {
             playVideo(obj);
             break;
         case "streamJoined":
-            console.log("Stream joined event:", obj);
             if (obj.streamId) {
                 let participantName = 'Unknown User';
                 try {
@@ -563,7 +504,6 @@ function handleWebRTCCallback(info: string, obj: any) {
             }
             break;
         case "data_channel_opened":
-            console.log('Data channel opened'); // Debug log
             isDataChannelOpen = true;
             
             // If we're not the host, request the current media state
@@ -589,20 +529,15 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
         case "data_received":
             try {
-                console.log('Raw data received:', obj.data);
                 const data = JSON.parse(obj.data);
-                console.log('Parsed data:', data);
                 
                 let messageBody;
                 try {
                     if (data.messageBody) {
-                        console.log('Attempting to parse message body:', data.messageBody);
                         messageBody = JSON.parse(data.messageBody);
-                        console.log('Successfully parsed message body:', messageBody);
                         
                         // Handle media state request
                         if (messageBody.eventType === 'media_state_request' && isHost) {
-                            console.log('Received media state request, sending current state');
                             const currentState = {
                                 eventType: 'media_state_response',
                                 messageBody: JSON.stringify({
@@ -628,7 +563,6 @@ function handleWebRTCCallback(info: string, obj: any) {
                         
                         // Handle media state response
                         if (messageBody.eventType === 'media_state_response') {
-                            console.log('Received media state response:', messageBody);
                             const state = JSON.parse(messageBody.messageBody);
                             
                             // First clear all media to avoid conflicts
@@ -641,7 +575,6 @@ function handleWebRTCCallback(info: string, obj: any) {
                             if (state.videoUrl) {
                                 currentVideoUrl.set(state.videoUrl);
                                 if (videoPlayer) {
-                                    console.log('Updating video player with URL:', state.videoUrl);
                                     videoPlayer.src = state.videoUrl;
                                     
                                     // Handle play state differently based on capabilities
@@ -649,7 +582,6 @@ function handleWebRTCCallback(info: string, obj: any) {
                                         // In data-channel-only mode, we can't rely on autoplay
                                         // so we need to manually control the video
                                         if (state.isPlaying) {
-                                            console.log('Attempting to play video in data-channel-only mode');
                                             // Use a user interaction event handler to play later
                                             const playPromise = videoPlayer.play().catch(e => {
                                                 console.warn('Auto-play blocked in data-channel-only mode:', e);
@@ -702,16 +634,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                         
                         // Handle video URL updates
                         if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {
-                            console.log('Processing video_url_update event:', messageBody);
                             const videoUpdateData = JSON.parse(messageBody.messageBody);
-                            console.log('Video update data:', videoUpdateData);
                             
                             if (videoUpdateData.videoUrl) {
-                                console.log('Setting video URL to:', videoUpdateData.videoUrl);
                                 currentVideoUrl.set(videoUpdateData.videoUrl);
                                 currentPdfUrl.set(''); // Clear PDF when video is shown
                                 if (videoPlayer) {
-                                    console.log('Updating video player source');
                                     videoPlayer.src = videoUpdateData.videoUrl;
                                     if ($playVideoStore) {
                                         videoPlayer.play().catch(e => console.error('Error playing video:', e));
@@ -721,12 +649,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                         } 
                         // Handle PDF URL updates
                         else if (messageBody.eventType === 'pdf_url_update' && messageBody.messageBody) {
-                            console.log('Processing pdf_url_update event:', messageBody);
                             const pdfUpdateData = JSON.parse(messageBody.messageBody);
-                            console.log('PDF update data:', pdfUpdateData);
                             
                             if (pdfUpdateData.fileUrl) {
-                                console.log('Setting PDF URL to:', pdfUpdateData.fileUrl);
                                 // Clear all media types first
                                 currentVideoUrl.set('');
                                 currentDocxUrl.set('');
@@ -756,12 +681,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                         }
                         // Handle DOCX URL updates
                         else if (messageBody.eventType === 'docx_url_update' && messageBody.messageBody) {
-                            console.log('Processing docx_url_update event:', messageBody);
                             const docxUpdateData = JSON.parse(messageBody.messageBody);
-                            console.log('DOCX update data:', docxUpdateData);
                             
                             if (docxUpdateData.fileUrl) {
-                                console.log('Setting DOCX URL to:', docxUpdateData.fileUrl);
                                 // Clear all media types first
                                 currentVideoUrl.set('');
                                 currentPdfUrl.set('');
@@ -778,11 +700,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                         }
                         // Handle image URL updates
                         else if (messageBody.eventType === 'image_url_update' && messageBody.messageBody) {
-                            console.log('Processing image_url_update event:', messageBody);
                             const imageUpdateData = JSON.parse(messageBody.messageBody);
                             
                             if (imageUpdateData.fileUrl) {
-                                console.log('Setting image URL to:', imageUpdateData.fileUrl);
                                 // Clear all media types first
                                 currentVideoUrl.set('');
                                 currentPdfUrl.set('');
@@ -817,14 +737,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                             try {
                                 // Parse the inner messageBody for video mute sync
                                 const muteData = JSON.parse(messageBody.messageBody);
-                                console.log('Video mute sync data:', muteData);
                                 
                                 // Only apply if we're not the controller
                                 const isCurrentController = (syncSource === 'host' && isHost) || 
                                                                (syncSource === 'representative' && isRepresentative);
                                 
                                 if (!isCurrentController && videoPlayer) {
-                                    console.log('Applying mute sync as viewer');
                                     isVideoMuted = muteData.isMuted;
                                     videoPlayer.muted = isVideoMuted;
                                 }
@@ -836,25 +754,17 @@ function handleWebRTCCallback(info: string, obj: any) {
                             try {
                                 // Parse the inner messageBody for video sync
                                 const syncData = JSON.parse(messageBody.messageBody);
-                                console.log('Video sync data:', syncData);
                                 
                                 // Accept sync if we're not the current controller
                                 const isCurrentController = (syncSource === 'host' && isHost) || 
                                                                   (syncSource === 'representative' && isRepresentative);
                                 
                                 if (!isCurrentController && videoPlayer) {
-                                    console.log('Applying sync as viewer:', {
-                                        syncSource,
-                                        isHost,
-                                        isRepresentative,
-                                        currentTime: videoPlayer.currentTime,
-                                        syncTime: syncData.currentTime
-                                    });
+                                    
 
                                     // Sync video time if difference is more than 0.5 seconds
                                     const timeDiff = Math.abs(videoPlayer.currentTime - syncData.currentTime);
                                     if (timeDiff > 0.5) {
-                                        console.log('Syncing time to:', syncData.currentTime);
                                         videoPlayer.currentTime = syncData.currentTime;
                                     }
 
@@ -863,10 +773,8 @@ function handleWebRTCCallback(info: string, obj: any) {
                                     
                                     // Sync play/pause state
                                     if (syncData.isPlaying && videoPlayer.paused) {
-                                        console.log('Playing video');
                                         videoPlayer.play().catch(e => console.error('Error playing video:', e));
                                     } else if (!syncData.isPlaying && !videoPlayer.paused) {
-                                        console.log('Pausing video');
                                         videoPlayer.pause();
                                     }
                                 }
@@ -877,16 +785,10 @@ function handleWebRTCCallback(info: string, obj: any) {
                         case 'sync_source_change':
                             try {
                                 const innerMessageBody = JSON.parse(messageBody.messageBody);
-                                console.log('Sync source change:', {
-                                    innerMessageBody,
-                                    isHost,
-                                    isRepresentative,
-                                    currentSyncSource: syncSource
-                                });
+                                
                                 
                                 // Update sync source if message is from host
                                 if (innerMessageBody.fromHost) {
-                                    console.log('Updating sync source to:', innerMessageBody.syncSource);
                                     syncSource = innerMessageBody.syncSource;
                                 }
                             } catch (error) {
@@ -904,19 +806,19 @@ function handleWebRTCCallback(info: string, obj: any) {
             }
             break;
         case "data_sent":
-            console.log("Data sent:", obj);
+          
             break;            
         case "connected":
-            console.log("Connected to", obj);
+            
             break;
         case "peerconnection_created":
-            console.log("PeerConnection created for", obj);
+           
             break;
         case "sdp_received":
-            console.log("SDP received for", obj);
+           
             break;
         case "closed":
-            console.log("Connection closed");
+           
             connectionStatus = 'disconnected';
             break;
             // Add other cases as needed

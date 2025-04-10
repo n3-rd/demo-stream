@@ -14,8 +14,8 @@ console.log("participants from representative-indicator.svelte", participants);
     let isDragging = false;
     let startX = 0;
     let startY = 0;
-    let containerX = 10;
-    let containerY = 10;
+    let containerX = 0;
+    let containerY = 0;
     let containerWidth = 200;
     let containerHeight = 150;
     let containerElement;
@@ -24,71 +24,38 @@ console.log("participants from representative-indicator.svelte", participants);
     const dispatch = createEventDispatcher();
 
     function getVideoContainer() {
-        // Try to find the video container
         const container = document.querySelector('.video-container');
-        if (container) return container;
-        
-        // Fallback to the parent element if container not found
-        return containerElement?.parentElement;
+        if (!container) {
+            console.error('Video container not found');
+        }
+        return container;
     }
 
     function handleMouseDown(event) {
-        // Don't initiate drag on iframes or name-tags
         if (event.target.tagName === 'IFRAME' || event.target.classList.contains('name-tag')) {
             return;
         }
-
+        
         isDragging = true;
         startX = event.clientX - containerX;
         startY = event.clientY - containerY;
-        
-        // Set the z-index higher during drag for better visibility
-        if (containerElement) {
-            containerElement.style.zIndex = "100";
-        }
-        
-        event.preventDefault();
-    }
-
-    function handleTouchStart(event) {
-        // Don't initiate drag on iframes or name-tags
-        if (event.target.tagName === 'IFRAME' || event.target.classList.contains('name-tag')) {
-            return;
-        }
-
-        isDragging = true;
-        startX = event.touches[0].clientX - containerX;
-        startY = event.touches[0].clientY - containerY;
-        
-        // Set the z-index higher during drag for better visibility
-        if (containerElement) {
-            containerElement.style.zIndex = "100";
-        }
-        
         event.preventDefault();
     }
 
     function updatePosition(clientX, clientY) {
-        if (!isDragging) return;
+        if (!isDragging || !videoContainerElement || !containerElement) return;
 
-        // Get video container and its position
-        videoContainerElement = getVideoContainer();
-        if (!videoContainerElement) return;
-        
         const videoRect = videoContainerElement.getBoundingClientRect();
         const containerRect = containerElement.getBoundingClientRect();
         
-        // Calculate relative positions
-        const relativeX = clientX - videoRect.left - startX;
-        const relativeY = clientY - videoRect.top - startY;
+        let newX = clientX - videoRect.left - startX;
+        let newY = clientY - videoRect.top - startY;
         
-        // Calculate max bounds, leaving small margin
-        const maxX = videoRect.width - containerRect.width - 5;
-        const maxY = videoRect.height - containerRect.height - 5;
+        newX = Math.max(0, Math.min(newX, videoRect.width - containerRect.width));
+        newY = Math.max(0, Math.min(newY, videoRect.height - containerRect.height));
         
-        // Update position with bounds checking
-        containerX = Math.max(5, Math.min(relativeX, maxX));
-        containerY = Math.max(5, Math.min(relativeY, maxY));
+        containerX = newX;
+        containerY = newY;
     }
 
     function handleMouseMove(event) {
@@ -98,70 +65,65 @@ console.log("participants from representative-indicator.svelte", participants);
         }
     }
 
-    function handleTouchMove(event) {
-        if (isDragging) {
-            updatePosition(event.touches[0].clientX, event.touches[0].clientY);
-            event.preventDefault();
-        }
-    }
-
     function handleEnd() {
         isDragging = false;
-        // Reset z-index after drag
-        if (containerElement) {
-            containerElement.style.zIndex = "50";
-        }
     }
 
-    // Update container dimensions based on the number of visible representatives
-    $: {
-        if (visibleRepresentatives) {
-            const repCount = visibleRepresentatives.length;
-            // Base height for each rep + padding
-            containerHeight = repCount * 120;
-        }
-    }
-
-    $: {
-        if (visibleRepresentatives) {
-            // Dispatch event when visible representatives change
-            dispatch('representativesUpdate', {
-                representatives: visibleRepresentatives,
-                count: visibleRepresentatives.length
-            });
-        }
+    $: if (visibleRepresentatives && videoContainerElement && containerElement) {
+        containerHeight = Math.min(150, visibleRepresentatives.length * 120 + 8);
+        
+        const videoRect = videoContainerElement.getBoundingClientRect();
+        
+        containerX = videoRect.width - containerWidth - 20;
+        containerY = videoRect.height - containerHeight - 20;
     }
 
     onMount(() => {
-        // Let's wait for the DOM to be fully rendered
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleEnd);
+        
         setTimeout(() => {
-            // Get reference to our container
             containerElement = document.querySelector('.representatives-container');
             videoContainerElement = getVideoContainer();
             
-            // Initialize position in the top-right corner
             if (videoContainerElement && containerElement) {
                 const videoRect = videoContainerElement.getBoundingClientRect();
-                const containerRect = containerElement.getBoundingClientRect();
                 
-                // Initial position: top-right corner
-                containerX = videoRect.width - containerRect.width - 20;
-                containerY = 20;
+                containerX = videoRect.width - containerWidth - 20;
+                containerY = videoRect.height - containerHeight - 20;
+                
+                console.log("Initial positioning:", { containerX, containerY, 
+                    videoWidth: videoRect.width, videoHeight: videoRect.height });
+            } else {
+                console.error("Could not find required elements for positioning");
             }
-        }, 100);
+        }, 200);
         
-        // Add event listeners
-        window.addEventListener('mousemove', handleMouseMove, { passive: false });
-        window.addEventListener('mouseup', handleEnd);
-        window.addEventListener('touchmove', handleTouchMove, { passive: false });
-        window.addEventListener('touchend', handleEnd);
+        if (typeof ResizeObserver !== 'undefined') {
+            const resizeObserver = new ResizeObserver(() => {
+                if (videoContainerElement && containerElement) {
+                    const videoRect = videoContainerElement.getBoundingClientRect();
+                    
+                    if (containerX + containerWidth > videoRect.width) {
+                        containerX = Math.max(0, videoRect.width - containerWidth - 20);
+                    }
+                    
+                    if (containerY + containerHeight > videoRect.height) {
+                        containerY = Math.max(0, videoRect.height - containerHeight - 20);
+                    }
+                }
+            });
+            
+            setTimeout(() => {
+                if (videoContainerElement) {
+                    resizeObserver.observe(videoContainerElement);
+                }
+            }, 300);
+        }
         
-        // Cleanup
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleEnd);
-            window.removeEventListener('touchmove', handleTouchMove);
-            window.removeEventListener('touchend', handleEnd);
         };
     });
 
@@ -275,7 +237,6 @@ console.log("participants from representative-indicator.svelte", participants);
         padding: 4px;
         touch-action: none;
         z-index: 50;
-        transition: transform 0.05s ease;
         user-select: none;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
@@ -318,12 +279,12 @@ console.log("participants from representative-indicator.svelte", participants);
 <div 
     class="representatives-container"
     style="
-        transform: translate({containerX}px, {containerY}px);
+        left: {containerX}px;
+        top: {containerY}px;
         width: {containerWidth}px;
         height: {containerHeight}px;
     "
     on:mousedown={handleMouseDown}
-    on:touchstart={handleTouchStart}
     bind:this={containerElement}
 >
     {#each visibleRepresentatives as participant}

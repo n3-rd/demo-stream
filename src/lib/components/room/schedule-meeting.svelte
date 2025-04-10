@@ -13,16 +13,22 @@
   import { quintOut } from 'svelte/easing';
 	import { toast } from 'svelte-sonner';
   import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
-  
-  // Use dynamic import for PocketBase to avoid issues during build
-  import('pocketbase').then(module => {
-    PocketBase = module.default;
-    pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
-  });
+  import { onMount } from 'svelte';
   
   let PocketBase;
-  let pb;
+  let pb = null;
 
+  onMount(async () => {
+    try {
+      const module = await import('pocketbase');
+      PocketBase = module.default;
+      pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
+      console.log('PocketBase initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize PocketBase:', error);
+    }
+  });
+  
   export let userId = null;
   export let availableRepresentatives = [];
 
@@ -702,25 +708,119 @@
         .update(representativeDetails.id, updateData);
       console.log('schedule console: Successfully updated meetings:', updatedRep);
       
-      // Use the roomId and uid that were stored in pendingAppointmentData
-      const roomId = pendingAppointmentData.roomId || generateUniqueRoomId();
+      // Create a unique room ID if not provided
+      const roomId = pendingAppointmentData.roomId || roomName || generateUniqueRoomId();
       const uid = pendingAppointmentData.uid || new URLSearchParams(window.location.search).get('uid') || generateUniqueRoomId();
       
-      // Use consistent domain
+      // Construct the room URL with uid parameter
       const domain = window.location.hostname === 'localhost' ? 'https://viewroom.ca' : window.location.origin;
       const roomUrl = `${domain}/room/${roomId}?uid=${uid}`;
       
-      // Set variables for the success dialog
-      createdRoomId = roomId;
-      createdRoomUrl = roomUrl;
+      // FIXED: Make sure PocketBase is initialized properly
+      if (!pb) {
+        console.error('PocketBase is not initialized!');
+        throw new Error('Database connection not available');
+      }
       
-      // Show confirmation popup instead of toast
+      // Parse the time slot properly
+      const timeSlotParts = selectedSlot.time.split(' - ')[0].trim().split(' ');
+      const timePart = timeSlotParts[0];
+      const amPm = timeSlotParts[1];
+      
+      // Create a proper date object for the schedule time
+      const scheduleDate = new Date(bookingDate);
+      const [hours, minutes] = timePart.split(':').map(Number);
+      let hour = hours;
+      
+      // Convert to 24-hour format
+      if (amPm.toLowerCase() === 'pm' && hour < 12) {
+        hour += 12;
+      } else if (amPm.toLowerCase() === 'am' && hour === 12) {
+        hour = 0;
+      }
+      
+      scheduleDate.setHours(hour, minutes, 0, 0);
+      
+      // Format as ISO string for the API
+      const scheduleTimeIso = scheduleDate.toISOString();
+      console.log('Formatted schedule time:', scheduleTimeIso);
+      
+      // FIXED: Create proper scheduled room data structure
+      const scheduledRoomData = {
+        title: appointmentTitle || `Meeting with ${representativeDetails.name}`,
+        representative: [representativeDetails.id], // Array of representative IDs
+        scheduled: true,
+        schedule_time: scheduleTimeIso,
+        customer_name: fullName,
+        customer_email: email,
+        customer_phone: phoneNumber,
+        room_id: roomId,
+        additional_information: additionalInformation || '',
+        meeting_status: 'scheduled',
+        meeting_duration: 60, // Default to 60 minutes
+        join_before_minutes: 15, // Allow joining 15 minutes before
+        participants_joined: JSON.stringify([])
+      };
+
+      // FIXED: Only add content relations if they exist and are valid
+      // If host_content is available, add it
+      if (representativeDetails.host_content && Array.isArray(representativeDetails.host_content) && representativeDetails.host_content.length > 0) {
+        scheduledRoomData.host_content = representativeDetails.host_content;
+      }
+      
+      // If representative_content is available, add it
+      if (representativeDetails.representative_content && Array.isArray(representativeDetails.representative_content) && representativeDetails.representative_content.length > 0) {
+        scheduledRoomData.representative_content = representativeDetails.representative_content;
+      }
+
+      // For debugging - log the final scheduled room data    
+      console.log('Creating scheduled room record:', scheduledRoomData);
+      
+      // FIXED: Explicitly handle creation errors
+      try {
+        // Ensure we're using the most recent PocketBase instance
+        const scheduledRoom = await pb.collection('scheduled_rooms').create(scheduledRoomData);
+        console.log('Successfully created scheduled room record:', scheduledRoom);
+        
+        // Add the scheduled room ID to the confirmation data
+        if (scheduledRoom && scheduledRoom.id) {
+          pendingAppointmentData.scheduledRoomId = scheduledRoom.id;
+          
+          // Set variables for the success dialog
+          createdRoomId = roomId;
+          createdRoomUrl = roomUrl;
+          
+          // Show confirmation popup
+          showConfirmationPopup = true;
+          
+          // REDIRECT OPTION: After confirmation is closed, user will be redirected to waiting room
+          // This code can be triggered when the confirmation is closed if preferred
+          setTimeout(() => {
+            // In a real implementation, you would use a proper navigation method
+            // window.location.href = roomUrl;
+            // Or if you're using SvelteKit:
+            // import { goto } from '$app/navigation';
+            // goto(roomUrl);
+          }, 5000); // Optional delay before redirect
+        }
+      } catch (scheduledRoomError) {
+        console.error('Error creating scheduled room record:', scheduledRoomError);
+        console.error('Error details:', scheduledRoomError.data ? scheduledRoomError.data : scheduledRoomError.message);
+        
+        // Show detailed error message
+        if (scheduledRoomError.data) {
+          // PocketBase validation errors
+          const errorFields = Object.keys(scheduledRoomError.data);
+          const errorMessages = errorFields.map(field => `${field}: ${scheduledRoomError.data[field].message}`);
+          toast.error(`Failed to create meeting record: ${errorMessages.join(', ')}`);
+        } else {
+          toast.error(`Failed to create meeting record: ${scheduledRoomError.message}`);
+        }
+      }
+      
+      // Show confirmation popup
       showConfirmationToast(representativeDetails.name, bookingDate, newMeeting.time, representativeDetails.location || 'Online', roomId);
       
-      // DON'T dispatch close here - it might be closing our dialog
-      // dispatch('close');
-      
-      // Return the room ID for redirection (if needed)
       return roomId;
     } catch (error) {
       console.error('Error creating appointment:', error);
@@ -1746,14 +1846,26 @@
       </div>
       
       <div class="flex justify-between items-center pt-3 border-t border-gray-200">
-        <p class="text-sm text-gray-600">By clicking yes, you are confirming your appointment</p>
         <button 
-          class="bg-green-600 text-white px-4 py-1 rounded"
+          class="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200"
           on:click={() => {
             showConfirmationPopup = false;
+            dispatch('close');
           }}
         >
-          YES
+          Close
+        </button>
+        
+        <!-- Add this new button for immediate entry to the waiting room -->
+        <button 
+          class="bg-primary text-white px-4 py-2 rounded hover:bg-primary/80"
+          on:click={() => {
+            showConfirmationPopup = false;
+            // Redirect to the room URL with the correct parameters
+            window.location.href = roomUrl;
+          }}
+        >
+          Go to Waiting Room
         </button>
       </div>
     </div>

@@ -106,6 +106,11 @@ let connectionStatus = 'initializing'; // 'initializing', 'connected', 'error', 
 let joinAttempts = 0;
 const MAX_JOIN_ATTEMPTS = 3;
 
+// Add this near the top of your script with other variable declarations
+let isScheduledMeeting = false;
+let meetingStatus = { canJoin: true, isPast: false, joinBeforeMinutes: 60, minutesLeft: 0 };
+let scheduledMeetingTime = null;
+
 function calculateTimeRemaining(scheduledTime) {
     const now = new Date();
     const diff = scheduledTime.getTime() - now.getTime();
@@ -227,130 +232,44 @@ onMount(() => {
     const params = new URLSearchParams(window.location.search);
     const representativeName = params.get('repid');
 
-    // Check if this is a scheduled meeting based on the correct data structure
-    const hasScheduledRoom = !!data?.scheduledRoom;
-    const scheduleTime = hasScheduledRoom ? data.scheduledRoom.schedule_time : null;
+    // Check if this is a scheduled meeting
+    console.log('Room data on mount:', data);
     
-    // Get meeting status based on the correct data structure
-    const status = getMeetingStatus(data);
-    
-
-    
-    // Only initialize WebRTC if we can join the waiting room and it's not a past meeting
-    if (!status.isPast && status.canJoin && ($anonymousUser || isAuthenticated)) {
-        // Start with camera on for representatives, off for others
-        isCameraOff = !isRepresentative;
-        mediaConstraints.video = isRepresentative;
+    // Check all possible schedule data locations
+    if (data) {
+      // Extract schedule data (handle all possible formats)
+      if (data.scheduledRoom) {
+        isScheduledMeeting = true;
+        scheduledMeetingTime = new Date(data.scheduledRoom.schedule_time);
+      } else if (data.schedule_time) {
+        isScheduledMeeting = true;
+        scheduledMeetingTime = new Date(data.schedule_time);
+      } else if (data.scheduledTime) {
+        isScheduledMeeting = true;
+        scheduledMeetingTime = new Date(data.scheduledTime);
+      } else if (data.room && data.room.schedule_time) {
+        isScheduledMeeting = true;
+        scheduledMeetingTime = new Date(data.room.schedule_time);
+      }
+      
+      // If it's a scheduled meeting, calculate the status
+      if (isScheduledMeeting && scheduledMeetingTime) {
+        meetingStatus = getMeetingStatus({
+          scheduledRoom: { 
+            schedule_time: scheduledMeetingTime,
+            join_before_minutes: data.join_before_minutes || data.scheduledRoom?.join_before_minutes || 60
+          }
+        });
         
-        // If this is a representative, ensure video is enabled
-        if (representativeName) {
-            mediaConstraints.video = true;
-            // Keep the audio constraints object structure
-            mediaConstraints.audio = {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true
-            };
-        }
-
-        // Start the initialization with retry mechanism
-        initWithRetry();
-        
-        // Always initialize as host control
-        syncSource = 'host';
-        
-        // Load default video for host
-        if (isHost && room) {
-            // Try to get video from selected_video field first
-            let videoToUse = null;
-            
-            if (room.expand?.selected_video) {
-                videoToUse = room.expand.selected_video;
-            } else if (room.expand?.host_content && Array.isArray(room.expand.host_content) && room.expand.host_content.length > 0) {
-                // Find the first video from expanded host_content
-                const hostVideos = room.expand.host_content.filter(item => 
-                    item.file && (item.file.endsWith('.mp4') || item.file.endsWith('.webm'))
-                );
-                
-                if (hostVideos.length > 0) {
-                    // Use the first video
-                    videoToUse = hostVideos[0];
-                   
-                }
-            } else if (room.host_content && Array.isArray(room.host_content) && room.host_content.length > 0) {
-                // We have host_content IDs but not expanded, get the first one
-                try {
-                    // Get the first host_content item
-                    const contentId = room.host_content[0];
-                    
-                    fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/content_library/records/${contentId}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data && data.file && (data.file.endsWith('.mp4') || data.file.endsWith('.webm'))) {
-                                
-                                // Create a video URL from the content
-                                const videoUrl = data.file ? 
-                                    `${PUBLIC_POCKETBASE_INSTANCE}api/files/${data.collectionId}/${data.id}/${data.file}` : '';
-                                
-                                if (videoUrl) {
-                                    // Set the video URL in the store
-                                    currentVideoUrl.set(videoUrl);
-                                    
-                                    // Broadcast the video URL to all participants
-                                    sendVideoUpdate(videoUrl);
-                                }
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Error fetching host content by ID:', err);
-                        });
-                } catch (err) {
-                    console.error('Error setting up host content fetch by ID:', err);
-                }
-            }
-            
-            // If we have a video from selected_video or host_content, use it directly
-            if (videoToUse) {
-                const videoUrl = videoToUse.file ? 
-                    `${PUBLIC_POCKETBASE_INSTANCE}api/files/${videoToUse.collectionId}/${videoToUse.id}/${videoToUse.file}` : '';
-                
-                
-                // Set the video URL in the store
-                currentVideoUrl.set(videoUrl);
-                
-                // Broadcast the video URL to all participants
-                sendVideoUpdate(videoUrl);
-            }
-        }
-        
-        // Open participants panel by default after a short delay to ensure DOM is ready
-        setTimeout(() => {
-            const participantsPanel = document.getElementById("participantsPanel");
-            if (participantsPanel) {
-                const isMobile = window.innerWidth < 1024;
-                if (isMobile) {
-                    participantsPanel.style.width = "100vw";
-                } else {
-                    participantsPanel.style.width = "30rem";
-                }
-                participantsPanel.style.transform = "translateX(0%)";
-            }
-        }, 500);
+        console.log('Found scheduled meeting:', {
+          scheduledMeetingTime, 
+          isScheduledMeeting,
+          meetingStatus
+        });
+      }
     }
     
-    // Add the docxScrollPosition to the onMount initialization
-    docxScrollPosition.set(0);
-    
-    return () => {
-        if (webRTCAdaptor) {
-            try {
-                webRTCAdaptor.stop(publishStreamId);
-                webRTCAdaptor.stop(roomName);
-            } catch (e) {
-                console.error('Error stopping WebRTC:', e);
-            }
-        }
-    };
+    // Rest of your onMount code...
 });
 
 function initializeWebRTC() {
@@ -1645,7 +1564,6 @@ function sendVideoUpdate(videoUrl) {
 function toggleVideoMute() {
     if (videoPlayer) {
         isVideoMuted = !isVideoMuted;
-        videoPlayer.muted = isVideoMuted;
         
         // If we're a controller, sync mute state to other participants
         const isCurrentController = (syncSource === 'host' && isHost) || 
@@ -1716,6 +1634,14 @@ $: {
 }
 
 function joinRoomWithRetry() {
+    // Check meeting status before attempting to join, but don't show toast
+    const status = getMeetingStatus(data);
+    
+    if (!status.canJoin || status.isPast) {
+        console.log(`Cannot join room: ${status.isPast ? 'Meeting has ended' : 'Meeting not yet available'}`);
+        return;
+    }
+    
     joinAttempts++;
     console.log(`Attempt ${joinAttempts} to join room...`);
     
@@ -1749,6 +1675,7 @@ function initWithRetry() {
         } else {
             console.error('Failed to initialize WebRTC after maximum attempts');
             connectionStatus = 'error';
+            // Remove toast notifications here
         }
     }
 }
@@ -1756,14 +1683,14 @@ function initWithRetry() {
 // Replace the getMeetingStatus function with this improved version
 function getMeetingStatus(data) {
   // If no data, meeting is available now (not scheduled)
-  if (!data) return { canJoin: true, isPast: false };
+  if (!data) return { canJoin: true, isPast: false, joinBeforeMinutes: 60 };
   
   // Extract the scheduled room data from the nested structure
   const scheduledRoom = data.scheduledRoom || data;
   
   // Get schedule time from the correct location
   const scheduleTime = scheduledRoom?.schedule_time || scheduledRoom?.scheduledTime;
-  if (!scheduleTime) return { canJoin: true, isPast: false };
+  if (!scheduleTime) return { canJoin: true, isPast: false, joinBeforeMinutes: 60 };
   
   // Make sure we're working with Date objects
   const scheduleDate = scheduleTime instanceof Date ? scheduleTime : new Date(scheduleTime);
@@ -1779,7 +1706,6 @@ function getMeetingStatus(data) {
   const isPast = minutesLeft < 0;
   
   // Get the join_before_minutes from the scheduled room data or default to 60
-  // Note the nested structure access
   const joinBeforeMinutes = scheduledRoom?.join_before_minutes ?? 60;
   
   // Can join if it's not in the past and scheduled to start within the allowed time
@@ -1798,54 +1724,107 @@ function getMeetingStatus(data) {
   return { canJoin, isPast, minutesLeft, joinBeforeMinutes };
 }
 
+// Helper function to generate an ICS calendar file
+function generateCalendarInvite(scheduledRoom) {
+  const startTime = new Date(scheduledRoom.schedule_time);
+  const endTime = new Date(startTime.getTime() + (scheduledRoom.meeting_duration || 60) * 60 * 1000);
+  
+  return `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//ViewRoom//Calendar//EN
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VEVENT
+DTSTART:${formatDateForICS(startTime)}
+DTEND:${formatDateForICS(endTime)}
+SUMMARY:${scheduledRoom.title || "Scheduled Meeting"}
+DESCRIPTION:Join this meeting at ${window.location.href}
+LOCATION:Online
+STATUS:CONFIRMED
+SEQUENCE:0
+BEGIN:VALARM
+TRIGGER:-PT15M
+ACTION:DISPLAY
+DESCRIPTION:Reminder
+END:VALARM
+END:VEVENT
+END:VCALENDAR`;
+}
+
+// Helper to format date for ICS
+function formatDateForICS(date) {
+  return date.toISOString().replace(/-|:|\.\d+/g, '');
+}
+
+// Helper to download ICS file
+function downloadICS(content, filename) {
+  const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 </script>
 
 
-{#if data?.scheduledRoom}
-  <!-- Display different UI based on meeting status -->
-  {@const status = getMeetingStatus(data)}
-  {@const scheduledTime = new Date(data.scheduledRoom.schedule_time)}
-  
+{#if isScheduledMeeting && !meetingStatus.canJoin}
   <div class="flex flex-col items-center justify-center h-screen bg-[#eceef3] p-6 text-center">
     <div class="bg-white p-8 rounded-lg shadow-lg max-w-md">
-      <h2 class="text-xl font-semibold mb-4" class:text-red-600={status.isPast} class:text-yellow-600={!status.canJoin && !status.isPast} class:text-green-600={status.canJoin && !status.isPast}>
-        {status.isPast ? 'Meeting Has Ended' : (status.canJoin ? 'Waiting Room Open' : 'Meeting Not Available Yet')}
+      <h2 class="text-xl font-semibold mb-4" class:text-red-600={meetingStatus.isPast} class:text-yellow-600={!meetingStatus.canJoin && !meetingStatus.isPast} class:text-green-600={meetingStatus.canJoin && !meetingStatus.isPast}>
+        {meetingStatus.isPast ? 'Meeting Has Ended' : (meetingStatus.canJoin ? 'Waiting Room Open' : 'Meeting Not Available Yet')}
       </h2>
-      <p class="mb-4">This meeting is scheduled and {status.isPast ? 'has already taken place' : 'is not yet available'}.</p>
+      <p class="mb-4">This meeting is scheduled and {meetingStatus.isPast ? 'has already taken place' : 'is not yet available'}.</p>
       
       <div class="mb-6">
         <p class="text-sm font-medium">Scheduled For:</p>
-        <p class="text-lg">{scheduledTime.toLocaleString()}</p>
+        <p class="text-lg">{scheduledMeetingTime.toLocaleString()}</p>
       </div>
       
-      {#if status.isPast}
+      {#if meetingStatus.isPast}
         <div class="mb-6 p-3 bg-red-50 border border-red-200 rounded-md">
           <p class="text-red-800">
             This meeting has already taken place and is no longer available.
           </p>
         </div>
-      {:else if !status.canJoin}
+      {:else if !meetingStatus.canJoin}
         <div class="mb-6">
           <p class="text-sm text-gray-500">Time remaining:</p>
           <p class="text-2xl font-bold">
-            {calculateTimeRemaining(scheduledTime)}
+            {calculateTimeRemaining(scheduledMeetingTime)}
           </p>
         </div>
         
         <div class="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
           <p class="text-yellow-800">
-            {#if status.joinBeforeMinutes === 0}
+            {#if meetingStatus.joinBeforeMinutes === 0}
               You'll be able to join this meeting when it starts.
             {:else}
-              You'll be able to join the waiting room {status.joinBeforeMinutes} minute{status.joinBeforeMinutes !== 1 ? 's' : ''} before the scheduled start time.
+              You'll be able to join the waiting room {meetingStatus.joinBeforeMinutes} minute{meetingStatus.joinBeforeMinutes !== 1 ? 's' : ''} before the scheduled start time.
             {/if}
           </p>
         </div>
+        
+        <button 
+          class="w-full py-2 mb-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+          on:click={() => {
+            const icsContent = generateCalendarInvite({
+              schedule_time: scheduledMeetingTime,
+              title: data?.scheduledRoom?.title || data?.title || 'Scheduled Meeting',
+              id: data?.scheduledRoom?.id || data?.id || 'meeting'
+            });
+            downloadICS(icsContent, `meeting-invite.ics`);
+          }}
+        >
+          Add to Calendar
+        </button>
       {:else}
         <div class="mb-6">
           <p class="text-sm text-gray-500">Time remaining:</p>
           <p class="text-2xl font-bold">
-            {calculateTimeRemaining(scheduledTime)}
+            {calculateTimeRemaining(scheduledMeetingTime)}
           </p>
         </div>
         
@@ -1864,6 +1843,8 @@ function getMeetingStatus(data) {
       </button>
     </div>
   </div>
+{:else if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName}
+  <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
     <!-- Always render meeting room in the background -->
     <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">

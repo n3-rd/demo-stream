@@ -112,10 +112,9 @@ import Share from '$lib/components/room/share.svelte';
           <!-- Participant Info -->
           <div class="flex flex-col">
             <span class="font-medium text-base leading-[14px] text-white">
+              {formatParticipantName(participant)}
               {#if isRepresentative(participant)}
-                {formatParticipantName(participant)} (Host)
-              {:else}
-                {formatParticipantName(participant)}
+                <span class="text-[#D1D1D1]"> (Rep)</span>
               {/if}
               {#if participant === name || (participant.streamId && participant.streamId === name)}
                 <span class="text-[#D1D1D1]"> (You)</span>

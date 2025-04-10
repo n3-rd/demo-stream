@@ -835,7 +835,7 @@ function handleWebRTCError(error: string, message: string) {
     } else if (error === "UserMediaError") {
       toast.error("Cannot access camera or microphone. Please check your device permissions.");
     } else {
-      toast.error(`Connection error: ${message}`);
+      console.error("WebRTC Error:", error, message);
     }
 }
 
@@ -1864,18 +1864,11 @@ function getMeetingStatus(data) {
       </button>
     </div>
   </div>
-{:else if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName}
-  <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
-    {#if showGreetingPopup}
-        <GreetingPopup name={data?.representativeName} host={isHost} on:dismissed={handleGreetingDismissed} />
-    {/if}
-    
+    <!-- Always render meeting room in the background -->
     <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
-        {#if inDataChannelOnlyMode}
-            <div class="fixed top-0 left-0 right-0 z-50 bg-yellow-500 text-black py-2 px-4 text-center">
-                <p class="font-medium">Media access is not available. You can still view shared content but your camera and microphone are disabled.</p>
-            </div>
+        {#if showGreetingPopup}
+            <GreetingPopup name={data?.representativeName} host={isHost} on:dismissed={handleGreetingDismissed} />
         {/if}
         
         <div id="players" class="hidden">
@@ -2094,23 +2087,12 @@ function getMeetingStatus(data) {
         </div>
     </div>
 
-    <!-- Add a connection status indicator to the UI -->
-    {#if !data?.error && (connectionStatus === 'initializing' || connectionStatus === 'disconnected')}
-      <div class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-500 text-black py-2 px-4 rounded-full shadow-lg">
-        <p class="font-medium flex items-center">
-          <span class="animate-pulse mr-2 h-3 w-3 bg-black rounded-full inline-block"></span>
-          {connectionStatus === 'initializing' ? 'Connecting to room...' : 'Disconnected. Reconnecting...'}
-        </p>
-      </div>
-    {:else if connectionStatus === 'error'}
-      <div class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white py-2 px-4 rounded-full shadow-lg">
-        <p class="font-medium flex items-center">
-          <span class="mr-2">⚠️</span>
-          Connection error. 
-          <button class="ml-2 underline" on:click={() => window.location.reload()}>
-            Reload page
-          </button>
-        </p>
+    <!-- Modal overlay for name input -->
+    {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName}
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="relative z-50">
+          <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
+        </div>
       </div>
     {/if}
 {/if}

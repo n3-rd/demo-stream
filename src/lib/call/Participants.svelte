@@ -52,6 +52,29 @@ import Share from '$lib/components/room/share.svelte';
     }
     return name.substring(0, 2).toUpperCase();
   }
+
+  // Add this function to check if a participant is likely the host based on multiple heuristics
+  function isParticipantHost(participant: any) {
+    // Method 1: Check if the participant matches the room ID from the URL (your original approach)
+    const matchesRoomId = (typeof participant === 'string' && participant.split('-').pop() === pageName) || 
+                         (participant?.streamId && participant.streamId.split('-').pop() === pageName);
+    
+    // Method 2: Check if participant has any host indicators in their metadata
+    const hasHostMetadata = participant?.isHost || 
+                           (participant?.metadata && participant.metadata.includes('isHost')) ||
+                           (participant?.metaData && participant.metaData.includes('isHost'));
+    
+    // Method 3: Check if this is the first participant in the list
+    // This assumes the first person who joined is the host
+    const isFirstParticipant = participants.indexOf(participant) === 0;
+    
+    // Method 4: Check for special naming patterns that might indicate host status
+    const hasHostNamePattern = (typeof participant === 'string' && participant.includes('host')) ||
+                              (participant?.streamId && participant.streamId.includes('host'));
+    
+    // Return true if any of these heuristics match
+    return matchesRoomId || hasHostMetadata || (isFirstParticipant && !isRepresentative(participant)) || hasHostNamePattern;
+  }
 </script>
 
 <div class="relative w-[340px] h-full bg-[rgba(32,33,36,0.44)] rounded-md text-white  flex flex-col">
@@ -113,7 +136,9 @@ import Share from '$lib/components/room/share.svelte';
           <div class="flex flex-col">
             <span class="font-medium text-base leading-[14px] text-white">
               {formatParticipantName(participant)}
-              {#if isRepresentative(participant)}
+              {#if isParticipantHost(participant)}
+                <span class="text-[#D1D1D1]"> (Host)</span>
+              {:else if isRepresentative(participant)}
                 <span class="text-[#D1D1D1]"> (Rep)</span>
               {/if}
               {#if participant === name || (participant.streamId && participant.streamId === name)}

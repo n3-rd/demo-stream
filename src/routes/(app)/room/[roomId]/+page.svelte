@@ -36,6 +36,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import GreetingPopup from '$lib/call/GreetingPopup.svelte';
     import DocxViewer from '$lib/components/room/DocxViewer.svelte';
     import ImageViewer from '$lib/components/room/ImageViewer.svelte';
+	import { toast } from 'svelte-sonner';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;

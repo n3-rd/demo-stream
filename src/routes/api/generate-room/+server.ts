@@ -24,10 +24,11 @@ export async function POST({ request }) {
         
         // Create the prediction
         const prediction = await replicate.predictions.create({
+            model: "jschoormans/interior-v2",
             version: "8372bd24c6011ea957a0861f0146671eed615e375f038c13259c1882e3c8bac7",
             input: {
                 image: `data:image/${image.type.split('/')[1]};base64,${base64Image}`,
-                prompt: combinedPrompt,
+                prompt: combinedPrompt || "",
                 strength: 0.999999,
                 controlnet_conditioning_scale: 0.7,
                 seed: 42
@@ -42,7 +43,8 @@ export async function POST({ request }) {
         }
         
         if (result.status === "succeeded") {
-            return json({ success: true, imageUrl: result.output, predictionId: prediction.id });
+            const outputUrl = result.output;
+            return json({ success: true, imageUrl: outputUrl, predictionId: prediction.id });
         } else {
             throw new Error(`Prediction failed: ${result.error}`);
         }

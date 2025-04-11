@@ -30,8 +30,7 @@ export async function POST({ request }) {
                 image: `data:image/${image.type.split('/')[1]};base64,${base64Image}`,
                 prompt: combinedPrompt || "",
                 strength: 0.999999,
-                controlnet_conditioning_scale: 0.7,
-                seed: 42
+                controlnet_conditioning_scale: 0.7
             }
         });
         

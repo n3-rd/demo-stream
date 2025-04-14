@@ -11,7 +11,7 @@ export async function POST({ request }) {
         const userPrompt = formData.get('userPrompt');
 
         // Combine inputs into a comprehensive prompt
-        const combinedPrompt = `Using this uploaded image, generate a new version. The room type is "${roomType}", the design style is "${designStyle}", and the user prompt is: ${userPrompt}`;
+        const combinedPrompt = "${roomType}, ${designStyle}, ${userPrompt}";
 
         // Convert the image to a buffer/base64
         const buffer = await image.arrayBuffer();

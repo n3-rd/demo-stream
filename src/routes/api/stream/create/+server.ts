@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import type { RequestHandler } from '@sveltejs/kit';
 import { PUBLIC_ANT_MEDIA_URL } from '$env/static/public';
 
 interface EncoderSettings {
@@ -103,7 +103,10 @@ interface StreamCreateRequest {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-    if (!locals.pb.authStore.isValid) {
+    console.log('Stream creation endpoint called');
+    
+    if (!locals.pb?.authStore?.isValid) {
+        console.log('Auth check failed - no valid auth store');
         return json({
             success: false,
             message: 'Unauthorized'
@@ -114,17 +117,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const body: StreamCreateRequest = await request.json();
         const { streamId, name, description, camera = true, publish = true, encoderSettings } = body;
 
+        console.log('Stream creation request:', { streamId, name });
+
         if (!streamId || !name) {
+            console.log('Missing required params:', { streamId, name });
             return json({
                 success: false,
                 message: 'Stream ID and name are required'
             }, { status: 400 });
         }
 
+        // Extract roomId and uid from streamId if it contains a hyphen
+        // This ensures consistent ID format between creation and retrieval
+        let finalStreamId = streamId;
+        if (streamId.includes('-')) {
+            // The streamId is already in the required format
+            console.log('Using provided hyphenated streamId:', finalStreamId);
+        } else {
+            console.log('Using basic streamId format:', finalStreamId);
+        }
+
         // Format the URL for Ant Media Server
         const serverUrl = PUBLIC_ANT_MEDIA_URL || '54.198.58.66:5080';
         const host = serverUrl.replace(/^(wss?:\/\/|https?:\/\/)/, '');
         const apiUrl = `http://${host}/WebRTCAppEE/rest/v2/broadcasts/create`;
+        
+        console.log('Ant Media API URL:', apiUrl);
 
         const defaultEncoderSettings: EncoderSettings = {
             height: 720,
@@ -134,7 +152,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         };
 
         const streamData: BroadcastObject = {
-            streamId,
+            streamId: finalStreamId,
             name,
             description: description || '',
             type: "liveStream",
@@ -163,6 +181,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             })
         };
 
+        console.log('Stream data payload:', {
+            streamId: finalStreamId,
+            name,
+            publish,
+            publicStream: true
+        });
+
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -172,9 +197,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         });
 
         const result = await response.json();
+        console.log('Stream creation response:', { 
+            status: response.status, 
+            success: response.ok, 
+            streamId: result.streamId,
+            message: result.message || 'No message'
+        });
 
         if (!response.ok) {
             if (result.message?.includes('already being used')) {
+                console.log('Stream ID conflict detected');
                 return json({
                     success: false,
                     message: 'Stream ID is already in use. Please choose a different stream ID.',
@@ -182,12 +214,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                 }, { status: 409 });
             }
 
+            console.log('Stream creation failed:', result);
             return json({
                 success: false,
                 message: result.message || 'Failed to create stream',
                 error: result
             }, { status: response.status });
         }
+
+        console.log('Stream created successfully:', { 
+            streamId: result.streamId,
+            status: result.status 
+        });
 
         // Store stream info in PocketBase
         // await locals.pb.collection('streams').create({

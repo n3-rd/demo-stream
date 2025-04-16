@@ -1,8 +1,10 @@
 export async function getStreamInfo(roomId: string, uid?: string) {
-    // Include uid parameter if provided
+    // Ensure we're always passing uid parameter if provided
     const apiUrl = uid 
         ? `/api/stream/info?roomId=${roomId}&uid=${uid}`
         : `/api/stream/info?roomId=${roomId}`;
+
+    console.log(`Getting stream info for roomId: ${roomId}, uid: ${uid || 'none'}, url: ${apiUrl}`);
 
     try {
         const response = await fetch(apiUrl, {
@@ -13,17 +15,43 @@ export async function getStreamInfo(roomId: string, uid?: string) {
         });
 
         if (!response.ok) {
+            console.error(`Failed to fetch stream info: ${response.status} ${response.statusText}`);
             throw new Error('Failed to fetch stream info');
         }
 
         const streamInfo = await response.json();
+        
+        // Add some debug logging to help diagnose issues
+        console.log(`Stream info response:`, {
+            hasInfo: !!streamInfo,
+            hasError: !!streamInfo.error,
+            streamId: streamInfo.streamId,
+            status: streamInfo.status,
+            subTrackStreamIds: streamInfo.subTrackStreamIds?.length || 0
+        });
+
+        // Check that we got a proper response with expected format
+        if (streamInfo && !streamInfo.error) {
+            // Ensure subTrackStreamIds exists, even if empty
+            if (!streamInfo.subTrackStreamIds) {
+                streamInfo.subTrackStreamIds = [];
+            }
+            
+            // Log the expected streamId for debugging
+            const expectedStreamId = uid ? `${roomId}-${uid}` : roomId;
+            if (streamInfo.streamId && streamInfo.streamId !== expectedStreamId) {
+                console.warn(`Stream ID mismatch. Expected: ${expectedStreamId}, Got: ${streamInfo.streamId}`);
+            }
+        }
+        
         return streamInfo;
     } catch (error) {
         console.error('Error fetching stream info:', error);
         
         // Return a default empty structure instead of throwing
         return {
-            subTrackStreamIds: []
+            subTrackStreamIds: [],
+            error: error.message || 'Unknown error'
         };
     }
 }

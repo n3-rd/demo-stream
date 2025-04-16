@@ -235,10 +235,11 @@ onMount(() => {
     // Check if this is a scheduled meeting
     console.log('Room data on mount:', data);
     
-    // Check all possible schedule data locations
+    // Check all possible schedule data locations but be more strict about detection
+    isScheduledMeeting = false; // Reset to false by default
     if (data) {
       // Extract schedule data (handle all possible formats)
-      if (data.scheduledRoom) {
+      if (data.scheduledRoom && data.scheduledRoom.schedule_time) {
         isScheduledMeeting = true;
         scheduledMeetingTime = new Date(data.scheduledRoom.schedule_time);
       } else if (data.schedule_time) {
@@ -254,12 +255,18 @@ onMount(() => {
       
       // If it's a scheduled meeting, calculate the status
       if (isScheduledMeeting && scheduledMeetingTime) {
-        meetingStatus = getMeetingStatus({
+        const meetingStatusResult = getMeetingStatus({
           scheduledRoom: { 
             schedule_time: scheduledMeetingTime,
             join_before_minutes: data.join_before_minutes || data.scheduledRoom?.join_before_minutes || 60
           }
         });
+        
+        // Ensure we always have minutesLeft property
+        meetingStatus = {
+          ...meetingStatusResult,
+          minutesLeft: meetingStatusResult.minutesLeft || 0
+        };
         
         console.log('Found scheduled meeting:', {
           scheduledMeetingTime, 
@@ -269,7 +276,10 @@ onMount(() => {
       }
     }
     
-    // Rest of your onMount code...
+    // Initialize WebRTC if we have a name
+    if (isAuthenticated || $anonymousUser || data?.representativeName) {
+      initializeWebRTC();
+    }
 });
 
 function initializeWebRTC() {
@@ -773,11 +783,19 @@ function formatDisplayName(name: string, isRepresentative = false): string {
 }
 
 function joinRoom() {
-    // For scheduled meetings, we'll create a waiting room stream
-    const isScheduledMeeting = data?.error && data?.scheduledTime;
+    console.log('joinRoom called with:', {
+        isScheduledMeeting,
+        meetingStatus,
+        uniqueSessionId,
+        roomName,
+        baseRoomName
+    });
+    
+    // More careful check for scheduled meetings
+    const isScheduledMeetingActive = isScheduledMeeting && scheduledMeetingTime;
     
     // Always use URL param as fallback for any type of meeting
-    const baseRoomId = isScheduledMeeting 
+    const baseRoomId = isScheduledMeetingActive 
         ? (data?.scheduledRoomId || $page.params.roomId) 
         : (room?.id || $page.params.roomId);
     
@@ -887,14 +905,28 @@ function generateRandomString(length: number): string {
 }
 
 setInterval(() => {
-    // Pass uid parameter to getStreamInfo
-    getStreamInfo(baseRoomName, uniqueSessionId).then(streamInfo => {
-        meetingParticipants = streamInfo.subTrackStreamIds || [];
-    }).catch(err => {
-        console.error('Error getting stream info:', err);
-        // Set empty array on error
-        meetingParticipants = [];
-    });
+    // Pass uid parameter to getStreamInfo to get the correct streamId
+    if (uniqueSessionId) {
+        getStreamInfo(baseRoomName, uniqueSessionId).then(streamInfo => {
+            console.log('Got stream info:', {
+                baseRoomName,
+                uniqueSessionId,
+                hasSubTracks: !!streamInfo.subTrackStreamIds,
+                subTrackCount: streamInfo.subTrackStreamIds?.length || 0
+            });
+            
+            // Update participants if we have valid data, otherwise keep empty array
+            if (streamInfo && !streamInfo.error && streamInfo.subTrackStreamIds) {
+                meetingParticipants = streamInfo.subTrackStreamIds || [];
+            } else {
+                meetingParticipants = [];
+            }
+        }).catch(err => {
+            console.error('Error getting stream info:', err);
+            // Set empty array on error
+            meetingParticipants = [];
+        });
+    }
 }, 5000);
 
 // Add these handler functions
@@ -1636,10 +1668,14 @@ $: {
 function joinRoomWithRetry() {
     // Check meeting status before attempting to join, but don't show toast
     const status = getMeetingStatus(data);
+    console.log('joinRoomWithRetry - Meeting status:', status);
     
-    if (!status.canJoin || status.isPast) {
-        console.log(`Cannot join room: ${status.isPast ? 'Meeting has ended' : 'Meeting not yet available'}`);
-        return;
+    // Only check status if this is actually a scheduled meeting
+    if (isScheduledMeeting) {
+        if (!status.canJoin || status.isPast) {
+            console.log(`Cannot join room: ${status.isPast ? 'Meeting has ended' : 'Meeting not yet available'}`);
+            return;
+        }
     }
     
     joinAttempts++;
@@ -1680,17 +1716,17 @@ function initWithRetry() {
     }
 }
 
-// Replace the getMeetingStatus function with this improved version
+// Improved getMeetingStatus function that always returns minutesLeft
 function getMeetingStatus(data) {
   // If no data, meeting is available now (not scheduled)
-  if (!data) return { canJoin: true, isPast: false, joinBeforeMinutes: 60 };
+  if (!data) return { canJoin: true, isPast: false, joinBeforeMinutes: 60, minutesLeft: 0 };
   
   // Extract the scheduled room data from the nested structure
   const scheduledRoom = data.scheduledRoom || data;
   
   // Get schedule time from the correct location
   const scheduleTime = scheduledRoom?.schedule_time || scheduledRoom?.scheduledTime;
-  if (!scheduleTime) return { canJoin: true, isPast: false, joinBeforeMinutes: 60 };
+  if (!scheduleTime) return { canJoin: true, isPast: false, joinBeforeMinutes: 60, minutesLeft: 0 };
   
   // Make sure we're working with Date objects
   const scheduleDate = scheduleTime instanceof Date ? scheduleTime : new Date(scheduleTime);

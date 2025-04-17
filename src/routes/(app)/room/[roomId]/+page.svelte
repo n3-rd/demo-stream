@@ -159,9 +159,9 @@ const streamName = room?.title;
 const dcOnly = false;
 const playOnly = false;
 
-// WebRTC configuration
+// Update media constraints
 const mediaConstraints = {
-    video: isRepresentative, // Video enabled by default for representatives
+    video: isRepresentative || $page.url.searchParams.get('repid') !== null, // Video enabled by default for representatives
     audio: {
         echoCancellation: true,
         noiseSuppression: true,
@@ -231,6 +231,12 @@ onMount(() => {
   
     const params = new URLSearchParams(window.location.search);
     const representativeName = params.get('repid');
+    
+    // Set isRepresentative based on URL parameter
+    if (representativeName) {
+        isRepresentative = true;
+        console.log('Detected representative mode from URL param:', representativeName);
+    }
 
     // Check if this is a scheduled meeting
     console.log('Room data on mount:', data);
@@ -294,13 +300,24 @@ function initializeWebRTC() {
         const forceDcOnly = !supportsMedia || dcOnly;
         inDataChannelOnlyMode = forceDcOnly;
         
+        // Check if this is a representative by URL param or other means
+        const isRep = $page.url.searchParams.get('repid') !== null || data?.representativeName || isRepresentative;
         
-        
-        // Update media constraints if needed
-        const actualMediaConstraints = forceDcOnly ? 
+        // Update media constraints for representatives
+        let actualMediaConstraints = forceDcOnly ? 
             { video: false, audio: false } : 
             mediaConstraints;
+            
+        // Force video for representatives
+        if (isRep && !forceDcOnly) {
+            actualMediaConstraints = {
+                ...actualMediaConstraints,
+                video: true
+            };
+            console.log('Enabling video for representative:', actualMediaConstraints);
+        }
         
+        // Initialize WebRTC
         webRTCAdaptor = new WebRTCAdaptor({
             websocket_url: getWebSocketURL(),
             mediaConstraints: actualMediaConstraints,
@@ -788,7 +805,8 @@ function joinRoom() {
         meetingStatus,
         uniqueSessionId,
         roomName,
-        baseRoomName
+        baseRoomName,
+        isRepresentative: isRepresentative || !!data.representativeName || $page.url.searchParams.get('repid') !== null
     });
     
     // More careful check for scheduled meetings
@@ -842,43 +860,34 @@ function joinRoom() {
             const streamId = `${publishStreamId}-${sanitizedName}`;
             console.log('Starting publish with streamId:', streamId);
             
-            const metadata = JSON.stringify({
-                isCameraOff,
-                isMicMuted,
-                isRepresentative: !!data.representativeName,
-                displayName,
-                roomId: baseRoomId,
-                uid: uniqueSessionId,
-                isScheduledMeeting
-            });
+            // Check if this is a representative by URL param or other means
+            const isRep = isRepresentative || !!data.representativeName || $page.url.searchParams.get('repid') !== null;
             
-            try {
-                // Check if we're in data channel only mode
-                const inDataChannelOnlyMode = webRTCAdaptor.onlyDataChannel;
+            // For representatives, make sure video is enabled
+            if (isRep && !webRTCAdaptor.mediaConstraints.video && !webRTCAdaptor.onlyDataChannel) {
+                console.log('Enabling video for representative before publishing');
                 
-                if (!inDataChannelOnlyMode) {
-                    // Always create our stream
-                    webRTCAdaptor.publish(
-                        streamId,
-                        null,
-                        metadata,
-                        null,
-                        displayName,
-                        sanitizedRoomName
-                    );
+                // Request camera access for representatives
+                navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: mediaConstraints.audio 
+                })
+                .then(stream => {
+                    // Update local stream with camera
+                    webRTCAdaptor.localStream = stream;
+                    webRTCAdaptor.mediaConstraints.video = true;
                     
-                    console.log('Stream publish initiated with:', {
-                        streamId,
-                        displayName,
-                        roomId: sanitizedRoomName,
-                        isScheduledMeeting
-                    });
-                } else {
-                    console.log('In data channel only mode, skipping media publish');
-                    isDataChannelOpen = true;
-                }
-            } catch (error) {
-                console.error('Error publishing stream:', error);
+                    // Now continue with publish
+                    publishStream(streamId, sanitizedName, sanitizedRoomName, isRep);
+                })
+                .catch(err => {
+                    console.error('Error getting camera for representative:', err);
+                    // Continue without camera
+                    publishStream(streamId, sanitizedName, sanitizedRoomName, isRep);
+                });
+            } else {
+                // Normal publish for non-representatives or if camera is already enabled
+                publishStream(streamId, sanitizedName, sanitizedRoomName, isRep);
             }
         }
 
@@ -888,6 +897,49 @@ function joinRoom() {
         
     } catch (error) {
         console.error('Error in room joining process:', error);
+    }
+}
+
+// Helper function to publish stream (extracted from joinRoom)
+function publishStream(streamId, sanitizedName, sanitizedRoomName, isRep) {
+    const metadata = JSON.stringify({
+        isCameraOff: !isRep && isCameraOff, // Force camera on for representatives
+        isMicMuted,
+        isRepresentative: isRep,
+        displayName: sanitizedName,
+        roomId: baseRoomName,
+        uid: uniqueSessionId,
+        isScheduledMeeting
+    });
+    
+    try {
+        // Check if we're in data channel only mode
+        const inDataChannelOnlyMode = webRTCAdaptor.onlyDataChannel;
+        
+        if (!inDataChannelOnlyMode) {
+            // Always create our stream
+            webRTCAdaptor.publish(
+                streamId,
+                null,
+                metadata,
+                null,
+                sanitizedName,
+                sanitizedRoomName
+            );
+            
+            console.log('Stream publish initiated with:', {
+                streamId,
+                displayName: sanitizedName,
+                roomId: sanitizedRoomName,
+                isRepresentative: isRep,
+                isScheduledMeeting
+            });
+        } else {
+            console.log('In data channel only mode, skipping media publish');
+            isDataChannelOpen = true;
+        }
+    } catch (error) {
+        console.error('Error publishing stream:', error);
     }
 }
 
@@ -978,30 +1030,76 @@ function turnOnCamera() {
     // Update media constraints to include video
     mediaConstraints.video = true;
     
+    // Get the correct stream ID based on user type
+    let displayName;
+    if (isAuthenticated) {
+        displayName = formatDisplayName(name);
+    } else if (data.representativeName) {
+        displayName = formatDisplayName(data.representativeName, true);
+    } else {
+        displayName = formatDisplayName($anonymousUser);
+    }
+    
+    const sanitizedName = sanitizeStreamName(displayName);
+    const streamId = `${publishStreamId}-${sanitizedName}`;
+    
+    console.log('Turning on camera for streamId:', streamId);
+    
     // Stop current connection
-    webRTCAdaptor.stop(publishStreamId);
+    webRTCAdaptor.stop(streamId);
     
     // Reinitialize with new constraints
     setTimeout(() => {
-        webRTCAdaptor.turnOnLocalCamera();
-        isCameraOff = false;
+        // First completely remove all tracks
+        if (webRTCAdaptor.localStream) {
+            webRTCAdaptor.localStream.getTracks().forEach(track => track.stop());
+        }
         
-        // Republish stream with camera
-        const streamId = `${roomName}-${sanitizeStreamName(name || anonymousUserId)}`;
-        const metadata = JSON.stringify({
-            isCameraOff: false,
-            isMicMuted
+        // Request new camera access
+        navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: mediaConstraints.audio 
+        })
+        .then(stream => {
+            // Manually set the local stream
+            webRTCAdaptor.localStream = stream;
+            
+            // Now turn on camera in adaptor
+            webRTCAdaptor.turnOnLocalCamera();
+            isCameraOff = false;
+            
+            // Update metadata and republish
+            const metadata = JSON.stringify({
+                isCameraOff: false,
+                isMicMuted,
+                isRepresentative: !!data.representativeName,
+                displayName,
+                roomId: baseRoomName,
+                uid: uniqueSessionId
+            });
+            
+            console.log('Publishing with new camera stream:', {
+                streamId,
+                metadata,
+                displayName,
+                roomName: sanitizeStreamName(roomName)
+            });
+            
+            // Republish with updated metadata
+            webRTCAdaptor.publish(
+                streamId,
+                null,
+                metadata,
+                null,
+                displayName,
+                sanitizeStreamName(roomName)
+            );
+        })
+        .catch(err => {
+            console.error("Error reacquiring camera:", err);
+            toast.error("Could not access camera. Please check your device permissions.");
         });
-        
-        webRTCAdaptor.publish(
-            streamId,
-            null,
-            metadata,
-            null,
-            sanitizeStreamName(name || anonymousUserId),
-            roomName
-        );
-    }, 500);
+    }, 1000); // Increased timeout to ensure previous stream is fully stopped
 }
 
 function turnOffCamera() {
@@ -1014,11 +1112,29 @@ function turnOffCamera() {
     webRTCAdaptor.turnOffLocalCamera();
     isCameraOff = true;
     
+    // Get the correct stream ID based on user type
+    let displayName;
+    if (isAuthenticated) {
+        displayName = formatDisplayName(name);
+    } else if (data.representativeName) {
+        displayName = formatDisplayName(data.representativeName, true);
+    } else {
+        displayName = formatDisplayName($anonymousUser);
+    }
+    
+    const sanitizedName = sanitizeStreamName(displayName);
+    const streamId = `${publishStreamId}-${sanitizedName}`;
+    
+    console.log('Turning off camera for streamId:', streamId);
+    
     // Update stream metadata
-    const streamId = `${roomName}-${sanitizeStreamName(name || anonymousUserId)}`;
     const metadata = JSON.stringify({
         isCameraOff: true,
-        isMicMuted
+        isMicMuted,
+        isRepresentative: !!data.representativeName,
+        displayName,
+        roomId: baseRoomName,
+        uid: uniqueSessionId
     });
     
     // Republish with updated metadata

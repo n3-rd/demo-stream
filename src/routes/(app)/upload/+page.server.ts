@@ -243,7 +243,15 @@ export const actions: Actions = {
             originalData.append('description', `Original image for ${description}`);
             originalData.append('type', 'image');
             originalData.append('file', originalFile);
-            originalData.append('library_type', libraryType);
+            
+            // Handle library_type correctly for 'both'
+            if (libraryType === 'both') {
+                originalData.append('library_type', 'host');
+                originalData.append('library_type', 'representative');
+            } else {
+                originalData.append('library_type', libraryType);
+            }
+            
             originalData.append('active', 'true');
             originalData.append('owner_company', ownerCompany);
             
@@ -255,7 +263,15 @@ export const actions: Actions = {
             generatedData.append('description', description);
             generatedData.append('type', 'image');
             generatedData.append('file', generatedFile);
-            generatedData.append('library_type', libraryType);
+            
+            // Handle library_type correctly for 'both'
+            if (libraryType === 'both') {
+                generatedData.append('library_type', 'host');
+                generatedData.append('library_type', 'representative');
+            } else {
+                generatedData.append('library_type', libraryType);
+            }
+            
             generatedData.append('active', 'true');
             generatedData.append('owner_company', ownerCompany);
             

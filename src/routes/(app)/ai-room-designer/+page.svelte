@@ -203,9 +203,14 @@
             origFormData.append('type', 'image');
             origFormData.append('file', origFile);
             origFormData.append('thumbnail', origFile);
-            origFormData.append('library_type', libraryType);
-            origFormData.append('active', 'true');
-            origFormData.append('owner_company', user.id);
+            
+            // Fix library_type handling for 'both'
+            if (libraryType === 'both') {
+                origFormData.append('library_type', 'host');
+                origFormData.append('library_type', 'representative');
+            } else {
+                origFormData.append('library_type', libraryType);
+            }
             
             // For representative-specific uploads
             if (libraryType !== 'host' && selectedRepresentatives.length > 0) {
@@ -222,7 +227,15 @@
             genFormData.append('type', 'image');
             genFormData.append('file', genFile);
             genFormData.append('thumbnail', genFile);
-            genFormData.append('library_type', libraryType);
+            
+            // Fix library_type handling for 'both'
+            if (libraryType === 'both') {
+                genFormData.append('library_type', 'host');
+                genFormData.append('library_type', 'representative');
+            } else {
+                genFormData.append('library_type', libraryType);
+            }
+            
             genFormData.append('active', 'true');
             genFormData.append('owner_company', user.id);
             
@@ -307,7 +320,15 @@
             formData.append('type', 'image');
             formData.append('file', file);
             formData.append('thumbnail', file);
-            formData.append('library_type', type);
+            
+            // Fix library_type handling for 'both'
+            if (type === 'both') {
+                formData.append('library_type', 'host');
+                formData.append('library_type', 'representative');
+            } else {
+                formData.append('library_type', type);
+            }
+            
             formData.append('active', 'true');
             formData.append('owner_company', user.id); 
             
@@ -424,7 +445,15 @@
             formData.append('title', `${title} (AI Room Design)`);
             formData.append('description', description);
             formData.append('type', 'image');
-            formData.append('library_type', type);
+            
+            // Fix library_type handling for 'both'
+            if (type === 'both') {
+                formData.append('library_type', 'host');
+                formData.append('library_type', 'representative');
+            } else {
+                formData.append('library_type', type);
+            }
+            
             formData.append('active', 'true');
             formData.append('owner_company', user.id);
             

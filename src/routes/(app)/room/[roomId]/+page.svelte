@@ -111,6 +111,20 @@ let isScheduledMeeting = false;
 let meetingStatus = { canJoin: true, isPast: false, joinBeforeMinutes: 60, minutesLeft: 0 };
 let scheduledMeetingTime = null;
 
+// Add near the top with other state variables
+let participantsPanelOpen = false;
+let chatPanelOpen = false;
+
+// Add with the other state variables
+let selfIncludedParticipantCount = 1; // Start with at least 1 (yourself)
+
+// Update the count when participants change
+$: {
+    // Calculate participant count including yourself
+    selfIncludedParticipantCount = meetingParticipants.length > 0 ? 
+        meetingParticipants.length : 1; // Always show at least 1 participant (yourself)
+}
+
 function calculateTimeRemaining(scheduledTime) {
     const now = new Date();
     const diff = scheduledTime.getTime() - now.getTime();
@@ -286,6 +300,22 @@ onMount(() => {
     if (isAuthenticated || $anonymousUser || data?.representativeName) {
       initializeWebRTC();
     }
+    
+    // Ensure panels are closed initially
+    setTimeout(() => {
+        const chatPanel = document.getElementById("chatPanel");
+        const participantsPanel = document.getElementById("participantsPanel");
+        
+        if (chatPanel) {
+            chatPanel.style.transform = "translateX(100%)";
+            chatPanel.style.width = "0px";
+        }
+        
+        if (participantsPanel) {
+            participantsPanel.style.transform = "translateX(100%)";
+            participantsPanel.style.width = "0px";
+        }
+    }, 100);
 });
 
 function initializeWebRTC() {
@@ -1250,34 +1280,38 @@ const handleScheduleClose = () => {
     scheduleOpen = false;
 };
 
+// Modified togglePanel function to fix panel behavior 
 function togglePanel(id) {
     const chatPanel = document.getElementById("chatPanel");
     const participantsPanel = document.getElementById("participantsPanel");
     const isMobile = window.innerWidth < 1024;
     
-    // Close the other panel first
+    if (!chatPanel || !participantsPanel) return;
+    
     if (id === "chatPanel") {
+        // Toggle chat panel
+        chatPanelOpen = !chatPanelOpen;
+        participantsPanelOpen = false;
+        
+        // Update UI for chat panel
+        chatPanel.style.transform = chatPanelOpen ? "translateX(0%)" : "translateX(100%)";
+        chatPanel.style.width = chatPanelOpen ? (isMobile ? "100vw" : "30rem") : "0px";
+        
+        // Close participants panel
         participantsPanel.style.transform = "translateX(100%)";
         participantsPanel.style.width = "0px";
     } else {
+        // Toggle participants panel
+        participantsPanelOpen = !participantsPanelOpen;
+        chatPanelOpen = false;
+        
+        // Update UI for participants panel
+        participantsPanel.style.transform = participantsPanelOpen ? "translateX(0%)" : "translateX(100%)";
+        participantsPanel.style.width = participantsPanelOpen ? (isMobile ? "100vw" : "30rem") : "0px";
+        
+        // Close chat panel
         chatPanel.style.transform = "translateX(100%)";
         chatPanel.style.width = "0px";
-    }
-    
-    // Toggle the selected panel
-    const panel = document.getElementById(id);
-    
-    if (isMobile) {
-        panel.style.width = "100vw";
-        panel.style.transform = panel.style.transform === "translateX(0%)" ? "translateX(100%)" : "translateX(0%)";
-    } else {
-        if (panel.style.width === "30rem") {
-            panel.style.width = "0px";
-            panel.style.transform = "translateX(100%)";
-        } else {
-            panel.style.width = "30rem";
-            panel.style.transform = "translateX(0%)";
-        }
     }
 }
 
@@ -2119,9 +2153,9 @@ function downloadICS(content, filename) {
 
                     <!-- Participants Panel -->
                     <div 
-                        class="w-30rem lg:w-30rem z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
+                        class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
                         id="participantsPanel"
-                        style="transform: translateX(0%)"
+                        style="transform: translateX(100%)"
                     >
                         <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
                             <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
@@ -2147,7 +2181,7 @@ function downloadICS(content, filename) {
                             on:click={() => togglePanel("participantsPanel")}
                         >
                             <div class="absolute -top-2 left-8 w-6 h-6 flex items-center justify-center bg-[#47484b] text-white rounded-full">
-                              {meetingParticipants.length}
+                                {selfIncludedParticipantCount}
                             </div>
                             <img src="/icons/icon-participants.svg" alt="Participants" class="w-11 h-11" />
                         </Button>

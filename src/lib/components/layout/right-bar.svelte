@@ -55,7 +55,7 @@
         </Button>
         </Sheet.Trigger>
         <Sheet.Content class="bg-[#666669]">
-         <Participants participants={participants} isHost={isHost} name={name} />
+         <Participants participants={participants} isHost={isHost} name={name} {shareURL} />
         </Sheet.Content>
       </Sheet.Root>
      

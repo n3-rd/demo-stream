@@ -10,9 +10,6 @@ export async function POST({ request }) {
         const designStyle = formData.get('designStyle');
         const userPrompt = formData.get('userPrompt');
 
-        // Combine inputs into a comprehensive prompt
-        const combinedPrompt = "${roomType}, ${designStyle}, ${userPrompt}";
-
         // Convert the image to a buffer/base64
         const buffer = await image.arrayBuffer();
         const base64Image = Buffer.from(buffer).toString('base64');
@@ -28,9 +25,13 @@ export async function POST({ request }) {
             version: "8372bd24c6011ea957a0861f0146671eed615e375f038c13259c1882e3c8bac7",
             input: {
                 image: `data:image/${image.type.split('/')[1]};base64,${base64Image}`,
-                prompt: combinedPrompt || "",
+                prompt: `${roomType}, ${designStyle}${userPrompt ? ', ' + userPrompt : ''}`,
                 strength: 0.999999,
-                controlnet_conditioning_scale: 0.7
+                max_resolution: 1051,
+                controlnet_conditioning_scale: 0.03,
+                negative_prompt: "(worst quality, low quality, illustration, 3d, 2d, painting, cartoons, sketch), open mouth",
+                mask_prompt_furniture: "furniture, couch, table, chair, desk, bed, sofa, cupboard, shelf, cabinet, bookcase, dresser, nightstand, armchair, decoration, plant, flower, pillow, lamp, TV",
+                guidance_scale: 7
             }
         });
         

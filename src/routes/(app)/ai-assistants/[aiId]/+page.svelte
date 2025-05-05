@@ -56,6 +56,7 @@
                 result.type === 'success' || 
                 (typeof result.data === 'string' && result.data.includes('success'))) {
                 toast.success('File uploaded successfully');
+                invalidateAll();
             } else {
                 toast.error(result.message || 'Failed to upload file');
             }
@@ -64,7 +65,7 @@
             toast.error('Failed to upload file');
         } finally {
             // Always invalidate to refresh the data
-            await invalidateAll();
+             invalidateAll();
         }
     }
 </script>
@@ -332,6 +333,7 @@
                         if (result.type === 'success') {
                             showConnectViewroomDialog = false;
                             toast.success('ViewRoom connections updated successfully');
+                            invalidateAll();
                         } else if (result.type === 'failure') {
                             const errorMsg = typeof result.data?.message === 'string' 
                                 ? result.data.message 
@@ -459,6 +461,7 @@
                         if (result.type === 'success') {
                             showArchiveDialog = false;
                             toast.success('AI assistant archived successfully');
+                             invalidateAll();
                         } else if (result.type === 'failure') {
                             toast.error('Failed to archive AI assistant');
                         } else {
@@ -469,7 +472,7 @@
                         toast.error('An unexpected error occurred');
                     } finally {
                         // Always invalidate to refresh the data
-                        await invalidateAll();
+                         invalidateAll();
                     }
                 };
             }}

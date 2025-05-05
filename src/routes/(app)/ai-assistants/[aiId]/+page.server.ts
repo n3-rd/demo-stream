@@ -1,11 +1,11 @@
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import PocketBase from 'pocketbase';
-import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
+import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 
 
 // Initialize PocketBase
-const pb = new PocketBase(PUBLIC_POCKETBASE_URL);
+const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
 
 export const load: PageServerLoad = async ({ params }) => {
     try {

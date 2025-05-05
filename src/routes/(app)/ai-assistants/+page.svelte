@@ -1,63 +1,154 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
-    import { MoreHorizontal } from 'lucide-svelte';
+    import { MoreHorizontal, Upload, Link2, Eye, Archive, Trash2 } from 'lucide-svelte';
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Label } from "$lib/components/ui/label";
     import { Input } from "$lib/components/ui/input";
     import { enhance } from "$app/forms";
+    import * as Tabs from "$lib/components/ui/tabs";
+    import * as Select from "$lib/components/ui/select";
     import { toast } from "svelte-sonner";
     import { invalidateAll } from "$app/navigation";
 
-    // Dummy data for AI assistants
-    const aiAssistants = [
-        {
-            id: '1',
-            name: 'Name 1',
-            created: '2024-02-23',
-            lastUpdated: '2024-02-23'
-        },
-        {
-            id: '2',
-            name: 'Name 2',
-            created: '2024-02-23',
-            lastUpdated: '2024-02-23'
-        },
-        {
-            id: '3',
-            name: 'Name 3',
-            created: '2024-02-23',
-            lastUpdated: '2024-02-23'
-        },
-        {
-            id: '4',
-            name: 'Name 4',
-            created: '2024-02-23',
-            lastUpdated: '2024-02-23'
-        },
-        {
-            id: '5',
-            name: 'Name 5',
-            created: '2024-02-23',
-            lastUpdated: '2024-02-23'
-        },
-        {
-            id: '6',
-            name: 'Name 6',
-            created: '2024-02-23',
-            lastUpdated: '2024-02-23'
-        }
-    ];
+    export let data;
+    
+    // Use data from the server
+    $: aiAssistants = data.aiAssistants || [];
 
     let showAddDialog = false;
+    let showViewroomDialog = false;
+    let showEngagementDialog = false;
+    let showDeleteDialog = false;
+    let dialogTitle = '';
+    let contentToShow: any[] = [];
     let newAssistantName = '';
-
+    let selectedViewrooms = [];
+    let selectedFiles: FileList | null = null;
+    let selectedAiId = '';
+    let selectedAiName = '';
+    let activeMenuId = '';
+    
     function formatDate(date: string) {
         return new Date(date).toLocaleDateString('en-US', {
             month: '2-digit',
             day: '2-digit',
             year: '2-digit'
         });
+    }
+
+    function toggleMenu(aiId: string) {
+        if (activeMenuId === aiId) {
+            activeMenuId = '';
+        } else {
+            activeMenuId = aiId;
+        }
+    }
+
+    // Close menu when clicking outside
+    function handleWindowClick(event: MouseEvent) {
+        if (activeMenuId && !(event.target as HTMLElement).closest('.menu-trigger, .menu-content')) {
+            activeMenuId = '';
+        }
+    }
+
+    // Add event listener when the component mounts
+    import { onMount } from 'svelte';
+    onMount(() => {
+        window.addEventListener('click', handleWindowClick);
+        return () => {
+            window.removeEventListener('click', handleWindowClick);
+        };
+    });
+
+    function showViewroomConnections(ai) {
+        selectedAiId = ai.id;
+        selectedAiName = ai.name;
+        const connections = ai.viewrooom_connections || [];
+        
+        if (connections.length > 0) {
+            contentToShow = connections
+                .map(id => ({ 
+                    id, 
+                    title: data.viewrooms.find(v => v.id === id)?.title || 'Unknown Viewroom'
+                }));
+        } else {
+            contentToShow = [];
+        }
+        
+        dialogTitle = "Viewroom Connections";
+        showViewroomDialog = true;
+    }
+    
+    function showEngagements(ai) {
+        selectedAiId = ai.id;
+        selectedAiName = ai.name;
+        const engagements = typeof ai.engagements === 'string' 
+            ? JSON.parse(ai.engagements) 
+            : ai.engagements || [];
+            
+        contentToShow = engagements;
+        dialogTitle = "Engagement History";
+        showEngagementDialog = true;
+    }
+    
+    function showDeleteConfirmation(ai) {
+        selectedAiId = ai.id;
+        selectedAiName = ai.name;
+        showDeleteDialog = true;
+        activeMenuId = '';
+    }
+
+    function handleViewroomSelect(event: CustomEvent<{ value: string }[]>) {
+        selectedViewrooms = event.detail.map(item => item.value);
+    }
+
+    function handleFileChange(event) {
+        selectedFiles = event.target.files;
+    }
+
+    function handleSubmit(event) {
+        const form = event.target;
+        const formData = new FormData(form);
+
+        // Add viewroom connections to formData
+        selectedViewrooms.forEach(id => {
+            formData.append('viewrooom_connections', id);
+        });
+
+        console.log("Submitting form with viewrooom_connections:", selectedViewrooms);
+
+        // Submit the form programmatically
+        fetch('?/create', {
+            method: 'POST',
+            body: formData
+        }).then(async response => {
+            const result = await response.json();
+            console.log("Form fetch result:", result);
+            
+            if (result.success || result.type === 'success' || 
+                (typeof result.data === 'string' && result.data.includes('success'))) {
+                showAddDialog = false;
+                newAssistantName = '';
+                selectedViewrooms = [];
+                selectedFiles = null;
+                toast.success('AI assistant created successfully');
+            } else {
+                toast.error(result.message || 'Failed to create AI assistant');
+            }
+            
+            // Always invalidate regardless of success/failure
+            await invalidateAll();
+        }).catch(error => {
+            console.error('Error creating AI assistant:', error);
+            toast.error('An error occurred');
+            
+            // Always invalidate even after errors
+            invalidateAll();
+        });
+
+        // Prevent default form submission
+        event.preventDefault();
     }
 </script>
 
@@ -94,8 +185,8 @@
                 </div>
 
                 <!-- Table Rows -->
-                {#each aiAssistants as ai}
-                    <div class="bg-white {ai.id === aiAssistants[aiAssistants.length-1].id ? 'rounded-b-[8px]' : ''} h-[73px] flex items-center px-6 border-t border-gray-100">
+                {#each aiAssistants as ai, i}
+                    <div class="bg-white {i === aiAssistants.length-1 ? 'rounded-b-[8px]' : ''} h-[73px] flex items-center px-6 border-t border-gray-100">
                         <div class="grid grid-cols-6 w-full gap-4">
                             <div class="text-[16px] font-normal text-[#808080] flex items-center">
                                 {formatDate(ai.created)}
@@ -109,27 +200,96 @@
                                 </a>
                             </div>
                             <div class="text-[16px] font-normal text-[#808080] flex items-center">
-                                {formatDate(ai.lastUpdated)}
+                                {formatDate(ai.updated)}
                             </div>
                             <div class="flex items-center">
                                 <button 
-                                    class="text-[16px] font-normal text-[#808080]"
+                                    class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
+                                    on:click={() => showViewroomConnections(ai)}
                                 >
                                     show
                                 </button>
                             </div>
                             <div class="flex items-center">
                                 <button 
-                                    class="text-[16px] font-normal text-[#808080]"
+                                    class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
+                                    on:click={() => showEngagements(ai)}
                                 >
                                     show
                                 </button>
                             </div>
-                            <div class="flex items-center justify-end">
-                                <Button variant="ghost" size="icon">
+                            <div class="flex items-center justify-end relative">
+                                <button 
+                                    class="p-2 rounded-full hover:bg-gray-100 menu-trigger"
+                                    on:click|stopPropagation={() => toggleMenu(ai.id)}
+                                >
                                     <MoreHorizontal class="h-4 w-4" />
-                                    <span class="sr-only">Open menu</span>
-                                </Button>
+                                </button>
+                                
+                                {#if activeMenuId === ai.id}
+                                    <div class="absolute right-0 top-8 w-[180px] bg-white rounded-md shadow-md border p-2 z-[100] menu-content">
+                                        <div class="space-y-1">
+                                            <form
+                                                method="POST"
+                                                action="?/archive"
+                                                use:enhance={() => {
+                                                    return async ({ result }) => {
+                                                        try {
+                                                            if (result.type === 'success') {
+                                                                toast.success('AI assistant archived successfully');
+                                                            } else {
+                                                                toast.error('Failed to archive AI assistant');
+                                                            }
+                                                        } catch (err) {
+                                                            console.error('Error archiving:', err);
+                                                            toast.error('An unexpected error occurred');
+                                                        } finally {
+                                                            await invalidateAll();
+                                                        }
+                                                    };
+                                                }}
+                                            >
+                                                <input type="hidden" name="id" value={ai.id} />
+                                                <button 
+                                                    type="submit"
+                                                    class="w-full flex items-center px-2 py-1 text-left text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded"
+                                                >
+                                                    <Archive class="h-4 w-4 mr-2" />
+                                                    Archive
+                                                </button>
+                                            </form>
+                                            <form
+                                                method="POST"
+                                                action="?/delete"
+                                                use:enhance={() => {
+                                                    return async ({ result }) => {
+                                                        try {
+                                                            if (result.type === 'success') {
+                                                                toast.success('AI assistant deleted successfully');
+                                                            } else {
+                                                                toast.error('Failed to delete AI assistant');
+                                                            }
+                                                        } catch (err) {
+                                                            console.error('Error deleting:', err);
+                                                            toast.error('An unexpected error occurred');
+                                                        } finally {
+                                                            await invalidateAll();
+                                                        }
+                                                    };
+                                                }}
+                                            >
+                                                <input type="hidden" name="id" value={ai.id} />
+                                                <button
+                                                    type="submit"
+                                                    class="w-full flex items-center px-2 py-1 text-left text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                                                >
+                                                    <Trash2 class="h-4 w-4 mr-2" />
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                {/if}
                             </div>
                         </div>
                     </div>
@@ -146,22 +306,40 @@
             method="POST"
             action="?/create"
             use:enhance={() => {
-                return async ({ result }) => {
-                    if (result.type === 'success') {
+                return async ({ result, formData }) => {
+                    // Add selectedViewrooms to the form data 
+                    selectedViewrooms.forEach(id => {
+                        formData.append('viewrooom_connections', id);
+                    });
+
+                    console.log("Form submission result:", result);
+                    
+                    try {
+                        // Check if result has type success
+                        if (result.type === 'success') {
+                            showAddDialog = false;
+                            newAssistantName = '';
+                            selectedViewrooms = [];
+                            selectedFiles = null;
+                            toast.success('AI assistant created successfully');
+                        } else if (result.type === 'failure') {
+                            const errorMsg = typeof result.data?.message === 'string' 
+                                ? result.data.message 
+                                : 'Failed to create AI assistant';
+                            toast.error(errorMsg);
+                        } else {
+                            toast.error('An error occurred');
+                        }
+                    } catch (err) {
+                        console.error('Error handling form submission:', err);
+                        toast.error('An unexpected error occurred');
+                    } finally {
+                        // Always invalidate to refresh the data
                         await invalidateAll();
-                        showAddDialog = false;
-                        newAssistantName = '';
-                        toast.success('AI assistant created successfully');
-                    } else if (result.type === 'failure') {
-                        const errorMsg = typeof result.data?.message === 'string' 
-                            ? result.data.message 
-                            : 'Failed to create AI assistant';
-                        toast.error(errorMsg);
-                    } else {
-                        toast.error('An error occurred');
                     }
                 };
             }}
+            enctype="multipart/form-data"
         >
             <div class="space-y-4">
                 <h2 class="text-lg font-semibold text-[#808080]">Add New AI Assistant</h2>
@@ -178,7 +356,116 @@
                     />
                 </div>
                 
+                <div class="space-y-1">
+                    <div class="text-sm text-[#808080]">ViewRoom Connection (Optional)</div>
+                    <Select.Root>
+                        <Select.Trigger class="w-full">
+                            <div class="w-full flex justify-between items-center">
+                                {#if selectedViewrooms.length > 0}
+                                    <span class="truncate flex items-center gap-1 flex-wrap">
+                                        {#each selectedViewrooms.slice(0, 6) as viewroomId, i}
+                                            <span class="inline-flex items-center gap-1">
+                                                <Link2 class="h-3 w-3" />
+                                                {data.viewrooms.find(v => v.id === viewroomId)?.title || viewroomId}
+                                                {i < Math.min(selectedViewrooms.slice(0, 6).length - 1, 5) ? ', ' : ''}
+                                            </span>
+                                        {/each}
+                                        {#if selectedViewrooms.length > 6}
+                                            <span class="text-muted-foreground">...</span>
+                                        {/if}
+                                    </span>
+                                {:else}
+                                    <span class="text-muted-foreground">Select ViewRoom(s)...</span>
+                                {/if}
+                            </div>
+                        </Select.Trigger>
+                        <Select.Content class="w-full">
+                            <div class="bg-[#ECEFF3] p-4 rounded-md max-h-[225px] overflow-y-auto">
+                                {#each data.viewrooms || [] as viewroom}
+                                    <div class="flex items-center justify-between gap-3 mb-3">
+                                        <div class="flex items-center gap-2">
+                                            <Link2 class="h-4 w-4 text-[#577AB7]" />
+                                            <span class="font-[Poppins] text-[16px] leading-[118%] text-[#808080]">
+                                                {viewroom.title}
+                                            </span>
+                                        </div>
+                                        <div class="relative">
+                                            <input 
+                                                type="checkbox" 
+                                                id="viewroom_{viewroom.id}" 
+                                                value={viewroom.id}
+                                                class="hidden peer"
+                                                on:change={(e) => {
+                                                    const checkbox = e.currentTarget;
+                                                    if (checkbox.checked) {
+                                                        selectedViewrooms = [...selectedViewrooms, viewroom.id];
+                                                    } else {
+                                                        selectedViewrooms = selectedViewrooms.filter(id => id !== viewroom.id);
+                                                    }
+                                                }}
+                                                checked={selectedViewrooms.includes(viewroom.id)}
+                                            />
+                                            <label 
+                                                for="viewroom_{viewroom.id}" 
+                                                class="box-border w-[23px] h-[22px] bg-white border-2 border-[#808080] rounded-[2px] inline-block cursor-pointer peer-checked:bg-[#66A73B] peer-checked:border-[#66A73B] relative"
+                                            >
+                                                {#if selectedViewrooms.includes(viewroom.id)}
+                                                    <svg class="absolute inset-0 w-full h-full text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="white"/>
+                                                    </svg>
+                                                {/if}
+                                            </label>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        </Select.Content>
+                    </Select.Root>
+                    
+                    <!-- Hidden inputs for selected viewrooms -->
+                    {#each selectedViewrooms as viewroomId}
+                        <input type="hidden" name="viewrooom_connections" value={viewroomId} />
+                    {/each}
+                </div>
+                
+                <div class="space-y-1">
+                    <div class="text-sm text-[#808080]">Training Files (Optional)</div>
+                    <div class="flex items-center justify-center w-full">
+                        <label 
+                            for="training_files"
+                            class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 border-gray-300"
+                        >
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <Upload class="w-8 h-8 mb-3 text-gray-400" />
+                                <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                                <p class="text-xs text-gray-500">PDF or Word documents</p>
+                            </div>
+                            <input 
+                                id="training_files" 
+                                name="training_files" 
+                                type="file" 
+                                class="hidden"
+                                multiple
+                                accept=".pdf,.docx,.doc"
+                                on:change={handleFileChange}
+                            />
+                        </label>
+                    </div>
+                    {#if selectedFiles && selectedFiles.length > 0}
+                        <div class="text-sm text-gray-600">
+                            Selected {selectedFiles.length} file(s)
+                        </div>
+                    {/if}
+                </div>
+                
                 <div class="flex justify-end pt-1">
+                    <button 
+                        type="button"
+                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 text-sm rounded mr-2"
+                        on:click={() => showAddDialog = false}
+                    >
+                        Cancel
+                    </button>
                     <button 
                         type="submit"
                         class="bg-[#C2D1E8] hover:bg-[#A4B8D9] text-[#000000] px-4 py-1 text-sm rounded"
@@ -189,4 +476,130 @@
             </div>
         </form>
     </Dialog.Content>
-</Dialog.Root> 
+</Dialog.Root>
+
+<!-- Viewroom Connections Dialog -->
+<Dialog.Root bind:open={showViewroomDialog}>
+    <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
+        <Dialog.Header>
+            <Dialog.Title>{dialogTitle} - {selectedAiName}</Dialog.Title>
+        </Dialog.Header>
+        <div class="py-4">
+            <div class="space-y-4">
+                {#if contentToShow.length > 0}
+                    {#each contentToShow as viewroom}
+                        <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                            <Link2 class="h-5 w-5 text-blue-500" />
+                            <div class="flex-1">
+                                <h3 class="font-medium text-md text-[#808080]">{viewroom.title}</h3>
+                            </div>
+                        </div>
+                    {/each}
+                {:else}
+                    <div class="text-center text-gray-500 py-4">
+                        No viewroom connections found
+                    </div>
+                {/if}
+            </div>
+        </div>
+        <Dialog.Footer>
+            <Button variant="outline" on:click={() => showViewroomDialog = false}>
+                Close
+            </Button>
+        </Dialog.Footer>
+    </Dialog.Content>
+</Dialog.Root>
+
+<!-- Engagements Dialog -->
+<Dialog.Root bind:open={showEngagementDialog}>
+    <Dialog.Content class="max-w-lg bg-white rounded-lg p-5 shadow-lg">
+        <Dialog.Header>
+            <Dialog.Title>{dialogTitle} - {selectedAiName}</Dialog.Title>
+        </Dialog.Header>
+        <div class="py-4">
+            <div class="space-y-4">
+                {#if contentToShow.length > 0}
+                    {#each contentToShow as engagement}
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <div class="flex justify-between mb-2">
+                                <div class="font-medium text-[#737373]">
+                                    {formatDate(engagement.date)}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {engagement.interaction_count || 0} interactions
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded border border-gray-200">
+                                <p class="text-[#808080]">{engagement.first_prompt || 'No prompt recorded'}</p>
+                            </div>
+                        </div>
+                    {/each}
+                {:else}
+                    <div class="text-center text-gray-500 py-4">
+                        No engagement history found
+                    </div>
+                {/if}
+            </div>
+        </div>
+        <Dialog.Footer>
+            <Button variant="outline" on:click={() => showEngagementDialog = false}>
+                Close
+            </Button>
+        </Dialog.Footer>
+    </Dialog.Content>
+</Dialog.Root>
+
+<!-- Delete Confirmation Dialog -->
+<Dialog.Root bind:open={showDeleteDialog}>
+    <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
+        <form
+            method="POST"
+            action="?/delete"
+            use:enhance={() => {
+                return async ({ result }) => {
+                    try {
+                        if (result.type === 'success') {
+                            showDeleteDialog = false;
+                            toast.success('AI assistant deleted successfully');
+                        } else {
+                            toast.error('Failed to delete AI assistant');
+                        }
+                    } catch (err) {
+                        console.error('Error deleting:', err);
+                        toast.error('An unexpected error occurred');
+                    } finally {
+                        await invalidateAll();
+                    }
+                };
+            }}
+        >
+            <div class="space-y-4">
+                <h2 class="text-lg font-semibold text-red-500">Delete AI Assistant</h2>
+                <p class="text-gray-700">
+                    Are you sure you want to permanently delete "{selectedAiName}"? This action cannot be undone.
+                </p>
+                
+                <input type="hidden" name="id" value={selectedAiId} />
+                
+                <div class="flex justify-end pt-4">
+                    <Button 
+                        type="button"
+                        variant="outline"
+                        class="mr-2"
+                        on:click={() => showDeleteDialog = false}
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        type="submit"
+                        variant="destructive"
+                        class="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                        <Trash2 class="h-4 w-4 mr-2" />
+                        Delete
+                    </Button>
+                </div>
+            </div>
+        </form>
+    </Dialog.Content>
+</Dialog.Root>

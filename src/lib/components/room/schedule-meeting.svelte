@@ -271,7 +271,46 @@
     return false; // If no schedule is available, allow all dates
   }
 
-  // Update the fetchAvailableSlots function to properly generate and display time slots
+  // Generate time slots based on representative's schedule
+  function generateTimeSlots(startTime, endTime) {
+    console.log('schedule console: Generating time slots between:', { startTime, endTime });
+    const slots = [];
+    
+    // Parse start and end times
+    const [startHour, startPeriod] = startTime.replace(/([AP]M)/, ' $1').split(' ');
+    const [endHour, endPeriod] = endTime.replace(/([AP]M)/, ' $1').split(' ');
+    
+    // Convert to 24-hour format
+    let currentHour = parseInt(startHour.split(':')[0]);
+    const startPM = startPeriod === 'PM' && currentHour !== 12;
+    const endHourNum = parseInt(endHour.split(':')[0]) + (endPeriod === 'PM' && endHour.split(':')[0] !== '12' ? 12 : 0);
+    
+    // Convert to 24-hour for easier calculation
+    let current24Hour = startPM ? currentHour + 12 : currentHour;
+    if (startPeriod === 'AM' && currentHour === 12) current24Hour = 0;
+    
+    while (current24Hour < endHourNum) {
+      const nextHour = current24Hour + 1;
+      
+      // Convert back to 12-hour for display
+      const displayHour = current24Hour % 12 || 12;
+      const displayNextHour = nextHour % 12 || 12;
+      const currentPeriod = current24Hour >= 12 ? 'PM' : 'AM';
+      const nextPeriod = nextHour >= 12 ? 'PM' : 'AM';
+      
+      slots.push({
+        id: slots.length + 1,
+        time: `${displayHour}:00 ${currentPeriod} - ${displayNextHour}:00 ${nextPeriod}`,
+        available: true // This will be updated when checking against booked slots
+      });
+      
+      current24Hour = nextHour;
+    }
+    
+    return slots;
+  }
+
+  // Update the fetchAvailableSlots function to use the representative's schedule
   async function fetchAvailableSlots(rep, date) {
     console.log('schedule console: Fetching available slots for:', { rep, date });
     try {
@@ -306,17 +345,10 @@
           const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           const dayName = days[date.getDay()];
           
-          // If this day exists in the schedule, parse the hours
-          if (scheduleData[dayName]) {
+          // If this day exists in the schedule and has hours
+          if (scheduleData[dayName] && scheduleData[dayName] !== "") {
             const hours = scheduleData[dayName];
             console.log(`schedule console: Schedule for ${dayName}: ${hours}`);
-            
-            // Check if the schedule is empty
-            if (!hours || hours === "") {
-              console.log(`schedule console: No schedule for ${dayName}`);
-              availableSlots = [];
-              return; // No slots to generate
-            }
             
             // Handle different format possibilities for start-end times
             let startStr, endStr;
@@ -332,24 +364,24 @@
             }
             
             if (startStr && endStr) {
-              // Generate the time slots with fixed 1-hour intervals
-              generatedSlots = generateFixedTimeSlots();
+              // Generate the time slots based on the schedule
+              generatedSlots = generateTimeSlots(startStr, endStr);
                 
-                // Get existing scheduled meetings for this date
-                let scheduledMeetings = {};
-                if (representativeDetails.scheduled_meetings) {
-                  try {
-                    scheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string'
-                      ? JSON.parse(representativeDetails.scheduled_meetings)
-                      : representativeDetails.scheduled_meetings;
-                    
+              // Get existing scheduled meetings for this date
+              let scheduledMeetings = {};
+              if (representativeDetails.scheduled_meetings) {
+                try {
+                  scheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string'
+                    ? JSON.parse(representativeDetails.scheduled_meetings)
+                    : representativeDetails.scheduled_meetings;
+                  
                   console.log('All meetings:', scheduledMeetings);
                   console.log('Meetings for this date:', scheduledMeetings[formattedDate]);
-                  } catch (e) {
+                } catch (e) {
                   console.error('Error parsing scheduled meetings:', e);
-                    scheduledMeetings = {};
-                  }
+                  scheduledMeetings = {};
                 }
+              }
                 
               // Mark slots as booked if they're already scheduled
               for (const slot of generatedSlots) {
@@ -371,20 +403,6 @@
       console.error('Error fetching available slots:', error);
       availableSlots = [];
     }
-  }
-
-  // Generate a fixed set of time slots for demo/testing
-  function generateFixedTimeSlots() {
-    return [
-      { id: 1, time: "9:00 AM - 10:00 AM", available: true },
-      { id: 2, time: "10:00 AM - 11:00 AM", available: true },
-      { id: 3, time: "11:00 AM - 12:00 PM", available: true },
-      { id: 4, time: "12:00 PM - 1:00 PM", available: true },
-      { id: 5, time: "1:00 PM - 2:00 PM", available: true },
-      { id: 6, time: "2:00 PM - 3:00 PM", available: true },
-      { id: 7, time: "3:00 PM - 4:00 PM", available: true },
-      { id: 8, time: "4:00 PM - 5:00 PM", available: true }
-    ];
   }
 
   // Improved function to check if a time slot is booked
@@ -1114,42 +1132,6 @@
       
       return isBooked;
     });
-  }
-
-  // Make sure the slot generation includes the available property
-  function generateTimeSlots(startTime, endTime) {
-    console.log('schedule console: Generating time slots between:', { startTime, endTime });
-    const slots = [];
-    const [startHour, startPeriod] = startTime.split(' ');
-    const [endHour, endPeriod] = endTime.split(' ');
-    
-    let currentHour = parseInt(startHour.split(':')[0]);
-    const startPM = startPeriod === 'PM' && currentHour !== 12;
-    const endHourNum = parseInt(endHour.split(':')[0]) + (endPeriod === 'PM' && endHour.split(':')[0] !== '12' ? 12 : 0);
-    
-    // Convert to 24-hour for easier calculation
-    let current24Hour = startPM ? currentHour + 12 : currentHour;
-    if (startPeriod === 'AM' && currentHour === 12) current24Hour = 0;
-    
-    while (current24Hour < endHourNum) {
-      const nextHour = current24Hour + 1;
-      
-      // Convert back to 12-hour for display
-      const displayHour = current24Hour % 12 || 12;
-      const displayNextHour = nextHour % 12 || 12;
-      const currentPeriod = current24Hour >= 12 ? 'PM' : 'AM';
-      const nextPeriod = nextHour >= 12 ? 'PM' : 'AM';
-      
-      slots.push({
-        id: slots.length + 1,
-        time: `${displayHour}:00 ${currentPeriod} - ${displayNextHour}:00 ${nextPeriod}`,
-        available: true // This will be updated when checking against booked slots
-      });
-      
-      current24Hour = nextHour;
-    }
-    
-    return slots;
   }
 
   // Function to get available time slots for a specific date

@@ -8,6 +8,7 @@
         {name: 'Settings', active: activePage === 'settings', href: '/settings'},
         {name: 'Locations', active: activePage === 'locations', href: '/locations'},
         {name: 'Content Library', active: activePage === 'content-library', href: '/content-library'},
+        {name: 'Viewroom Users', active: activePage === 'viewroom-users', href: '/viewroom-users'},
         { name: 'View Room List', active: activePage === 'rooms', href: '/room' },
         { name: 'AI Assistants', active: activePage === 'ai-assistants', href: '/ai-assistants' },
         { name: 'AI Room Designer', active: activePage === 'ai-room-designer', href: '/ai-room-designer' },

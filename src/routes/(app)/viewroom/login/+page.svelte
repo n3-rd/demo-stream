@@ -1,0 +1,437 @@
+<script lang="ts">
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { toast } from 'svelte-sonner';
+  import { goto } from '$app/navigation';
+  import { Loader2, Mail, Phone, Cloud, Building2 } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+  import { page } from '$app/stores';
+  
+  let step: 'login' | 'verify' = 'login';
+  let loading = false;
+  let roomInfo = null;
+  let companyInfo = null;
+  let roomId = null;
+  
+  // Form data
+  let companyName = '';
+  let firstName = '';
+  let lastName = '';
+  let email = '';
+  let mobileNumber = '';
+  let verificationCode = '';
+  let verificationType = '';
+  
+  // Get room ID from URL params and fetch room info
+  onMount(async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    roomId = urlParams.get('room');
+    
+    if (roomId) {
+      await fetchRoomInfo();
+    }
+  });
+  
+  async function fetchRoomInfo() {
+    if (!roomId) return;
+    
+    try {
+      const response = await fetch(`/api/room/${roomId}/info`);
+      const result = await response.json();
+      
+      if (result.success) {
+        roomInfo = result.room;
+        companyInfo = result.company;
+        // Pre-fill company name when room context is available
+        if (companyInfo) {
+          companyName = companyInfo.name;
+        }
+      } else {
+        toast.error('Failed to load room information');
+      }
+    } catch (error) {
+      console.error('Failed to fetch room info:', error);
+      toast.error('Failed to load room information');
+    }
+  }
+  
+  // Auto-format verification code input
+  function formatVerificationCode(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const value = target.value.replace(/\D/g, ''); // Remove non-digits
+    if (value.length <= 5) {
+      verificationCode = value;
+      target.value = value;
+    }
+  }
+  
+  async function handleLogin() {
+    if (!companyName.trim() || !firstName.trim() || !lastName.trim() || !email.trim()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    loading = true;
+    try {
+      const response = await fetch('/api/viewroom/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          company: companyName.trim(),
+          email: email.trim(),
+          phone: mobileNumber.trim() || undefined,
+          roomId: roomId || undefined
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Check if verification is skipped (temporary)
+        if (result.skipVerification) {
+          console.log('🔐 Viewroom authentication successful:', result.user);
+          console.log('🍪 Server set cookies:', result.cookiesSet);
+          
+          toast.success(result.message);
+          
+          // Redirect immediately since cookies are set server-side
+          if (roomId) {
+            console.log('🚀 Redirecting to room:', roomId);
+            goto(`/room/${roomId}`);
+          } else {
+            console.log('🚀 Redirecting to dashboard');
+            goto('/viewroom/dashboard');
+          }
+        } else {
+          // Normal verification flow
+          verificationType = result.verification_type;
+          step = 'verify';
+          toast.success(result.message);
+        }
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error('Connection error. Please try again.');
+    }
+    loading = false;
+  }
+  
+  async function handleVerification() {
+    if (!verificationCode.trim()) {
+      toast.error('Please enter the verification code');
+      return;
+    }
+    
+    if (verificationCode.length !== 5) {
+      toast.error('Verification code must be 5 digits');
+      return;
+    }
+    
+    loading = true;
+    try {
+      const response = await fetch('/api/viewroom/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          code: verificationCode.trim()
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(result.message);
+        // Redirect back to room if room context is available, otherwise go to dashboard
+        if (roomId) {
+          goto(`/room/${roomId}`);
+        } else {
+          goto('/viewroom/dashboard');
+        }
+      } else {
+        toast.error(result.message);
+        verificationCode = '';
+      }
+    } catch (error) {
+      toast.error('Verification failed. Please try again.');
+    }
+    loading = false;
+  }
+  
+  function resetToLogin() {
+    step = 'login';
+    verificationCode = '';
+    verificationType = '';
+  }
+  
+  // Handle enter key submission
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      if (step === 'login') {
+        handleLogin();
+      } else {
+        handleVerification();
+      }
+    }
+  }
+</script>
+
+<svelte:window on:keydown={handleKeydown} />
+
+<div class="min-h-screen bg-gray-50 flex flex-col justify-center pt-12 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      
+      <!-- ClearSky Software Logo -->
+      <div class="flex items-center justify-center">
+        <div class="flex items-center">
+          
+            <img src="/logo/main-logo.svg" alt="ClearSky Software" class="w-[10rem] h-24 text-white" />
+        
+        </div>
+      </div>
+      
+      <p class="text-gray-600 text-sm">
+        {step === 'login' ? 'Please sign-in to your account' : 'Enter the verification code sent to you'}
+      </p>
+      
+      <!-- Room and Company Context -->
+      {#if roomInfo && companyInfo}
+        <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div class="flex items-center text-blue-800">
+            <Building2 class="h-4 w-4 mr-2" />
+            <span class="text-sm font-medium">Accessing: {roomInfo.title}</span>
+          </div>
+          <p class="text-xs text-blue-600 mt-1">Owned by {companyInfo.name}</p>
+          <p class="text-xs text-blue-500 mt-1">Only authorized users from this company can access this room</p>
+        </div>
+      {:else if roomId}
+        <div class="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <div class="flex items-center text-gray-600">
+            <Loader2 class="h-4 w-4 mr-2 animate-spin" />
+            <span class="text-sm">Loading room information...</span>
+          </div>
+        </div>
+      {/if}
+    </div>
+  </div>
+
+  <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-8 px-6 shadow-sm rounded-lg sm:px-10">
+      {#if step === 'login'}
+        <!-- Login Form -->
+        <form on:submit|preventDefault={handleLogin} class="space-y-6">
+          <!-- Company Name -->
+          <div>
+            <Label for="companyName" class="block text-sm font-medium text-gray-700 mb-2">
+              COMPANY NAME
+            </Label>
+            {#if companyInfo}
+              <!-- Read-only when room context is available -->
+              <div class="w-full px-3 py-3 border border-gray-300 rounded-md bg-gray-50">
+                <div class="flex items-center">
+                  <Building2 class="h-4 w-4 text-gray-500 mr-2" />
+                  <span class="text-gray-700">{companyInfo.name}</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Required for this room</p>
+              </div>
+              <input type="hidden" bind:value={companyName} />
+            {:else}
+              <Input
+                id="companyName"
+                bind:value={companyName}
+                type="text"
+                placeholder="Enter you company name"
+                required
+                disabled={loading}
+                class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            {/if}
+          </div>
+
+          <!-- First Name -->
+          <div>
+            <Label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">
+              FIRST NAME
+            </Label>
+            <Input
+              id="firstName"
+              bind:value={firstName}
+              type="text"
+              placeholder="Enter you first name"
+              required
+              disabled={loading}
+              class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+
+          <!-- Last Name -->
+          <div>
+            <Label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">
+              LAST NAME
+            </Label>
+            <Input
+              id="lastName"
+              bind:value={lastName}
+              type="text"
+              placeholder="Enter you last name"
+              required
+              disabled={loading}
+              class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+
+          <!-- Email Address -->
+          <div>
+            <Label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+              EMAIL ADDRESS
+            </Label>
+            <Input
+              id="email"
+              bind:value={email}
+              type="email"
+              placeholder="Enter you email"
+              required
+              disabled={loading}
+              class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+          </div>
+
+          <!-- Mobile Number -->
+          <div>
+            <Label for="mobileNumber" class="block text-sm font-medium text-gray-700 mb-2">
+              MOBILE NUMBER
+            </Label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <span class="text-lg mr-1">🇨🇦</span>
+                <span class="text-sm text-gray-500">+1</span>
+              </div>
+              <Input
+                id="mobileNumber"
+                bind:value={mobileNumber}
+                type="tel"
+                placeholder="Mobile Number"
+                disabled={loading}
+                class="w-full pl-16 pr-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              Optional: If provided, must match our records exactly for SMS verification
+            </p>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="pt-4">
+            <Button
+              type="submit"
+              disabled={loading}
+              class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {#if loading}
+                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                Sending Verification Code...
+              {:else}
+                Send Verification Code
+              {/if}
+            </Button>
+          </div>
+        </form>
+
+      {:else}
+        <!-- Verification Form -->
+        <form on:submit|preventDefault={handleVerification} class="space-y-6">
+          <!-- Status Indicator -->
+          <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div class="flex items-center justify-center mb-2">
+              {#if verificationType === 'sms'}
+                <Phone class="h-6 w-6 text-primary" />
+              {:else}
+                <Mail class="h-6 w-6 text-primary" />
+              {/if}
+            </div>
+            <p class="text-sm text-blue-800 font-medium">
+              Verification code sent to your {verificationType === 'sms' ? 'mobile phone' : 'email'}
+            </p>
+            <p class="text-xs text-primary mt-1">
+              Code expires in 5 minutes
+            </p>
+          </div>
+
+          <!-- Verification Code Input -->
+          <div>
+            <Label for="verificationCode" class="block text-sm font-medium text-gray-700 mb-2">
+              VERIFICATION CODE
+            </Label>
+            <Input
+              id="verificationCode"
+              value={verificationCode}
+              on:input={formatVerificationCode}
+              placeholder="Enter 5-digit code"
+              maxlength={5}
+              pattern="[0-9]{5}"
+              class="w-full px-3 py-3 border border-gray-300 rounded-md text-center text-lg tracking-widest font-mono placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              required
+              disabled={loading}
+              autocomplete="one-time-code"
+            />
+            <p class="text-xs text-gray-500 mt-1 text-center">
+              {verificationCode.length}/5 digits
+            </p>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="pt-2">
+            <Button
+              type="submit"
+              disabled={loading || verificationCode.length !== 5}
+              class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {#if loading}
+                <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+                Verifying Code...
+              {:else}
+                Verify & Sign In
+              {/if}
+            </Button>
+          </div>
+
+          <!-- Back to Login -->
+          <div class="pt-2">
+            <Button
+              variant="ghost"
+              class="w-full text-gray-600 hover:text-gray-800"
+              on:click={resetToLogin}
+              disabled={loading}
+            >
+              ← Back to Sign In
+            </Button>
+          </div>
+
+          <p class="text-xs text-center text-gray-500 mt-4">
+            Didn't receive the code? Check your spam folder or try signing in again.
+          </p>
+        </form>
+      {/if}
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Custom styling for form inputs */
+  :global(.verification-input) {
+    letter-spacing: 0.5em;
+  }
+  
+  /* Mobile responsiveness */
+  @media (max-width: 640px) {
+    .min-h-screen {
+      padding: 1rem;
+    }
+  }
+</style> 

@@ -20,9 +20,40 @@ const sanitizeAssociatedVideo = (videoRef: string) => {
     return sanitizedVideo;
 }
 
-export const load: PageServerLoad = async ({ locals, params, url }) => {
+export const load: PageServerLoad = async ({ locals, params, url, cookies }) => {
     const roomIdParam = params.roomId;  // Rename to make it clear this is the URL parameter
     const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
+
+    // Check for authentication - allow either normal PocketBase auth or viewroom auth
+    const isNormalAuth = locals.pb.authStore.isValid;
+    const viewroomSession = cookies.get('viewroom_session');
+    const viewroomUserCookie = cookies.get('viewroom_user');
+    
+    let viewroomUser = null;
+    let authType = 'none';
+    
+    if (isNormalAuth) {
+        // User is logged in with normal PocketBase auth - allow access
+        authType = 'pocketbase';
+        viewroomUser = {
+            id: locals.pb.authStore.model.id,
+            first_name: locals.pb.authStore.model.first_name || locals.pb.authStore.model.username || 'User',
+            last_name: locals.pb.authStore.model.last_name || '',
+            company: locals.pb.authStore.model.company_name || 'Company User',
+            email: locals.pb.authStore.model.email
+        };
+    } else if (viewroomSession && viewroomUserCookie) {
+        // User has viewroom authentication
+        try {
+            viewroomUser = JSON.parse(viewroomUserCookie);
+            authType = 'viewroom';
+        } catch (e) {
+            throw redirect(303, `/viewroom/login?room=${params.roomId}`);
+        }
+    } else {
+        // No authentication at all - require viewroom login
+        throw redirect(303, `/viewroom/login?room=${params.roomId}`);
+    }
 
     try {
         // Try to find the scheduled room by room_id
@@ -57,6 +88,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
             // Meeting is available, proceed with all meeting data
             return {
                 scheduledRoom,
+                viewroomUser,
+                authType,
+                isViewroomAuthenticated: true,
                 // Other room data...
             };
         }
@@ -105,6 +139,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
                 // Return data with representative info
                 return {
                     user: null,
+                    viewroomUser,
+                    authType,
+                    isViewroomAuthenticated: true,
                     representatives: room.expand?.representative || [],
                     users: [],
                     roomId: [room],
@@ -143,6 +180,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
         return {
             user: user || null,
+            viewroomUser,
+            authType,
+            isViewroomAuthenticated: true,
             representatives,
             users,
             roomId: [room],

@@ -1,9 +1,6 @@
 {
 	"name": "svelte-call-object",
 	"version": "0.0.2",
-	"engines": {
-		"node": "20.x"
-	},
 	"scripts": {
 		"dev": "vite dev --host 0.0.0.0 --port 3001",
 		"build": "vite build",

@@ -67,6 +67,27 @@ export const handle: Handle = async ({ event, resolve }) => {
         }
     }
 
+    // Protected viewroom routes - require viewroom session
+    const viewroomRoutes = /^\/viewroom\/(?!login)/;
+    
+    if (viewroomRoutes.test(event.url.pathname)) {
+        const viewroomSession = event.cookies.get('viewroom_session');
+        if (!viewroomSession) {
+            throw redirect(303, '/viewroom/login');
+        }
+        
+        // Add viewroom user to locals if available
+        const viewroomUserCookie = event.cookies.get('viewroom_user');
+        if (viewroomUserCookie) {
+            try {
+                event.locals.viewroomUser = JSON.parse(viewroomUserCookie);
+            } catch (e) {
+                // Invalid user cookie, redirect to login
+                throw redirect(303, '/viewroom/login');
+            }
+        }
+    }
+
     // Handle _method query parameter by creating a new request
     let finalRequest = request;
     if (event.url.searchParams.has('_method')) {

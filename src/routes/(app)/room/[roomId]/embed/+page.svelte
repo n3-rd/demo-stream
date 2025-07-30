@@ -31,18 +31,19 @@
     }
 
     async function handleJoinRoom() {
-        if (!anonymousUserId || anonymousUserId.length < 3) return;
+        if (!data.viewroomUser) {
+            toast.error('Authentication required');
+            return;
+        }
         
         loading = true;
         try {
-            const sanitizedName = sanitizeStreamName(anonymousUserId);
-            anonymousUser.set(sanitizedName);
-            // Use the direct room path with anonymous host parameters
-            // await goto(`/room/${room.id}?anonymousUserId=${sanitizedName}&isHost=true&anonymous=true`, {
-            //     replaceState: true
-            // });
-
-             window.open(`/room/${room.id}?anonymousUserId=${sanitizedName}&isHost=true&anonymous=true`, '_blank');
+            // Use viewroom user info for joining
+            const userDisplayName = `${data.viewroomUser.first_name} ${data.viewroomUser.last_name} (${data.viewroomUser.company})`;
+            anonymousUser.set(userDisplayName);
+            
+            // Open room with viewroom authentication
+            window.open(`/room/${room.id}?viewroomUser=true`, '_blank');
         } catch (error) {
             console.error('Failed to join room:', error);
             toast.error('Failed to join room');
@@ -59,27 +60,44 @@
     <div class="flex flex-col md:flex-row justify-between gap-4 w-full h-full">
         <div class="flex-1 h-full">
             <div class="mb-4">
-                <label for="anonymousUserId" class="block text-sm font-medium text-gray-700 mb-1">
-                    Enter your name to host this room
-                </label>
-                <input 
-                    type="text" 
-                    id="anonymousUserId"
-                    name="anonymousUserId" 
-                    bind:value={anonymousUserId}
-                    on:keydown={handleKeydown}
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    placeholder="Your name"
-                />
-                <p class="mt-1 text-sm text-gray-500">
-                    This name will be used to identify you as the host in the room.
-                </p>
-                <p class="mt-1 text-sm text-gray-500">
-                    Ensure it is at least 3 characters long and unique 
-                </p>
-                <p class="mt-1 text-sm text-primary">
-                    For example: JohnDoe-Host
-                </p>
+                <h2 class="text-lg font-semibold mb-4">Host this Room</h2>
+                {#if data.viewroomUser}
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h3 class="font-medium text-green-800 mb-2">
+                            {#if data.authType === 'pocketbase'}
+                                🔓 Company Account Access
+                            {:else}
+                                🔐 Viewroom Access
+                            {/if}
+                        </h3>
+                        <div class="space-y-1">
+                            <p class="text-sm text-green-700">
+                                <strong>Name:</strong> {data.viewroomUser.first_name} {data.viewroomUser.last_name}
+                            </p>
+                            <p class="text-sm text-green-700">
+                                <strong>Company:</strong> {data.viewroomUser.company}
+                            </p>
+                            <p class="text-sm text-green-700">
+                                <strong>Email:</strong> {data.viewroomUser.email}
+                            </p>
+                        </div>
+                        <p class="text-xs text-green-600 mt-2">
+                            {#if data.authType === 'pocketbase'}
+                                You are logged in with your company account.
+                            {:else}
+                                You have verified viewroom access.
+                            {/if}
+                        </p>
+                    </div>
+                {:else}
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <h3 class="font-medium text-red-800 mb-2">🚫 Authentication Required</h3>
+                        <p class="text-red-700">You must be authenticated to access this room.</p>
+                        <p class="text-xs text-red-600 mt-2">
+                            Please log in with your company account or viewroom credentials.
+                        </p>
+                    </div>
+                {/if}
             </div>
         </div>
 
@@ -98,10 +116,10 @@
         {#if room.is_active}
         <Button 
             on:click={handleJoinRoom}
-            disabled={loading || anonymousUserId === '' || anonymousUserId === null || anonymousUserId.length < 3} 
-            class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
+            disabled={loading || !data.viewroomUser} 
+            class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-            {loading ? 'Joining...' : 'Host Room'}
+            {loading ? 'Joining...' : data.viewroomUser ? 'Host Room' : 'Authentication Required'}
         </Button>
         {:else}
         <p class="text-red-500">Room is not active</p>

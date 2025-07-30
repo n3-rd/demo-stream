@@ -1,5 +1,5 @@
 <script lang="ts">
-	
+	import { dev } from '$app/environment';
 import {
     PUBLIC_ANT_MEDIA_URL
 } from '$env/static/public';
@@ -194,8 +194,14 @@ let videoVolume = 1.0; // Add this with your other state variables
 // Add state for available representatives
 let availableRepresentatives = [];
 
+
 function getWebSocketURL() {
-    return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
+    if(dev) {
+    return `ws://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
+    }
+    else{
+        return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
+    }
 }
 
 // Update the isWithinOneHour function for more reliable comparison

@@ -17,6 +17,15 @@ declare global {
 				email: string;
 				name?: string;
 			} | null;
+			userid: string;
+			session?: string;
+			                viewroomUser?: {
+                    id: string;
+                    first_name: string;
+                    last_name: string;
+                    company: string;
+                    email: string;
+                };
 		}
 		// interface PageData {}
 		// interface PageState {}

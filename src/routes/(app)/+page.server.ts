@@ -86,15 +86,53 @@ function sanitizeStreamName(name: string): string {
 }
 
 export const actions: Actions = {
-    'create-room': async ({ locals, request }) => {
+    'create-room': async ({ locals, request, cookies }) => {
+        // Check for authentication - allow either normal PocketBase auth or viewroom auth
+        const isNormalAuth = locals.pb.authStore.isValid;
+        const viewroomSession = cookies.get('viewroom_session');
+        const viewroomUserCookie = cookies.get('viewroom_user');
+        
+        let viewroomUser = null;
+        let authType = 'none';
+        
+        if (isNormalAuth) {
+            // User is logged in with normal PocketBase auth - allow access
+            authType = 'pocketbase';
+            viewroomUser = {
+                id: locals.pb.authStore.model.id,
+                login_name: locals.pb.authStore.model.username || locals.pb.authStore.model.email,
+                company: locals.pb.authStore.model.company_name || 'Company User',
+                email: locals.pb.authStore.model.email
+            };
+        } else if (viewroomSession && viewroomUserCookie) {
+            // User has viewroom authentication
+            try {
+                viewroomUser = JSON.parse(viewroomUserCookie);
+                authType = 'viewroom';
+            } catch (e) {
+                return {
+                    success: false,
+                    message: 'Invalid viewroom session',
+                    status: 401
+                };
+            }
+        } else {
+            // No authentication at all
+            return {
+                success: false,
+                message: 'Authentication required',
+                status: 401
+            };
+        }
+
         const formData = await request.formData();
         const videoUrl = formData.get('videoUrl') as string;
         const videoName = formData.get('videoName') as string;
-        let anonymousUserId = formData.get('anonymousUserId') as string;
 
+        // Use viewroom user info instead of anonymous
         let userId = locals.pb.authStore.isValid
             ? locals.pb.authStore.model.id
-            : anonymousUserId;
+            : `viewroom_${viewroomUser.id}`;
 
         // Sanitize the userId/anonymousUserId before creating room ID
         const sanitizedUserId = sanitizeStreamName(userId);
@@ -129,8 +167,47 @@ export const actions: Actions = {
             };
         }
     },
-    'join-room': async ({ locals, request }) => {
+    'join-room': async ({ locals, request, cookies }) => {
         console.log('Join room action called');
+        
+        // Check for authentication - allow either normal PocketBase auth or viewroom auth
+        const isNormalAuth = locals.pb.authStore.isValid;
+        const viewroomSession = cookies.get('viewroom_session');
+        const viewroomUserCookie = cookies.get('viewroom_user');
+        
+        let viewroomUser = null;
+        let authType = 'none';
+        
+        if (isNormalAuth) {
+            // User is logged in with normal PocketBase auth - allow access
+            authType = 'pocketbase';
+            viewroomUser = {
+                id: locals.pb.authStore.model.id,
+                login_name: locals.pb.authStore.model.username || locals.pb.authStore.model.email,
+                company: locals.pb.authStore.model.company_name || 'Company User',
+                email: locals.pb.authStore.model.email
+            };
+        } else if (viewroomSession && viewroomUserCookie) {
+            // User has viewroom authentication
+            try {
+                viewroomUser = JSON.parse(viewroomUserCookie);
+                authType = 'viewroom';
+            } catch (e) {
+                return {
+                    success: false,
+                    message: 'Invalid viewroom session',
+                    status: 401
+                };
+            }
+        } else {
+            // No authentication at all
+            return {
+                success: false,
+                message: 'Authentication required',
+                status: 401
+            };
+        }
+
         const formData = await request.formData();
         const roomId = formData.get('roomId') as string;
 
@@ -147,7 +224,8 @@ export const actions: Actions = {
                         room_id: room.room_id,
                         videoUrl: room.associated_video,
                         videoName: room.associated_video_name
-                    }
+                    },
+                    viewroomUser
                 };
             } else {
                 console.error('Room not found');

@@ -1,7 +1,7 @@
 import { error, fail, json } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { join } from 'path';
-import { PUBLIC_POCKETBASE_URL } from '$env/static/public';
+import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 
 export const load: PageServerLoad = async ({ locals }) => {
     if (!locals.pb.authStore.isValid) {
@@ -67,7 +67,7 @@ export const actions: Actions = {
             generatedFormData.append('prompt', jsonData.prompt || '');
             
             // Make API calls to save both images
-            const originalResponse = await fetch(`${PUBLIC_POCKETBASE_URL}/api/collections/content_library/records`, {
+            const originalResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}/api/collections/content_library/records`, {
                 method: 'POST',
                 body: originalFormData,
                 headers: {
@@ -75,7 +75,7 @@ export const actions: Actions = {
                 }
             });
             
-            const generatedResponse = await fetch(`${PUBLIC_POCKETBASE_URL}/api/collections/content_library/records`, {
+            const generatedResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}/api/collections/content_library/records`, {
                 method: 'POST',
                 body: generatedFormData,
                 headers: {

@@ -10,3 +10,4 @@ node_modules
 .output
 /static/video
 *.mdc
+PHONE_VERIFICATION_FLOW.md

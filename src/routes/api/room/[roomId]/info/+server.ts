@@ -1,4 +1,4 @@
-import { json } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 
 export async function GET({ params, locals }) {
   try {
@@ -47,3 +47,39 @@ export async function GET({ params, locals }) {
     }, { status: 500 });
   }
 } 
+
+export const PUT: RequestHandler = async ({ request, locals, params }) => {
+    if (!locals.pb?.authStore.isValid) {
+        return new Response(JSON.stringify({
+            success: false,
+            message: 'Unauthorized'
+        }), { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const roomId = params.roomId;
+    
+    try {
+        const updateData = {
+            title: formData.get('title') as string,
+            description: formData.get('description') as string,
+            is_active: formData.get('is_active') === 'true',
+            host_content: formData.get('host_content')?.toString().split(',').filter(Boolean) || [],
+            representative_content: formData.get('representative_content')?.toString().split(',').filter(Boolean) || [],
+            representative: formData.get('representative')?.toString().split(',').filter(Boolean) || []
+        };
+
+        await locals.pb.collection('rooms').update(roomId, updateData);
+        
+        return new Response(JSON.stringify({
+            success: true,
+            message: 'Room updated successfully'
+        }), { status: 200 });
+    } catch (error) {
+        console.error('Error updating room:', error);
+        return new Response(JSON.stringify({
+            success: false,
+            message: 'Failed to update room'
+        }), { status: 500 });
+    }
+}; 

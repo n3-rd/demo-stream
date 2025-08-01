@@ -225,10 +225,21 @@
         
                     <form 
                         method="POST" 
-                        action={editingLocation ? "?/update" : "?/create"}
-                        use:enhance={() => {
-                            return async ({ result }) => {
-                                if (result.type === 'success') {
+                        on:submit|preventDefault={async (e) => {
+                            const formData = new FormData(e.target);
+                            
+                            try {
+                                const url = editingLocation ? `/api/locations/${editingLocation.id}` : `/api/locations`;
+                                const method = editingLocation ? 'PUT' : 'POST';
+                                
+                                const response = await fetch(url, {
+                                    method,
+                                    body: formData
+                                });
+                                
+                                const result = await response.json();
+                                
+                                if (result.success) {
                                     await invalidateAll();
                                     if (!addAnother) {
                                         resetForm();
@@ -237,15 +248,13 @@
                                         resetForm();
                                     }
                                     toast.success(`Location ${editingLocation ? 'updated' : 'created'} successfully`);
-                                } else if (result.type === 'failure') {
-                        const errorMsg = typeof result.data?.message === 'string' 
-                            ? result.data.message 
-                            : `Failed to ${editingLocation ? 'update' : 'create'} location`;
-                        toast.error(errorMsg);
                                 } else {
-                                    toast.error('An error occurred');
+                                    toast.error(result.message || `Failed to ${editingLocation ? 'update' : 'create'} location`);
                                 }
-                            };
+                            } catch (error) {
+                                console.error('Error:', error);
+                                toast.error('Failed to save location');
+                            }
                         }}
                         class="space-y-6"
                         bind:this={formElement}

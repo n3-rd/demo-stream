@@ -304,40 +304,38 @@
     <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
         <form
             method="POST"
-            action="?/create"
-            use:enhance={() => {
-                return async ({ result, formData }) => {
-                    // Add selectedViewrooms to the form data 
-                    selectedViewrooms.forEach(id => {
-                        formData.append('viewrooom_connections', id);
+            on:submit|preventDefault={async (e) => {
+                const formData = new FormData(e.target);
+                
+                // Add selectedViewrooms to the form data 
+                selectedViewrooms.forEach(id => {
+                    formData.append('viewrooom_connections', id);
+                });
+                
+                try {
+                    const response = await fetch('/api/ai-assistants', {
+                        method: 'POST',
+                        body: formData
                     });
-
-                    console.log("Form submission result:", result);
                     
-                    try {
-                        // Check if result has type success
-                        if (result.type === 'success') {
-                            showAddDialog = false;
-                            newAssistantName = '';
-                            selectedViewrooms = [];
-                            selectedFiles = null;
-                            toast.success('AI assistant created successfully');
-                        } else if (result.type === 'failure') {
-                            const errorMsg = typeof result.data?.message === 'string' 
-                                ? result.data.message 
-                                : 'Failed to create AI assistant';
-                            toast.error(errorMsg);
-                        } else {
-                            toast.error('An error occurred');
-                        }
-                    } catch (err) {
-                        console.error('Error handling form submission:', err);
-                        toast.error('An unexpected error occurred');
-                    } finally {
-                        // Always invalidate to refresh the data
-                        await invalidateAll();
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showAddDialog = false;
+                        newAssistantName = '';
+                        selectedViewrooms = [];
+                        selectedFiles = null;
+                        toast.success('AI assistant created successfully');
+                    } else {
+                        toast.error(result.message || 'Failed to create AI assistant');
                     }
-                };
+                } catch (error) {
+                    console.error('Error:', error);
+                    toast.error('Failed to create AI assistant');
+                } finally {
+                    // Always invalidate to refresh the data
+                    await invalidateAll();
+                }
             }}
             enctype="multipart/form-data"
         >

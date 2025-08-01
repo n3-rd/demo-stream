@@ -49,21 +49,28 @@
 
      
         <form
-        action='/?/create-room'
         method='POST'
-        use:enhance={() => {
-            return async ({ result }) => {
-                if (result.data.room?.name) {
+        on:submit|preventDefault={async (e) => {
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch('/api/room/create', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.room?.room_id) {
                     toast.success('Room created successfully');
-                    goto(`/room/${result.data.room.name}`);
-                } else if (result.status === 400) {
-                    toast('Bad request');
-                } else if (result.status === 500) {
-                    toast('Server error :|');
+                    goto(`/room/${result.room.room_id}`);
                 } else {
-                    toast('Oops, something went wrong!');
+                    toast.error(result.message || 'Failed to create room');
                 }
-            };
+            } catch (error) {
+                console.error('Error:', error);
+                toast.error('Failed to create room');
+            }
         }}
     >
     

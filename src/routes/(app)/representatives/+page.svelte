@@ -256,12 +256,36 @@
         </DialogHeader>
         <form
             method="POST"
-            action={editingRep ? "?/updateRepresentative" : "?/addRepresentative"}
-            use:form
-            use:enhance={() => {
-                return async ({ result }) => {
-                    handleFormResult(result);
-                };
+            on:submit|preventDefault={async (e) => {
+                const formData = new FormData(e.target);
+                
+                try {
+                    const url = editingRep ? `/api/representatives` : `/api/representatives`;
+                    const method = editingRep ? 'PUT' : 'POST';
+                    
+                    if (editingRep) {
+                        formData.append('id', editingRep.id);
+                    }
+                    
+                    const response = await fetch(url, {
+                        method,
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        toast.success(editingRep ? 'Representative updated successfully' : 'Representative added successfully');
+                        showAddDialog = false;
+                        editingRep = null;
+                        await invalidateAll();
+                    } else {
+                        toast.error(result.message || 'Error occurred');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    toast.error('Failed to save representative');
+                }
             }}
             enctype="multipart/form-data"
             class="space-y-6"

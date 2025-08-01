@@ -144,22 +144,29 @@
 
     <!-- Email Form with updated visibility logic -->
     <form class="space-y-4"
-        action="?/send-email"
         method="POST"
-        use:enhance
-        use:enhance={() => {
-            return async ({ result }) => {
-                if (result.status === 200) {
-                    // Handle success case
+        on:submit|preventDefault={async (e) => {
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch(`/api/room/send-email`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
                     toast.success("Invite mail sent successfully");
-                    // Don't hide the form, keep it visible after sending
                     emailSent = true;
                     invalidateAll();
                 } else {
-                    // Handle error case
-                    toast.error("Error sending invite mail");
+                    toast.error(result.message || "Error sending invite mail");
                 }
-            };
+            } catch (error) {
+                console.error('Error:', error);
+                toast.error("Failed to send invite mail");
+            }
         }}
     >
         <div class="flex flex-col gap-4">

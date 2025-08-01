@@ -437,14 +437,18 @@
         <Dialog.Header>
             <Dialog.Title>Add New Room</Dialog.Title>
         </Dialog.Header>
-        <form method="POST" action="?/create-room" use:form use:enhance={() => {
-            return async ({ result }) => {
-                if (!$form.valid) {
-                    toast.error('Please fix the validation errors');
-                    return;
-                }
+        <form method="POST" on:submit|preventDefault={async (e) => {
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch('/api/room/manage', {
+                    method: 'POST',
+                    body: formData
+                });
                 
-                if (result.type === 'success') {
+                const result = await response.json();
+                
+                if (result.success) {
                     showAddRoomDialog = false;
                     selectedHostContent = [];
                     selectedRepContent = [];
@@ -452,9 +456,12 @@
                     invalidateAll();
                     toast.success('Room added');
                 } else {
-                    toast.error('Error occurred');
+                    toast.error(result.message || 'Error occurred');
                 }
-            };
+            } catch (error) {
+                console.error('Error creating room:', error);
+                toast.error('Failed to create room');
+            }
         }}>
             <div class="space-y-4 py-4">
                 <div class="space-y-2">

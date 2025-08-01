@@ -239,14 +239,14 @@
             // Explicitly add the active status as a string "true" or "false"
             finalFormData.append('active', isContentActive.toString());
 
-            const response = await fetch('?/uploadContent', {
+            const response = await fetch('/api/upload/content', {
                 method: 'POST',
                 body: finalFormData
             });
 
             const result = await response.json();
 
-            if (result.type === 'success') {
+            if (result.success) {
                 toast.success('Successfully uploaded content');
                 await invalidateAll();
                 goto('/content-library');

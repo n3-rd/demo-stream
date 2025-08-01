@@ -1,0 +1,1855 @@
+[
+    {
+        "id": "_pb_users_auth_",
+        "name": "users",
+        "type": "auth",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "users_name",
+                "name": "company_name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "users_avatar",
+                "name": "company_logo",
+                "type": "file",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "image/jpeg",
+                        "image/png",
+                        "image/svg+xml",
+                        "image/gif",
+                        "image/webp"
+                    ],
+                    "thumbs": null,
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "protected": false
+                }
+            },
+            {
+                "system": false,
+                "id": "sc7l8ldb",
+                "name": "superuser",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "esafg5ef",
+                "name": "company_address",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "xfe6iwka",
+                "name": "company_website",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "phone_field_001",
+                "name": "phone",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 10,
+                    "max": 20,
+                    "pattern": "^[+]?[0-9\\s\\-\\(\\)]{10,20}$"
+                }
+            },
+            {
+                "system": false,
+                "id": "phone_verified_001",
+                "name": "phone_verified",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {
+            "allowEmailAuth": true,
+            "allowOAuth2Auth": true,
+            "allowUsernameAuth": true,
+            "exceptEmailDomains": null,
+            "manageRule": null,
+            "minPasswordLength": 8,
+            "onlyEmailDomains": null,
+            "onlyVerified": false,
+            "requireEmail": false
+        }
+    },
+    {
+        "id": "wj9tgxnsddspob0",
+        "name": "ai_assistants",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "93dznnfj",
+                "name": "name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "1vacdjkr",
+                "name": "viewrooom_connections",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "a0rkivhylf0wv78",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "ojq9llv0",
+                "name": "engagements",
+                "type": "json",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSize": 2000000
+                }
+            },
+            {
+                "system": false,
+                "id": "83oiah0v",
+                "name": "training_files",
+                "type": "file",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "application/pdf",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 99,
+                    "maxSize": 104857600,
+                    "protected": false
+                }
+            },
+            {
+                "system": false,
+                "id": "zwlkgco5",
+                "name": "status",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "xsteu3o2d10wwzc",
+        "name": "content_library",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "xxyz1nco",
+                "name": "title",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "z9wszvy1",
+                "name": "description",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "t46gitio",
+                "name": "type",
+                "type": "select",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "video",
+                        "pdf",
+                        "document",
+                        "image"
+                    ]
+                }
+            },
+            {
+                "system": false,
+                "id": "idgazsvs",
+                "name": "file",
+                "type": "file",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "video/mp4",
+                        "video/webm",
+                        "application/pdf",
+                        "application/msword",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        "application/vnd.ms-excel",
+                        "image/jpeg",
+                        "image/png",
+                        "image/vnd.mozilla.apng",
+                        "image/gif"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 1,
+                    "maxSize": 104857600,
+                    "protected": false
+                }
+            },
+            {
+                "system": false,
+                "id": "olqb2dvv",
+                "name": "thumbnail",
+                "type": "file",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "image/png",
+                        "image/jpeg",
+                        "image/svg+xml",
+                        "image/webp",
+                        "image/vnd.mozilla.apng",
+                        "image/gif"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 1,
+                    "maxSize": 25242880,
+                    "protected": false
+                }
+            },
+            {
+                "system": false,
+                "id": "dpdzpfep",
+                "name": "owner_company",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": true,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "pa47zgxt",
+                "name": "shared_with",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "gd66fhqenxhpt6p",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "hchb4l7e",
+                "name": "library_type",
+                "type": "select",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 2,
+                    "values": [
+                        "host",
+                        "representative"
+                    ]
+                }
+            },
+            {
+                "system": false,
+                "id": "eqn6wg8n",
+                "name": "active",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "4nnxfqhpu8ew0qp",
+        "name": "locations",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "r4glvedi",
+                "name": "name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "9rbgwuvy",
+                "name": "address",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "jdvewgz9",
+                "name": "city",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "cmik03ja",
+                "name": "phone",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "lixmstgt",
+                "name": "hours",
+                "type": "json",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSize": 2000000
+                }
+            },
+            {
+                "system": false,
+                "id": "ge0ul7ka",
+                "name": "owner_company",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "28hzy8690qfu8z5",
+        "name": "quotes",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "b30ugoeb",
+                "name": "first_name",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "wwpli9ga",
+                "name": "last_name",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "tay5iubx",
+                "name": "phone",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "8czbcjrg",
+                "name": "email",
+                "type": "email",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
+            },
+            {
+                "system": false,
+                "id": "gwdartrs",
+                "name": "description",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "xrgxlmio",
+                "name": "to_company",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "gd66fhqenxhpt6p",
+        "name": "representatives",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "nnd9cext",
+                "name": "name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "fbzbmwur",
+                "name": "email",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "o4yu86ah",
+                "name": "phone",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "brlbd8uq",
+                "name": "avatar",
+                "type": "file",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "image/png",
+                        "image/jpeg",
+                        "image/gif",
+                        "image/svg+xml",
+                        "image/webp"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "protected": false
+                }
+            },
+            {
+                "system": false,
+                "id": "p2jqwuy7",
+                "name": "company",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "z3bhdolp",
+                "name": "is_active",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "lja4n5ar",
+                "name": "schedule",
+                "type": "json",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSize": 2000000
+                }
+            },
+            {
+                "system": false,
+                "id": "6cglp0fe",
+                "name": "location",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "4nnxfqhpu8ew0qp",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "j1126aae",
+                "name": "scheduled_meetings",
+                "type": "json",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSize": 2000000
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "6r5932iiujeh0gm",
+        "name": "room_videos",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "5imiay4g",
+                "name": "title",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "nig9c64b",
+                "name": "desc",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "wccqfbev",
+                "name": "thumbnail",
+                "type": "file",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "image/png",
+                        "image/vnd.mozilla.apng",
+                        "image/jpeg",
+                        "image/webp"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "protected": false
+                }
+            },
+            {
+                "system": false,
+                "id": "cj3qrnio",
+                "name": "representatives",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "hnlkgvfx",
+                "name": "name",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "acsyoezh",
+                "name": "phone",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "lj0sntvw",
+                "name": "email",
+                "type": "email",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
+            },
+            {
+                "system": false,
+                "id": "gtvhhpxk",
+                "name": "video",
+                "type": "file",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "video/ogg",
+                        "video/mpeg",
+                        "video/quicktime",
+                        "video/mp4",
+                        "video/webm",
+                        "video/quicktime",
+                        "video/3gpp",
+                        "video/x-msvideo",
+                        "video/x-matroska",
+                        "video/x-m4v"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "protected": false
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "grvlgy5mez8nbjq",
+        "name": "room_videos_duplicate",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "8hjekony",
+                "name": "title",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "lnyie1zs",
+                "name": "desc",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "td4ejpub",
+                "name": "thumbnail",
+                "type": "file",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "image/png",
+                        "image/vnd.mozilla.apng",
+                        "image/jpeg",
+                        "image/webp"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "protected": false
+                }
+            },
+            {
+                "system": false,
+                "id": "nstmakz8",
+                "name": "representatives",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "lcg45pjb",
+                "name": "name",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "d4e3w67o",
+                "name": "phone",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "x5fky8rf",
+                "name": "email",
+                "type": "email",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "exceptDomains": null,
+                    "onlyDomains": null
+                }
+            },
+            {
+                "system": false,
+                "id": "sggnl96a",
+                "name": "video_ref",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "vql3nk9o",
+                "name": "owner_company",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "a0rkivhylf0wv78",
+        "name": "rooms",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "sd08qd4g",
+                "name": "owner_company",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "zjvhdowp",
+                "name": "title",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "cueeqdkl",
+                "name": "is_active",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "7vrpsr2v",
+                "name": "representative",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "gd66fhqenxhpt6p",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "ghcqhoc9",
+                "name": "host_content",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "xsteu3o2d10wwzc",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "ro8jn927",
+                "name": "representative_content",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "xsteu3o2d10wwzc",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "mfrmuciw",
+                "name": "scheduled",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "wmu2yu4b",
+                "name": "schedule_time",
+                "type": "date",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": "",
+                    "max": ""
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "@request.auth.id = owner_company",
+        "options": {}
+    },
+    {
+        "id": "414if8yjzwcbg0t",
+        "name": "scheduled_rooms",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "4mrdpeio",
+                "name": "title",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "nuve5mpe",
+                "name": "representative",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "gd66fhqenxhpt6p",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "m1jdstpy",
+                "name": "host_content",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "xsteu3o2d10wwzc",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "nys5jo5k",
+                "name": "representative_content",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "xsteu3o2d10wwzc",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": null,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "cpuar8tv",
+                "name": "scheduled",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "njhbl0jk",
+                "name": "schedule_time",
+                "type": "date",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": "",
+                    "max": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "ljbv1l0h",
+                "name": "customer_name",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "fhyr2unh",
+                "name": "customer_email",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "wgwzu98y",
+                "name": "customer_phone",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "w3n5jnri",
+                "name": "room_id",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "ku2p2cds",
+                "name": "additional_information",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "inuljlva",
+                "name": "meeting_status",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "liughslp",
+                "name": "meeting_duration",
+                "type": "number",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "noDecimal": false
+                }
+            },
+            {
+                "system": false,
+                "id": "z22afq0c",
+                "name": "join_before_minutes",
+                "type": "number",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "noDecimal": false
+                }
+            },
+            {
+                "system": false,
+                "id": "0t4j4n6k",
+                "name": "participants_joined",
+                "type": "json",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSize": 2000000
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "udj43ofu3ndhbvh",
+        "name": "uploaded_videos",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "up4u79cq",
+                "name": "name",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "fwcfllcq",
+                "name": "video_url",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "apihxcea",
+                "name": "user",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "rtbga6u1",
+                "name": "video",
+                "type": "file",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "video/ogg",
+                        "video/mpeg",
+                        "video/quicktime",
+                        "video/mp4",
+                        "video/quicktime",
+                        "video/webm",
+                        "video/3gpp",
+                        "video/3gpp2",
+                        "video/x-ms-asf",
+                        "video/x-matroska",
+                        "video/x-flv",
+                        "video/x-msvideo"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "protected": false
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "vr_codes_001",
+        "name": "verification_codes",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "vrc_user_email",
+                "name": "user_email",
+                "type": "email",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "exceptDomains": [],
+                    "onlyDomains": []
+                }
+            },
+            {
+                "system": false,
+                "id": "vrc_code",
+                "name": "code",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 5,
+                    "max": 5,
+                    "pattern": "^[0-9]{5}$"
+                }
+            },
+            {
+                "system": false,
+                "id": "vrc_phone_number",
+                "name": "phone_number",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 0,
+                    "max": 20,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "vrc_expires_at",
+                "name": "expires_at",
+                "type": "date",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": "",
+                    "max": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "vrc_used",
+                "name": "used",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "vrc_verification_type",
+                "name": "verification_type",
+                "type": "select",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "email",
+                        "sms"
+                    ]
+                }
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX `idx_verification_codes_email_code` ON `verification_codes` (`user_email`, `code`)",
+            "CREATE INDEX `idx_verification_codes_expires` ON `verification_codes` (`expires_at`)",
+            "CREATE INDEX `idx_verification_codes_used` ON `verification_codes` (`used`)"
+        ],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "oqairvrgtw8911i",
+        "name": "videos",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "uniblnmd",
+                "name": "video",
+                "type": "file",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "mimeTypes": [
+                        "video/mp4",
+                        "video/quicktime",
+                        "video/webm",
+                        "video/ogg",
+                        "video/mpeg",
+                        "video/3gpp2",
+                        "video/x-m4v"
+                    ],
+                    "thumbs": [],
+                    "maxSelect": 1,
+                    "maxSize": 5242880,
+                    "protected": false
+                }
+            },
+            {
+                "system": false,
+                "id": "b5e7u5hf",
+                "name": "user",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            },
+            {
+                "system": false,
+                "id": "nxljmlue",
+                "name": "name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "vr_users_001",
+        "name": "viewroom_users",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "vru_login_name",
+                "name": "first_name",
+                "type": "text",
+                "required": true,
+                "presentable": true,
+                "unique": false,
+                "options": {
+                    "min": 1,
+                    "max": 50,
+                    "pattern": "^[a-zA-Z0-9._-]+$"
+                }
+            },
+            {
+                "system": false,
+                "id": "3coizpix",
+                "name": "last_name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "vru_email",
+                "name": "email",
+                "type": "email",
+                "required": true,
+                "presentable": false,
+                "unique": true,
+                "options": {
+                    "exceptDomains": [],
+                    "onlyDomains": []
+                }
+            },
+            {
+                "system": false,
+                "id": "vru_phone",
+                "name": "phone",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 0,
+                    "max": 20,
+                    "pattern": "^[+]?[0-9\\s\\-\\(\\)]{7,20}$"
+                }
+            },
+            {
+                "system": false,
+                "id": "vru_is_active",
+                "name": "is_active",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "8cq2wslv",
+                "name": "company",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": null
+                }
+            }
+        ],
+        "indexes": [
+            "CREATE UNIQUE INDEX `idx_viewroom_users_email` ON `viewroom_users` (`email`)",
+            "CREATE INDEX `idx_viewroom_users_active` ON `viewroom_users` (`is_active`)",
+            "CREATE INDEX `idx_viewroom_users_company` ON `viewroom_users` (`company`)"
+        ],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    },
+    {
+        "id": "admin_phone_verification_001",
+        "name": "admin_phone_verification",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "apv_phone",
+                "name": "phone",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 10,
+                    "max": 20,
+                    "pattern": "^[+]?[0-9\\s\\-\\(\\)]{10,20}$"
+                }
+            },
+            {
+                "system": false,
+                "id": "apv_code",
+                "name": "verification_code",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 4,
+                    "max": 6,
+                    "pattern": "^[0-9]{4,6}$"
+                }
+            },
+            {
+                "system": false,
+                "id": "apv_email",
+                "name": "email",
+                "type": "email",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "exceptDomains": [],
+                    "onlyDomains": []
+                }
+            },
+            {
+                "system": false,
+                "id": "apv_expires_at",
+                "name": "expires_at",
+                "type": "date",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": "",
+                    "max": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "apv_used",
+                "name": "used",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "apv_company_name",
+                "name": "company_name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "apv_password",
+                "name": "password",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "apv_website",
+                "name": "website",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            }
+        ],
+        "indexes": [
+            "CREATE INDEX `idx_admin_phone_verification_phone_code` ON `admin_phone_verification` (`phone`, `verification_code`)",
+            "CREATE INDEX `idx_admin_phone_verification_expires` ON `admin_phone_verification` (`expires_at`)",
+            "CREATE INDEX `idx_admin_phone_verification_used` ON `admin_phone_verification` (`used`)"
+        ],
+        "listRule": "",
+        "viewRule": "",
+        "createRule": "",
+        "updateRule": "",
+        "deleteRule": "",
+        "options": {}
+    }
+]

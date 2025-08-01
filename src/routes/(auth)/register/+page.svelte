@@ -38,7 +38,7 @@
 			<div class="mb-6">
 				<h2 class="text-2xl text-primary text-center font-semibold mb-2">Create Company Account</h2>
 				<p class="text-gray-600 text-sm font-light text-center">
-					Fill in your company details to get started. You can add representatives and content after registration.
+					Fill in your company details and verify your phone number to get started. Phone verification is required for security.
 				</p>
 			</div>
 			<form
@@ -47,12 +47,20 @@
 				use:form
 				use:enhance={() => {
 					loading = true;
-					return async ({ result }) => {
+					return async ({ result, formData }) => {
 						loading = false;
 						console.log('register results', result);
+						
 						if (result.type === 'success') {
-							toast.success('Successfully registered');
-							goto('/');
+							if (result.data?.success) {
+								toast.success('Account created successfully!');
+								goto('/');
+							} else if (result.data?.verification_required) {
+								// Redirect to verification page
+								goto(`/verify-phone?email=${encodeURIComponent(result.data.email)}&phone=${encodeURIComponent(result.data.phone)}&company=${encodeURIComponent(result.data.company_name)}`);
+							} else {
+								toast.error(String(result.data?.message || 'Registration failed'));
+							}
 						} else {
 							toast.error('Error occurred while registering company');
 						}
@@ -89,11 +97,20 @@
 						<input
 							id="phone"
 							name="phone"
-							placeholder="Company phone (optional)"
+							placeholder="Company phone (required) - e.g., +1234567890"
 							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+							required
+							use:validators={[required, minLength(10), maxLength(20)]}
 						/>
 					</div>
 				</div>
+				<HintGroup for="phone">
+					<div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+						<Hint on="required"><HintValidate>Phone number is required</HintValidate></Hint>
+						<Hint on="minLength"><HintValidate>Phone number must be at least 10 digits</HintValidate></Hint>
+						<Hint on="maxLength"><HintValidate>Phone number must be at most 20 characters</HintValidate></Hint>
+					</div>
+				</HintGroup>
 
 				<!-- Company Website -->
 				<div class="flex gap-1 items-center h-11">
@@ -171,7 +188,11 @@
 					<Hint for="passwordConfirm" on="passwordMatch"><HintValidate>Passwords do not match</HintValidate></Hint>
 				</div>
 				
-				<Button type="submit" class="w-full bg-primary hover:bg-primary rounded-full hover:bg-primary/65 text-white" disabled={!$form.valid}>
+				<Button 
+					type="submit" 
+					class="w-full bg-primary hover:bg-primary rounded-full hover:bg-primary/65 text-white" 
+					disabled={!$form.valid || loading}
+				>
 					{#if loading}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -192,11 +213,15 @@
 								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A8.001 8.001 0 014.708 4.708L2.293 7.121l1.414 1.414 2.415-2.415zm12.586-2.415l2.415 2.415 1.414-1.414-2.415-2.415-2.415 2.415zM20 12a8 8 0 01-8 8v4c6.627 0 12-5.373 12-12h-4z"
 							></path>
 						</svg>
-						<span>Registering...</span>
+						<span>Creating Account...</span>
 					{:else}
-						<span>Register Company</span>
+						<span>Create Company Account</span>
 					{/if}
 				</Button>
+				
+				<p class="text-sm text-gray-600 text-center">
+					📱 After clicking register, you'll verify your phone number for security.
+				</p>
 			</form>
 			<div class="mt-4 text-center text-sm">
 				Already have an account?

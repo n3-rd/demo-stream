@@ -42,16 +42,22 @@
 				</p>
 			</div>
 			<form
-				action="?/register"
 				method="POST"
-				use:form
-				use:enhance={() => {
+				on:submit|preventDefault={async (e) => {
 					loading = true;
-					return async ({ result, formData }) => {
+					const formData = new FormData(e.target);
+					
+					try {
+						const response = await fetch('/api/auth/register', {
+							method: 'POST',
+							body: formData
+						});
+						
+						const result = await response.json();
 						loading = false;
 						console.log('register results', result);
 						
-						if (result.type === 'success') {
+						if (result.success) {
 							if (result.data?.success) {
 								toast.success('Account created successfully!');
 								goto('/');
@@ -64,7 +70,11 @@
 						} else {
 							toast.error('Error occurred while registering company');
 						}
-					};
+					} catch (error) {
+						loading = false;
+						console.error('Registration error:', error);
+						toast.error('Error occurred while registering company');
+					}
 				}}
 				class="space-y-4"
 			>

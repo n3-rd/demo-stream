@@ -1,0 +1,48 @@
+import { json, type RequestHandler } from '@sveltejs/kit';
+
+export const POST: RequestHandler = async ({ request, locals, cookies }) => {
+    const formData = await request.formData();
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    if (!email || !password) {
+        return new Response(JSON.stringify({ 
+            type: 'failure', 
+            data: { message: 'Email and password are required' } 
+        }), { status: 400 });
+    }
+
+    try {
+        const authData = await locals.pb.collection('users').authWithPassword(email, password);
+        
+        if (authData.record) {
+            // Set the session cookie
+            cookies.set('pb_auth', locals.pb.authStore.exportToCookie(), {
+                path: '/',
+                httpOnly: true,
+                secure: false, // Set to true in production
+                sameSite: 'lax',
+                maxAge: 60 * 60 * 24 * 30 // 30 days
+            });
+
+            return new Response(JSON.stringify({ 
+                type: 'success', 
+                data: { 
+                    user: authData.record,
+                    success: true 
+                } 
+            }), { status: 200 });
+        } else {
+            return new Response(JSON.stringify({ 
+                type: 'failure', 
+                data: { message: 'Invalid credentials' } 
+            }), { status: 401 });
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        return new Response(JSON.stringify({ 
+            type: 'failure', 
+            data: { message: 'Login failed' } 
+        }), { status: 500 });
+    }
+}; 

@@ -231,25 +231,31 @@
                                         <div class="space-y-1">
                                             <form
                                                 method="POST"
-                                                action="?/archive"
-                                                use:enhance={() => {
-                                                    return async ({ result }) => {
-                                                        try {
-                                                            if (result.type === 'success') {
-                                                                toast.success('AI assistant archived successfully');
-                                                            } else {
-                                                                toast.error('Failed to archive AI assistant');
-                                                            }
-                                                        } catch (err) {
-                                                            console.error('Error archiving:', err);
-                                                            toast.error('An unexpected error occurred');
-                                                        } finally {
-                                                            await invalidateAll();
+                                                on:submit|preventDefault={async (e) => {
+                                                    const formData = new FormData(e.target);
+                                                    
+                                                    try {
+                                                        const response = await fetch(`/api/ai-assistants/${ai.id}`, {
+                                                            method: 'PUT',
+                                                            body: formData
+                                                        });
+                                                        
+                                                        const result = await response.json();
+                                                        
+                                                        if (result.success) {
+                                                            toast.success('AI assistant archived successfully');
+                                                        } else {
+                                                            toast.error(result.message || 'Failed to archive AI assistant');
                                                         }
-                                                    };
+                                                    } catch (error) {
+                                                        console.error('Error archiving:', error);
+                                                        toast.error('Failed to archive AI assistant');
+                                                    } finally {
+                                                        await invalidateAll();
+                                                    }
                                                 }}
                                             >
-                                                <input type="hidden" name="id" value={ai.id} />
+                                                <input type="hidden" name="status" value="false" />
                                                 <button 
                                                     type="submit"
                                                     class="w-full flex items-center px-2 py-1 text-left text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded"
@@ -260,25 +266,30 @@
                                             </form>
                                             <form
                                                 method="POST"
-                                                action="?/delete"
-                                                use:enhance={() => {
-                                                    return async ({ result }) => {
-                                                        try {
-                                                            if (result.type === 'success') {
-                                                                toast.success('AI assistant deleted successfully');
-                                                            } else {
-                                                                toast.error('Failed to delete AI assistant');
-                                                            }
-                                                        } catch (err) {
-                                                            console.error('Error deleting:', err);
-                                                            toast.error('An unexpected error occurred');
-                                                        } finally {
-                                                            await invalidateAll();
+                                                on:submit|preventDefault={async (e) => {
+                                                    const formData = new FormData(e.target);
+                                                    
+                                                    try {
+                                                        const response = await fetch(`/api/ai-assistants/${ai.id}`, {
+                                                            method: 'DELETE',
+                                                            body: formData
+                                                        });
+                                                        
+                                                        const result = await response.json();
+                                                        
+                                                        if (result.success) {
+                                                            toast.success('AI assistant deleted successfully');
+                                                        } else {
+                                                            toast.error(result.message || 'Failed to delete AI assistant');
                                                         }
-                                                    };
+                                                    } catch (error) {
+                                                        console.error('Error deleting:', error);
+                                                        toast.error('Failed to delete AI assistant');
+                                                    } finally {
+                                                        await invalidateAll();
+                                                    }
                                                 }}
                                             >
-                                                <input type="hidden" name="id" value={ai.id} />
                                                 <button
                                                     type="submit"
                                                     class="w-full flex items-center px-2 py-1 text-left text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
@@ -552,23 +563,29 @@
     <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
         <form
             method="POST"
-            action="?/delete"
-            use:enhance={() => {
-                return async ({ result }) => {
-                    try {
-                        if (result.type === 'success') {
-                            showDeleteDialog = false;
-                            toast.success('AI assistant deleted successfully');
-                        } else {
-                            toast.error('Failed to delete AI assistant');
-                        }
-                    } catch (err) {
-                        console.error('Error deleting:', err);
-                        toast.error('An unexpected error occurred');
-                    } finally {
-                        await invalidateAll();
+            on:submit|preventDefault={async (e) => {
+                const formData = new FormData(e.target);
+                
+                try {
+                    const response = await fetch(`/api/ai-assistants/${selectedAiId}`, {
+                        method: 'DELETE',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showDeleteDialog = false;
+                        toast.success('AI assistant deleted successfully');
+                    } else {
+                        toast.error(result.message || 'Failed to delete AI assistant');
                     }
-                };
+                } catch (error) {
+                    console.error('Error deleting:', error);
+                    toast.error('Failed to delete AI assistant');
+                } finally {
+                    await invalidateAll();
+                }
             }}
         >
             <div class="space-y-4">

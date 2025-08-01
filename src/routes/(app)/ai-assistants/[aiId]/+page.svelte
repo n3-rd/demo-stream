@@ -95,26 +95,31 @@
                     {:else}
                         <form
                             method="POST"
-                            action="?/restore"
-                            use:enhance={() => {
-                                return async ({ result }) => {
-                                    try {
-                                        if (result.type === 'success') {
-                                            toast.success('AI assistant restored successfully');
-                                        } else {
-                                            toast.error('Failed to restore AI assistant');
-                                        }
-                                    } catch (err) {
-                                        console.error('Error restoring:', err);
-                                        toast.error('An unexpected error occurred');
-                                    } finally {
-                                        // Always invalidate to refresh the data
-                                        await invalidateAll();
+                            on:submit|preventDefault={async (e) => {
+                                const formData = new FormData(e.target);
+                                
+                                try {
+                                    const response = await fetch(`/api/ai-assistants/${aiAssistant.id}`, {
+                                        method: 'PUT',
+                                        body: formData
+                                    });
+                                    
+                                    const result = await response.json();
+                                    
+                                    if (result.success) {
+                                        toast.success('AI assistant restored successfully');
+                                    } else {
+                                        toast.error(result.message || 'Failed to restore AI assistant');
                                     }
-                                };
+                                } catch (error) {
+                                    console.error('Error restoring:', error);
+                                    toast.error('Failed to restore AI assistant');
+                                } finally {
+                                    await invalidateAll();
+                                }
                             }}
                         >
-                            <input type="hidden" name="id" value={aiAssistant.id} />
+                            <input type="hidden" name="status" value="true" />
                             <Button 
                                 type="submit"
                                 class="bg-blue-200 text-blue-700 h-[39px] rounded-[3px] font-semibold text-[16px] flex items-center gap-2"
@@ -201,26 +206,30 @@
                                     <div class="flex items-center">
                                         <form
                                             method="POST"
-                                            action="?/removeFile"
-                                            use:enhance={() => {
-                                                return async ({ result }) => {
-                                                    try {
-                                                        if (result.type === 'success') {
-                                                            toast.success('File removed successfully');
-                                                        } else {
-                                                            toast.error('Failed to remove file');
-                                                        }
-                                                    } catch (err) {
-                                                        console.error('Error removing file:', err);
-                                                        toast.error('An unexpected error occurred');
-                                                    } finally {
-                                                        // Always invalidate to refresh the data
-                                                        await invalidateAll();
+                                            on:submit|preventDefault={async (e) => {
+                                                const formData = new FormData(e.target);
+                                                
+                                                try {
+                                                    const response = await fetch(`/api/ai-assistants/${aiAssistant.id}/remove-file`, {
+                                                        method: 'POST',
+                                                        body: formData
+                                                    });
+                                                    
+                                                    const result = await response.json();
+                                                    
+                                                    if (result.success) {
+                                                        toast.success('File removed successfully');
+                                                    } else {
+                                                        toast.error(result.message || 'Failed to remove file');
                                                     }
-                                                };
+                                                } catch (error) {
+                                                    console.error('Error removing file:', error);
+                                                    toast.error('Failed to remove file');
+                                                } finally {
+                                                    await invalidateAll();
+                                                }
                                             }}
                                         >
-                                            <input type="hidden" name="id" value={aiAssistant.id} />
                                             <input type="hidden" name="fileIndex" value={index} />
                                             <Button 
                                                 type="submit"
@@ -313,43 +322,43 @@
     <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
         <form
             method="POST"
-            action="?/updateViewrooms"
-            use:enhance={() => {
-                return async ({ result, formData }) => {
-                    // Clear any existing entries first
-                    const entries = Array.from(formData.entries());
-                    for (const [key] of entries) {
-                        if (key === 'viewrooom_connections') {
-                            formData.delete(key);
-                        }
+            on:submit|preventDefault={async (e) => {
+                const formData = new FormData(e.target);
+                
+                // Clear any existing entries first
+                const entries = Array.from(formData.entries());
+                for (const [key] of entries) {
+                    if (key === 'viewrooom_connections') {
+                        formData.delete(key);
                     }
-                    
-                    // Add all selected viewrooms explicitly
-                    selectedViewrooms.forEach(id => {
-                        formData.append('viewrooom_connections', id);
+                }
+                
+                // Add all selected viewrooms explicitly
+                selectedViewrooms.forEach(id => {
+                    formData.append('viewrooom_connections', id);
+                });
+                
+                try {
+                    const response = await fetch(`/api/ai-assistants/${aiAssistant.id}`, {
+                        method: 'PUT',
+                        body: formData
                     });
                     
-                    try {
-                        if (result.type === 'success') {
-                            showConnectViewroomDialog = false;
-                            toast.success('ViewRoom connections updated successfully');
-                            invalidateAll();
-                        } else if (result.type === 'failure') {
-                            const errorMsg = typeof result.data?.message === 'string' 
-                                ? result.data.message 
-                                : 'Failed to update ViewRoom connections';
-                            toast.error(errorMsg);
-                        } else {
-                            toast.error('An error occurred');
-                        }
-                    } catch (err) {
-                        console.error('Error in updateViewrooms:', err);
-                        toast.error('An unexpected error occurred');
-                    } finally {
-                        // Always invalidate to refresh the data
-                        await invalidateAll();
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showConnectViewroomDialog = false;
+                        toast.success('ViewRoom connections updated successfully');
+                        invalidateAll();
+                    } else {
+                        toast.error(result.message || 'Failed to update ViewRoom connections');
                     }
-                };
+                } catch (error) {
+                    console.error('Error in updateViewrooms:', error);
+                    toast.error('Failed to update ViewRoom connections');
+                } finally {
+                    await invalidateAll();
+                }
             }}
         >
             <div class="space-y-4">
@@ -454,27 +463,30 @@
     <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
         <form
             method="POST"
-            action="?/archive"
-            use:enhance={() => {
-                return async ({ result }) => {
-                    try {
-                        if (result.type === 'success') {
-                            showArchiveDialog = false;
-                            toast.success('AI assistant archived successfully');
-                             invalidateAll();
-                        } else if (result.type === 'failure') {
-                            toast.error('Failed to archive AI assistant');
-                        } else {
-                            toast.error('An error occurred');
-                        }
-                    } catch (err) {
-                        console.error('Error archiving:', err);
-                        toast.error('An unexpected error occurred');
-                    } finally {
-                        // Always invalidate to refresh the data
-                         invalidateAll();
+            on:submit|preventDefault={async (e) => {
+                const formData = new FormData(e.target);
+                
+                try {
+                    const response = await fetch(`/api/ai-assistants/${aiAssistant.id}`, {
+                        method: 'PUT',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showArchiveDialog = false;
+                        toast.success('AI assistant archived successfully');
+                        invalidateAll();
+                    } else {
+                        toast.error(result.message || 'Failed to archive AI assistant');
                     }
-                };
+                } catch (error) {
+                    console.error('Error archiving:', error);
+                    toast.error('Failed to archive AI assistant');
+                } finally {
+                    invalidateAll();
+                }
             }}
         >
             <div class="space-y-4">

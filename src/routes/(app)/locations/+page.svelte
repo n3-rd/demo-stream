@@ -178,22 +178,29 @@
                             <div class="flex items-center justify-center">
                                 <form
                                     method="POST"
-                                    action="?/delete"
-                                    use:enhance={() => {
-                                        return async ({ result }) => {
-                                            if (result.type === 'success') {
+                                    on:submit|preventDefault={async (e) => {
+                                        const formData = new FormData(e.target);
+                                        
+                                        try {
+                                            const response = await fetch(`/api/locations/${location.id}`, {
+                                                method: 'DELETE',
+                                                body: formData
+                                            });
+                                            
+                                            const result = await response.json();
+                                            
+                                            if (result.success) {
                                                 await invalidateAll();
                                                 toast.success('Location deleted successfully');
-                                            } else if (result.type === 'failure') {
-                                                const errorMsg = typeof result.data?.message === 'string' ? result.data.message : 'Failed to delete location';
-                                                toast.error(errorMsg);
                                             } else {
-                                                toast.error('Failed to delete location');
+                                                toast.error(result.message || 'Failed to delete location');
                                             }
-                                        };
+                                        } catch (error) {
+                                            console.error('Error:', error);
+                                            toast.error('Failed to delete location');
+                                        }
                                     }}
                                 >
-                                    <input type="hidden" name="id" value={location.id} />
                                     <Button
                                         type="submit"
                                         variant="ghost"
@@ -376,23 +383,30 @@
                     {#if editingLocation}
                         <form
                             method="POST"
-                            action="?/delete"
-                            use:enhance={() => {
-                                return async ({ result }) => {
-                                    if (result.type === 'success') {
+                            on:submit|preventDefault={async (e) => {
+                                const formData = new FormData(e.target);
+                                
+                                try {
+                                    const response = await fetch(`/api/locations/${editingLocation.id}`, {
+                                        method: 'DELETE',
+                                        body: formData
+                                    });
+                                    
+                                    const result = await response.json();
+                                    
+                                    if (result.success) {
                                         await invalidateAll();
                                         showAddLocationDialog = false;
                                         toast.success('Location deleted successfully');
-                                    } else if (result.type === 'failure') {
-                                        const errorMsg = typeof result.data?.message === 'string' ? result.data.message : 'Failed to delete location';
-                                        toast.error(errorMsg);
                                     } else {
-                                        toast.error('Failed to delete location');
+                                        toast.error(result.message || 'Failed to delete location');
                                     }
-                                };
+                                } catch (error) {
+                                    console.error('Error:', error);
+                                    toast.error('Failed to delete location');
+                                }
                             }}
                         >
-                            <input type="hidden" name="id" value={editingLocation.id} />
                             <Button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-medium">
                                 Delete
                             </Button>

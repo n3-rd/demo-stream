@@ -462,7 +462,7 @@
             formData.append('generated_file', new File([genBlob], `generated-room-${Date.now()}.png`, { type: 'image/png' }));
             
             // Upload both files at once
-            const response = await fetch('/upload?/uploadAiRoomDesign', {
+            const response = await fetch('/api/ai-room-designer/create', {
                 method: 'POST',
                 body: formData
             });
@@ -476,10 +476,10 @@
             const result = await response.json();
             
             toast.dismiss();
-            if (result.type === 'success') {
+            if (result.success) {
                 toast.success('Both original and generated images saved to content library!');
             } else {
-                toast.error('Error saving images to content library');
+                toast.error(result.message || 'Error saving images to content library');
                 console.error('Error saving to content library:', result);
             }
         } catch (error) {

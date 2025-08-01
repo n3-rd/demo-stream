@@ -12,11 +12,29 @@ export const PUT: RequestHandler = async ({ request, locals, params }) => {
     const contentId = params.id;
     
     try {
-        const updateData = {
-            title: formData.get('title') as string,
-            description: formData.get('description') as string,
-            active: formData.get('active') === 'true'
-        };
+        // Check if this is a toggle request (only has active field)
+        const active = formData.get('active');
+        const title = formData.get('title');
+        const description = formData.get('description');
+        
+        let updateData: any = {};
+        
+        if (active !== null) {
+            // This is a toggle request - only update the active status
+            updateData.active = active === 'true';
+        } else if (title !== null || description !== null) {
+            // This is a full update request
+            updateData = {
+                title: title as string,
+                description: description as string,
+                active: formData.get('active') === 'true'
+            };
+        } else {
+            return new Response(JSON.stringify({
+                success: false,
+                message: 'No valid update data provided'
+            }), { status: 400 });
+        }
 
         await locals.pb.collection('content_library').update(contentId, updateData);
         

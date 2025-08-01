@@ -443,15 +443,27 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <form method="POST" action="?/toggle-content-active" use:enhance={() => {
-                                            return async ({ result }) => {
-                                                if (result.type === 'success') {
+                                        <form method="POST" on:submit|preventDefault={async (e) => {
+                                            const formData = new FormData(e.target);
+                                            
+                                            try {
+                                                const response = await fetch(`/api/content-library/${content.id}`, {
+                                                    method: 'PUT',
+                                                    body: formData
+                                                });
+                                                
+                                                const result = await response.json();
+                                                
+                                                if (result.success) {
                                                     toast.success('Content status updated');
                                                     await invalidateAll();
                                                 } else {
-                                                    toast.error('Failed to update content status');
+                                                    toast.error(result.message || 'Failed to update content status');
                                                 }
-                                            };
+                                            } catch (error) {
+                                                console.error('Error:', error);
+                                                toast.error('Failed to update content status');
+                                            }
                                         }}>
                                             <input type="hidden" name="contentId" value={content.id} />
                                             <input type="hidden" name="active" value={!isContentActive(content.id)} />
@@ -503,15 +515,27 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <form method="POST" action="?/toggle-content-active" use:enhance={() => {
-                                            return async ({ result }) => {
-                                                if (result.type === 'success') {
+                                        <form method="POST" on:submit|preventDefault={async (e) => {
+                                            const formData = new FormData(e.target);
+                                            
+                                            try {
+                                                const response = await fetch(`/api/content-library/${content.id}`, {
+                                                    method: 'PUT',
+                                                    body: formData
+                                                });
+                                                
+                                                const result = await response.json();
+                                                
+                                                if (result.success) {
                                                     toast.success('Content status updated');
                                                     await invalidateAll();
                                                 } else {
-                                                    toast.error('Failed to update content status');
+                                                    toast.error(result.message || 'Failed to update content status');
                                                 }
-                                            };
+                                            } catch (error) {
+                                                console.error('Error:', error);
+                                                toast.error('Failed to update content status');
+                                            }
                                         }}>
                                             <input type="hidden" name="contentId" value={content.id} />
                                             <input type="hidden" name="active" value={!isContentActive(content.id)} />
@@ -573,21 +597,28 @@
             <Dialog.Header>
                 <Dialog.Title>Edit Room</Dialog.Title>
             </Dialog.Header>
-            <form method="POST" action="?/update-room" use:form use:enhance={() => {
-                return async ({ result }) => {
-                    if (!$form.valid) {
-                        toast.error('Please fix the validation errors');
-                        return;
-                    }
+            <form method="POST" on:submit|preventDefault={async (e) => {
+                const formData = new FormData(e.target);
+                
+                try {
+                    const response = await fetch(`/api/room/${roomId}/info`, {
+                        method: 'PUT',
+                        body: formData
+                    });
                     
-                    if (result.type === 'success') {
+                    const result = await response.json();
+                    
+                    if (result.success) {
                         showEditDialog = false;
                         invalidateAll();
                         toast.success('Room updated');
                     } else {
-                        toast.error('Error occurred');
+                        toast.error(result.message || 'Error occurred');
                     }
-                };
+                } catch (error) {
+                    console.error('Error updating room:', error);
+                    toast.error('Error occurred');
+                }
             }}>
                 <div class="space-y-4 py-4">
                     <div class="space-y-2">

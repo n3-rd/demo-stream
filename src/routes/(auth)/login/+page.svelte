@@ -53,15 +53,25 @@
 				</p>
 			</div>
 			<form
-				action="?/login"
 				method="POST"
-				use:form
-				use:enhance={() => {
+				on:submit|preventDefault={async (e) => {
 					loading = true;
-					return async ({ result }) => {
+					const formData = new FormData(e.target);
+					
+					try {
+						const response = await fetch('/api/auth/login', {
+							method: 'POST',
+							body: formData
+						});
+						
+						const result = await response.json();
 						loading = false;
 						handleLogin(result);
-					};
+					} catch (error) {
+						loading = false;
+						console.error('Login error:', error);
+						handleLogin({ type: 'failure', data: { message: 'Login failed' } });
+					}
 				}}
 				class="space-y-4 px-4 lg:px-0"
 			>

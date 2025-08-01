@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { dev } from '$app/environment';
 
 	// Get data from URL params
 	let email = '';
@@ -202,11 +203,14 @@
 	<div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
 		<!-- Logo and Welcome -->
 		<div class="text-center mb-8">
-			<div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-				<svg class="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-					<path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-				</svg>
-			</div>
+			      <!-- ClearSky Software Logo -->
+				  <div class="flex items-center justify-center">
+					<div class="flex items-center">
+					  
+						<img src="/logo/main-logo.svg" alt="ClearSky Software" class="w-[10rem] h-24 text-white" />
+					
+					</div>
+				  </div>
 			<h1 class="text-2xl font-bold text-gray-900 mb-2">Welcome to ClearSky Software</h1>
 		</div>
 
@@ -224,7 +228,7 @@
 					<input
 						id="code-{i}"
 						type="text"
-						class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+						class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors"
 						maxlength="1"
 						pattern="[0-9]"
 						on:input={(e) => handleInput(e, i)}
@@ -240,7 +244,7 @@
 		<div class="space-y-4">
 			<Button
 				on:click={verifyCode}
-				class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-medium"
+				class="w-full bg-primary hover:bg-primary/80 text-white py-3 text-lg font-medium"
 				disabled={loading || verificationCode.join('').length !== 6}
 			>
 				{#if loading}
@@ -257,7 +261,7 @@
 			<Button
 				on:click={resendCode}
 				variant="outline"
-				class="w-full border-blue-600 text-blue-600 hover:bg-blue-50 py-3 text-lg font-medium"
+				class="w-full border-primary text-primary hover:bg-blue-50 py-3 text-lg font-medium"
 				disabled={resending || loading}
 			>
 				{#if resending}
@@ -277,13 +281,24 @@
 			<p class="text-sm text-gray-500">
 				Didn't receive the code? Check your phone and email, or try resending.
 			</p>
+			{#if dev}
+				<div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-center">
+					<p class="text-xs text-yellow-700 mb-1">🚧 Development Mode</p>
+					<button
+						on:click={() => window.open('/dev/mock-sms', '_blank')}
+						class="text-xs text-yellow-600 hover:text-yellow-800 underline"
+					>
+						📱 View Mock SMS Codes (No real SMS sent)
+					</button>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Back to Registration -->
 		<div class="mt-4 text-center">
 			<button
 				on:click={() => goto('/register')}
-				class="text-sm text-blue-600 hover:text-blue-800 underline"
+				class="text-sm text-primary hover:text-blue-800 underline"
 			>
 				← Back to Registration
 			</button>

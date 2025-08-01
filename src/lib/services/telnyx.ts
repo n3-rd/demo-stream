@@ -1,4 +1,5 @@
 import { TELNYX_API_KEY, TELNYX_FROM_NUMBER } from '$env/static/private';
+import { dev } from '$app/environment';
 
 interface TelnyxSMSResponse {
   data: {
@@ -10,6 +11,18 @@ interface TelnyxSMSResponse {
   };
 }
 
+// Dev-only: In-memory store for mock SMS codes
+interface MockSMS {
+  id: string;
+  to: string;
+  message: string;
+  timestamp: Date;
+  code: string;
+}
+
+// Store recent SMS codes in development
+let mockSMSStore: MockSMS[] = [];
+
 export class TelnyxSMSService {
   private apiKey: string;
   private fromNumber: string;
@@ -19,15 +32,43 @@ export class TelnyxSMSService {
     this.apiKey = TELNYX_API_KEY;
     this.fromNumber = TELNYX_FROM_NUMBER;
 
-    if (!this.apiKey) {
+    if (!dev && !this.apiKey) {
       throw new Error('TELNYX_API_KEY environment variable is required');
     }
-    if (!this.fromNumber) {
+    if (!dev && !this.fromNumber) {
       throw new Error('TELNYX_FROM_NUMBER environment variable is required');
     }
   }
 
   async sendSMS(to: string, message: string): Promise<boolean> {
+    // Development mode: Store SMS in memory instead of sending
+    if (dev) {
+      console.log(`📱 [DEV MODE] Mock SMS to ${to}: ${message}`);
+      
+      // Extract verification code from message
+      const codeMatch = message.match(/\b\d{6}\b/);
+      const code = codeMatch ? codeMatch[0] : '';
+      
+      const mockSMS: MockSMS = {
+        id: `mock_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        to,
+        message,
+        timestamp: new Date(),
+        code
+      };
+      
+      // Keep only last 10 SMS for dev testing
+      mockSMSStore.unshift(mockSMS);
+      if (mockSMSStore.length > 10) {
+        mockSMSStore = mockSMSStore.slice(0, 10);
+      }
+      
+      console.log(`📱 [DEV MODE] SMS stored in mock receiver. Code: ${code}`);
+      console.log(`📱 [DEV MODE] ⭐ Quick Access: Visit /dev/mock-sms to view all codes or copy this code: ${code}`);
+      return true;
+    }
+
+    // Production mode: Send real SMS via Telnyx
     try {
       console.log(`📱 Sending SMS to ${to}: ${message}`);
       
@@ -95,6 +136,34 @@ export class TelnyxSMSService {
     // Basic E.164 validation: starts with + and has 7-15 digits
     const e164Regex = /^\+[1-9]\d{6,14}$/;
     return e164Regex.test(formatted);
+  }
+
+  // Dev-only: Get recent mock SMS codes
+  getMockSMSCodes(): MockSMS[] {
+    if (!dev) {
+      throw new Error('Mock SMS codes are only available in development mode');
+    }
+    return [...mockSMSStore];
+  }
+
+  // Dev-only: Clear mock SMS store
+  clearMockSMSCodes(): void {
+    if (!dev) {
+      throw new Error('Mock SMS codes can only be cleared in development mode');
+    }
+    mockSMSStore = [];
+    console.log('📱 [DEV MODE] Mock SMS store cleared');
+  }
+
+  // Dev-only: Get verification code for a phone number
+  getLatestCodeForPhone(phoneNumber: string): string | null {
+    if (!dev) {
+      throw new Error('Mock SMS codes are only available in development mode');
+    }
+    
+    const formatted = this.formatPhoneNumber(phoneNumber);
+    const sms = mockSMSStore.find(sms => sms.to === formatted);
+    return sms ? sms.code : null;
   }
 }
 

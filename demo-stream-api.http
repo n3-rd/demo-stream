@@ -1,0 +1,150 @@
+### Demo Stream API Collection for HTTPie
+
+# Variables
+@baseUrl = http://localhost:3001
+@authToken = {{login.response.body.data.token}}
+
+### Login
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+email=user@example.com&password=password123
+
+### Register
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/x-www-form-urlencoded
+
+name=Test Company&email=test@company.com&phone=+1234567890&website=https://test.com
+
+### Create Room
+POST {{baseUrl}}/api/room/create
+Content-Type: multipart/form-data
+
+videoUrl=https://example.com/video.mp4&videoName=Sample Video
+
+### Join Room
+POST {{baseUrl}}/api/room/join
+Content-Type: application/x-www-form-urlencoded
+
+roomId=room-abc123
+
+### Create Room with Content
+POST {{baseUrl}}/api/room/manage
+Content-Type: multipart/form-data
+
+title=Test Room&is_active=true&host_content[]=content1,content2&representative_content[]=content3,content4&representative=rep1,rep2
+
+### Update Room Info
+PUT {{baseUrl}}/api/room/room-abc123/info
+Content-Type: multipart/form-data
+
+title=Updated Room Title&description=Updated description&is_active=true&host_content=content1,content2&representative_content=content3,content4&representative=rep1,rep2
+
+### Request Quote
+POST {{baseUrl}}/api/room/room-abc123/quote
+Content-Type: application/x-www-form-urlencoded
+
+first_name=John&last_name=Doe&email=john@example.com&phone=+1234567890&company=Test Company&message=Quote request
+
+### Send Email Invitation
+POST {{baseUrl}}/api/room/send-email
+Content-Type: application/x-www-form-urlencoded
+
+name=Recipient Name&receipient=recipient@example.com&url=https://room-url.com&uid=user123
+
+### Upload Content
+POST {{baseUrl}}/api/upload/content
+Content-Type: multipart/form-data
+
+title=My Video&description=Video description&type=video&library_type=host&file=@/path/to/video.mp4&representative=rep1
+
+### Update Content
+PUT {{baseUrl}}/api/content-library/content123
+Content-Type: multipart/form-data
+
+title=Updated Title&description=Updated description&active=true
+
+### Toggle Content Active Status
+PUT {{baseUrl}}/api/content-library/content123
+Content-Type: application/x-www-form-urlencoded
+
+active=false
+
+### Delete Content
+DELETE {{baseUrl}}/api/content-library/content123
+
+### Create AI Assistant
+POST {{baseUrl}}/api/ai-assistants
+Content-Type: multipart/form-data
+
+name=My Assistant&description=AI assistant description&type=chatbot&configuration={"key":"value"}&is_active=true&viewrooom_connections=viewroom1,viewroom2
+
+### Update AI Assistant
+PUT {{baseUrl}}/api/ai-assistants/assistant123
+Content-Type: multipart/form-data
+
+name=Updated Assistant&description=Updated description&type=chatbot&configuration={"updated":"config"}&is_active=true
+
+### Restore AI Assistant
+PUT {{baseUrl}}/api/ai-assistants/assistant123
+Content-Type: application/x-www-form-urlencoded
+
+status=true
+
+### Delete AI Assistant
+DELETE {{baseUrl}}/api/ai-assistants/assistant123
+
+### Remove File from AI Assistant
+POST {{baseUrl}}/api/ai-assistants/assistant123/remove-file
+Content-Type: application/x-www-form-urlencoded
+
+fileIndex=0
+
+### Upload AI Room Design
+POST {{baseUrl}}/api/ai-room-designer/create
+Content-Type: multipart/form-data
+
+title=Room Design&description=Design description&original_file=@/path/to/original.png&generated_file=@/path/to/generated.png
+
+### Get Representatives
+GET {{baseUrl}}/api/representatives
+
+### Create Representative
+POST {{baseUrl}}/api/representatives
+Content-Type: multipart/form-data
+
+name=John Doe&email=john@company.com&phone=+1234567890&is_active=true&schedule=9 AM - 5 PM
+
+### Update Representative
+PUT {{baseUrl}}/api/representatives
+Content-Type: multipart/form-data
+
+id=rep123&name=Updated Name&email=updated@company.com&phone=+1234567890&is_active=true&schedule=9 AM - 5 PM
+
+### Delete Representative
+DELETE {{baseUrl}}/api/representatives
+Content-Type: application/x-www-form-urlencoded
+
+id=rep123
+
+### Create Location
+POST {{baseUrl}}/api/locations
+Content-Type: multipart/form-data
+
+name=Main Office&address=123 Main St&city=City&state=State&zip_code=12345&country=Country&phone=+1234567890&Mon=9:00 AM - 5:00 PM&Tue=9:00 AM - 5:00 PM&Wed=9:00 AM - 5:00 PM&Thurs=9:00 AM - 5:00 PM&Fri=9:00 AM - 5:00 PM&Sat=Closed&Sun=Closed&is_active=true
+
+### Update Location
+PUT {{baseUrl}}/api/locations/location123
+Content-Type: multipart/form-data
+
+name=Updated Office&address=456 Updated St&city=Updated City&state=Updated State&zip_code=54321&country=Updated Country&phone=+1234567890&Mon=8:00 AM - 6:00 PM&Tue=8:00 AM - 6:00 PM&Wed=8:00 AM - 6:00 PM&Thurs=8:00 AM - 6:00 PM&Fri=8:00 AM - 6:00 PM&Sat=10:00 AM - 2:00 PM&Sun=Closed&is_active=true
+
+### Delete Location
+DELETE {{baseUrl}}/api/locations/location123
+
+### Delete Video (Superuser Only)
+DELETE {{baseUrl}}/api/room/delete-video
+Content-Type: application/x-www-form-urlencoded
+
+videoId=video123 

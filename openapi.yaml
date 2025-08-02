@@ -1,0 +1,969 @@
+openapi: 3.0.3
+info:
+  title: Demo Stream API
+  description: API for Demo Stream application
+  version: 1.0.0
+  contact:
+    name: Demo Stream Team
+    email: support@demostream.com
+
+servers:
+  - url: http://localhost:3001
+    description: Development server
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: pb_auth
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: "Error description"
+    Success:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Success description"
+        data:
+          type: object
+          description: Optional data
+
+paths:
+  /api/auth/login:
+    post:
+      summary: User login
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                      success:
+                        type: boolean
+                        example: true
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/register:
+    post:
+      summary: User registration
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+              properties:
+                name:
+                  type: string
+                  example: "Test Company"
+                email:
+                  type: string
+                  format: email
+                  example: test@company.com
+                phone:
+                  type: string
+                  example: "+1234567890"
+                website:
+                  type: string
+                  example: "https://test.com"
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/room/create:
+    post:
+      summary: Create a new room
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - videoUrl
+                - videoName
+              properties:
+                videoUrl:
+                  type: string
+                  example: "https://example.com/video.mp4"
+                videoName:
+                  type: string
+                  example: "Sample Video"
+      responses:
+        '200':
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  room:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      room_id:
+                        type: string
+                      videoUrl:
+                        type: string
+                      videoName:
+                        type: string
+
+  /api/room/join:
+    post:
+      summary: Join an existing room
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - roomId
+              properties:
+                roomId:
+                  type: string
+                  example: "room-abc123"
+      responses:
+        '200':
+          description: Room joined successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/room/manage:
+    post:
+      summary: Create room with content management
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  example: "Test Room"
+                is_active:
+                  type: string
+                  example: "true"
+                host_content[]:
+                  type: string
+                  example: "content1,content2"
+                representative_content[]:
+                  type: string
+                  example: "content3,content4"
+                representative:
+                  type: string
+                  example: "rep1,rep2"
+      responses:
+        '200':
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/room/{roomId}/info:
+    put:
+      summary: Update room information
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "room-abc123"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "Updated Room Title"
+                description:
+                  type: string
+                  example: "Room description"
+                is_active:
+                  type: string
+                  example: "true"
+                host_content:
+                  type: string
+                  example: "content1,content2"
+                representative_content:
+                  type: string
+                  example: "content3,content4"
+                representative:
+                  type: string
+                  example: "rep1,rep2"
+      responses:
+        '200':
+          description: Room updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/room/{roomId}/quote:
+    post:
+      summary: Request a quote for a room
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "room-abc123"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - first_name
+                - last_name
+                - email
+                - phone
+                - company
+              properties:
+                first_name:
+                  type: string
+                  example: "John"
+                last_name:
+                  type: string
+                  example: "Doe"
+                email:
+                  type: string
+                  format: email
+                  example: "john@example.com"
+                phone:
+                  type: string
+                  example: "+1234567890"
+                company:
+                  type: string
+                  example: "Test Company"
+                message:
+                  type: string
+                  example: "Quote request message"
+      responses:
+        '200':
+          description: Quote request submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/room/send-email:
+    post:
+      summary: Send room invitation email
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - name
+                - receipient
+                - url
+              properties:
+                name:
+                  type: string
+                  example: "Recipient Name"
+                receipient:
+                  type: string
+                  format: email
+                  example: "recipient@example.com"
+                url:
+                  type: string
+                  example: "room_url"
+                uid:
+                  type: string
+                  example: "user_id"
+      responses:
+        '200':
+          description: Email sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/upload/content:
+    post:
+      summary: Upload content to library
+      tags: [Content]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+                - type
+                - library_type
+              properties:
+                title:
+                  type: string
+                  example: "Content Title"
+                description:
+                  type: string
+                  example: "Content description"
+                type:
+                  type: string
+                  example: "video"
+                library_type:
+                  type: string
+                  example: "host"
+                file:
+                  type: string
+                  format: binary
+                representative:
+                  type: string
+                  example: "rep_id"
+      responses:
+        '200':
+          description: Content uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/content-library/{id}:
+    put:
+      summary: Update content library item
+      tags: [Content]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "content123"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "Updated Title"
+                description:
+                  type: string
+                  example: "Updated description"
+                active:
+                  type: string
+                  example: "true"
+      responses:
+        '200':
+          description: Content updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      summary: Delete content library item
+      tags: [Content]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "content123"
+      responses:
+        '200':
+          description: Content deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/ai-assistants:
+    get:
+      summary: Get all AI assistants
+      tags: [AI Assistants]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: AI assistants retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    post:
+      summary: Create AI assistant
+      tags: [AI Assistants]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - description
+                - type
+              properties:
+                name:
+                  type: string
+                  example: "Assistant Name"
+                description:
+                  type: string
+                  example: "Assistant description"
+                type:
+                  type: string
+                  example: "chatbot"
+                configuration:
+                  type: string
+                  example: "config_json"
+                is_active:
+                  type: string
+                  example: "true"
+                viewrooom_connections:
+                  type: string
+                  example: "viewroom_id_1,viewroom_id_2"
+      responses:
+        '200':
+          description: AI assistant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/ai-assistants/{id}:
+    put:
+      summary: Update AI assistant
+      tags: [AI Assistants]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "assistant123"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Updated Name"
+                description:
+                  type: string
+                  example: "Updated description"
+                type:
+                  type: string
+                  example: "chatbot"
+                configuration:
+                  type: string
+                  example: "updated_config"
+                is_active:
+                  type: string
+                  example: "true"
+                status:
+                  type: string
+                  example: "true"
+                  description: "For restore functionality"
+      responses:
+        '200':
+          description: AI assistant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      summary: Delete AI assistant
+      tags: [AI Assistants]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "assistant123"
+      responses:
+        '200':
+          description: AI assistant deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/ai-assistants/{id}/remove-file:
+    post:
+      summary: Remove file from AI assistant
+      tags: [AI Assistants]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "assistant123"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - fileIndex
+              properties:
+                fileIndex:
+                  type: string
+                  example: "0"
+      responses:
+        '200':
+          description: File removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/ai-room-designer/create:
+    post:
+      summary: Upload AI room design
+      tags: [AI Room Designer]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - original_file
+                - generated_file
+              properties:
+                title:
+                  type: string
+                  example: "Room Design Title"
+                description:
+                  type: string
+                  example: "Design description"
+                original_file:
+                  type: string
+                  format: binary
+                generated_file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: AI room design uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/representatives:
+    get:
+      summary: Get all representatives
+      tags: [Representatives]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Representatives retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    post:
+      summary: Create representative
+      tags: [Representatives]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - phone
+              properties:
+                name:
+                  type: string
+                  example: "Representative Name"
+                email:
+                  type: string
+                  format: email
+                  example: "rep@company.com"
+                phone:
+                  type: string
+                  example: "+1234567890"
+                is_active:
+                  type: string
+                  example: "true"
+                schedule:
+                  type: string
+                  example: "9 AM - 5 PM"
+      responses:
+        '200':
+          description: Representative created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    put:
+      summary: Update representative
+      tags: [Representatives]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                  example: "rep123"
+                name:
+                  type: string
+                  example: "Updated Name"
+                email:
+                  type: string
+                  format: email
+                  example: "updated@company.com"
+                phone:
+                  type: string
+                  example: "+1234567890"
+                is_active:
+                  type: string
+                  example: "true"
+                schedule:
+                  type: string
+                  example: "9 AM - 5 PM"
+      responses:
+        '200':
+          description: Representative updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      summary: Delete representative
+      tags: [Representatives]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                  example: "rep123"
+      responses:
+        '200':
+          description: Representative deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/locations:
+    post:
+      summary: Create location
+      tags: [Locations]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - address
+                - city
+                - state
+                - zip_code
+                - country
+                - phone
+              properties:
+                name:
+                  type: string
+                  example: "Location Name"
+                address:
+                  type: string
+                  example: "123 Main St"
+                city:
+                  type: string
+                  example: "City"
+                state:
+                  type: string
+                  example: "State"
+                zip_code:
+                  type: string
+                  example: "12345"
+                country:
+                  type: string
+                  example: "Country"
+                phone:
+                  type: string
+                  example: "+1234567890"
+                Mon:
+                  type: string
+                  example: "9:00 AM - 5:00 PM"
+                Tue:
+                  type: string
+                  example: "9:00 AM - 5:00 PM"
+                Wed:
+                  type: string
+                  example: "9:00 AM - 5:00 PM"
+                Thurs:
+                  type: string
+                  example: "9:00 AM - 5:00 PM"
+                Fri:
+                  type: string
+                  example: "9:00 AM - 5:00 PM"
+                Sat:
+                  type: string
+                  example: "Closed"
+                Sun:
+                  type: string
+                  example: "Closed"
+                is_active:
+                  type: string
+                  example: "true"
+      responses:
+        '200':
+          description: Location created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/locations/{id}:
+    put:
+      summary: Update location
+      tags: [Locations]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "location123"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Updated Location Name"
+                address:
+                  type: string
+                  example: "456 Updated St"
+                city:
+                  type: string
+                  example: "Updated City"
+                state:
+                  type: string
+                  example: "Updated State"
+                zip_code:
+                  type: string
+                  example: "54321"
+                country:
+                  type: string
+                  example: "Updated Country"
+                phone:
+                  type: string
+                  example: "+1234567890"
+                Mon:
+                  type: string
+                  example: "8:00 AM - 6:00 PM"
+                Tue:
+                  type: string
+                  example: "8:00 AM - 6:00 PM"
+                Wed:
+                  type: string
+                  example: "8:00 AM - 6:00 PM"
+                Thurs:
+                  type: string
+                  example: "8:00 AM - 6:00 PM"
+                Fri:
+                  type: string
+                  example: "8:00 AM - 6:00 PM"
+                Sat:
+                  type: string
+                  example: "10:00 AM - 2:00 PM"
+                Sun:
+                  type: string
+                  example: "Closed"
+                is_active:
+                  type: string
+                  example: "true"
+      responses:
+        '200':
+          description: Location updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+    delete:
+      summary: Delete location
+      tags: [Locations]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "location123"
+      responses:
+        '200':
+          description: Location deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+
+  /api/room/delete-video:
+    delete:
+      summary: Delete a video (superuser only)
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - videoId
+              properties:
+                videoId:
+                  type: string
+                  example: "video123"
+      responses:
+        '200':
+          description: Video deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success' 

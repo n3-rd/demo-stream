@@ -29,7 +29,8 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
                 type: 'success', 
                 data: { 
                     user: authData.record,
-                    success: true 
+                    success: true,
+                    message: 'Login successful! Welcome back.'
                 } 
             }), { status: 200 });
         } else {

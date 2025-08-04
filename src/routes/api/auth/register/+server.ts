@@ -7,8 +7,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const email = formData.get('email') as string;
     const phone = formData.get('phone') as string;
     const website = formData.get('website') as string;
+    const password = formData.get('password') as string;
+    const passwordConfirm = formData.get('passwordConfirm') as string;
 
-    if (!name || !email || !phone) {
+    if (!name || !email || !phone || !password || !passwordConfirm) {
         return new Response(JSON.stringify({ 
             type: 'failure', 
             data: { message: 'Name, email, and phone are required' } 
@@ -60,6 +62,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+        // Validate password match
+        if (password !== passwordConfirm) {
+            return new Response(JSON.stringify({ 
+                type: 'failure', 
+                data: { message: 'Passwords do not match' } 
+            }), { status: 400 });
+        }
+
         // Store complete registration data in verification record
         const verificationData = await locals.pb.collection('admin_phone_verification').create({
             phone: formattedPhone,
@@ -68,7 +78,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             expires_at: expiresAt.toISOString(),
             used: false,
             company_name: name,
-            password: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+            password: password,
             website: website || ''
         });
 

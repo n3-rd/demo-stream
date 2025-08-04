@@ -10,24 +10,33 @@ export const actions = {
 		// Validate required fields
 		if (!body.name || !body.email || !body.password || !body.passwordConfirm || !body.phone) {
 			return { 
-				success: false, 
-				message: 'All fields are required: company name, email, password, confirm password, and phone number' 
+				type: 'failure',
+				data: { 
+					success: false, 
+					message: 'All fields are required: company name, email, password, confirm password, and phone number' 
+				}
 			};
 		}
 
 		// Validate phone number format
 		if (!telnyxSMS.isValidPhoneNumber(body.phone.toString())) {
 			return { 
-				success: false, 
-				message: 'Invalid phone number format. Please use a valid phone number with country code.' 
+				type: 'failure',
+				data: { 
+					success: false, 
+					message: 'Invalid phone number format. Please use a valid phone number with country code.' 
+				}
 			};
 		}
 
 		// Validate password match
 		if (body.password !== body.passwordConfirm) {
 			return { 
-				success: false, 
-				message: 'Passwords do not match' 
+				type: 'failure',
+				data: { 
+					success: false, 
+					message: 'Passwords do not match' 
+				}
 			};
 		}
 
@@ -36,8 +45,11 @@ export const actions = {
 			const existingUser = await locals.pb.collection('users').getFirstListItem(`email = "${body.email}"`);
 			if (existingUser) {
 				return { 
-					success: false, 
-					message: 'An account with this email already exists' 
+					type: 'failure',
+					data: { 
+						success: false, 
+						message: 'An account with this email already exists' 
+					}
 				};
 			}
 		} catch (err) {
@@ -56,8 +68,11 @@ export const actions = {
 
 			if (existingVerification.items.length > 0) {
 				return { 
-					success: false, 
-					message: 'A verification code was already sent recently. Please check your phone or wait before requesting a new one.'
+					type: 'failure',
+					data: { 
+						success: false, 
+						message: 'A verification code was already sent recently. Please check your phone or wait before requesting a new one.'
+					}
 				};
 			}
 		} catch (err) {
@@ -92,20 +107,26 @@ export const actions = {
 				// If SMS failed, delete the verification record
 				await locals.pb.collection('admin_phone_verification').delete(verificationData.id).catch(() => {});
 				return {
-					success: false,
-					message: 'Failed to send verification code. Please try again.'
+					type: 'failure',
+					data: {
+						success: false,
+						message: 'Failed to send verification code. Please try again.'
+					}
 				};
 			}
 
 			console.log('📱 Phone verification sent, redirecting to verification page...');
 
 			return { 
-				success: false, // Not actually successful yet, need verification
-				verification_required: true,
-				email: body.email.toString(),
-				phone: formattedPhone,
-				company_name: body.name.toString(),
-				message: `Verification code sent to ${formattedPhone.slice(-4)} digits. Please check your phone.`
+				type: 'success',
+				data: {
+					success: false, // Not actually successful yet, need verification
+					verification_required: true,
+					email: body.email.toString(),
+					phone: formattedPhone,
+					company_name: body.name.toString(),
+					message: `Verification code sent to ${formattedPhone.slice(-4)} digits. Please check your phone.`
+				}
 			};
 
 		} catch (error) {

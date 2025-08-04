@@ -57,13 +57,13 @@
 						loading = false;
 						console.log('register results', result);
 						
-						if (result.success) {
-							if (result.data?.success) {
-								toast.success('Account created successfully!');
-								goto('/');
-							} else if (result.data?.verification_required) {
+						if (result.type === 'success') {
+							if (result.data?.verification_required) {
 								// Redirect to verification page
 								goto(`/verify-phone?email=${encodeURIComponent(result.data.email)}&phone=${encodeURIComponent(result.data.phone)}&company=${encodeURIComponent(result.data.company_name)}`);
+							} else if (result.data?.success) {
+								toast.success('Account created successfully!');
+								goto('/');
 							} else {
 								toast.error(String(result.data?.message || 'Registration failed'));
 							}

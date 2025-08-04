@@ -1,4 +1,5 @@
-import { TELNYX_API_KEY, TELNYX_FROM_NUMBER } from '$env/static/private';
+import { PUBLIC_TELNYX_API_KEY, PUBLIC_TELNYX_FROM_NUMBER, PUBLIC_SMS_MODE } from '$env/static/public';
+
 import { dev } from '$app/environment';
 
 interface TelnyxSMSResponse {
@@ -29,8 +30,8 @@ export class TelnyxSMSService {
   private baseURL = 'https://api.telnyx.com/v2';
 
   constructor() {
-    this.apiKey = TELNYX_API_KEY;
-    this.fromNumber = TELNYX_FROM_NUMBER;
+    this.apiKey = PUBLIC_TELNYX_API_KEY;
+    this.fromNumber = PUBLIC_TELNYX_FROM_NUMBER;
 
     if (!dev && !this.apiKey) {
       throw new Error('TELNYX_API_KEY environment variable is required');
@@ -41,8 +42,10 @@ export class TelnyxSMSService {
   }
 
   async sendSMS(to: string, message: string): Promise<boolean> {
-    // Development mode: Store SMS in memory instead of sending
-    if (dev) {
+    // Check SMS mode - use mock in dev mode unless explicitly set to production
+    const useMockSMS = dev && PUBLIC_SMS_MODE !== 'production';
+    
+    if (useMockSMS) {
       console.log(`📱 [DEV MODE] Mock SMS to ${to}: ${message}`);
       
       // Extract verification code from message
@@ -138,9 +141,10 @@ export class TelnyxSMSService {
     return e164Regex.test(formatted);
   }
 
-  // Dev-only: Get recent mock SMS codes
+      // Dev-only: Get recent mock SMS codes
   getMockSMSCodes(): MockSMS[] {
-    if (!dev) {
+    const useMockSMS = dev && SMS_MODE !== 'production';
+    if (!useMockSMS) {
       throw new Error('Mock SMS codes are only available in development mode');
     }
     return [...mockSMSStore];
@@ -148,7 +152,8 @@ export class TelnyxSMSService {
 
   // Dev-only: Clear mock SMS store
   clearMockSMSCodes(): void {
-    if (!dev) {
+    const useMockSMS = dev && SMS_MODE !== 'production';
+    if (!useMockSMS) {
       throw new Error('Mock SMS codes can only be cleared in development mode');
     }
     mockSMSStore = [];
@@ -157,7 +162,8 @@ export class TelnyxSMSService {
 
   // Dev-only: Get verification code for a phone number
   getLatestCodeForPhone(phoneNumber: string): string | null {
-    if (!dev) {
+    const useMockSMS = dev && SMS_MODE !== 'production';
+    if (!useMockSMS) {
       throw new Error('Mock SMS codes are only available in development mode');
     }
     

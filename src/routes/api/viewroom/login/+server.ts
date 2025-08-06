@@ -43,36 +43,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
       roomId: data.roomId || undefined
     });
     
-    // If verification is skipped, set session cookies directly
-    if (result.skipVerification && result.sessionToken) {
-      // Set secure session cookies server-side
-      cookies.set('viewroom_session', result.sessionToken, {
-        path: '/',
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7 // 7 days
-      });
-      
-      cookies.set('viewroom_user', JSON.stringify(result.user), {
-        path: '/',
-        httpOnly: false, // Need to be readable by client
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7 // 7 days
-      });
-      
-      console.log('🔐 Server-side: Viewroom authentication successful for:', result.user.first_name, result.user.last_name);
-      
-      return json({
-        success: true,
-        user: result.user,
-        message: result.message,
-        skipVerification: true,
-        cookiesSet: true
-      });
-    }
-    
     return json(result);
   } catch (error) {
     console.error('Viewroom login error:', error);

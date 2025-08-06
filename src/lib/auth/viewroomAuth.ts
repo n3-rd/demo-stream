@@ -1,6 +1,7 @@
 import { pb } from '$lib/pocketbase';
 import { PUBLIC_BREVO_API_KEY, PUBLIC_SMTP_FROM } from '$env/static/public';
 import crypto from 'crypto';
+import { telnyxSMS } from '$lib/services/telnyx';
 
 export interface ViewroomLoginRequest {
   first_name: string;
@@ -47,22 +48,17 @@ export async function initiateViewroomLogin(request: ViewroomLoginRequest) {
     }
   }
   
-     // 3. Verify first_name and last_name match (company is already verified by filter above)
-   if (user.first_name !== request.first_name || user.last_name !== request.last_name) {
-     throw new Error('Access denied: Name does not match our records');
-   }
-   
-   // TEMPORARILY DISABLED: Phone number validation
-   /*
-   // 4. Phone number validation (if provided, must match exactly)
-   if (request.phone && user.phone !== request.phone) {
-     throw new Error('Access denied: Phone number does not match our records');
-   }
-   */
+  // 3. Verify first_name and last_name match (company is already verified by filter above)
+  if (user.first_name !== request.first_name || user.last_name !== request.last_name) {
+    throw new Error('Access denied: Name does not match our records');
+  }
   
-  // TEMPORARILY DISABLED: Phone and email verification
-  /*
-  // 3. Phone number logic
+  // 4. Phone number validation (if provided, must match exactly)
+  if (request.phone && user.phone !== request.phone) {
+    throw new Error('Access denied: Phone number does not match our records');
+  }
+  
+  // 5. Phone and email verification
   let verificationType: 'email' | 'sms';
   let targetContact: string;
   
@@ -80,11 +76,11 @@ export async function initiateViewroomLogin(request: ViewroomLoginRequest) {
     targetContact = request.email;
   }
   
-  // 4. Generate 5-digit verification code
+  // 6. Generate 5-digit verification code
   const code = Math.floor(10000 + Math.random() * 90000).toString();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
   
-  // 5. Store verification code in database
+  // 7. Store verification code in database
   await pb.collection('verification_codes').create({
     user_email: user.email,
     code,
@@ -94,7 +90,7 @@ export async function initiateViewroomLogin(request: ViewroomLoginRequest) {
     verification_type: verificationType
   });
   
-  // 6. Send verification code
+  // 8. Send verification code
   if (verificationType === 'sms') {
     await sendSMSVerificationCode(request.phone!, code);
   } else {
@@ -108,49 +104,37 @@ export async function initiateViewroomLogin(request: ViewroomLoginRequest) {
       : 'Verification code sent to your email',
     verification_type: verificationType
   };
-  */
-  
-  // TEMPORARY: Skip verification and directly authenticate
-  // Generate session token
-  const sessionToken = crypto.randomBytes(32).toString('hex');
-  
-  return {
-    success: true,
-    message: 'Authentication successful - Welcome to the viewroom (verification temporarily disabled)',
-    user: {
-      id: user.id,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      company: user.company,
-      email: user.email
-    },
-    sessionToken,
-    skipVerification: true
-  };
 }
 
 export async function verifyViewroomCode(request: VerificationRequest) {
-  // Find valid, unused verification code
-  const verification = await pb.collection('verification_codes').getFirstListItem(
-    `user_email = "${request.email}" && code = "${request.code}" && used = false && expires_at > "${new Date().toISOString()}"`
-  ).catch(() => null);
-  
-  if (!verification) {
-    throw new Error('Invalid or expired verification code');
-  }
-  
-  // Mark code as used
-  await pb.collection('verification_codes').update(verification.id, { used: true });
-  
-  // Get user data
-  const user = await pb.collection('viewroom_users').getFirstListItem(
-    `email = "${request.email}"`
-  );
-  
-  // Generate session token
-  const sessionToken = crypto.randomBytes(32).toString('hex');
-  
-      return {
+  try {
+    // Find valid, unused verification code (without expires_at in query)
+    const verification = await pb.collection('verification_codes').getFirstListItem(
+      `user_email = "${request.email}" && code = "${request.code}" && used = false`
+    ).catch(() => null);
+    
+    if (!verification) {
+      throw new Error('Invalid or expired verification code');
+    }
+    
+    // Check if code has expired manually
+    const expiresAt = new Date(verification.expires_at);
+    if (expiresAt < new Date()) {
+      throw new Error('Verification code has expired');
+    }
+    
+    // Mark code as used
+    await pb.collection('verification_codes').update(verification.id, { used: true });
+    
+    // Get user data
+    const user = await pb.collection('viewroom_users').getFirstListItem(
+      `email = "${request.email}"`
+    );
+    
+    // Generate session token
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    
+    return {
       success: true,
       user: {
         id: user.id,
@@ -162,6 +146,21 @@ export async function verifyViewroomCode(request: VerificationRequest) {
       sessionToken,
       message: 'Authentication successful - Welcome to the viewroom'
     };
+  } catch (error) {
+    console.error('Verification error details:', {
+      email: request.email,
+      code: request.code,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Check if it's a "not found" error or other error
+    if (error.message.includes('Failed to fetch') || error.message.includes('not found')) {
+      throw new Error('Invalid or expired verification code');
+    }
+    
+    throw error;
+  }
 }
 
 async function sendEmailVerificationCode(email: string, code: string, loginName: string) {
@@ -209,36 +208,12 @@ async function sendEmailVerificationCode(email: string, code: string, loginName:
   }
 }
 
-async function sendSMSVerificationCode(phoneNumber: string, code: string) {
-  // PLACEHOLDER: Replace with your SMS service
-  // Options:
-  // 1. Use your existing SMS provider API
-  // 2. Use a different service like AWS SNS, MessageBird, etc.
-  // 3. Integrate with your current SMS infrastructure
+async function sendSMSVerificationCode(phone: string, code: string) {
+  const formattedPhone = telnyxSMS.formatPhoneNumber(phone);
+  const message = `Your viewroom access verification code is: ${code}. This code expires in 5 minutes.`;
   
-  console.log(`SMS would be sent to ${phoneNumber}: Your viewroom access code is ${code}`);
-  
-  // Example implementation placeholder:
-  /*
-  const smsData = {
-    to: phoneNumber,
-    message: `Your viewroom access code is: ${code}. This code expires in 5 minutes.`
-  };
-  
-  const response = await fetch('YOUR_SMS_API_ENDPOINT', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer YOUR_SMS_API_KEY',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(smsData)
-  });
-  
-  if (!response.ok) {
+  const success = await telnyxSMS.sendSMS(formattedPhone, message);
+  if (!success) {
     throw new Error('Failed to send SMS verification code');
   }
-  */
-  
-  // For now, throw error to indicate SMS not implemented
-  throw new Error('SMS verification temporarily unavailable. Please login without phone number to receive email verification.');
 } 

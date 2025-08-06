@@ -20,7 +20,7 @@
   let lastName = '';
   let email = '';
   let mobileNumber = '';
-  let verificationCode = '';
+  let verificationCode = ['', '', '', '', ''];
   let verificationType = '';
   
   // Get room ID from URL params and fetch room info
@@ -56,13 +56,44 @@
     }
   }
   
-  // Auto-format verification code input
-  function formatVerificationCode(event: Event) {
+  // Handle code input with auto-focus
+  function handleInput(event: Event, index: number) {
     const target = event.target as HTMLInputElement;
-    const value = target.value.replace(/\D/g, ''); // Remove non-digits
-    if (value.length <= 5) {
-      verificationCode = value;
-      target.value = value;
+    const value = target.value;
+
+    // Only allow single digits
+    if (value.length > 1) {
+      target.value = value.slice(-1);
+    }
+
+    verificationCode[index] = target.value;
+
+    // Auto-focus next input
+    if (value && index < 4) {
+      const nextInput = document.querySelector(`#code-${index + 1}`) as HTMLInputElement;
+      nextInput?.focus();
+    }
+
+    // Auto-submit when all 5 digits are entered
+    if (verificationCode.every(digit => digit !== '') && verificationCode.join('').length === 5) {
+      handleVerification();
+    }
+  }
+
+
+
+  // Paste handling
+  function handlePaste(event: ClipboardEvent) {
+    event.preventDefault();
+    const paste = event.clipboardData?.getData('text');
+    if (paste && /^\d{5}$/.test(paste)) {
+      const digits = paste.split('');
+      for (let i = 0; i < 5; i++) {
+        verificationCode[i] = digits[i] || '';
+        const input = document.querySelector(`#code-${i}`) as HTMLInputElement;
+        if (input) input.value = verificationCode[i];
+      }
+      handleVerification();
     }
   }
   
@@ -90,27 +121,9 @@
       const result = await response.json();
       
       if (result.success) {
-        // Check if verification is skipped (temporary)
-        if (result.skipVerification) {
-          console.log('🔐 Viewroom authentication successful:', result.user);
-          console.log('🍪 Server set cookies:', result.cookiesSet);
-          
-          toast.success(result.message);
-          
-          // Redirect immediately since cookies are set server-side
-          if (roomId) {
-            console.log('🚀 Redirecting to room:', roomId);
-            goto(`/room/${roomId}`);
-          } else {
-            console.log('🚀 Redirecting to dashboard');
-            goto('/viewroom/dashboard');
-          }
-        } else {
-          // Normal verification flow
-          verificationType = result.verification_type;
-          step = 'verify';
-          toast.success(result.message);
-        }
+        verificationType = result.verification_type;
+        step = 'verify';
+        toast.success(result.message);
       } else {
         toast.error(result.message);
       }
@@ -121,13 +134,8 @@
   }
   
   async function handleVerification() {
-    if (!verificationCode.trim()) {
-      toast.error('Please enter the verification code');
-      return;
-    }
-    
-    if (verificationCode.length !== 5) {
-      toast.error('Verification code must be 5 digits');
+    if (!verificationCode.every(digit => digit !== '') || verificationCode.join('').length !== 5) {
+      toast.error('Please enter the complete 5-digit verification code');
       return;
     }
     
@@ -138,7 +146,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
-          code: verificationCode.trim()
+          code: verificationCode.join('')
         })
       });
       
@@ -154,7 +162,7 @@
         }
       } else {
         toast.error(result.message);
-        verificationCode = '';
+        verificationCode = ['', '', '', '', '']; // Clear code on failure
       }
     } catch (error) {
       toast.error('Verification failed. Please try again.');
@@ -164,7 +172,7 @@
   
   function resetToLogin() {
     step = 'login';
-    verificationCode = '';
+    verificationCode = ['', '', '', '', ''];
     verificationType = '';
   }
   
@@ -176,6 +184,14 @@
       } else {
         handleVerification();
       }
+    }
+  }
+
+  // Handle OTP input keydown for backspace
+  function handleOtpKeydown(event: KeyboardEvent, index: number) {
+    if (event.key === 'Backspace' && verificationCode[index] === '' && index > 0) {
+      const prevInput = document.querySelector(`#code-${index - 1}`) as HTMLInputElement;
+      prevInput?.focus();
     }
   }
 </script>
@@ -365,23 +381,26 @@
 
           <!-- Verification Code Input -->
           <div>
-            <Label for="verificationCode" class="block text-sm font-medium text-gray-700 mb-2">
+            <Label class="block text-sm font-medium text-gray-700 mb-4 text-center">
               VERIFICATION CODE
             </Label>
-            <Input
-              id="verificationCode"
-              value={verificationCode}
-              on:input={formatVerificationCode}
-              placeholder="Enter 5-digit code"
-              maxlength={5}
-              pattern="[0-9]{5}"
-              class="w-full px-3 py-3 border border-gray-300 rounded-md text-center text-lg tracking-widest font-mono placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              required
-              disabled={loading}
-              autocomplete="one-time-code"
-            />
-            <p class="text-xs text-gray-500 mt-1 text-center">
-              {verificationCode.length}/5 digits
+            <div class="flex justify-center gap-3 mb-4">
+              {#each Array(5) as _, i}
+                <input
+                  id="code-{i}"
+                  type="text"
+                  class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors"
+                  maxlength="1"
+                  pattern="[0-9]"
+                  on:input={(e) => handleInput(e, i)}
+                  on:keydown={(e) => handleOtpKeydown(e, i)}
+                  on:paste={handlePaste}
+                  disabled={loading}
+                />
+              {/each}
+            </div>
+            <p class="text-xs text-gray-500 text-center">
+              Enter the 5-digit code sent to your {verificationType === 'sms' ? 'mobile phone' : 'email'}
             </p>
           </div>
 
@@ -389,7 +408,7 @@
           <div class="pt-2">
             <Button
               type="submit"
-              disabled={loading || verificationCode.length !== 5}
+              disabled={loading || !verificationCode.every(digit => digit !== '') || verificationCode.join('').length !== 5}
               class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-md transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {#if loading}

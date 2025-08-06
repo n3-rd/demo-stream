@@ -86,8 +86,9 @@ let uniqueSessionId = '';
 // Room data
 $: roomName = uniqueSessionId ? `${baseRoomName}-${uniqueSessionId}` : baseRoomName;
 const user = data?.user;
-const isAuthenticated = !!user;
-const name = isAuthenticated ? user?.company_name : "";
+const viewroomUser = data?.viewroomUser;
+const isAuthenticated = !!user || !!viewroomUser;
+const name = isAuthenticated ? (user?.company_name || viewroomUser?.company) : "";
 const representatives = data?.representatives || [];
 const users = data?.users || [];
 let isAnonymousHost = false;
@@ -150,7 +151,7 @@ $: {
         // Determine if user is host (owner of the room or anonymous host from embed)
         isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
                                $page.url.searchParams.get('anonymous') === 'true';
-        isHost = user?.id === room.owner_company || isAnonymousHost;
+        isHost = user?.id === room.owner_company || viewroomUser?.company === room.owner_company || isAnonymousHost;
         
         // Set showGreetingPopup based on isAnonymousHost
         showGreetingPopup = isAnonymousHost;
@@ -158,7 +159,7 @@ $: {
         // Determine if user is a representative (check both URL param and room data)
         const urlRepName = $page.url.searchParams.get('repid');
         isRepresentative = (urlRepName !== null && urlRepName !== '') || 
-                          representatives?.some(rep => rep.id === user?.id) || false;
+                          representatives?.some(rep => rep.id === (user?.id || viewroomUser?.id)) || false;
         
     }
 }

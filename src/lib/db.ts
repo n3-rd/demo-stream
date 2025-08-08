@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
+import { PUBLIC_DATABASE_URL } from '$env/static/public';
 
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/demo_stream';
+const connectionString = PUBLIC_DATABASE_URL;
 
 export const dbPool = new Pool({ connectionString });
 

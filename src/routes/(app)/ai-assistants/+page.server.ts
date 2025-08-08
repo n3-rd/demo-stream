@@ -10,7 +10,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 
     try {
         const aiAssistants = await locals.pb.collection('ai_assistants').getFullList({
-            filter: `owner_company = "${user.id}"`,
             sort: '-created'
         });
 

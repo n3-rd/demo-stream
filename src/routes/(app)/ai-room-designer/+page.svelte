@@ -153,135 +153,37 @@
             toast.error('No generated image');
             return;
         }
-        
-        if (!filePreviewUrl) {
-            toast.error('No original image available');
-            return;
-        }
-        
         try {
             isSaving = true;
-            
-            // Get room and style labels
             const roomLabel = roomTypes.find(r => r.value === selectedRoomType)?.label || 'Room';
             const styleLabel = designStyles.find(s => s.value === selectedDesignStyle)?.label || 'Style';
             const title = `${styleLabel} ${roomLabel}`;
             const description = customPrompt || `AI generated ${roomLabel.toLowerCase()} with ${styleLabel.toLowerCase()} style`;
-            
-            // 1. Fetch the generated image
+
+            // Fetch generated image and build file
             const genResponse = await fetch(generatedImage[0]);
-            if (!genResponse.ok) {
-                throw new Error(`Failed to fetch generated image: ${genResponse.status}`);
-            }
+            if (!genResponse.ok) throw new Error(`Failed to fetch generated image: ${genResponse.status}`);
             const genBlob = await genResponse.blob();
             const genFile = new File([genBlob], `generated-room-${Date.now()}.png`, { type: 'image/png' });
-            
-            // 2. Get the original image
-            let origFile;
-            if (selectedFile) {
-                // If we have the original file already, use it
-                origFile = selectedFile;
-            } else {
-                // Otherwise fetch from blob URL
-                const blobUrl = filePreviewUrl.startsWith('blob:') ? 
-                    filePreviewUrl : 
-                    filePreviewUrl;
-                    
-                const origResponse = await fetch(blobUrl);
-                if (!origResponse.ok) {
-                    throw new Error(`Failed to fetch original image: ${origResponse.status}`);
-                }
-                const origBlob = await origResponse.blob();
-                origFile = new File([origBlob], `original-room-${Date.now()}.png`, { type: 'image/png' });
-            }
-            
-            // 3. Create two FormData objects (one for each image)
-            // Original image
-            const origFormData = new FormData();
-            origFormData.append('title', `${title} - Original`);
-            origFormData.append('description', `Original image for ${description}`);
-            origFormData.append('type', 'image');
-            origFormData.append('file', origFile);
-            origFormData.append('thumbnail', origFile);
-            
-            // Fix library_type handling for 'both'
-            if (libraryType === 'both') {
-                origFormData.append('library_type', 'host');
-                origFormData.append('library_type', 'representative');
-            } else {
-                origFormData.append('library_type', libraryType);
-            }
-            
-            // For representative-specific uploads
+
+            const formData = new FormData();
+            formData.append('title', `${title} - AI Generated`);
+            formData.append('description', description);
+            formData.append('type', 'image');
+            formData.append('file', genFile);
+            formData.append('thumbnail', genFile);
+            formData.append('library_type', libraryType);
+            formData.append('active', 'true');
             if (libraryType !== 'host' && selectedRepresentatives.length > 0) {
-                // Add selected representatives
-                selectedRepresentatives.forEach(repId => {
-                    origFormData.append('representatives', repId);
-                });
+                formData.append('representatives', selectedRepresentatives.join(','));
             }
-            
-            // Generated image
-            const genFormData = new FormData();
-            genFormData.append('title', `${title} - AI Generated`);
-            genFormData.append('description', description);
-            genFormData.append('type', 'image');
-            genFormData.append('file', genFile);
-            genFormData.append('thumbnail', genFile);
-            
-            // Fix library_type handling for 'both'
-            if (libraryType === 'both') {
-                genFormData.append('library_type', 'host');
-                genFormData.append('library_type', 'representative');
-            } else {
-                genFormData.append('library_type', libraryType);
-            }
-            
-            genFormData.append('active', 'true');
-            genFormData.append('owner_company', user.id);
-            
-            // For representative-specific uploads
-            if (libraryType !== 'host' && selectedRepresentatives.length > 0) {
-                // Add selected representatives
-                selectedRepresentatives.forEach(repId => {
-                    genFormData.append('representatives', repId);
-                });
-            }
-            
-            // 4. Upload both files
-            const origUploadResponse = await fetch('/upload?/uploadContent', {
-                method: 'POST',
-                body: origFormData
-            });
-            
-            if (!origUploadResponse.ok) {
-                throw new Error(`Original image upload failed: ${origUploadResponse.status}`);
-            }
-            
-            const genUploadResponse = await fetch('/upload?/uploadContent', {
-                method: 'POST',
-                body: genFormData
-            });
-            
-            if (!genUploadResponse.ok) {
-                throw new Error(`Generated image upload failed: ${genUploadResponse.status}`);
-            }
-            
-            // 5. Process results
-            const origResult = await origUploadResponse.json();
-            const genResult = await genUploadResponse.json();
-            
-            if (origResult.type === 'success' && genResult.type === 'success') {
-                saveSuccess = true;
-                toast.success('Both original and generated images saved to content library!');
-                setTimeout(() => {
-                    showLibraryModal = false;
-                    saveSuccess = false;
-                }, 2000);
-            } else {
-                saveError = true;
-                toast.error('Error saving one or both images to content library');
-                console.error('Upload results:', { origResult, genResult });
-            }
+
+            const resp = await fetch('/api/upload/content', { method: 'POST', body: formData });
+            const result = await resp.json();
+            if (!resp.ok || !result.success) throw new Error(result.message || 'Upload failed');
+            saveSuccess = true;
+            toast.success('Image saved to content library!');
+            setTimeout(() => { showLibraryModal = false; saveSuccess = false; }, 1500);
         } catch (error) {
             saveError = true;
             toast.error(`Error: ${error.message}`);

@@ -1,29 +1,57 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { enhance } from '$app/forms';
-	import { useForm, HintGroup, Hint, validators, email, required } from 'svelte-use-form';
-	import { slide } from 'svelte/transition';
-	import { quintOut } from 'svelte/easing';
-	import HintValidate from '$lib/components/layout/hint-validate.svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import type { ActionResult } from '@sveltejs/kit';
 
 	let loading = false;
+	let step: 'send' | 'verify' = 'send';
+	let email = '';
+	let phone = '';
+	let code = '';
 
-	const form = useForm();
+	async function onSendCode(e: Event) {
+		e.preventDefault();
+		loading = true;
+		try {
+			const res = await fetch('/api/auth/passwordless/send-code', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email, phone })
+			});
+			const data = await res.json();
+			if (data?.success) {
+				toast.success('Code sent');
+				step = 'verify';
+			} else {
+				toast.error(data?.message || 'Failed to send code');
+			}
+		} catch (err) {
+			toast.error('Failed to send code');
+		} finally {
+			loading = false;
+		}
+	}
 
-	function handleLogin(result: ActionResult) {
-		if (result.type === 'success') {
-			const data = result.data as { success: boolean; message: string };
-			if (data.success) {
-				toast.success(data.message);
+	async function onVerify(e: Event) {
+		e.preventDefault();
+		loading = true;
+		try {
+			const res = await fetch('/api/auth/passwordless/verify', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email, code })
+			});
+			const data = await res.json();
+			if (data?.success) {
+				toast.success('Logged in');
 				goto('/');
 			} else {
-				toast.error(data.message);
+				toast.error(data?.message || 'Invalid code');
 			}
-		} else {
-			toast.error('An error occurred while logging in');
+		} catch (err) {
+			toast.error('Verification failed');
+		} finally {
+			loading = false;
 		}
 	}
 </script>
@@ -39,7 +67,7 @@
 		<div class="w-[60px] lg:w-[89px] h-2 bg-white"></div>
 
 		<div class="text-base lg:text-lg text-center font-light px-4 lg:px-0 max-w-md">
-			Sign in to manage your representatives, content library, and demo rooms. Your business tools are just a click away.
+			Sign in to manage your representatives, content library, and demo rooms.
 		</div>
 	</div>
 
@@ -49,108 +77,45 @@
 			<div class="mb-6">
 				<h2 class="text-xl lg:text-2xl text-primary text-center font-semibold mb-2">Company Login</h2>
 				<p class="text-gray-600 text-xs lg:text-sm font-light text-center">
-					Enter your company email and password to access your account. If you're a representative, please use your assigned credentials.
+					Enter your email and phone to receive a login code.
 				</p>
 			</div>
-			<form
-				method="POST"
-				on:submit|preventDefault={async (e) => {
-					loading = true;
-					const formData = new FormData(e.target);
-					
-					try {
-						const response = await fetch('/api/auth/login', {
-							method: 'POST',
-							body: formData
-						});
-						
-						const result = await response.json();
-						loading = false;
-						handleLogin(result);
-					} catch (error) {
-						loading = false;
-						console.error('Login error:', error);
-						handleLogin({ type: 'failure', data: { message: 'Login failed' } });
-					}
-				}}
-				class="space-y-4 px-4 lg:px-0"
-			>
+
+			{#if step === 'send'}
+			<form class="space-y-4 px-4 lg:px-0" on:submit={onSendCode}>
 				<div class="flex gap-1 items-center h-11">
 					<div class="h-full w-[6px] bg-primary"></div>
 					<div class="w-full">
-						<input
-							id="email"
-							type="email"
-							name="email"
-							placeholder="company@example.com"
-							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-							required
-							use:validators={[required, email]}
-						/>
+						<input id="email" type="email" bind:value={email} placeholder="company@example.com" class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" required />
 					</div>
 				</div>
-				<HintGroup for="email">
-					<div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-						<Hint on="required"><HintValidate>Email is required</HintValidate></Hint>
-						<Hint on="email" hideWhenRequired><HintValidate>Email is not valid</HintValidate></Hint>
-					</div>
-				</HintGroup>
-				
+
 				<div class="flex gap-1 items-center h-11">
 					<div class="h-full w-[6px] bg-primary"></div>
 					<div class="w-full">
-						<input
-							type="password"
-							name="password"
-							placeholder="Enter your password"
-							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-							id="password"
-							required
-							use:validators={[required]}
-						/>
+						<input id="phone" type="tel" bind:value={phone} placeholder="+1234567890" class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" required />
 					</div>
 				</div>
-				<div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-					<Hint for="password" on="required"><HintValidate>Password is required</HintValidate></Hint>
-				</div>
-				
-				<div class="flex items-center justify-between text-sm">
-					<div class="flex items-center space-x-2">
-						<input type="checkbox" id="keep-logged-in" class="rounded border-gray-300 text-primary focus:ring-primary" />
-						<label for="keep-logged-in" class="text-xs lg:text-sm text-gray-600">Keep me logged in</label>
-					</div>
-					<a href="/admin/reset-password" class="text-xs lg:text-sm text-primary hover:underline">
-						Forgot password?
-					</a>
-				</div>
-				
-				<Button type="submit" class="w-full bg-primary hover:bg-primary rounded-full hover:bg-primary/65 text-white" disabled={!$form.valid}>
-					{#if loading}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="mr-3 h-5 w-5 animate-spin"
-							viewBox="0 0 24 24"
-						>
-							<circle
-								cx="12"
-								cy="12"
-								r="10"
-								class="opacity-25"
-								stroke="currentColor"
-								stroke-width="4"
-							></circle>
-							<path
-								class="opacity-75"
-								fill="currentColor"
-								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A8.001 8.001 0 014.708 4.708L2.293 7.121l1.414 1.414 2.415-2.415zm12.586-2.415l2.415 2.415 1.414-1.414-2.415-2.415-2.415 2.415zM20 12a8 8 0 01-8 8v4c6.627 0 12-5.373 12-12h-4z"
-							></path>
-						</svg>
-						<span>Logging in...</span>
-					{:else}
-						<span>Sign In</span>
-					{/if}
+
+				<Button type="submit" class="w-full bg-primary rounded-full text-white" disabled={loading}>
+					{#if loading}<span>Sending...</span>{:else}<span>Send Code</span>{/if}
 				</Button>
 			</form>
+			{:else}
+			<form class="space-y-4 px-4 lg:px-0" on:submit={onVerify}>
+				<div class="flex gap-1 items-center h-11">
+					<div class="h-full w-[6px] bg-primary"></div>
+					<div class="w-full">
+						<input id="code" type="text" inputmode="numeric" maxlength="6" bind:value={code} placeholder="Enter 6-digit code" class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" required />
+					</div>
+				</div>
+				<Button type="submit" class="w-full bg-primary rounded-full text-white" disabled={loading}>
+					{#if loading}<span>Verifying...</span>{:else}<span>Verify & Sign In</span>{/if}
+				</Button>
+				<button type="button" class="w-full text-xs text-gray-600 underline" on:click={() => (step = 'send')}>Go back</button>
+			</form>
+			{/if}
+
 			<div class="mt-4 text-center text-xs lg:text-sm">
 				Don't have a company account?
 				<a href="/register" class="underline">Register now</a>

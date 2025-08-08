@@ -244,6 +244,16 @@ class PBShim {
     this.authStore.save(token, user);
     return { token, record: user };
   }
+
+  async createSessionForUser(userId: string) {
+    const { rows } = await query('SELECT * FROM users WHERE id = $1 LIMIT 1', [userId]);
+    const user = rows[0];
+    if (!user) throw new Error('user not found');
+    const token = crypto.randomBytes(32).toString('hex');
+    sessionStore.set(token, user);
+    this.authStore.save(token, user);
+    return { token, record: user };
+  }
 }
 
 export const pb = new PBShim(); 

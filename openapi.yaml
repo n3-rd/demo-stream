@@ -90,39 +90,25 @@ paths:
 
   /api/auth/register:
     post:
-      summary: User registration
+      summary: User registration (starts phone verification)
       tags: [Authentication]
       requestBody:
         required: true
         content:
-          application/x-www-form-urlencoded:
+          multipart/form-data:
             schema:
               type: object
-              required:
-                - name
-                - email
-                - phone
+              required: [name, email, phone, password, passwordConfirm]
               properties:
-                name:
-                  type: string
-                  example: "Test Company"
-                email:
-                  type: string
-                  format: email
-                  example: test@company.com
-                phone:
-                  type: string
-                  example: "+1234567890"
-                website:
-                  type: string
-                  example: "https://test.com"
+                name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                website: { type: string }
+                password: { type: string }
+                passwordConfirm: { type: string }
       responses:
-        '200':
-          description: Registration successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
+        '200': { description: Verification initiated }
+        '400': { description: Validation error }
 
   /api/room/create:
     post:
@@ -966,4 +952,840 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Success' 
+                $ref: '#/components/schemas/Success'
+ 
+  /api/admin/viewroom-users:
+    get:
+      summary: List viewroom users for the authenticated company
+      tags: [Viewroom Users]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Users fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  users:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a viewroom user for the authenticated company
+      tags: [Viewroom Users]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - first_name
+                - last_name
+                - email
+                - phone
+              properties:
+                first_name:
+                  type: string
+                  example: "John"
+                last_name:
+                  type: string
+                  example: "Doe"
+                email:
+                  type: string
+                  format: email
+                  example: "john@example.com"
+                phone:
+                  type: string
+                  example: "+1234567890"
+                login_name:
+                  type: string
+                  description: Optional custom login name. If omitted, it will be derived from the name or email.
+                  example: "john.doe"
+                is_active:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid input or duplicate email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/viewroom-users/{id}:
+    put:
+      summary: Update a viewroom user
+      tags: [Viewroom Users]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "user123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - first_name
+                - last_name
+                - email
+                - phone
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found or not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a viewroom user
+      tags: [Viewroom Users]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "user123"
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found or not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/viewroom-users/{id}/toggle-status:
+    patch:
+      summary: Toggle a viewroom user's active status
+      tags: [Viewroom Users]
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "user123"
+      responses:
+        '200':
+          description: User status toggled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found or not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+ 
+  /api/admin/phone-verification/send:
+    post:
+      summary: Send admin phone verification code
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, email, company_name]
+              properties:
+                phone:
+                  type: string
+                  example: "+1234567890"
+                email:
+                  type: string
+                  format: email
+                  example: "admin@company.com"
+                company_name:
+                  type: string
+                  example: "Acme Inc"
+      responses:
+        '200':
+          description: Code sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/phone-verification/verify:
+    post:
+      summary: Verify admin phone verification code
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, email, code]
+              properties:
+                phone: { type: string, example: "+1234567890" }
+                email: { type: string, format: email, example: "admin@company.com" }
+                code: { type: string, example: "123456" }
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid code or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/complete-registration:
+    post:
+      summary: Complete admin registration after phone verification
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, phone, company_name]
+              properties:
+                email: { type: string, format: email }
+                phone: { type: string }
+                company_name: { type: string }
+      responses:
+        '200':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  user: { type: object }
+        '400':
+          description: Registration error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/toggle-representative:
+    post:
+      summary: Toggle representative flag on a user (superuser only)
+      tags: [Representatives]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, makeRepresentative]
+              properties:
+                userId: { type: string }
+                makeRepresentative: { type: boolean }
+      responses:
+        '200':
+          description: Representative status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/stream/create:
+    post:
+      summary: Create a stream on Ant Media
+      tags: [Stream]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [streamId, name]
+              properties:
+                streamId: { type: string, example: "room-abc123-uid" }
+                name: { type: string, example: "Demo Stream" }
+                description: { type: string }
+                camera: { type: boolean, example: true }
+                publish: { type: boolean, example: true }
+                encoderSettings:
+                  type: object
+                  properties:
+                    height: { type: integer, example: 720 }
+                    videoBitrate: { type: integer, example: 1000000 }
+                    audioBitrate: { type: integer, example: 128000 }
+                    forceEncode: { type: boolean, example: true }
+      responses:
+        '200':
+          description: Stream created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401': { description: Unauthorized }
+        '409': { description: Stream ID conflict }
+
+  /api/stream/info:
+    get:
+      summary: Get Ant Media stream info
+      tags: [Stream]
+      parameters:
+        - in: query
+          name: roomId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: uid
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Stream info
+          content:
+            application/json:
+              schema:
+                type: object
+        '400': { description: Missing roomId }
+
+  /api/stream/message:
+    post:
+      summary: Send a data message to a stream
+      tags: [Stream]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messageId, messageDate, messageBody, roomId]
+              properties:
+                messageId: { type: string }
+                messageDate: { type: string }
+                messageBody: { type: string }
+                roomId: { type: string }
+      responses:
+        '200': { description: Message sent }
+        '500': { description: Failed }
+
+  /api/stream/subscribe:
+    post:
+      summary: Subscribe to a stream
+      tags: [Stream]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [streamId, subscriberId]
+              properties:
+                streamId: { type: string }
+                subscriberId: { type: string }
+                type: { type: string, enum: [play, publish], example: play }
+                b32Secret: { type: string }
+      responses:
+        '200': { description: Subscribed }
+        '401': { description: Unauthorized }
+
+  /api/room:
+    post:
+      summary: Create a Daily.co room
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Room created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  room: { type: object }
+        '401': { description: Unauthorized }
+
+  /api/room/upload-video:
+    post:
+      summary: Upload a room video
+      tags: [Rooms]
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [video]
+              properties:
+                video: { type: string, format: binary }
+                name: { type: string }
+      responses:
+        '200': { description: Uploaded }
+        '400': { description: No video }
+        '401': { description: Unauthorized }
+
+  /api/files/{collection}/{id}/{fileId}:
+    get:
+      summary: Serve a binary file
+      tags: [Files]
+      parameters:
+        - in: path
+          name: collection
+          required: true
+          schema: { type: string }
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: path
+          name: fileId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Binary file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404': { description: Not found }
+
+  /api/viewroom/login:
+    post:
+      summary: Initiate viewroom login
+      tags: [Viewroom]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, company, email]
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                company: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                roomId: { type: string }
+      responses:
+        '200': { description: Login initiated }
+        '400': { description: Validation error }
+
+  /api/viewroom/verify:
+    post:
+      summary: Verify viewroom login code
+      tags: [Viewroom]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string }
+      responses:
+        '200': { description: Verified }
+        '400': { description: Invalid code }
+
+  /api/viewroom/logout:
+    post:
+      summary: Logout from viewroom session
+      tags: [Viewroom]
+      responses:
+        '200': { description: Logged out }
+
+  /api/videos/{videoId}:
+    delete:
+      summary: Delete a video (superuser)
+      tags: [Videos]
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Deleted }
+        '403': { description: Forbidden }
+
+  /api/upload-chunk:
+    post:
+      summary: Upload a file chunk
+      tags: [Upload]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [chunk, index, filename, totalChunks]
+              properties:
+                chunk: { type: string, format: binary }
+                index: { type: integer }
+                filename: { type: string }
+                totalChunks: { type: integer }
+      responses:
+        '200': { description: Chunk stored }
+        '500': { description: Failed }
+
+  /api/combine-chunks:
+    post:
+      summary: Combine uploaded chunks and return a file
+      tags: [Upload]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [filename]
+              properties:
+                filename: { type: string }
+      responses:
+        '200':
+          description: Combined file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404': { description: File not found }
+        '500': { description: Failed }
+
+  /api/send-brevo-email:
+    post:
+      summary: Send booking confirmation via Brevo
+      tags: [Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [appointmentTitle, customerName, customerEmail, repName, repEmail, bookingDate, bookingTime, roomUrl]
+              properties:
+                appointmentTitle: { type: string }
+                customerName: { type: string }
+                customerEmail: { type: string, format: email }
+                repName: { type: string }
+                repEmail: { type: string, format: email }
+                bookingDate: { type: string, format: date-time }
+                bookingTime: { type: string }
+                roomUrl: { type: string }
+      responses:
+        '200': { description: Email sent }
+        '500': { description: Failed } 
+
+  /api/send-email:
+    post:
+      summary: Send scheduling emails to customer and representative
+      tags: [Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerName, customerEmail, repName, repEmail, bookingDate, bookingTime, roomName]
+              properties:
+                customerName: { type: string }
+                customerEmail: { type: string, format: email }
+                repName: { type: string }
+                repEmail: { type: string, format: email }
+                bookingDate: { type: string, format: date-time }
+                bookingTime: { type: string }
+                roomName: { type: string }
+      responses:
+        '200': { description: Emails sent }
+        '500': { description: Failed }
+
+  /api/send-note-email:
+    post:
+      summary: Send a formatted notes email
+      tags: [Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, recipient]
+              properties:
+                title: { type: string }
+                requirements: { type: string }
+                steps: { type: string }
+                keep: { type: string }
+                recipient: { type: string, format: email }
+      responses:
+        '200': { description: Email sent }
+        '500': { description: Failed }
+
+  /api/send-quote-email:
+    post:
+      summary: Send quote emails via Brevo
+      tags: [Email]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerEmail]
+              properties:
+                customerName: { type: string }
+                customerEmail: { type: string, format: email }
+                customerPhone: { type: string }
+                quoteDescription: { type: string }
+                firstName: { type: string }
+                lastName: { type: string }
+                tags: { type: array, items: { type: string } }
+                ownerEmail: { type: string, format: email }
+                isCustomerConfirmation: { type: boolean }
+      responses:
+        '200': { description: Email sent }
+        '500': { description: Failed }
+
+  /api/generate-room:
+    post:
+      summary: Generate a room design image using Replicate
+      tags: [AI Room Designer]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image, roomType, designStyle]
+              properties:
+                image: { type: string, format: binary }
+                roomType: { type: string }
+                designStyle: { type: string }
+                userPrompt: { type: string }
+      responses:
+        '200': { description: Image generated }
+        '500': { description: Failed }
+
+  /api/room/{roomId}/info:
+    get:
+      summary: Get room info and owner company
+      tags: [Rooms]
+      parameters:
+        - in: path
+          name: roomId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Room info }
+        '400': { description: Missing roomId }
+        '404': { description: Not found }
+
+  /api/representatives/{id}:
+    get:
+      summary: Get representative by id
+      tags: [Representatives]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Representative }
+        '404': { description: Not found }
+
+  /api/representatives/{id}/location:
+    post:
+      summary: Set representative location
+      tags: [Representatives]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [locationId]
+              properties:
+                locationId: { type: string }
+      responses:
+        '200': { description: Updated }
+        '401': { description: Unauthorized }
+
+  /api/dev/mock-sms:
+    get:
+      summary: Get mock SMS codes (dev only)
+      tags: [Dev]
+      responses:
+        '200': { description: Codes listed }
+        '403': { description: Forbidden in prod }
+    delete:
+      summary: Clear mock SMS codes (dev only)
+      tags: [Dev]
+      responses:
+        '200': { description: Cleared }
+        '403': { description: Forbidden in prod }
+    post:
+      summary: Get latest code for a phone (dev only)
+      tags: [Dev]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string }
+      responses:
+        '200': { description: Code returned }
+        '403': { description: Forbidden in prod }
+
+  /api/auth/passwordless/send-code:
+    post:
+      summary: Send passwordless code via SMS
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, phone]
+              properties:
+                email: { type: string, format: email }
+                phone: { type: string }
+      responses:
+        '200': { description: Code sent }
+        '400': { description: Invalid }
+
+  /api/auth/passwordless/verify:
+    post:
+      summary: Verify passwordless code and create a session
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string }
+      responses:
+        '200': { description: Verified }
+        '400': { description: Invalid or expired } 

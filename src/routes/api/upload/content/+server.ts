@@ -93,10 +93,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     };
 
     if (libraryType === 'host') {
-      contentData.library_type = 'host';
+      contentData.library_type = ['host'];
       await locals.pb.collection('content_library').create(contentData);
     } else if (libraryType === 'representative') {
-      contentData.library_type = 'representative';
+      contentData.library_type = ['representative'];
       const record = await locals.pb.collection('content_library').create(contentData);
       for (const repId of repIds) {
         const rep = await locals.pb.collection('representatives').getOne(repId);

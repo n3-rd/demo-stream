@@ -1,11 +1,11 @@
-const { readFileSync } = require('fs');
+const { readFileSync, existsSync } = require('fs');
 const { resolve } = require('path');
 const { Pool } = require('pg');
 const dotenv = require('dotenv');
 
 dotenv.config();
 
-const connectionString = "postgresql://postgres:password@n3rdvps.cc:4473/demo-stream"
+const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   console.error('DATABASE_URL is not set');
   process.exit(1);
@@ -14,12 +14,16 @@ if (!connectionString) {
 const pool = new Pool({ connectionString });
 
 (async () => {
-  const sqlPath = resolve(__dirname, '..', 'sql', '001_init.sql');
-  const sql = readFileSync(sqlPath, 'utf8');
+  const files = ['001_init.sql', '002_file_blobs.sql'];
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query(sql);
+    for (const f of files) {
+      const sqlPath = resolve(__dirname, '..', 'sql', f);
+      if (!existsSync(sqlPath)) continue;
+      const sql = readFileSync(sqlPath, 'utf8');
+      await client.query(sql);
+    }
     await client.query('COMMIT');
     console.log('Migration complete');
   } catch (err) {

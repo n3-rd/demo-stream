@@ -1,7 +1,7 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
     import { goto } from "$app/navigation";
-    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
+    const FILES_BASE = '/api/files';
     import { FileVideo, FileText, FilePen, Trash2, Pencil, Play, ChevronLeft, ChevronRight, Image, Eye } from "lucide-svelte";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
     import { onMount } from 'svelte';
@@ -64,11 +64,7 @@
     }
 
     function handleContentClick(item) {
-        if (item.type === 'video' || item.type === 'image') {
-            window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`, '_blank');
-        } else {
-            window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`, '_blank');
-        }
+        window.open(`${FILES_BASE}/content_library/${item.id}/${item.file}`, '_blank');
     }
     
     function scrollCarousel(type: string, direction: 'left' | 'right') {
@@ -136,7 +132,7 @@
         if (!contentToDelete) return;
         
         try {
-            const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/content_library/records/${contentToDelete.id}`, {
+            const response = await fetch(`/api/content-library/${contentToDelete.id}`, {
                 method: 'DELETE',
             });
             
@@ -226,17 +222,9 @@
                                         <div class="bg-[#ECEFF3] rounded-[2px] p-2 flex-shrink-0 shadow-sm hover:shadow-md transition-shadow duration-200 w-[221.66px]">
                                             <div class="relative">
                                                 {#if item.thumbnail}
-                                                    <img
-                                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.thumbnail}`}
-                                                        alt={item.title}
-                                                        class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]"
-                                                    />
+                                                    <img src={`${FILES_BASE}/content_library/${item.id}/${item.thumbnail}`} alt={item.title} class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]" />
                                                 {:else if item.type === 'image'}
-                                                    <img
-                                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${item.id}/${item.file}`}
-                                                        alt={item.title}
-                                                        class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]"
-                                                    />
+                                                    <img src={`${FILES_BASE}/content_library/${item.id}/${item.file}`} alt={item.title} class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]" />
                                                 {:else}
                                                     <div class="w-[217.66px] h-[128.22px] bg-[#ECEFF3] rounded-[1px] flex items-center justify-center">
                                                         <svelte:component 
@@ -325,11 +313,7 @@
             <div class="py-4">
                 <div class="flex items-center gap-3">
                     {#if contentToDelete.thumbnail}
-                        <img 
-                            src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${contentToDelete.id}/${contentToDelete.thumbnail}`} 
-                            alt={contentToDelete.title} 
-                            class="w-16 h-16 object-cover rounded"
-                        />
+                        <img src={`${FILES_BASE}/content_library/${contentToDelete.id}/${contentToDelete.thumbnail}`} alt={contentToDelete.title} class="w-16 h-16 object-cover rounded"/>
                     {:else}
                         <div class="w-16 h-16 bg-[#ECEFF3] rounded flex items-center justify-center">
                             <svelte:component 

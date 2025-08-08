@@ -1629,7 +1629,7 @@
           <div class="mr-3 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
             {#if representativeDetails.avatar}
               <img 
-                src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/${representativeDetails.collectionId}/${representativeDetails.id}/${representativeDetails.avatar}`} 
+                src={`/api/files/${representativeDetails.collectionId || 'representatives'}/${representativeDetails.id}/${representativeDetails.avatar}`} 
                 alt="{representativeDetails.name}'s Avatar" 
                 class="w-full h-full object-cover object-center"
               />

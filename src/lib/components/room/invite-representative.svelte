@@ -105,7 +105,7 @@
                 >
                     <img 
                         src={representative.avatar 
-                            ? `${PUBLIC_POCKETBASE_INSTANCE}api/files/${representative.collectionId}/${representative.id}/${representative.avatar}` 
+                            ? `/api/files/${representative.collectionId || 'representatives'}/${representative.id}/${representative.avatar}` 
                             : `https://ui-avatars.com/api/?name=${encodeURIComponent(representative.name)}&background=random`} 
                         alt="{representative.name}'s Avatar" 
                         class="w-24 h-24 rounded-full mb-4 object-cover object-center"

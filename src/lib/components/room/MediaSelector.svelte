@@ -220,12 +220,12 @@
 
     function getFileUrl(file: any) {
         if (!file) return '';
-        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${file.collectionId}/${file.id}/${file.file}`;
+        return `/api/files/${file.collectionId || 'content_library'}/${file.id}/${file.file}`;
     }
 
     function getThumbnailUrl(content: any) {
         if (content.thumbnail) {
-            return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+            return `/api/files/${content.collectionId || 'content_library'}/${content.id}/${content.thumbnail}`;
         }
         return ''; // Return a default thumbnail URL if needed
     }

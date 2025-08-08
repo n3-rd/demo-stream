@@ -27,7 +27,7 @@
 
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return null;
-        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+        return `/api/files/${content.collectionId || 'content_library'}/${content.id}/${content.thumbnail}`;
     }
 
     async function handleJoinRoom() {

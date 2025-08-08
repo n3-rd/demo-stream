@@ -86,6 +86,18 @@ async function fetchByIds(table: string, ids: string[], fields?: string) {
   return rows;
 }
 
+function resolveRelatedTable(parent: string, key: string): string | null {
+  // explicit mappings first
+  if (key === 'representative') return 'representatives';
+  if (key === 'company' || key === 'owner_company' || key === 'user_id') return 'users';
+  if (key === 'location') return 'locations';
+  if (key === 'host_content' || key === 'representative_content' || key === 'connected_content') return 'content_library';
+  if (key === 'training_files') return 'content_library';
+  // naive pluralization fallback: add 's'
+  if (key && key[key.length - 1] !== 's') return `${key}s`;
+  return key || null;
+}
+
 // Simple query builder per-collection
 class CollectionShim {
   constructor(private name: string) {}
@@ -112,8 +124,13 @@ class CollectionShim {
     const columns = fields || '*';
     const { rows } = await query(`SELECT ${columns} FROM ${this.name} ${where} ${order}`.trim(), params);
 
-    // inject collectionId
-    const withCollectionId = (rows as any[]).map(r => ({ ...r, collectionId: this.name }));
+    // inject collectionId and created/updated aliases for UI compatibility
+    const withCollectionId = (rows as any[]).map(r => ({
+      ...r,
+      collectionId: this.name,
+      created: (r as any).created_at ?? (r as any).created,
+      updated: (r as any).updated_at ?? (r as any).updated
+    }));
 
     const expandKeys = splitExpand(expand);
     if (!expandKeys.length) return withCollectionId as T[];
@@ -124,12 +141,18 @@ class CollectionShim {
       for (const key of expandKeys) {
         const value = (row as any)[key];
         if (!value) continue;
-        const relatedTable = key;
-        if (Array.isArray(value)) {
-          expandObj[key] = await fetchByIds(relatedTable, value.map(String));
-        } else {
-          const list = await fetchByIds(relatedTable, [String(value)]);
-          expandObj[key] = list[0] || null;
+        const relatedTable = resolveRelatedTable(this.name, key);
+        if (!relatedTable) continue;
+        try {
+          if (Array.isArray(value)) {
+            expandObj[key] = await fetchByIds(relatedTable, value.map(String));
+          } else {
+            const list = await fetchByIds(relatedTable, [String(value)]);
+            expandObj[key] = list[0] || null;
+          }
+        } catch (e) {
+          // skip unknown table/expand errors to avoid breaking list
+          continue;
         }
       }
       expandedRows.push({ ...row, expand: expandObj });
@@ -153,19 +176,24 @@ class CollectionShim {
     const { rows } = await query(`SELECT ${columns} FROM ${this.name} WHERE id = $1 LIMIT 1`, [id]);
     if (!rows[0]) throw new Error('not found');
     const rowBase = rows[0] as any;
-    const row = { ...rowBase, collectionId: this.name };
+    const row = { ...rowBase, collectionId: this.name, created: rowBase.created_at ?? rowBase.created, updated: rowBase.updated_at ?? rowBase.updated };
     const expandKeys = splitExpand(expand);
     if (!expandKeys.length) return row as T;
     const expandObj: Record<string, any> = {};
     for (const key of expandKeys) {
-      const value = row[key];
+      const value = (row as any)[key];
       if (!value) continue;
-      const relatedTable = key;
-      if (Array.isArray(value)) {
-        expandObj[key] = await fetchByIds(relatedTable, value.map(String));
-      } else {
-        const list = await fetchByIds(relatedTable, [String(value)]);
-        expandObj[key] = list[0] || null;
+      const relatedTable = resolveRelatedTable(this.name, key);
+      if (!relatedTable) continue;
+      try {
+        if (Array.isArray(value)) {
+          expandObj[key] = await fetchByIds(relatedTable, value.map(String));
+        } else {
+          const list = await fetchByIds(relatedTable, [String(value)]);
+          expandObj[key] = list[0] || null;
+        }
+      } catch (e) {
+        // ignore
       }
     }
     return { ...row, expand: expandObj } as T;

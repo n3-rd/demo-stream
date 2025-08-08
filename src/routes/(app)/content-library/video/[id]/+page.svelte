@@ -62,8 +62,8 @@
             <Card class="overflow-hidden">
                 <div class="aspect-video w-full">
                     <video
-                        src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${video.id}/${video.file}`}
-                        poster={video.thumbnail ? `${PUBLIC_POCKETBASE_INSTANCE}/api/files/content_library/${video.id}/${video.thumbnail}` : undefined}
+                        src={`/api/files/content_library/${video.id}/${video.file}`}
+                        poster={video.thumbnail ? `/api/files/content_library/${video.id}/${video.thumbnail}` : undefined}
                         controls
                         class="w-full h-full"
                     >

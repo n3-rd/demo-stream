@@ -208,11 +208,13 @@
 
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return null;
-        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+        const collection = content.collectionId || 'content_library';
+        return `/api/files/${collection}/${content.id}/${content.thumbnail}`;
     }
 
     function getFileUrl(content: any) {
-        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.file}`;
+        const collection = content.collectionId || 'content_library';
+        return `/api/files/${collection}/${content.id}/${content.file}`;
     }
 
     function showEmbedDialog(roomId: string) {
@@ -290,6 +292,28 @@
                 }
             });
         }, 100);
+    }
+
+    async function onSubmitCreateRoom(e: SubmitEvent) {
+        const formEl = e.currentTarget as HTMLFormElement;
+        const formData = new FormData(formEl);
+        try {
+            const response = await fetch('/api/room/manage', { method: 'POST', body: formData });
+            const result = await response.json();
+            if (result.success) {
+                showAddRoomDialog = false;
+                selectedHostContent = [];
+                selectedRepContent = [];
+                selectedRepresentatives = [];
+                invalidateAll();
+                toast.success('Room added');
+            } else {
+                toast.error(result.message || 'Error occurred');
+            }
+        } catch (error) {
+            console.error('Error creating room:', error);
+            toast.error('Failed to create room');
+        }
     }
     
     // Custom validator for title
@@ -437,32 +461,7 @@
         <Dialog.Header>
             <Dialog.Title>Add New Room</Dialog.Title>
         </Dialog.Header>
-        <form method="POST" on:submit|preventDefault={async (e) => {
-            const formData = new FormData(e.target);
-            
-            try {
-                const response = await fetch('/api/room/manage', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAddRoomDialog = false;
-                    selectedHostContent = [];
-                    selectedRepContent = [];
-                    selectedRepresentatives = [];
-                    invalidateAll();
-                    toast.success('Room added');
-                } else {
-                    toast.error(result.message || 'Error occurred');
-                }
-            } catch (error) {
-                console.error('Error creating room:', error);
-                toast.error('Failed to create room');
-            }
-        }}>
+        <form method="POST" on:submit|preventDefault={onSubmitCreateRoom}>
             <div class="space-y-4 py-4">
                 <div class="space-y-2">
                     <Label for="title">Title</Label>
@@ -601,7 +600,7 @@
                                   <span class="inline-flex items-center gap-1">
                                     {#if hostContent.find(c => c.id === id)?.thumbnail}
                                       <img 
-                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${id}/${hostContent.find(c => c.id === id)?.thumbnail}`}
+                                        src={`/api/files/content_library/${id}/${hostContent.find(c => c.id === id)?.thumbnail}`}
                                         alt="Thumbnail"
                                         class="w-4 h-4 object-cover rounded"
                                       />
@@ -625,7 +624,7 @@
                                         <div class="flex items-center gap-2">
                                             {#if content.thumbnail}
                                                 <img 
-                                                    src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.thumbnail}`}
+                                                    src={`/api/files/content_library/${content.id}/${content.thumbnail}`}
                                                     alt={content.title}
                                                     class="w-8 h-8 rounded object-cover"
                                                 />
@@ -688,7 +687,7 @@
                                     <span class="inline-flex items-center gap-1">
                                       {#if repContent.find(c => c.id === id)?.thumbnail}
                                         <img 
-                                          src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${id}/${repContent.find(c => c.id === id)?.thumbnail}`}
+                                          src={`/api/files/content_library/${id}/${repContent.find(c => c.id === id)?.thumbnail}`}
                                           alt="Thumbnail"
                                           class="w-4 h-4 object-cover rounded"
                                         />
@@ -712,7 +711,7 @@
                                         <div class="flex items-center gap-2">
                                             {#if content.thumbnail}
                                                 <img 
-                                                    src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.thumbnail}`}
+                                                    src={`/api/files/content_library/${content.id}/${content.thumbnail}`}
                                                     alt={content.title}
                                                     class="w-8 h-8 rounded object-cover"
                                                 />

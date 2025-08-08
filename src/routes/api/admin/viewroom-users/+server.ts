@@ -68,15 +68,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       // No existing user found, which is good
     }
 
+    // Derive a safe login_name (NOT NULL in DB)
+    const fromName = data.first_name && data.last_name ? `${data.first_name}.${data.last_name}` : '';
+    const fromEmail = (data.email || '').split('@')[0] || '';
+    const rawLogin = (data.login_name?.toString() || fromName || fromEmail || '').trim();
+    const login_name = rawLogin
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9._-]/g, '_')
+      .replace(/^_+|_+$/g, '') || `user_${Date.now()}`;
+
     // Create the viewroom user bound to the admin's company
     const userData = {
+      login_name,
       first_name: data.first_name.trim(),
       last_name: data.last_name.trim(),
       email: data.email.trim().toLowerCase(),
       phone: data.phone.trim(),
-      is_active: data.is_active !== undefined ? data.is_active : true,
+      is_active: data.is_active !== undefined ? !!data.is_active : true,
       company: locals.user.id // Bind to the admin's user ID as company
-    };
+    } as const;
 
     const newUser = await pb.collection('viewroom_users').create(userData);
 
@@ -85,11 +96,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       user: newUser,
       message: 'Viewroom user created successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create viewroom user:', error);
     return json({
       success: false,
-      message: error.message || 'Failed to create user'
+      message: error?.message || 'Failed to create user'
     }, { status: 500 });
   }
 }; 

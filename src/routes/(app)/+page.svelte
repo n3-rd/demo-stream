@@ -125,12 +125,12 @@
 
   function getFileUrl(file: ContentItem) {
     if (!file?.file) return '';
-    return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${file.collectionId}/${file.id}/${file.file}`;
+    return `/api/files/${file.collectionId || 'content_library'}/${file.id}/${file.file}`;
   }
 
   function getThumbnailUrl(content: ContentItem) {
     if (!content?.thumbnail) return '';
-    return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+    return `/api/files/${content.collectionId || 'content_library'}/${content.id}/${content.thumbnail}`;
   }
 
   function handleContentClick(item) {
@@ -206,7 +206,7 @@
       if (!contentToDelete) return;
       
       try {
-          const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/${contentToDelete.collectionId || 'content_library'}/records/${contentToDelete.id}`, {
+          const response = await fetch(`/api/content-library/${contentToDelete.id}`, {
               method: 'DELETE',
           });
           

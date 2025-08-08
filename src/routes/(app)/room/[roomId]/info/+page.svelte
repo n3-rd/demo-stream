@@ -41,7 +41,8 @@
 
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return '';
-        return `${PUBLIC_POCKETBASE_INSTANCE}api/files/${content.collectionId}/${content.id}/${content.thumbnail}`;
+        const collection = content.collectionId || 'content_library';
+        return `/api/files/${collection}/${content.id}/${content.thumbnail}`;
     }
 
     function handleJoinRoom() {
@@ -184,9 +185,9 @@
     
     function playContent(content) {
         if (content.type === 'video') {
-            window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.file}`, '_blank');
+            window.open(`/api/files/content_library/${content.id}/${content.file}`, '_blank');
         } else {
-            window.open(`${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.file}`, '_blank');
+            window.open(`/api/files/content_library/${content.id}/${content.file}`, '_blank');
         }
     }
     
@@ -263,6 +264,43 @@
     function isContentActive(contentId: string) {
         const content = [...hostContent, ...representativeContent].find(c => c.id === contentId);
         return content?.active !== false; // Default to true if not explicitly set to false
+    }
+
+    async function onToggleActiveSubmit(e: SubmitEvent, contentId: string) {
+        const formEl = e.currentTarget as HTMLFormElement;
+        const formData = new FormData(formEl);
+        try {
+            const response = await fetch(`/api/content-library/${contentId}`, { method: 'PUT', body: formData });
+            const result = await response.json();
+            if (result.success) {
+                toast.success('Content status updated');
+                await invalidateAll();
+            } else {
+                toast.error(result.message || 'Failed to update content status');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            toast.error('Failed to update content status');
+        }
+    }
+
+    async function onRoomEditSubmit(e: SubmitEvent) {
+        const formEl = e.currentTarget as HTMLFormElement;
+        const formData = new FormData(formEl);
+        try {
+            const response = await fetch(`/api/room/${room.id}/info`, { method: 'PUT', body: formData });
+            const result = await response.json();
+            if (result.success) {
+                showEditDialog = false;
+                invalidateAll();
+                toast.success('Room updated');
+            } else {
+                toast.error(result.message || 'Error occurred');
+            }
+        } catch (error) {
+            console.error('Error updating room:', error);
+            toast.error('Error occurred');
+        }
     }
 </script>
 
@@ -443,28 +481,7 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <form method="POST" on:submit|preventDefault={async (e) => {
-                                            const formData = new FormData(e.target);
-                                            
-                                            try {
-                                                const response = await fetch(`/api/content-library/${content.id}`, {
-                                                    method: 'PUT',
-                                                    body: formData
-                                                });
-                                                
-                                                const result = await response.json();
-                                                
-                                                if (result.success) {
-                                                    toast.success('Content status updated');
-                                                    await invalidateAll();
-                                                } else {
-                                                    toast.error(result.message || 'Failed to update content status');
-                                                }
-                                            } catch (error) {
-                                                console.error('Error:', error);
-                                                toast.error('Failed to update content status');
-                                            }
-                                        }}>
+                                        <form method="POST" on:submit|preventDefault={(e) => onToggleActiveSubmit(e, content.id)}>
                                             <input type="hidden" name="contentId" value={content.id} />
                                             <input type="hidden" name="active" value={!isContentActive(content.id)} />
                                             
@@ -515,28 +532,7 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <form method="POST" on:submit|preventDefault={async (e) => {
-                                            const formData = new FormData(e.target);
-                                            
-                                            try {
-                                                const response = await fetch(`/api/content-library/${content.id}`, {
-                                                    method: 'PUT',
-                                                    body: formData
-                                                });
-                                                
-                                                const result = await response.json();
-                                                
-                                                if (result.success) {
-                                                    toast.success('Content status updated');
-                                                    await invalidateAll();
-                                                } else {
-                                                    toast.error(result.message || 'Failed to update content status');
-                                                }
-                                            } catch (error) {
-                                                console.error('Error:', error);
-                                                toast.error('Failed to update content status');
-                                            }
-                                        }}>
+                                        <form method="POST" on:submit|preventDefault={(e) => onToggleActiveSubmit(e, content.id)}>
                                             <input type="hidden" name="contentId" value={content.id} />
                                             <input type="hidden" name="active" value={!isContentActive(content.id)} />
                                             
@@ -597,29 +593,7 @@
             <Dialog.Header>
                 <Dialog.Title>Edit Room</Dialog.Title>
             </Dialog.Header>
-            <form method="POST" on:submit|preventDefault={async (e) => {
-                const formData = new FormData(e.target);
-                
-                try {
-                    const response = await fetch(`/api/room/${roomId}/info`, {
-                        method: 'PUT',
-                        body: formData
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        showEditDialog = false;
-                        invalidateAll();
-                        toast.success('Room updated');
-                    } else {
-                        toast.error(result.message || 'Error occurred');
-                    }
-                } catch (error) {
-                    console.error('Error updating room:', error);
-                    toast.error('Error occurred');
-                }
-            }}>
+            <form method="POST" on:submit|preventDefault={onRoomEditSubmit}>
                 <div class="space-y-4 py-4">
                     <div class="space-y-2">
                         <Label for="title">Title</Label>
@@ -688,7 +662,7 @@
                                       <span class="inline-flex items-center gap-1">
                                         {#if representatives.find(r => r.id === repId)?.avatar}
                                           <img 
-                                            src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${repId}/${representatives.find(r => r.id === repId)?.avatar}`}
+                                            src={`/api/files/representatives/${repId}/${representatives.find(r => r.id === repId)?.avatar}`}
                                             alt="Avatar"
                                             class="w-4 h-4 object-cover rounded-full"
                                           />
@@ -718,7 +692,7 @@
                                             <div class="flex items-center gap-2">
                                                 {#if rep.avatar}
                                                     <img 
-                                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${rep.id}/${rep.avatar}`}
+                                                        src={`/api/files/representatives/${rep.id}/${rep.avatar}`}
                                                         alt={rep.name}
                                                         class="w-8 h-8 rounded-full object-cover"
                                                     />

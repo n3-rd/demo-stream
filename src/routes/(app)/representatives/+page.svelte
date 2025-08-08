@@ -137,7 +137,7 @@
                             <div>
                                 {#if rep.avatar}
                                     <img
-                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${rep.id}/${rep.avatar}`}
+                                        src={`/api/files/representatives/${rep.id}/${rep.avatar}`}
                                         alt={rep.name}
                                         class="w-10 h-10 rounded-full object-cover"
                                     />

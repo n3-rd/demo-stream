@@ -26,7 +26,7 @@
     let isUploading = false;
     let uploadProgress = 0;
     let uploadedChunks: Set<number> = new Set();
-    let thumbnailPreviewUrl: string | null = content.thumbnail ? `${PUBLIC_POCKETBASE_INSTANCE}api/files/content_library/${content.id}/${content.thumbnail}` : null;
+    let thumbnailPreviewUrl: string | null = content.thumbnail ? `/api/files/content_library/${content.id}/${content.thumbnail}` : null;
     let isContentActive = content.active === undefined ? true : !!content.active;
 
     const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)

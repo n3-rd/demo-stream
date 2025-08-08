@@ -214,7 +214,7 @@
               <div class="mb-4">
                 <p class="text-sm text-[#737373] mb-2">Current Image:</p>
                 <img 
-                  src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${representative.id}/${representative.avatar}`}
+                  src={`/api/files/representatives/${representative.id}/${representative.avatar}`}
                   alt={representative.name}
                   class="w-24 h-24 rounded-full object-cover"
                 />

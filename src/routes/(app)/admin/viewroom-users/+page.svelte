@@ -20,6 +20,11 @@
   let editingUser = null;
   let loading = false;
   
+  function displayName(u: any) {
+    const name = [u?.first_name, u?.last_name].filter(Boolean).join(' ').trim();
+    return name || u?.login_name || u?.email || 'User';
+  }
+  
   let newUser = {
     first_name: '',
     last_name: '',
@@ -268,7 +273,7 @@
           <Table.Body>
             {#each users as user (user.id)}
               <Table.Row>
-                <Table.Cell class="font-medium">{user.first_name} {user.last_name}</Table.Cell>
+                <Table.Cell class="font-medium">{displayName(user)}</Table.Cell>
                 <Table.Cell>
                   <div class="flex items-center">
                     <Building2 class="h-4 w-4 text-gray-500 mr-2" />
@@ -317,7 +322,7 @@
                     <Button
                       variant="outline"
                       size="sm"
-                      on:click={() => deleteUser(user.id, `${user.first_name} ${user.last_name}`)}
+                      on:click={() => deleteUser(user.id, displayName(user))}
                       class="text-red-600 hover:text-red-700"
                     >
                       <Trash2 class="h-4 w-4" />

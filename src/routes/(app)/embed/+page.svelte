@@ -69,7 +69,7 @@
         </div>
 
         <div class="flex-1 flex justify-center items-center">
-            <img src={`${PUBLIC_POCKETBASE_INSTANCE}/api/files/${video.collectionId}/${video.id}/${video.thumbnail}`} alt={video.title} class="w-80 h-full object-cover rounded-lg shadow-md" />
+            <img src={`/api/files/${video.collectionId || 'content_library'}/${video.id}/${video.thumbnail}`} alt={video.title} class="w-80 h-full object-cover rounded-lg shadow-md" />
         </div>
     </div>
 

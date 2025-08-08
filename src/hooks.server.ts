@@ -1,9 +1,8 @@
 import cookie from 'cookie';
 import { v4 as uuid } from '@lukeed/uuid';
 import type { Handle } from '@sveltejs/kit';
-import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-import PocketBase from 'pocketbase';
 import { redirect } from '@sveltejs/kit';
+import { pb } from '$lib/pocketbase';
 
 // Define the User type
 interface User {
@@ -16,10 +15,17 @@ interface User {
 declare global {
     namespace App {
         interface Locals {
-            pb: PocketBase;
+            pb: typeof pb;
             user: User | null;
             userid: string;
             session?: string;
+            viewroomUser?: {
+                id: string;
+                first_name: string;
+                last_name: string;
+                company: string;
+                email: string;
+            };
         }
     }
 }
@@ -41,12 +47,12 @@ export const handle: Handle = async ({ event, resolve }) => {
         }
     }
 
-    // Initialize PocketBase and load auth store from cookies
-    event.locals.pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
+    // Initialize DB shim and load auth store from cookies
+    event.locals.pb = pb;
     event.locals.pb.authStore.loadFromCookie(request.headers.get('cookie') || '');
 
     // Set user if auth store is valid
-    event.locals.user = event.locals.pb.authStore.isValid ? event.locals.pb.authStore.model as User : null;
+    event.locals.user = event.locals.pb.authStore.isValid ? (event.locals.pb.authStore.model as User) : null;
 
     // Set user ID if not present
     event.locals.userid = cookies.userid || uuid();
@@ -102,7 +108,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     const response = await resolve(event);
 
-    // Set cookies for user ID and PocketBase auth store
+    // Set cookies for user ID
     if (!cookies.userid) {
         response.headers.set('set-cookie', cookie.serialize('userid', event.locals.userid, {
             path: '/',
@@ -111,8 +117,10 @@ export const handle: Handle = async ({ event, resolve }) => {
         }));
     }
 
-    // TODO: secure before deployment
-    response.headers.append('set-cookie', event.locals.pb.authStore.exportToCookie({ secure: false, maxAge: 1800 }));
+    // TODO: secure before deployment - mirror previous behavior
+    if (event.locals.pb.authStore.token) {
+        response.headers.append('set-cookie', event.locals.pb.authStore.exportToCookie({ secure: false, maxAge: 1800 }));
+    }
 
     // Add CORS headers to API responses
     if (event.url.pathname.startsWith('/api')) {

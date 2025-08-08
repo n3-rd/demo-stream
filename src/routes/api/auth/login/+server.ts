@@ -13,16 +13,16 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
     }
 
     try {
-        const authData = await locals.pb.collection('users').authWithPassword(email, password);
+        const authData = await locals.pb.authWithPassword(email, password);
         
-        if (authData.record) {
-            // Set the session cookie
-            cookies.set('pb_auth', locals.pb.authStore.exportToCookie(), {
+        if (authData?.token) {
+            // Persist session token via cookie
+            cookies.set('session', authData.token, {
                 path: '/',
                 httpOnly: true,
-                secure: false, // Set to true in production
+                secure: false,
                 sameSite: 'lax',
-                maxAge: 60 * 60 * 24 * 30 // 30 days
+                maxAge: 60 * 60 * 24 * 30
             });
 
             return new Response(JSON.stringify({ 

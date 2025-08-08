@@ -55,7 +55,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
         company_name: verificationRecord.company_name,
         email: verificationRecord.email,
         password: verificationRecord.password,
-        passwordConfirm: verificationRecord.password,
         phone: formattedPhone,
         phone_verified: true,
         company_website: verificationRecord.website || '',
@@ -64,13 +63,17 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
       console.log(`🎉 Admin account created successfully: ${verificationRecord.email} -> ${formattedPhone}`);
 
       // Auto-login the user
-      await pb.collection('users').authWithPassword(verificationRecord.email, verificationRecord.password);
+      const auth = await pb.authWithPassword(verificationRecord.email, verificationRecord.password);
 
       // Set authentication cookies
-      const authModel = pb.authStore.model;
-      if (authModel) {
-        // This mirrors what PocketBase does internally for auth
-        locals.pb.authStore.save(pb.authStore.token, authModel);
+      if (auth?.token) {
+        cookies.set('session', auth.token, {
+          path: '/',
+          httpOnly: true,
+          secure: false,
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 30
+        });
       }
 
       return json({
@@ -88,8 +91,8 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
       console.error('❌ Error completing registration:', error);
       
       // Check for specific PocketBase errors
-      if (error.data?.data) {
-        const errorData = error.data.data;
+      if ((error as any).data?.data) {
+        const errorData = (error as any).data.data;
         if (errorData.email) {
           return json({
             success: false,

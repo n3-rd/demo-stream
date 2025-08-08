@@ -1,11 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import PocketBase from 'pocketbase';
-import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-
-
-// Initialize PocketBase
-const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
+import { pb } from '$lib/pocketbase';
 
 export const load: PageServerLoad = async ({ params }) => {
     try {
@@ -27,7 +22,7 @@ export const load: PageServerLoad = async ({ params }) => {
         });
         
         // Create a map of viewroom IDs to names for displaying connections
-        const viewroomMap = {};
+        const viewroomMap: Record<string, string> = {};
         viewrooms.forEach(viewroom => {
             viewroomMap[viewroom.id] = viewroom.title;
         });
@@ -117,7 +112,7 @@ export const actions: Actions = {
             if (indexToRemove >= 0 && indexToRemove < files.length) {
                 // In PocketBase, to remove a specific file by its index, we use "-" prefix
                 // before the index in the "training_files" field
-                const updateData = {};
+                const updateData: Record<string, any> = {};
                 updateData[`training_files-${indexToRemove}`] = null;
                 
                 // Update the AI assistant

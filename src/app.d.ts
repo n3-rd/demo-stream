@@ -1,5 +1,4 @@
 /// <reference types="@sveltejs/kit" />
-import type PocketBase from 'pocketbase';
 
 declare module '$env/static/public' {
 	export const PUBLIC_DAILY_API_KEY: string;
@@ -12,7 +11,7 @@ declare global {
 	namespace App {
 		// interface Error {}
 		interface Locals {
-			pb: PocketBase;
+			pb: typeof import('$lib/pocketbase').pb;
 			user: {
 				id: string;
 				email: string;

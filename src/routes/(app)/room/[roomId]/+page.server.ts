@@ -4,7 +4,7 @@ import { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from "./$types";
 import { error } from '@sveltejs/kit';
 import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-import PocketBase from 'pocketbase';
+import { pb as globalPb } from '$lib/pocketbase';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
@@ -22,7 +22,7 @@ const sanitizeAssociatedVideo = (videoRef: string) => {
 
 export const load: PageServerLoad = async ({ locals, params, url, cookies }) => {
     const roomIdParam = params.roomId;  // Rename to make it clear this is the URL parameter
-    const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
+    const pb = globalPb;
 
     // Check for authentication - allow either normal PocketBase auth or viewroom auth
     const isNormalAuth = locals.pb.authStore.isValid;

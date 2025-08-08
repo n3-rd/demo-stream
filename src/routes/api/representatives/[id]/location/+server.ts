@@ -1,9 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-import PocketBase from 'pocketbase';
+import { pb } from '$lib/pocketbase';
 
-export const POST: RequestHandler = async ({ params, request, locals }) => {
+export const POST: RequestHandler = async ({ params, request }) => {
     try {
         const { locationId } = await request.json();
         
@@ -11,7 +10,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
             return json({ error: 'Location ID is required' }, { status: 400 });
         }
 
-        const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
         // Use the auth from the client
         pb.authStore.loadFromCookie(request.headers.get('cookie') || '');
 

@@ -40,7 +40,7 @@ export const load = async ({ locals }) => {
         const allContent = await locals.pb.collection('content_library').getFullList({
             filter: `owner_company = "${user.id}"`,
             sort: '-created',
-            fields: 'id,title,collectionId,thumbnail,type,file,library_type'
+            fields: 'id,title,thumbnail,type,file,library_type'
         });
 
         // Separate content by type

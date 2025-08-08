@@ -8,7 +8,7 @@
   import { currentVideoUrl } from '$lib/callStores';
   import { invalidateAll } from '$app/navigation';
   import Sidenav from '$lib/components/layout/sidenav.svelte';
-  import { Mic, Code, FileVideo, FileText, FilePen, Trash2, Pencil, Play } from 'lucide-svelte';
+  import { Mic, Code, FileVideo, FileText, FilePen, Trash2, Pencil, Play, Image } from 'lucide-svelte';
 	import Embed from '$lib/components/room/embed.svelte';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
@@ -50,11 +50,12 @@
 
   // Content library functionality
   let selectedTab = 'host';
-  let contentTypes = ['video', 'pdf', 'document'];
+  let contentTypes = ['video', 'pdf', 'document', 'image'];
   let contentTypeLabels = {
       'video': 'Videos',
       'pdf': 'PDF Files',
-      'document': 'Word Document Files'
+      'document': 'Word Document Files',
+      'image': 'Images'
   };
   
   // Store references to carousel containers
@@ -70,45 +71,34 @@
       selectedTab = tab;
   }
 
-  // Group content by type
-  $: content = selectedTab === 'host' 
-    ? [...(hostContent || [])]
-    : [...(representativeContent || [])];
-  
-  // Add type information to items that don't have it
-  $: {
-    // Ensure all content items have a type
-    content.forEach(item => {
-      if (!item.type) {
-        // Default to 'video' if no type is specified
-        item.type = 'video';
-      }
-      
-      // Ensure all items have a library_type that matches the current tab
-      if (!item.library_type) {
-        item.library_type = selectedTab;
-      }
-    });
-    
-    // Log content for debugging
-    console.log('Content items:', content.length, content);
-  }
-  
-  $: contentByType = contentTypes.map(type => {
-      return {
-          type,
-          label: contentTypeLabels[type],
-          items: content.filter(item => {
-              // If we don't have library_type, assume it matches the selected tab
-              const libraryTypeMatch = !item.library_type || 
-                  selectedTab === 'host' 
-                  ? (item.library_type === 'host' || (Array.isArray(item.library_type) && item.library_type.includes('host')))
-                  : (item.library_type === 'representative' || (Array.isArray(item.library_type) && item.library_type.includes('representative')));
-
-              return libraryTypeMatch && (item.type === type || !item.type);
-          })
-      };
-  });
+  // All content and grouping by type - mirror content-library filtering
+  $: allContent = (() => {
+      const byId = new Map<string, any>();
+      (hostContent || []).forEach((item: any) => {
+          byId.set(item.id, { ...item });
+      });
+      (representativeContent || []).forEach((item: any) => {
+          if (!byId.has(item.id)) {
+              byId.set(item.id, { ...item });
+          } else {
+              const existing = byId.get(item.id);
+              const toArray = (v: any) => Array.isArray(v) ? v : (v ? [v] : []);
+              const mergedTypes = Array.from(new Set([...toArray(existing.library_type), ...toArray(item.library_type)]));
+              byId.set(item.id, { ...existing, library_type: mergedTypes.length <= 1 ? (mergedTypes[0] || existing.library_type) : mergedTypes });
+          }
+      });
+      return Array.from(byId.values());
+  })();
+  $: contentByType = contentTypes.map(type => ({
+      type,
+      label: contentTypeLabels[type],
+      items: allContent.filter(item => {
+          const libraryTypeMatch = selectedTab === 'host'
+              ? item.library_type === 'host' || (Array.isArray(item.library_type) && item.library_type.includes('host'))
+              : item.library_type === 'representative' || (Array.isArray(item.library_type) && item.library_type.includes('representative'));
+          return libraryTypeMatch && item.type === type;
+      })
+  }));
 
   function getIcon(type: string) {
       switch (type) {
@@ -118,6 +108,8 @@
               return FilePen;
           case 'document':
               return FileText;
+          case 'image':
+              return Image;
           default:
               return FileText;
       }
@@ -211,11 +203,16 @@
           });
           
           if (response.ok) {
-              // Remove the deleted item from the content array
-              const index = content.findIndex(item => item.id === contentToDelete.id);
-              if (index !== -1) {
-                  content.splice(index, 1);
-                  content = [...content]; // Trigger reactivity
+              // Remove from underlying arrays
+              let idx = hostContent.findIndex(i => i.id === contentToDelete.id);
+              if (idx !== -1) {
+                  hostContent.splice(idx, 1);
+                  hostContent = [...hostContent];
+              }
+              idx = representativeContent.findIndex(i => i.id === contentToDelete.id);
+              if (idx !== -1) {
+                  representativeContent.splice(idx, 1);
+                  representativeContent = [...representativeContent];
               }
               toast.success('Content deleted successfully');
           } else {
@@ -247,13 +244,13 @@
     }
     
     // If no content is available, add some mock data
-    if (content.length === 0) {
+    if (allContent.length === 0) {
       console.log('No content available, adding mock data');
       
  
       
       // Update content array
-      content = selectedTab === 'host' ? [...hostContent] : [...representativeContent];
+      // content = selectedTab === 'host' ? [...hostContent] : [...representativeContent]; // This line is removed
     }
     
     loading = false;

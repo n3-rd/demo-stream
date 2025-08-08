@@ -16,7 +16,11 @@ components:
     cookieAuth:
       type: apiKey
       in: cookie
-      name: pb_auth
+      name: session
+    viewroomCookieAuth:
+      type: apiKey
+      in: cookie
+      name: viewroom_session
   schemas:
     Error:
       type: object
@@ -116,6 +120,7 @@ paths:
       tags: [Rooms]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
@@ -161,6 +166,7 @@ paths:
       tags: [Rooms]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
@@ -187,6 +193,7 @@ paths:
       tags: [Rooms]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
@@ -225,6 +232,7 @@ paths:
       tags: [Rooms]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       parameters:
         - name: roomId
           in: path
@@ -651,6 +659,7 @@ paths:
       tags: [Representatives]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       responses:
         '200':
           description: Representatives retrieved successfully
@@ -663,6 +672,7 @@ paths:
       tags: [Representatives]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
@@ -702,6 +712,7 @@ paths:
       tags: [Representatives]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
@@ -742,6 +753,7 @@ paths:
       tags: [Representatives]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
@@ -768,6 +780,7 @@ paths:
       tags: [Locations]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
@@ -842,6 +855,7 @@ paths:
       tags: [Locations]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       parameters:
         - name: id
           in: path
@@ -913,6 +927,7 @@ paths:
       tags: [Locations]
       security:
         - cookieAuth: []
+        - viewroomCookieAuth: []
       parameters:
         - name: id
           in: path
@@ -952,7 +967,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Success'
+                $ref: '#/components/schemas/Success' 
  
   /api/admin/viewroom-users:
     get:

@@ -207,6 +207,11 @@
         uploadProgress = 0;
         uploadedChunks.clear();
 
+        // If uploading to host library, ensure no representatives are sent
+        if (libraryType === 'host' && selectedRepresentatives.length) {
+            selectedRepresentatives = [];
+        }
+
         try {
             const filename = await uploadFile(selectedFile!);
             const formData = new FormData(document.getElementById('uploadForm') as HTMLFormElement);
@@ -228,7 +233,7 @@
             finalFormData.append('file_ref', filename); // Send the chunked file reference
             finalFormData.append('library_type', libraryType);
             
-            if (selectedRepresentatives.length > 0) {
+            if (libraryType !== 'host' && selectedRepresentatives.length > 0) {
                 finalFormData.append('representatives', selectedRepresentatives.join(','));
             }
             

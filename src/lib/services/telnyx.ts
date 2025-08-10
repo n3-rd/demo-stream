@@ -1,6 +1,7 @@
 import { PUBLIC_TELNYX_API_KEY, PUBLIC_TELNYX_FROM_NUMBER, PUBLIC_SMS_MODE } from '$env/static/public';
 
 import { dev } from '$app/environment';
+import { formatToE164, isE164 } from '$lib/helpers/phone';
 
 interface TelnyxSMSResponse {
   data: {
@@ -111,39 +112,17 @@ export class TelnyxSMSService {
 
   // Format phone number to E.164 format if needed
   formatPhoneNumber(phone: string): string {
-    // Remove all non-digit characters
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // If it starts with '1' and has 11 digits, add '+'
-    if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
-      return `+${digitsOnly}`;
-    }
-    
-    // If it has 10 digits, assume US number and add '+1'
-    if (digitsOnly.length === 10) {
-      return `+1${digitsOnly}`;
-    }
-    
-    // If it already starts with '+', return as is
-    if (phone.startsWith('+')) {
-      return phone;
-    }
-    
-    // Otherwise, add '+'
-    return `+${digitsOnly}`;
+    return formatToE164(phone);
   }
 
   // Validate phone number format
   isValidPhoneNumber(phone: string): boolean {
-    const formatted = this.formatPhoneNumber(phone);
-    // Basic E.164 validation: starts with + and has 7-15 digits
-    const e164Regex = /^\+[1-9]\d{6,14}$/;
-    return e164Regex.test(formatted);
+    return isE164(phone);
   }
 
       // Dev-only: Get recent mock SMS codes
   getMockSMSCodes(): MockSMS[] {
-    const useMockSMS = dev && SMS_MODE !== 'production';
+    const useMockSMS = dev && PUBLIC_SMS_MODE !== 'production';
     if (!useMockSMS) {
       throw new Error('Mock SMS codes are only available in development mode');
     }
@@ -152,7 +131,7 @@ export class TelnyxSMSService {
 
   // Dev-only: Clear mock SMS store
   clearMockSMSCodes(): void {
-    const useMockSMS = dev && SMS_MODE !== 'production';
+    const useMockSMS = dev && PUBLIC_SMS_MODE !== 'production';
     if (!useMockSMS) {
       throw new Error('Mock SMS codes can only be cleared in development mode');
     }
@@ -162,7 +141,7 @@ export class TelnyxSMSService {
 
   // Dev-only: Get verification code for a phone number
   getLatestCodeForPhone(phoneNumber: string): string | null {
-    const useMockSMS = dev && SMS_MODE !== 'production';
+    const useMockSMS = dev && PUBLIC_SMS_MODE !== 'production';
     if (!useMockSMS) {
       throw new Error('Mock SMS codes are only available in development mode');
     }

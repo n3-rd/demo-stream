@@ -2,6 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
+  import { formatToE164, sanitizePhoneInput, isE164 } from '$lib/helpers/phone';
 
 	let loading = false;
 	let step: 'send' | 'verify' = 'send';
@@ -9,14 +10,31 @@
 	let phone = '';
 	let code = '';
 
+  function onPhoneInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    input.value = sanitizePhoneInput(input.value);
+    phone = input.value;
+  }
+
+  function onPhoneBlur() {
+    if (phone) {
+      phone = formatToE164(phone);
+    }
+  }
+
 	async function onSendCode(e: Event) {
 		e.preventDefault();
 		loading = true;
 		try {
+      const normalizedPhone = formatToE164(phone);
+      if (!isE164(normalizedPhone)) {
+        toast.error('Please enter a valid phone number with country code, e.g. +170********');
+        return;
+      }
 			const res = await fetch('/api/auth/passwordless/send-code', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, phone })
+				body: JSON.stringify({ email, phone: normalizedPhone })
 			});
 			const data = await res.json();
 			if (data?.success) {
@@ -93,7 +111,7 @@
 				<div class="flex gap-1 items-center h-11">
 					<div class="h-full w-[6px] bg-primary"></div>
 					<div class="w-full">
-						<input id="phone" type="tel" bind:value={phone} placeholder="+1234567890" class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" required />
+						<input id="phone" type="tel" bind:value={phone} inputmode="tel" autocomplete="tel" placeholder="+170********" class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" on:input={onPhoneInput} on:blur={onPhoneBlur} required />
 					</div>
 				</div>
 

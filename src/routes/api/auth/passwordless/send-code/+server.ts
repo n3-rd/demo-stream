@@ -8,6 +8,9 @@ export const POST: RequestHandler = async ({ request }) => {
     if (!email || !phone) return json({ success: false, message: 'Email and phone are required' }, { status: 400 });
 
     const formattedPhone = telnyxSMS.formatPhoneNumber(String(phone));
+    if (!telnyxSMS.isValidPhoneNumber(formattedPhone)) {
+      return json({ success: false, message: 'Invalid phone number. Use format like +170********' }, { status: 400 });
+    }
     const user = await pb.collection('users').getFirstListItem(`email = "${email}"`).catch(() => null);
     if (!user) return json({ success: false, message: 'No account found for this email' }, { status: 404 });
 

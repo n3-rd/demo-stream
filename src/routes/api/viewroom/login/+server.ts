@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { initiateViewroomLogin } from '$lib/auth/viewroomAuth';
 import type { RequestHandler } from './$types';
+import { telnyxSMS } from '$lib/services/telnyx';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
@@ -24,14 +25,12 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     }
     
     // Validate phone format if provided
-    if (data.phone && data.phone.trim()) {
-      const phoneRegex = /^[+]?[0-9\s\-\(\)]{7,15}$/;
-      if (!phoneRegex.test(data.phone.trim())) {
-        return json({ 
-          success: false, 
-          message: 'Invalid phone number format' 
-        }, { status: 400 });
+    if (data.phone && String(data.phone).trim()) {
+      const formatted = telnyxSMS.formatPhoneNumber(String(data.phone));
+      if (!telnyxSMS.isValidPhoneNumber(formatted)) {
+        return json({ success: false, message: 'Invalid phone number. Use format like +170********' }, { status: 400 });
       }
+      data.phone = formatted;
     }
     
     const result = await initiateViewroomLogin({
@@ -44,7 +43,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     });
     
     return json(result);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Viewroom login error:', error);
     return json({ 
       success: false, 

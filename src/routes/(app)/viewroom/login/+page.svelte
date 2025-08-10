@@ -7,6 +7,7 @@
   import { Loader2, Mail, Phone, Cloud, Building2 } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { formatToE164, sanitizePhoneInput, isE164 } from '$lib/helpers/phone';
   
   let step: 'login' | 'verify' = 'login';
   let loading = false;
@@ -97,6 +98,15 @@
     }
   }
   
+  function onMobileInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    input.value = sanitizePhoneInput(input.value);
+    mobileNumber = input.value;
+  }
+  function onMobileBlur() {
+    if (mobileNumber) mobileNumber = formatToE164(mobileNumber);
+  }
+  
   async function handleLogin() {
     if (!companyName.trim() || !firstName.trim() || !lastName.trim() || !email.trim()) {
       toast.error('Please fill in all required fields');
@@ -105,6 +115,12 @@
     
     loading = true;
     try {
+      const normalizedPhone = mobileNumber ? formatToE164(mobileNumber) : '';
+      if (mobileNumber && !isE164(normalizedPhone)) {
+        toast.error('Please enter a valid phone number with country code, e.g. +170********');
+        loading = false;
+        return;
+      }
       const response = await fetch('/api/viewroom/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,7 +129,7 @@
           last_name: lastName.trim(),
           company: companyName.trim(),
           email: email.trim(),
-          phone: mobileNumber.trim() || undefined,
+          phone: normalizedPhone || undefined,
           roomId: roomId || undefined
         })
       });
@@ -334,7 +350,11 @@
                 type="tel"
                 placeholder="Mobile Number"
                 disabled={loading}
+                inputmode="tel"
+                autocomplete="tel"
                 class="w-full pl-16 pr-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                on:input={onMobileInput}
+                on:blur={onMobileBlur}
               />
             </div>
             <p class="text-xs text-gray-500 mt-1">

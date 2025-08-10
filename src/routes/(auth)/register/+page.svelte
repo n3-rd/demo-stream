@@ -7,14 +7,24 @@
 	import HintValidate from '$lib/components/layout/hint-validate.svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
+  import { formatToE164, sanitizePhoneInput, isE164 } from '$lib/helpers/phone';
 
 	const form = useForm();
 
-	function passwordMatch(value: any, form: { values: { password: any } }) {
+	function passwordMatch(value: any, form: any) {
 		return value === form.values.password ? null : { passwordMatch: true };
 	}
 
 	let loading = false;
+
+  function onPhoneInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    input.value = sanitizePhoneInput(input.value);
+  }
+  function onPhoneBlur(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (input.value) input.value = formatToE164(input.value);
+  }
 </script>
 
 <div class="flex min-h-screen bg-[#3583c6]">
@@ -45,7 +55,16 @@
 				method="POST"
 				on:submit|preventDefault={async (e) => {
 					loading = true;
-					const formData = new FormData(e.target);
+					const formEl = e.currentTarget;
+					const formData = new FormData(formEl);
+          const rawPhone = formData.get('phone')?.toString() || '';
+          const normalizedPhone = formatToE164(rawPhone);
+          if (!isE164(normalizedPhone)) {
+            loading = false;
+            toast.error('Please enter a valid phone number with country code, e.g. +170********');
+            return;
+          }
+          formData.set('phone', normalizedPhone);
 					
 					try {
 						const response = await fetch('/api/auth/register', {
@@ -107,10 +126,14 @@
 						<input
 							id="phone"
 							name="phone"
-							placeholder="Company phone (required) - e.g., +1234567890"
+							inputmode="tel"
+							autocomplete="tel"
+							placeholder="Company phone (required) - e.g., +170********"
 							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 							required
 							use:validators={[required, minLength(10), maxLength(20)]}
+							on:input={onPhoneInput}
+							on:blur={onPhoneBlur}
 						/>
 					</div>
 				</div>

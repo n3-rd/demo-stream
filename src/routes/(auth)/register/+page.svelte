@@ -16,6 +16,7 @@
 	}
 
 	let loading = false;
+	let verificationMode: 'phone' | 'email' = 'phone';
 
   function onPhoneInput(e: Event) {
     const input = e.target as HTMLInputElement;
@@ -48,9 +49,37 @@
 			<div class="mb-6">
 				<h2 class="text-2xl text-primary text-center font-semibold mb-2">Create Company Account</h2>
 				<p class="text-gray-600 text-sm font-light text-center">
-					Fill in your company details and verify your phone number to get started. Phone verification is required for security.
+					Fill in your company details and verify your {verificationMode === 'phone' ? 'phone number' : 'email address'} to get started. Both fields are required, but you can choose your preferred verification method.
 				</p>
 			</div>
+
+			<!-- Verification Mode Toggle -->
+			<div class="mb-6 p-4 bg-gray-50 rounded-lg border">
+				<label class="text-sm font-medium text-gray-700 mb-2 block">Verification Method</label>
+				<div class="flex gap-2">
+					<button
+						type="button"
+						class="flex-1 px-3 py-2 text-sm rounded-md border transition-colors {verificationMode === 'phone' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}"
+						on:click={() => verificationMode = 'phone'}
+					>
+						📱 Phone Verification
+					</button>
+					<button
+						type="button"
+						class="flex-1 px-3 py-2 text-sm rounded-md border transition-colors {verificationMode === 'email' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}"
+						on:click={() => verificationMode = 'email'}
+					>
+						✉️ Email Verification
+					</button>
+				</div>
+				<p class="text-xs text-gray-500 mt-2">
+					{verificationMode === 'phone' 
+						? 'You\'ll receive a 6-digit code via SMS to verify your phone number.'
+						: 'You\'ll receive a 6-digit code via email to verify your email address.'
+					}
+				</p>
+			</div>
+
 			<form
 				method="POST"
 				on:submit|preventDefault={async (e) => {
@@ -65,6 +94,7 @@
             return;
           }
           formData.set('phone', normalizedPhone);
+					formData.set('verificationMode', verificationMode);
 					
 					try {
 						const response = await fetch('/api/auth/register', {
@@ -78,8 +108,14 @@
 						
 						if (result.type === 'success') {
 							if (result.data?.verification_required) {
-								// Redirect to verification page
-								goto(`/verify-phone?email=${encodeURIComponent(result.data.email)}&phone=${encodeURIComponent(result.data.phone)}&company=${encodeURIComponent(result.data.company_name)}`);
+								// Redirect to verification page with mode info
+								const params = new URLSearchParams({
+									email: result.data.email,
+									phone: result.data.phone,
+									company: result.data.company_name,
+									mode: verificationMode
+								});
+								goto(`/verify-phone?${params.toString()}`);
 							} else if (result.data?.success) {
 								toast.success('Account created successfully!');
 								goto('/');
@@ -253,7 +289,10 @@
 				</Button>
 				
 				<p class="text-sm text-gray-600 text-center">
-					📱 After clicking register, you'll verify your phone number for security.
+					{verificationMode === 'phone' 
+						? '📱 After clicking register, you\'ll verify your phone number for security.'
+						: '✉️ After clicking register, you\'ll verify your email address for security.'
+					}
 				</p>
 			</form>
 			<div class="mt-4 text-center text-sm">

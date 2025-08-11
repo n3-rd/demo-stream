@@ -1,6 +1,8 @@
 import { pb } from '$lib/pocketbase';
 import { telnyxSMS } from '$lib/services/telnyx';
 import crypto from 'crypto';
+import { BREVO_API_KEY } from '$env/static/private';
+import { PUBLIC_SMTP_FROM } from '$env/static/public';
 
 export interface AdminPhoneVerificationRequest {
   phone: string;
@@ -116,6 +118,96 @@ export async function sendAdminPhoneVerification(
 }
 
 /**
+ * Send email verification code for admin signup
+ */
+export async function sendAdminEmailVerification(
+  request: AdminPhoneVerificationRequest
+): Promise<PhoneVerificationResult> {
+  try {
+    if (!BREVO_API_KEY) {
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    // Format phone to ensure the record matches complete-registration later
+    const formattedPhone = telnyxSMS.formatPhoneNumber(request.phone);
+
+    // Try to find an existing pending verification for this email/phone
+    const existing = await pb
+      .collection('admin_phone_verification')
+      .getList(1, 1, {
+        filter: `email = "${request.email}" && phone = "${formattedPhone}" && used = false && expires_at > "${new Date().toISOString()}"`,
+        sort: '-created'
+      })
+      .catch(() => ({ items: [] as any[] }));
+
+    // Use existing code if available, otherwise create a new record
+    let verificationCode: string;
+    let verificationId: string | null = null;
+
+    if (existing.items.length > 0) {
+      const rec = existing.items[0];
+      verificationCode = rec.verification_code;
+      verificationId = rec.id;
+    } else {
+      verificationCode = generateVerificationCode();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+      const created = await pb.collection('admin_phone_verification').create({
+        phone: formattedPhone,
+        verification_code: verificationCode,
+        email: request.email,
+        expires_at: expiresAt.toISOString(),
+        used: false,
+        company_name: request.company_name
+      });
+      verificationId = created.id;
+    }
+
+    const emailPayload = {
+      sender: { name: "Viewroom.ca", email: PUBLIC_SMTP_FROM },
+      to: [{ email: request.email, name: request.company_name }],
+      subject: 'Your verification code',
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; text-align: center;">Account Verification</h2>
+          <p>Hello ${request.company_name},</p>
+          <p>Your verification code is:</p>
+          <div style="background: #f8f9fa; border: 2px solid #e9ecef; padding: 30px; text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 8px; margin: 30px 0; border-radius: 8px; color: #495057;">
+            ${verificationCode}
+          </div>
+          <p><strong>This code expires in 10 minutes.</strong></p>
+          <p style="color: #6c757d; font-size: 14px;">If you didn't request this code, please ignore this email.</p>
+        </div>
+      `,
+      tags: ['registration', 'verification', 'email']
+    };
+
+    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(emailPayload)
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.error('Brevo email error:', text);
+      return { success: false, message: 'Failed to send verification email' };
+    }
+
+    console.log(`✉️ Email verification sent for admin signup: ${request.email}`);
+
+    return { success: true, message: 'Verification code sent to email', verification_id: verificationId ?? undefined };
+  } catch (error) {
+    console.error('❌ Error sending admin email verification:', error);
+    return { success: false, message: 'Failed to send verification email. Please try again.' };
+  }
+}
+
+/**
  * Verify admin phone verification code
  */
 export async function verifyAdminPhoneCode(
@@ -164,6 +256,58 @@ export async function verifyAdminPhoneCode(
 
   } catch (error) {
     console.error('❌ Error verifying admin phone code:', error);
+    return {
+      success: false,
+      message: 'Failed to verify code. Please try again.'
+    };
+  }
+}
+
+/**
+ * Verify admin email verification code (email-based verification)
+ */
+export async function verifyAdminEmailCode(
+  email: string,
+  code: string
+): Promise<PhoneVerificationValidation> {
+  try {
+    // Find the verification record by email + code
+    const verificationRecord = await pb.collection('admin_phone_verification')
+      .getFirstListItem(
+        `email = "${email}" && verification_code = "${code}" && used = false`
+      ).catch(() => null);
+
+    if (!verificationRecord) {
+      return {
+        success: false,
+        message: 'Invalid verification code. Please check your code and try again.'
+      };
+    }
+
+    // Check if code has expired
+    const expiresAt = new Date(verificationRecord.expires_at);
+    if (expiresAt < new Date()) {
+      return {
+        success: false,
+        message: 'Verification code has expired. Please request a new one.'
+      };
+    }
+
+    // Mark verification as used
+    await pb.collection('admin_phone_verification').update(verificationRecord.id, {
+      used: true
+    });
+
+    console.log(`✅ Email verification successful for admin signup: ${email}`);
+
+    return {
+      success: true,
+      message: 'Email verified successfully!',
+      data: verificationRecord
+    };
+
+  } catch (error) {
+    console.error('❌ Error verifying admin email code:', error);
     return {
       success: false,
       message: 'Failed to verify code. Please try again.'

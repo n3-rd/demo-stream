@@ -13,6 +13,7 @@
 	let email = '';
 	let phone = '';
 	let companyName = '';
+	let verificationMode = 'phone';
 	let verificationCode = ['', '', '', '', '', ''];
 	let loading = false;
 	let resending = false;
@@ -21,6 +22,7 @@
 		email = $page.url.searchParams.get('email') || '';
 		phone = $page.url.searchParams.get('phone') || '';
 		companyName = $page.url.searchParams.get('company') || '';
+		verificationMode = $page.url.searchParams.get('mode') || 'phone';
 	});
 
 	// Handle code input with auto-focus
@@ -81,22 +83,28 @@
 		loading = true;
 
 		try {
-			const response = await fetch('/api/admin/phone-verification/verify', {
+			// Choose verification endpoint based on mode
+			const endpoint = verificationMode === 'email' 
+				? '/api/admin/email-verification/verify'
+				: '/api/admin/phone-verification/verify';
+
+			const payload = verificationMode === 'email'
+				? { email, code }
+				: { phone, email, code };
+
+			const response = await fetch(endpoint, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({
-					phone,
-					email,
-					code
-				})
+				body: JSON.stringify(payload)
 			});
 
 			const result = await response.json();
 
 			if (result.success) {
-				toast.success('Phone verified! Creating your account...');
+				const modeText = verificationMode === 'email' ? 'Email' : 'Phone';
+				toast.success(`${modeText} verified! Creating your account...`);
 				
 				// Now complete the registration
 				const registerResponse = await fetch('/api/admin/complete-registration', {
@@ -149,16 +157,20 @@
 		resending = true;
 
 		try {
-			const response = await fetch('/api/admin/phone-verification/send', {
+			const endpoint = verificationMode === 'email'
+				? '/api/admin/email-verification/send'
+				: '/api/admin/phone-verification/send';
+
+			const payload = verificationMode === 'email'
+				? { email, phone, company_name: companyName }
+				: { phone, email, company_name: companyName };
+
+			const response = await fetch(endpoint, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({
-					phone,
-					email,
-					company_name: companyName
-				})
+				body: JSON.stringify(payload)
 			});
 
 			const result = await response.json();
@@ -193,10 +205,23 @@
 		// Show last 4 digits for international
 		return phone.slice(-4);
 	}
+
+	// Get verification method display text
+	function getVerificationMethodText() {
+		if (verificationMode === 'email') {
+			return 'email address';
+		}
+		return 'phone number';
+	}
+
+	// Get verification method icon
+	function getVerificationMethodIcon() {
+		return verificationMode === 'email' ? '✉️' : '📱';
+	}
 </script>
 
 <svelte:head>
-	<title>Verify Phone Number - ClearSky Software</title>
+	<title>Verify {verificationMode === 'email' ? 'Email' : 'Phone'} - ClearSky Software</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -216,9 +241,20 @@
 
 		<!-- Verification Message -->
 		<div class="text-center mb-8">
-			<p class="text-gray-600 mb-2">A code has been sent to</p>
-			<p class="font-medium text-gray-900">{email}</p>
-			<p class="font-medium text-gray-900">and to {formatPhoneForDisplay(phone)}</p>
+			<div class="text-4xl mb-3">{getVerificationMethodIcon()}</div>
+			<p class="text-gray-600 mb-2">A 6-digit verification code has been sent to your</p>
+			<p class="font-medium text-gray-900">{getVerificationMethodText()}</p>
+			{#if verificationMode === 'email'}
+				<p class="font-medium text-gray-900">{email}</p>
+			{:else}
+				<p class="font-medium text-gray-900">{formatPhoneForDisplay(phone)}</p>
+			{/if}
+			<p class="text-sm text-gray-500 mt-2">
+				{verificationMode === 'email' 
+					? 'Check your email inbox (and spam folder) for the verification code.'
+					: 'Check your phone for the SMS message with the verification code.'
+				}
+			</p>
 		</div>
 
 		<!-- Code Input Fields -->
@@ -254,7 +290,7 @@
 					</svg>
 					Creating Account...
 				{:else}
-					LOGIN
+					Verify & Create Account
 				{/if}
 			</Button>
 
@@ -279,9 +315,9 @@
 		<!-- Help Text -->
 		<div class="mt-6 text-center">
 			<p class="text-sm text-gray-500">
-				Didn't receive the code? Check your phone and email, or try resending.
+				Didn't receive the code? Check your {getVerificationMethodText()} or try resending.
 			</p>
-			{#if dev}
+			{#if dev && verificationMode === 'phone'}
 				<div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-center">
 					<p class="text-xs text-yellow-700 mb-1">🚧 Development Mode</p>
 					<button

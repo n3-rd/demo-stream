@@ -94,7 +94,7 @@ paths:
 
   /api/auth/register:
     post:
-      summary: User registration (starts phone verification)
+      summary: User registration (sends verification code via SMS and Email)
       tags: [Authentication]
       requestBody:
         required: true
@@ -113,6 +113,32 @@ paths:
       responses:
         '200': { description: Verification initiated }
         '400': { description: Validation error }
+
+  /api/auth/check-unique:
+    post:
+      summary: Check if email or phone is already registered
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email, example: "user@example.com" }
+                phone: { type: string, example: "+17005551234" }
+      responses:
+        '200':
+          description: Uniqueness result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  email_taken: { type: boolean, example: false }
+                  phone_taken: { type: boolean, example: false }
+        '500': { description: Failed }
 
   /api/room/create:
     post:
@@ -1209,6 +1235,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/admin/email-verification/send:
+    post:
+      summary: Send admin email verification code (Brevo)
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, phone, company_name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "admin@company.com"
+                phone:
+                  type: string
+                  example: "+1234567890"
+                company_name:
+                  type: string
+                  example: "Acme Inc"
+      responses:
+        '200': { description: Code sent }
+        '400': { description: Validation error }
+
   /api/admin/phone-verification/verify:
     post:
       summary: Verify admin phone verification code
@@ -1237,6 +1289,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
+  /api/admin/email-verification/verify:
+    post:
+      summary: Verify admin email verification code
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email, example: "admin@company.com" }
+                code: { type: string, example: "123456" }
+      responses:
+        '200': { description: Verification result }
+        '400': { description: Invalid code or validation error }
 
   /api/admin/complete-registration:
     post:

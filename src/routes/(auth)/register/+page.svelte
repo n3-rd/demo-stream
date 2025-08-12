@@ -16,15 +16,37 @@
 	}
 
 	let loading = false;
-	let verificationMode: 'phone' | 'email' = 'phone';
+	let emailTaken = false;
+	let phoneTaken = false;
+
+  async function checkUnique(field: 'email' | 'phone', value: string) {
+    try {
+      const payload: any = {};
+      if (field === 'email') payload.email = value;
+      if (field === 'phone') payload.phone = value;
+      const res = await fetch('/api/auth/check-unique', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        emailTaken = !!data.email_taken;
+        phoneTaken = !!data.phone_taken;
+        if (field === 'email' && emailTaken) toast.error('This email is already registered');
+        if (field === 'phone' && phoneTaken) toast.error('This phone number is already registered');
+      }
+    } catch {}
+  }
 
   function onPhoneInput(e: Event) {
     const input = e.target as HTMLInputElement;
     input.value = sanitizePhoneInput(input.value);
   }
-  function onPhoneBlur(e: Event) {
+  async function onPhoneBlur(e: Event) {
     const input = e.target as HTMLInputElement;
     if (input.value) input.value = formatToE164(input.value);
+    if (input.value) await checkUnique('phone', input.value);
+  }
+  async function onEmailBlur(e: Event) {
+    const input = e.target as HTMLInputElement;
+    if (input.value) await checkUnique('email', input.value);
   }
 </script>
 
@@ -49,34 +71,7 @@
 			<div class="mb-6">
 				<h2 class="text-2xl text-primary text-center font-semibold mb-2">Create Company Account</h2>
 				<p class="text-gray-600 text-sm font-light text-center">
-					Fill in your company details and verify your {verificationMode === 'phone' ? 'phone number' : 'email address'} to get started. Both fields are required, but you can choose your preferred verification method.
-				</p>
-			</div>
-
-			<!-- Verification Mode Toggle -->
-			<div class="mb-6 p-4 bg-gray-50 rounded-lg border">
-				<label class="text-sm font-medium text-gray-700 mb-2 block">Verification Method</label>
-				<div class="flex gap-2">
-					<button
-						type="button"
-						class="flex-1 px-3 py-2 text-sm rounded-md border transition-colors {verificationMode === 'phone' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}"
-						on:click={() => verificationMode = 'phone'}
-					>
-						📱 Phone Verification
-					</button>
-					<button
-						type="button"
-						class="flex-1 px-3 py-2 text-sm rounded-md border transition-colors {verificationMode === 'email' ? 'bg-primary text-white border-primary' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}"
-						on:click={() => verificationMode = 'email'}
-					>
-						✉️ Email Verification
-					</button>
-				</div>
-				<p class="text-xs text-gray-500 mt-2">
-					{verificationMode === 'phone' 
-						? 'You\'ll receive a 6-digit code via SMS to verify your phone number.'
-						: 'You\'ll receive a 6-digit code via email to verify your email address.'
-					}
+					Fill in your company details. We'll send a 6-digit verification code to both your phone number and email address.
 				</p>
 			</div>
 
@@ -94,7 +89,22 @@
             return;
           }
           formData.set('phone', normalizedPhone);
-					formData.set('verificationMode', verificationMode);
+
+          // Final uniqueness check before submit
+          try {
+            const res = await fetch('/api/auth/check-unique', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: formData.get('email')?.toString() || '', phone: normalizedPhone })
+            });
+            const data = await res.json();
+            if (data?.email_taken || data?.phone_taken) {
+              loading = false;
+              if (data.email_taken) toast.error('This email is already registered');
+              if (data.phone_taken) toast.error('This phone number is already registered');
+              return;
+            }
+          } catch {}
 					
 					try {
 						const response = await fetch('/api/auth/register', {
@@ -108,14 +118,8 @@
 						
 						if (result.type === 'success') {
 							if (result.data?.verification_required) {
-								// Redirect to verification page with mode info
-								const params = new URLSearchParams({
-									email: result.data.email,
-									phone: result.data.phone,
-									company: result.data.company_name,
-									mode: verificationMode
-								});
-								goto(`/verify-phone?${params.toString()}`);
+								// Redirect to verification page
+								goto(`/verify-phone?email=${encodeURIComponent(result.data.email)}&phone=${encodeURIComponent(result.data.phone)}&company=${encodeURIComponent(result.data.company_name)}`);
 							} else if (result.data?.success) {
 								toast.success('Account created successfully!');
 								goto('/');
@@ -206,6 +210,7 @@
 							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 							required
 								use:validators={[required, email]}
+							on:blur={onEmailBlur}
 						/>
 					</div>
 				</div>
@@ -289,10 +294,7 @@
 				</Button>
 				
 				<p class="text-sm text-gray-600 text-center">
-					{verificationMode === 'phone' 
-						? '📱 After clicking register, you\'ll verify your phone number for security.'
-						: '✉️ After clicking register, you\'ll verify your email address for security.'
-					}
+					📮 After clicking register, you'll receive a 6-digit code via SMS and Email.
 				</p>
 			</form>
 			<div class="mt-4 text-center text-sm">

@@ -242,19 +242,8 @@
 		<!-- Verification Message -->
 		<div class="text-center mb-8">
 			<div class="text-4xl mb-3">{getVerificationMethodIcon()}</div>
-			<p class="text-gray-600 mb-2">A 6-digit verification code has been sent to your</p>
-			<p class="font-medium text-gray-900">{getVerificationMethodText()}</p>
-			{#if verificationMode === 'email'}
-				<p class="font-medium text-gray-900">{email}</p>
-			{:else}
-				<p class="font-medium text-gray-900">{formatPhoneForDisplay(phone)}</p>
-			{/if}
-			<p class="text-sm text-gray-500 mt-2">
-				{verificationMode === 'email' 
-					? 'Check your email inbox (and spam folder) for the verification code.'
-					: 'Check your phone for the SMS message with the verification code.'
-				}
-			</p>
+			<p class="text-gray-600 mb-2">A 6-digit verification code has been sent to your phone and email address.</p>
+
 		</div>
 
 		<!-- Code Input Fields -->

@@ -14,7 +14,7 @@ if (!connectionString) {
 const pool = new Pool({ connectionString });
 
 (async () => {
-  const files = ['001_init.sql', '002_file_blobs.sql'];
+  const files = ['001_init.sql', '002_file_blobs.sql', '003_add_viewroom_user_names.sql', '004_backfill_viewroom_user_names.sql'];
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

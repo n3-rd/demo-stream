@@ -88,7 +88,8 @@ $: roomName = uniqueSessionId ? `${baseRoomName}-${uniqueSessionId}` : baseRoomN
 const user = data?.user;
 const viewroomUser = data?.viewroomUser;
 const isAuthenticated = !!user || !!viewroomUser;
-const name = isAuthenticated ? (user?.company_name || viewroomUser?.company) : "";
+const viewroomDisplayName = viewroomUser ? [viewroomUser.first_name, viewroomUser.last_name].filter(Boolean).join(' ').trim() || viewroomUser.email : '';
+const name = user ? (user?.company_name || '') : viewroomDisplayName;
 const representatives = data?.representatives || [];
 const users = data?.users || [];
 let isAnonymousHost = false;
@@ -151,7 +152,7 @@ $: {
         // Determine if user is host (owner of the room or anonymous host from embed)
         isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
                                $page.url.searchParams.get('anonymous') === 'true';
-        isHost = user?.id === room.owner_company || viewroomUser?.company === room.owner_company || isAnonymousHost;
+        isHost = (user?.id === room.owner_company) || isAnonymousHost;
         
         // Set showGreetingPopup based on isAnonymousHost
         showGreetingPopup = isAnonymousHost;

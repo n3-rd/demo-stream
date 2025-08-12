@@ -5,18 +5,27 @@ import argon2 from 'argon2';
 
 // simple in-memory session store (dev only)
 const sessionStore: Map<string, any> = new Map();
-// cache table columns to filter unknown fields
-const tableColumnsCache: Map<string, Set<string>> = new Map();
+
+// cache table columns to filter unknown fields (with TTL to avoid stale schema)
+const CACHE_TTL_MS = 60_000; // 1 minute
+interface ColumnsCacheEntry {
+  columns: Set<string>;
+  fetchedAt: number;
+}
+const tableColumnsCache: Map<string, ColumnsCacheEntry> = new Map();
 
 async function getTableColumns(table: string): Promise<Set<string>> {
   const cached = tableColumnsCache.get(table);
-  if (cached) return cached;
+  const now = Date.now();
+  if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.columns;
+  }
   const { rows } = await query<{ column_name: string }>(
     `SELECT column_name FROM information_schema.columns WHERE table_name = $1`,
     [table]
   );
   const set = new Set(rows.map((r) => r.column_name));
-  tableColumnsCache.set(table, set);
+  tableColumnsCache.set(table, { columns: set, fetchedAt: now });
   return set;
 }
 

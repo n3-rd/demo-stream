@@ -4,7 +4,7 @@ import { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from "./$types";
 import { error } from '@sveltejs/kit';
 import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-import { pb as globalPb } from '$lib/pocketbase';
+// import { pb as globalPb } from '$lib/pocketbase';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
 const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
@@ -22,12 +22,13 @@ const sanitizeAssociatedVideo = (videoRef: string) => {
 
 export const load: PageServerLoad = async ({ locals, params, url, cookies }) => {
     const roomIdParam = params.roomId;  // Rename to make it clear this is the URL parameter
-    const pb = globalPb;
+    const pb = locals.pb;
 
     // Check for authentication - allow either normal PocketBase auth or viewroom auth
     const isNormalAuth = locals.pb.authStore.isValid;
     const viewroomSession = cookies.get('viewroom_session');
     const viewroomUserCookie = cookies.get('viewroom_user');
+    const incomingUid = url.searchParams.get('uid') || '';
     
     let viewroomUser = null;
     let authType = 'none';
@@ -48,11 +49,13 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             viewroomUser = JSON.parse(viewroomUserCookie);
             authType = 'viewroom';
         } catch (e) {
-            throw redirect(303, `/viewroom/login?room=${params.roomId}`);
+            const suffix = incomingUid ? `&uid=${encodeURIComponent(incomingUid)}` : '';
+            throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
         }
     } else {
-        // No authentication at all - require viewroom login
-        throw redirect(303, `/viewroom/login?room=${params.roomId}`);
+        // No authentication at all - require viewroom login (preserve uid)
+        const suffix = incomingUid ? `&uid=${encodeURIComponent(incomingUid)}` : '';
+        throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
     }
 
     try {

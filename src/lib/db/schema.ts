@@ -19,6 +19,8 @@ export const users = pgTable('users', {
 export const viewroomUsers = pgTable('viewroom_users', {
   id: uuid('id').defaultRandom().primaryKey(),
   loginName: text('login_name').notNull(),
+  firstName: text('first_name'),
+  lastName: text('last_name'),
   company: uuid('company').notNull().references(() => users.id),
   email: text('email').notNull().unique(),
   phone: text('phone'),

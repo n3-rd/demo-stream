@@ -48,6 +48,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
 
     // Initialize DB shim and load auth store from cookies
+    // IMPORTANT: Clear any previous global auth state so it doesn't leak across requests
+    pb.authStore.clear();
     event.locals.pb = pb;
     event.locals.pb.authStore.loadFromCookie(request.headers.get('cookie') || '');
 

@@ -48,8 +48,17 @@ export async function initiateViewroomLogin(request: ViewroomLoginRequest) {
     }
   }
   
-  // 3. Verify first_name and last_name match (company is already verified by filter above)
-  if (user.first_name !== request.first_name || user.last_name !== request.last_name) {
+  // 3. Verify names with fallback to login_name when first/last are missing
+  const fallbackFromLogin = () => {
+    const base = String(user.login_name || '').trim();
+    const parts = base.split(/[._-]/).filter(Boolean);
+    const f = parts[0] || '';
+    const l = parts.slice(1).join(' ') || '';
+    return { f, l };
+  };
+  const expectedFirst = (user.first_name || fallbackFromLogin().f || '').trim();
+  const expectedLast = (user.last_name || fallbackFromLogin().l || '').trim();
+  if (expectedFirst !== request.first_name || expectedLast !== request.last_name) {
     throw new Error('Access denied: Name does not match our records');
   }
   

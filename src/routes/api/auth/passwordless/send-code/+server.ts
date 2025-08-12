@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
       phone_number: storedPhone,
       expires_at: expiresAt.toISOString(),
       used: false,
-      verification_type: 'email_sms'
+      verification_type: 'sms'
     });
 
     let smsSent = false;

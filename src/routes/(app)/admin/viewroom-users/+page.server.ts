@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
       users: result.success ? result.users : [],
       company: {
         id: locals.user.id,
-        name: locals.user.name || locals.user.email,
+        name: (locals.user as any).company_name || locals.user.email,
         email: locals.user.email
       }
     };
@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
       users: [],
       company: {
         id: locals.user.id,
-        name: locals.user.name || locals.user.email,
+        name: (locals.user as any).company_name || locals.user.email,
         email: locals.user.email
       }
     };

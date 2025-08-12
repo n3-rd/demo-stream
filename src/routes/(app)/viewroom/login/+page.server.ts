@@ -90,20 +90,7 @@ export const actions: Actions = {
 
     await pb.collection('verification_codes').update(verification.id, { used: true });
 
-    const user = await pb.collection('users').getFirstListItem(`email = "${email}"`).catch(() => null);
-    if (!user) return { success: false, message: 'User not found' };
-
-    const auth = await pb.createSessionForUser(user.id);
-    if (auth?.token) {
-      cookies.set('session', auth.token, {
-        path: '/',
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 30
-      });
-    }
-
+    // IMPORTANT: Do NOT set admin session here. Viewroom sessions are handled by /api/viewroom/verify
     return { success: true };
   }
 }; 

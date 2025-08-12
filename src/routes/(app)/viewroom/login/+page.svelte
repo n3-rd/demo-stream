@@ -14,6 +14,7 @@
   let roomInfo = null;
   let companyInfo = null;
   let roomId = null;
+  let uid = '';
   
   // Form data
   let companyName = '';
@@ -28,6 +29,7 @@
   onMount(async () => {
     const urlParams = new URLSearchParams(window.location.search);
     roomId = urlParams.get('room');
+    uid = urlParams.get('uid') || '';
     
     if (roomId) {
       await fetchRoomInfo();
@@ -80,8 +82,6 @@
       handleVerification();
     }
   }
-
-
 
   // Paste handling
   function handlePaste(event: ClipboardEvent) {
@@ -170,9 +170,10 @@
       
       if (result.success) {
         toast.success(result.message);
-        // Redirect back to room if room context is available, otherwise go to dashboard
+        // Redirect back to room if room context is available, preserve uid
         if (roomId) {
-          goto(`/room/${roomId}`);
+          const suffix = uid ? `?uid=${encodeURIComponent(uid)}` : '';
+          goto(`/room/${roomId}${suffix}`);
         } else {
           goto('/viewroom/dashboard');
         }

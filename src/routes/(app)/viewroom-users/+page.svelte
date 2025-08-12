@@ -24,7 +24,7 @@
   
   function displayName(u: any) {
     const name = [u?.first_name, u?.last_name].filter(Boolean).join(' ').trim();
-    return name || u?.login_name || u?.email || 'User';
+    return name || u?.email || 'User';
   }
   
   let newUser = {

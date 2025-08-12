@@ -14,6 +14,11 @@ export async function getStreamInfo(roomId: string, uid?: string) {
             },
         });
 
+        // If the route returns 404 directly (e.g., older deployments), treat as empty
+        if (response.status === 404) {
+            return { streamId: uid ? `${roomId}-${uid}` : roomId, status: 'not_found', subTrackStreamIds: [] };
+        }
+
         if (!response.ok) {
             console.error(`Failed to fetch stream info: ${response.status} ${response.statusText}`);
             throw new Error('Failed to fetch stream info');
@@ -51,7 +56,7 @@ export async function getStreamInfo(roomId: string, uid?: string) {
         // Return a default empty structure instead of throwing
         return {
             subTrackStreamIds: [],
-            error: error.message || 'Unknown error'
+            error: (error as Error).message || 'Unknown error'
         };
     }
 }

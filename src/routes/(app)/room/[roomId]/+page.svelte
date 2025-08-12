@@ -197,12 +197,11 @@ let availableRepresentatives = [];
 
 
 function getWebSocketURL() {
-    if(dev) {
-    return `ws://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
-    }
-    else{
-        return `wss://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/websocket`;
-    }
+    const raw = PUBLIC_ANT_MEDIA_URL || '';
+    const host = raw.replace(/^wss?:\/\//, '').replace(/^https?:\/\//, '');
+    const needsSecure = host.includes('antmedia') || host.includes(':5443') || location.protocol === 'https:';
+    const protocol = needsSecure ? 'wss' : 'ws';
+    return `${protocol}://${host}/WebRTCAppEE/websocket`;
 }
 
 // Update the isWithinOneHour function for more reliable comparison
@@ -624,9 +623,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 currentPdfUrl.set(''); // Clear PDF when video is shown
                                 if (videoPlayer) {
                                     videoPlayer.src = videoUpdateData.videoUrl;
-                                    if ($playVideoStore) {
-                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                    }
+                                                                         if ($playVideoStore) {
+                                         videoPlayer.play().catch(e => console.warn('Autoplay blocked. Waiting for user interaction to play.', e));
+                                     } else {
+                                         // Try to auto-play once when media is selected by a controller
+                                         videoPlayer.play().catch(() => {/* ignore */});
+                                     }
                                 }
                             }
                         } 
@@ -1616,8 +1618,9 @@ function handleVideoSelect(event) {
     
     // Check if we can send updates
     if ((isHost || isRepresentative) && webRTCAdaptor && isDataChannelOpen) {
-        const newUrl = selectedVideo && selectedVideo.file ? 
-            `${PUBLIC_POCKETBASE_INSTANCE}api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
+        const newUrl = selectedVideo && selectedVideo.file 
+            ? `/api/files/${selectedVideo.collectionId || 'content_library'}/${selectedVideo.id}/${selectedVideo.file}` 
+            : '';
         
         console.log('Preparing to send video URL update:', {
             newUrl,

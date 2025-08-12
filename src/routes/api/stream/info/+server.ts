@@ -29,6 +29,18 @@ export const GET: RequestHandler = async ({ url }) => {
         const response = await fetch(apiUrl);
         
         if (!response.ok) {
+            // If Ant Media doesn't have the broadcast yet, respond gracefully with empty structure
+            if (response.status === 404) {
+                return new Response(JSON.stringify({
+                    streamId,
+                    status: 'not_found',
+                    subTrackStreamIds: []
+                }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+
             console.error(`API request failed with status ${response.status}`);
             return new Response(JSON.stringify({ 
                 error: 'Failed to fetch stream info',

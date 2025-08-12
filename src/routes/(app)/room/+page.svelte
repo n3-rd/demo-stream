@@ -82,29 +82,21 @@
     // Toggle room active status
     async function toggleRoomActive(room) {
         try {
-            // Create update data with toggled is_active status
-            const updateData = {
-                is_active: !room.is_active
-            };
-            
-            // Send PATCH request to update the room
-            const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${room.id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(updateData)
+            const newStatus = !room.is_active;
+            const formData = new FormData();
+            formData.append('is_active', String(newStatus));
+
+            const response = await fetch(`/api/room/${room.id}/info`, {
+                method: 'PUT',
+                body: formData
             });
             
             if (response.ok) {
-                // Update local state
-                room.is_active = !room.is_active;
+                room.is_active = newStatus;
                 toast.success(`Room ${room.is_active ? 'activated' : 'deactivated'}`);
-                
-                // Force reactivity
                 rooms = [...rooms];
             } else {
-                const error = await response.json();
+                const error = await response.json().catch(() => ({}));
                 toast.error(`Failed to update: ${error.message || 'Unknown error'}`);
             }
         } catch (error) {

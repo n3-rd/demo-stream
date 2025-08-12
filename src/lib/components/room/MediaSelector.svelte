@@ -1,6 +1,5 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
-    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
     import { currentVideoUrl, currentPdfUrl, currentDocxUrl, currentImageUrl } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
 
@@ -11,63 +10,41 @@
 
     const dispatch = createEventDispatcher();
 
-    let content = [];
+    let content = [] as Array<{
+        id: string;
+        title: string;
+        description?: string;
+        file: string; // blob id
+        thumbnail?: string | null; // blob id
+        active?: boolean;
+        // DB columns
+        type?: string; // 'video' | 'pdf' | 'docx' | 'image'
+        library_type?: string[]; // roles
+        // normalized fields for UI
+        roles?: string[];
+        fileKind?: string;
+        collectionId?: string;
+    }>;
     let loading = false;
 
     async function loadContent() {
         try {
             loading = true;
-            
-            // First fetch the room with expanded content relations
-            if (room?.id) {
-                const roomResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${room.id}?expand=host_content,representative_content`);
-                if (roomResponse.ok) {
-                    const roomData = await roomResponse.json();
-                    
-                    // Update room with expanded content and active status
-                    room = {
-                        ...room,
-                        host_content: roomData.host_content || [],
-                        representative_content: roomData.representative_content || [],
-                        host_content_active: roomData.host_content_active || {},
-                        representative_content_active: roomData.representative_content_active || {},
-                        expand: roomData.expand || {}
-                    };
-                    
-                    console.log('Room data with content:', room);
-                    
-                    // If we have expanded content, use it directly
-                    if (roomData.expand?.host_content?.length > 0 || roomData.expand?.representative_content?.length > 0) {
-                        const hostContentItems = roomData.expand?.host_content || [];
-                        const repContentItems = roomData.expand?.representative_content || [];
-                        
-                        // Combine and deduplicate content
-                        content = [...hostContentItems, ...repContentItems]
-                            .filter((item, index, self) => 
-                                index === self.findIndex(t => t.id === item.id)
-                            )
-                            .map(item => ({
-                                ...item,
-                                type: item.library_type || ['host'] // Default to host if not specified
-                            }));
-                            
-                        console.log('Content loaded from expanded room data:', content);
-                        loading = false;
-                        return;
-                    }
+
+            // Load all content for this room's owner company via internal API
+            if (room?.owner_company) {
+                const response = await fetch(`/api/content-library?owner=${encodeURIComponent(room.owner_company)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    content = (data.items || []).map((item: any) => ({
+                        ...item,
+                        roles: item.library_type || [],
+                        fileKind: item.type || 'unknown',
+                        collectionId: item.collectionId || 'content_library'
+                    }));
+                    return;
                 }
             }
-            
-            // Fallback: fetch all content for the company
-            const filterValue = encodeURIComponent(`(owner_company='${room.owner_company}')`);
-            const response = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/content_library/records?filter=${filterValue}`);
-            const data = await response.json();
-            content = data.items.map(item => ({
-                ...item,
-                type: item.library_type || ['host'] // Default to host if not specified
-            }));
-            console.log('Content loaded from company:', content);
-            
         } catch (error) {
             console.error('Error loading content:', error);
         } finally {
@@ -76,28 +53,24 @@
     }
 
     // Check if content is active in the room
-    function isContentActive(contentId, isHost) {
+    function isContentActive(contentId: string, forHost: boolean) {
         if (!room) return true; // Default to active if room not found
-        
-        const contentField = isHost ? 'host_content_active' : 'representative_content_active';
-        
-        // If the field doesn't exist or the content isn't explicitly set to inactive, consider it active
+        const contentField = forHost ? 'host_content_active' : 'representative_content_active';
         if (!room[contentField] || room[contentField][contentId] === undefined) {
             return true;
         }
-        
         return room[contentField][contentId];
     }
 
-    // Filter content based on user role and active status
+    // Filter content based on role and active status
     $: hostContent = content
-        .filter(item => item.type.includes('host'))
-        .filter(item => room?.host_content?.includes(item.id)) // Only show content that belongs to this room
+        .filter(item => (item.roles || []).includes('host'))
+        .filter(item => room?.host_content?.includes(item.id))
         .filter(item => isContentActive(item.id, true));
         
     $: repContent = content
-        .filter(item => item.type.includes('representative'))
-        .filter(item => room?.representative_content?.includes(item.id)) // Only show content that belongs to this room
+        .filter(item => (item.roles || []).includes('representative'))
+        .filter(item => room?.representative_content?.includes(item.id))
         .filter(item => isContentActive(item.id, false));
 
     // Determine which content sections to show
@@ -120,13 +93,15 @@
         currentImageUrl.set('');
         
         const fileUrl = getFileUrl(item);
-        const isVideo = item.file.endsWith('.mp4') || item.file.endsWith('.webm');
-        const isPdf = item.file.endsWith('.pdf');
-        const isDocx = item.file.endsWith('.docx') || item.file.endsWith('.doc');
-        const isImage = getFileType(item.file) === 'image';
+        const kind = (item.fileKind || '').toLowerCase();
+        const isVideo = kind === 'video';
+        const isPdf = kind === 'pdf';
+        const isDocx = kind === 'docx' || kind === 'doc';
+        const isImage = kind === 'image';
         
         console.log('File details:', {
             fileUrl,
+            kind,
             isVideo,
             isPdf,
             isDocx,
@@ -135,45 +110,40 @@
         });
         
         if (isImage) {
-            console.log('Setting image URL:', fileUrl);
             currentImageUrl.set(fileUrl);
-            
-            console.log('Broadcasting image update');
             broadcastMediaUpdate('image_url_update', {
                 fileUrl: fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative
             });
         } else if (isVideo) {
-            console.log('Setting video URL:', fileUrl);
-            // Set the video URL directly in the store
             currentVideoUrl.set(fileUrl);
-            // Also dispatch the event for backward compatibility
             dispatch('videoSelect', item);
-            
-            console.log('Broadcasting video update');
             broadcastMediaUpdate('video_url_update', {
                 videoUrl: fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative
             });
         } else if (isPdf) {
-            console.log('Setting PDF URL:', fileUrl);
             currentPdfUrl.set(fileUrl);
-            
-            console.log('Broadcasting PDF update');
             broadcastMediaUpdate('pdf_url_update', {
                 fileUrl: fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative
             });
         } else if (isDocx) {
-            console.log('Setting DOCX URL:', fileUrl);
             currentDocxUrl.set(fileUrl);
-            
-            console.log('Broadcasting DOCX update');
             broadcastMediaUpdate('docx_url_update', {
                 fileUrl: fileUrl,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative
+            });
+        } else {
+            // Unknown kind: default to trying video first
+            currentVideoUrl.set(fileUrl);
+            dispatch('videoSelect', item);
+            broadcastMediaUpdate('video_url_update', {
+                videoUrl: fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative
             });
@@ -182,37 +152,14 @@
 
     function broadcastMediaUpdate(eventType: string, messageData: any) {
         if (!room?.id) return;
-        
-        // Ensure roomName is available
         if (!roomName) {
             console.error('Room name is not available for broadcasting media update');
             return;
         }
-        
-        const message = {
-            eventType,
-            messageBody: JSON.stringify(messageData)
-        };
-        
+        const message = { eventType, messageBody: JSON.stringify(messageData) };
         try {
-            console.log('Broadcasting media update:', {
-                eventType,
-                messageData,
-                roomId: room.id,
-                roomName
-            });
-            
-            // Use roomName if available, otherwise fall back to room.id
             const targetRoom = roomName || room.id;
-            
-            sendMessage(
-                targetRoom,
-                Date.now(),
-                JSON.stringify(message),
-                targetRoom
-            );
-            
-            console.log('Media update broadcast sent successfully');
+            sendMessage(targetRoom, Date.now(), JSON.stringify(message), targetRoom);
         } catch (error) {
             console.error('Error broadcasting media update:', error);
         }
@@ -220,22 +167,14 @@
 
     function getFileUrl(file: any) {
         if (!file) return '';
-        return `/api/files/${file.collectionId || 'content_library'}/${file.id}/${file.file}`;
+        return `/api/files/${file.collectionId || file.collection || 'content_library'}/${file.id}/${file.file}`;
     }
 
     function getThumbnailUrl(content: any) {
         if (content.thumbnail) {
-            return `/api/files/${content.collectionId || 'content_library'}/${content.id}/${content.thumbnail}`;
+            return `/api/files/${content.collectionId || content.collection || 'content_library'}/${content.id}/${content.thumbnail}`;
         }
-        return ''; // Return a default thumbnail URL if needed
-    }
-
-    function getFileType(filename: string): string {
-        if (filename.endsWith('.mp4') || filename.endsWith('.webm')) return 'video';
-        if (filename.endsWith('.pdf')) return 'pdf';
-        if (filename.endsWith('.docx') || filename.endsWith('.doc')) return 'docx';
-        if (filename.endsWith('.jpg') || filename.endsWith('.jpeg') || filename.endsWith('.png') || filename.endsWith('.gif')) return 'image';
-        return 'unknown';
+        return '';
     }
 
     onMount(() => {
@@ -251,7 +190,7 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each hostContent as item}
                     {#if item.active}
-                        {@const fileType = getFileType(item.file)}
+                        {@const fileType = (item.fileKind || 'unknown').toLowerCase()}
                         <div class="flex flex-col gap-3">
                             <button
                             class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
@@ -264,7 +203,6 @@
                                         alt={item.title}
                                         class="w-full h-full object-cover"
                                     />
-
                                     <div class="absolute inset-0 flex items-center justify-center shadow-lg">
                                         <img src="/icons/play.svg" alt="Play" class="w-10 h-10" />
                                     </div>
@@ -277,7 +215,7 @@
                                 <div class="w-full h-full flex items-center justify-center bg-white text-white">
                                     <img src="/icons/pdf.svg" alt="PDF" class="w-[90px] h-[90px]" />
                                 </div>
-                            {:else if fileType === 'docx'}
+                            {:else if fileType === 'docx' || fileType === 'doc'}
                                 <div class="w-full h-full flex items-center justify-center bg-blue-600 text-white">
                                     <img src="/icons/word.svg" alt="DOCX" class="w-[90px] h-[90px]" />
                                 </div>
@@ -297,6 +235,10 @@
                                 {/if}
                                 <div class="absolute inset-0 flex items-center justify-center shadow-lg">
                                     <img src="/icons/image.svg" alt="View" class="w-10 h-10" />
+                                </div>
+                            {:else}
+                                <div class="w-full h-full flex items-center justify-center text-white">
+                                    Media
                                 </div>
                             {/if}
                         </button>
@@ -320,7 +262,7 @@
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each repContent as item}
                     {#if item.active}
-                        {@const fileType = getFileType(item.file)}
+                        {@const fileType = (item.fileKind || 'unknown').toLowerCase()}
                         <button
                             class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
                             on:click={() => handleMediaSelect(item)}
@@ -341,9 +283,27 @@
                                 <div class="w-full h-full flex items-center justify-center bg-red-600 text-white">
                                     PDF
                                 </div>
-                            {:else if fileType === 'docx'}
+                            {:else if fileType === 'docx' || fileType === 'doc'}
                                 <div class="w-full h-full flex items-center justify-center bg-blue-600 text-white">
                                     <img src="/icons/word.svg" alt="DOCX" class="w-[90px] h-[90px]" />
+                                </div>
+                            {:else if fileType === 'image'}
+                                {#if item.thumbnail}
+                                    <img
+                                        src={getThumbnailUrl(item)}
+                                        alt={item.title}
+                                        class="w-full h-full object-cover"
+                                    />
+                                {:else}
+                                    <img
+                                        src={getFileUrl(item)}
+                                        alt={item.title}
+                                        class="w-full h-full object-cover"
+                                    />
+                                {/if}
+                            {:else}
+                                <div class="w-full h-full flex items-center justify-center text-white">
+                                    Media
                                 </div>
                             {/if}
                             <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2">

@@ -96,22 +96,24 @@ export const handle: Handle = async ({ event, resolve }) => {
         }
     }
 
-    // Handle _method query parameter by creating a new request
-    let finalRequest = request;
-    if (event.url.searchParams.has('_method')) {
-        const method = event.url.searchParams.get('_method')!.toUpperCase();
-        finalRequest = new Request(request.url, {
-            method,
-            headers: request.headers,
-            body: request.body
-        });
-        event.request = finalRequest;
-    }
+    // Auto-clear viewroom/rep cookies when outside allowed paths to prevent leakage
+    const isAllowedForTransientSessions = (
+        event.url.pathname.startsWith('/viewroom') ||
+        event.url.pathname.startsWith('/room') ||
+        event.url.pathname.startsWith('/api/viewroom') ||
+        event.url.pathname.startsWith('/api/representative') ||
+        event.url.pathname.startsWith('/api/stream') ||
+        event.url.pathname.startsWith('/api/files')
+    );
+
+    const hadViewroom = !!event.cookies.get('viewroom_session');
+    const hadRep = !!event.cookies.get('rep_session');
 
     const response = await resolve(event);
 
     // Set cookies for user ID
-    if (!cookies.userid) {
+    // Only set tracking userid for authenticated admin sessions
+    if (session && !cookies.userid) {
         response.headers.set('set-cookie', cookie.serialize('userid', event.locals.userid, {
             path: '/',
             httpOnly: true,
@@ -120,8 +122,21 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
 
     // TODO: secure before deployment - mirror previous behavior
-    if (event.locals.pb.authStore.token) {
+    // Only mirror admin auth store to cookie when admin session cookie exists
+    if (session && event.locals.pb.authStore.token) {
         response.headers.append('set-cookie', event.locals.pb.authStore.exportToCookie({ secure: false, maxAge: 1800 }));
+    }
+
+    // If navigating away, clear transient sessions so they can't access anything beyond the room context
+    if (!isAllowedForTransientSessions) {
+        if (hadViewroom) {
+            response.headers.append('set-cookie', cookie.serialize('viewroom_session', '', { path: '/', maxAge: 0 }));
+            response.headers.append('set-cookie', cookie.serialize('viewroom_user', '', { path: '/', maxAge: 0 }));
+        }
+        if (hadRep) {
+            response.headers.append('set-cookie', cookie.serialize('rep_session', '', { path: '/', maxAge: 0 }));
+            response.headers.append('set-cookie', cookie.serialize('rep_user', '', { path: '/', maxAge: 0 }));
+        }
     }
 
     // Add CORS headers to API responses

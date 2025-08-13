@@ -21,6 +21,10 @@ components:
       type: apiKey
       in: cookie
       name: viewroom_session
+    repCookieAuth:
+      type: apiKey
+      in: cookie
+      name: rep_session
   schemas:
     Error:
       type: object
@@ -686,6 +690,7 @@ paths:
       security:
         - cookieAuth: []
         - viewroomCookieAuth: []
+        - repCookieAuth: []
       responses:
         '200':
           description: Representatives retrieved successfully
@@ -698,7 +703,6 @@ paths:
       tags: [Representatives]
       security:
         - cookieAuth: []
-        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
@@ -706,13 +710,17 @@ paths:
             schema:
               type: object
               required:
-                - name
+                - first_name
+                - last_name
                 - email
                 - phone
               properties:
-                name:
+                first_name:
                   type: string
-                  example: "Representative Name"
+                  example: "Sam"
+                last_name:
+                  type: string
+                  example: "Altman"
                 email:
                   type: string
                   format: email
@@ -720,12 +728,15 @@ paths:
                 phone:
                   type: string
                   example: "+1234567890"
+                location:
+                  type: string
+                  example: "location_uuid"
                 is_active:
                   type: string
                   example: "true"
                 schedule:
                   type: string
-                  example: "9 AM - 5 PM"
+                  example: "{\"monday\":\"9 AM - 5 PM\"}"
       responses:
         '200':
           description: Representative created successfully
@@ -748,25 +759,14 @@ paths:
               required:
                 - id
               properties:
-                id:
-                  type: string
-                  example: "rep123"
-                name:
-                  type: string
-                  example: "Updated Name"
-                email:
-                  type: string
-                  format: email
-                  example: "updated@company.com"
-                phone:
-                  type: string
-                  example: "+1234567890"
-                is_active:
-                  type: string
-                  example: "true"
-                schedule:
-                  type: string
-                  example: "9 AM - 5 PM"
+                id: { type: string, example: "rep123" }
+                first_name: { type: string }
+                last_name: { type: string }
+                name: { type: string, description: "Optional full name (computed as first + last)" }
+                email: { type: string, format: email }
+                phone: { type: string }
+                is_active: { type: string }
+                schedule: { type: string }
       responses:
         '200':
           description: Representative updated successfully

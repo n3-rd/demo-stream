@@ -41,60 +41,33 @@ export const actions = {
         friday: formatSchedule(formData.get('friday_start'), formData.get('friday_end')),
         saturday: formatSchedule(formData.get('saturday_start'), formData.get('saturday_end')),
         sunday: formatSchedule(formData.get('sunday_start'), formData.get('sunday_end'))
-      };
+      } as any;
 
-      // Create representative data
+      // Compute names
+      const first_name = String(formData.get('first_name') || '').trim();
+      const last_name = String(formData.get('last_name') || '').trim();
+      const name = [first_name, last_name].filter(Boolean).join(' ').trim();
+
+      // Create representative data as a plain object (DB shim doesn't accept FormData)
       const repData = {
-        name: formData.get('name'),
-        email: formData.get('email'),
-        phone: formData.get('phone'),
+        name,
+        first_name: first_name || null,
+        last_name: last_name || null,
+        email: String(formData.get('email') || '').trim(),
+        phone: String(formData.get('phone') || '').trim(),
         company: user.id,
         is_active: true,
         schedule: scheduleData,
-        location: formData.get('location'),
-        library_type: ["host"],
-        connected_content: []
-      };
+        location: String(formData.get('location') || '') || null
+      } as any;
 
-      // Handle file upload
-      const avatar = formData.get('avatar');
+      const createdRep = await locals.pb.collection('representatives').create(repData);
       
-      // Check if avatar is a file and has content
-      if (avatar instanceof File && avatar.size > 0) {
-        // Create a new FormData instance for the API call
-        const apiFormData = new FormData();
-        
-        // Add all the regular fields
-        for (const [key, value] of Object.entries(repData)) {
-          if (key === 'schedule' || key === 'library_type' || key === 'connected_content') {
-            apiFormData.append(key, JSON.stringify(value));
-          } else {
-            apiFormData.append(key, value as string);
-          }
-        }
-        
-        // Add the file
-        apiFormData.append('avatar', avatar);
-        
-        // Create the record with the file
-        const createdRep = await locals.pb.collection('representatives').create(apiFormData);
-        
-        if (!createdRep) {
-          return fail(400, { 
-            error: true, 
-            message: 'Failed to create representative' 
-          });
-        }
-      } else {
-        // Create without file
-        const createdRep = await locals.pb.collection('representatives').create(repData);
-        
-        if (!createdRep) {
-          return fail(400, { 
-            error: true, 
-            message: 'Failed to create representative' 
-          });
-        }
+      if (!createdRep) {
+        return fail(400, { 
+          error: true, 
+          message: 'Failed to create representative' 
+        });
       }
 
       // Return success
@@ -108,7 +81,7 @@ export const actions = {
       });
     }
   }
-};
+} satisfies Actions;
 
 // Helper function to format schedule times
 function formatSchedule(start: FormDataEntryValue | null, end: FormDataEntryValue | null): string {

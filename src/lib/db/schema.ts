@@ -105,6 +105,8 @@ export const quotes = pgTable('quotes', {
 export const representatives = pgTable('representatives', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
+  firstName: text('first_name'),
+  lastName: text('last_name'),
   email: text('email').notNull(),
   phone: text('phone'),
   avatar: text('avatar'),

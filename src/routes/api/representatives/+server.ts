@@ -32,15 +32,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const formData = await request.formData();
     
     try {
+        const first_name = String(formData.get('first_name') || '').trim();
+        const last_name = String(formData.get('last_name') || '').trim();
+        const name = [first_name, last_name].filter(Boolean).join(' ').trim() || String(formData.get('name') || '').trim();
         const data = {
-            name: formData.get('name') as string,
+            name,
+            first_name: first_name || null,
+            last_name: last_name || null,
             email: formData.get('email') as string,
             phone: formData.get('phone') as string,
             company: locals.pb.authStore.model.id,
             is_active: formData.get('is_active') === 'true',
             schedule: formData.get('schedule') as string || '',
             connected_content: []
-        };
+        } as any;
 
         const record = await locals.pb.collection('representatives').create(data);
         
@@ -69,13 +74,18 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
     const id = formData.get('id') as string;
     
     try {
+        const first_name = String(formData.get('first_name') || '').trim();
+        const last_name = String(formData.get('last_name') || '').trim();
+        const name = [first_name, last_name].filter(Boolean).join(' ').trim() || String(formData.get('name') || '').trim();
         const data = {
-            name: formData.get('name') as string,
+            name,
+            first_name: first_name || null,
+            last_name: last_name || null,
             email: formData.get('email') as string,
             phone: formData.get('phone') as string,
             is_active: formData.get('is_active') === 'true',
             schedule: formData.get('schedule') as string || ''
-        };
+        } as any;
 
         const record = await locals.pb.collection('representatives').update(id, data);
         

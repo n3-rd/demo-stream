@@ -143,17 +143,31 @@
           <div class="grid grid-cols-2 gap-6">
             <div class="space-y-4">
               <div>
-                <label for="name" class="block text-[14px] text-[#737373] mb-2">Name</label>
+                <label for="first_name" class="block text-[14px] text-[#737373] mb-2">First Name</label>
                 <input 
                   type="text" 
-                  id="name" 
-                  name="name"
-                  placeholder="Enter name"
+                  id="first_name" 
+                  name="first_name"
+                  placeholder="Enter first name"
                   class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2"
                   use:validators={[required]}
                 />
-                <HintGroup for="name">
-                  <Hint on="required">Name is required</Hint>
+                <HintGroup for="first_name">
+                  <Hint on="required">First name is required</Hint>
+                </HintGroup>
+              </div>
+              <div>
+                <label for="last_name" class="block text-[14px] text-[#737373] mb-2">Last Name</label>
+                <input 
+                  type="text" 
+                  id="last_name" 
+                  name="last_name"
+                  placeholder="Enter last name"
+                  class="w-full border border-[#9E9E9E] bg-white rounded-[5px] px-3 py-2 h-[38px] text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B77BE] focus-visible:ring-offset-2"
+                  use:validators={[required]}
+                />
+                <HintGroup for="last_name">
+                  <Hint on="required">Last name is required</Hint>
                 </HintGroup>
               </div>
               <div>

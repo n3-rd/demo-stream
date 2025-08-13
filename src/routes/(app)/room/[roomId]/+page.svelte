@@ -489,8 +489,8 @@ function handleWebRTCCallback(info: string, obj: any) {
         case "data_channel_opened":
             isDataChannelOpen = true;
             
-            // If we're not the host, request the current media state
-            if (!isHost) {
+            // If we're not the current controller, request the current media state
+            if (!((syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative))) {
                 const mediaStateRequest = {
                     streamId: roomName,
                     eventType: 'media_state_request'
@@ -520,75 +520,82 @@ function handleWebRTCCallback(info: string, obj: any) {
                         messageBody = JSON.parse(data.messageBody);
                         
                         // Handle media state request
-                        if (messageBody.eventType === 'media_state_request' && isHost) {
-                            const currentState = {
-                                eventType: 'media_state_response',
-                                messageBody: JSON.stringify({
-                                    videoUrl: $currentVideoUrl,
-                                    pdfUrl: $currentPdfUrl,
-                                    docxUrl: $currentDocxUrl,
-                                    imageUrl: $currentImageUrl,
-                                    imageZoomLevel: $imageZoomLevel,
-                                    pdfScrollPosition: $pdfScrollPosition,
-                                    docxScrollPosition: $docxScrollPosition,
-                                    isPlaying: $playVideoStore,
-                                    currentTime: videoPlayer?.currentTime || 0,
-                                    syncSource
-                                })
-                            };
-                            sendMessage(
-                                roomName,
-                                Date.now(),
-                                JSON.stringify(currentState),
-                                roomName
-                            );
+                        if (messageBody.eventType === 'media_state_request') {
+                            const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
+                            if (isController) {
+                                const currentState = {
+                                    eventType: 'media_state_response',
+                                    messageBody: JSON.stringify({
+                                        videoUrl: $currentVideoUrl,
+                                        pdfUrl: $currentPdfUrl,
+                                        docxUrl: $currentDocxUrl,
+                                        imageUrl: $currentImageUrl,
+                                        imageZoomLevel: $imageZoomLevel,
+                                        pdfScrollPosition: $pdfScrollPosition,
+                                        docxScrollPosition: $docxScrollPosition,
+                                        isPlaying: $playVideoStore,
+                                        currentTime: videoPlayer?.currentTime || 0,
+                                        syncSource
+                                    })
+                                };
+                                sendMessage(
+                                    roomName,
+                                    Date.now(),
+                                    JSON.stringify(currentState),
+                                    roomName
+                                );
+                            }
                         }
                         
                         // Handle media state response
                         if (messageBody.eventType === 'media_state_response') {
-                            const state = JSON.parse(messageBody.messageBody);
-                            
-                            // First clear all media to avoid conflicts
-                            currentVideoUrl.set('');
-                            currentPdfUrl.set('');
-                            currentDocxUrl.set('');
-                            currentImageUrl.set('');
-                            
-                            // Update video state
-                            if (state.videoUrl) {
-                                currentVideoUrl.set(state.videoUrl);
-                                if (videoPlayer) {
-                                    videoPlayer.src = state.videoUrl;
-                                    
-                                    // Handle play state differently based on capabilities
-                                    if (inDataChannelOnlyMode) {
-                                        // In data-channel-only mode, we can't rely on autoplay
-                                        // so we need to manually control the video
-                                        if (state.isPlaying) {
-                                            // Use a user interaction event handler to play later
-                                            const playPromise = videoPlayer.play().catch(e => {
-                                                console.warn('Auto-play blocked in data-channel-only mode:', e);
-                                                // Set up a one-time click handler to play on user interaction
-                                                const playOnClick = () => {
-                                                    videoPlayer.play().catch(err => console.error('Play on click failed:', err));
-                                                    document.removeEventListener('click', playOnClick);
-                                                };
-                                                document.addEventListener('click', playOnClick, { once: true });
-                                            });
+                                                            const state = JSON.parse(messageBody.messageBody);
+                                
+                                // First clear all media to avoid conflicts
+                                currentVideoUrl.set('');
+                                currentPdfUrl.set('');
+                                currentDocxUrl.set('');
+                                currentImageUrl.set('');
+                                
+                                // Update video state
+                                if (state.videoUrl) {
+                                    currentVideoUrl.set(state.videoUrl);
+                                    if (videoPlayer) {
+                                        videoPlayer.src = state.videoUrl;
+                                        
+                                        // Handle play state differently based on capabilities
+                                        if (inDataChannelOnlyMode) {
+                                            // In data-channel-only mode, we can't rely on autoplay
+                                            // so we need to manually control the video
+                                            if (state.isPlaying) {
+                                                // Use a user interaction event handler to play later
+                                                const playPromise = videoPlayer.play().catch(e => {
+                                                    console.warn('Auto-play blocked in data-channel-only mode:', e);
+                                                    // Set up a one-time click handler to play on user interaction
+                                                    const playOnClick = () => {
+                                                        videoPlayer.play().catch(err => console.error('Play on click failed:', err));
+                                                        document.removeEventListener('click', playOnClick);
+                                                    };
+                                                    document.addEventListener('click', playOnClick, { once: true });
+                                                });
+                                            } else {
+                                                videoPlayer.pause();
+                                            }
+                                        } else {
+                                            // Normal mode with full capabilities
+                                            if (state.isPlaying) {
+                                                videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                            } else {
+                                                videoPlayer.pause();
+                                            }
                                         }
-                                    } else {
-                                        // Normal mode with full capabilities
-                                        if (state.isPlaying) {
-                                            videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                        }
+                                        
+                                        // Set the current time
+                                        videoPlayer.currentTime = state.currentTime || 0;
                                     }
-                                    
-                                    // Set the current time
-                                    videoPlayer.currentTime = state.currentTime || 0;
                                 }
-                            }
-                            
-                            // Update PDF state
+                                
+                                // Update PDF state
                             if (state.pdfUrl) {
                                 currentPdfUrl.set(state.pdfUrl);
                                 pdfScrollPosition.set(state.pdfScrollPosition || 0);
@@ -622,14 +629,16 @@ function handleWebRTCCallback(info: string, obj: any) {
                             if (videoUpdateData.videoUrl) {
                                 currentVideoUrl.set(videoUpdateData.videoUrl);
                                 currentPdfUrl.set(''); // Clear PDF when video is shown
+                                // Update play intent based on controller
+                                const shouldPlay = videoUpdateData.shouldPlay === true;
+                                playVideoStore.set(shouldPlay);
                                 if (videoPlayer) {
                                     videoPlayer.src = videoUpdateData.videoUrl;
-                                                                         if ($playVideoStore) {
-                                         videoPlayer.play().catch(e => console.warn('Autoplay blocked. Waiting for user interaction to play.', e));
-                                     } else {
-                                         // Try to auto-play once when media is selected by a controller
-                                         videoPlayer.play().catch(() => {/* ignore */});
-                                     }
+                                    if (shouldPlay) {
+                                        videoPlayer.play().catch(e => console.warn('Autoplay blocked. Waiting for user interaction to play.', e));
+                                    } else {
+                                        videoPlayer.pause();
+                                    }
                                 }
                             }
                         } 
@@ -643,6 +652,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 currentDocxUrl.set('');
                                 // Then set the new PDF URL
                                 currentPdfUrl.set(pdfUpdateData.fileUrl);
+                                // Pause any playing video for document focus
+                                playVideoStore.set(false);
+                                if (videoPlayer) videoPlayer.pause();
                             }
                         } 
                         // Handle PDF scroll sync
@@ -675,6 +687,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 currentPdfUrl.set('');
                                 // Then set the new DOCX URL
                                 currentDocxUrl.set(docxUpdateData.fileUrl);
+                                // Pause any playing video for document focus
+                                playVideoStore.set(false);
+                                if (videoPlayer) videoPlayer.pause();
                             }
                         } 
                         // Handle DOCX scroll sync
@@ -747,11 +762,21 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 
                                 if (!isCurrentController && videoPlayer) {
                                     
-
-                                    // Sync video time if difference is more than 0.5 seconds
-                                    const timeDiff = Math.abs(videoPlayer.currentTime - syncData.currentTime);
-                                    if (timeDiff > 0.5) {
+                                    
+                                    // Improved sync strategy for variable networks:
+                                    // - Hard seek only if desync >= 5s
+                                    // - For 0.5s <= desync < 5s, drift via temporary playbackRate nudge
+                                    const timeDiffSigned = (syncData.currentTime ?? 0) - (videoPlayer.currentTime ?? 0);
+                                    const timeDiff = Math.abs(timeDiffSigned);
+                                    if (timeDiff >= 5.0) {
                                         videoPlayer.currentTime = syncData.currentTime;
+                                    } else if (timeDiff >= 0.5) {
+                                        const originalRate = videoPlayer.playbackRate || 1.0;
+                                        const nudgeRate = timeDiffSigned > 0 ? Math.min(1.25, originalRate + 0.05) : Math.max(0.75, originalRate - 0.05);
+                                        videoPlayer.playbackRate = nudgeRate;
+                                        setTimeout(() => {
+                                            videoPlayer.playbackRate = 1.0;
+                                        }, 2000);
                                     }
 
                                     // Update the playVideoStore to match the sync state
@@ -1247,6 +1272,11 @@ function handleVideoStateChange() {
     });
     
     if (isCurrentController && webRTCAdaptor && isDataChannelOpen) {
+        // Ensure host or rep stays playing when they initiate play
+        if (isPlaying) {
+            // Try to play locally if blocked earlier
+            videoPlayer.play().catch(() => {/* ignore */});
+        }
         const videoState = {
             eventType: 'video_sync',
             messageBody: JSON.stringify({
@@ -1634,13 +1664,14 @@ function handleVideoSelect(event) {
         currentVideoUrl.set(newUrl);
         currentPdfUrl.set(''); // Ensure PDF is cleared
         
-        // Set playVideoStore to false initially to prevent auto-play
-        playVideoStore.set(false);
+        // Controller intent: start playing immediately
+        playVideoStore.set(true);
         
         if (videoPlayer) {
             console.log('Updating video player source');
             videoPlayer.src = newUrl;
-            // Don't force pause here, let the playVideoStore control it
+            // try to play locally
+            videoPlayer.play().catch(() => {/* ignore autoplay block */});
         }
         
         // Send update to all participants
@@ -1650,7 +1681,7 @@ function handleVideoSelect(event) {
                 videoUrl: newUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative,
-                shouldPlay: false // Explicitly set to not play
+                shouldPlay: true
             })
         };
         
@@ -1664,6 +1695,23 @@ function handleVideoSelect(event) {
                 roomName,
                 Date.now(),
                 JSON.stringify(videoUrlUpdate),
+                roomName
+            );
+            // Immediately broadcast play state and current time so late joiners sync without reselect
+            const syncAfterSelect = {
+                eventType: 'video_sync',
+                messageBody: JSON.stringify({
+                    currentTime: videoPlayer?.currentTime || 0,
+                    isPlaying: true,
+                    syncSource,
+                    fromHost: isHost,
+                    fromRepresentative: isRepresentative
+                })
+            };
+            sendMessage(
+                roomName,
+                Date.now(),
+                JSON.stringify(syncAfterSelect),
                 roomName
             );
         } catch (error) {

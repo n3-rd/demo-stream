@@ -14,11 +14,11 @@
   let uid = '';
 
   // Form data
-  let companyName = 'Studio Blopp';
-  let firstName = 'Sam';
-  let lastName = 'Altman';
-  let email = 'sam@altman.com';
-  let mobileNumber = '+1234567890';
+  let companyName = '';
+  let firstName = '';
+  let lastName = '';
+  let email = '';
+  let mobileNumber = '';
   let verificationCode = ['', '', '', '', ''];
   let verificationType = '';
 

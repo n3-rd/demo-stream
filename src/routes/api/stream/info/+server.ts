@@ -15,7 +15,7 @@ export const GET: RequestHandler = async ({ url }) => {
     // Always use hyphen format for streamId, matching the format used in +page.svelte
     const streamId = uid ? `${roomId}-${uid}` : roomId;
     
-    console.log(`Fetching stream info for ${streamId} (roomId: ${roomId}, uid: ${uid || 'none'})`);
+    // console.log(`Fetching stream info for ${streamId} (roomId: ${roomId}, uid: ${uid || 'none'})`);
     
     // Fix the URL format - use proper structure and remove extra slash if present
     const apiBaseUrl = PUBLIC_ANT_MEDIA_URL.endsWith('/') ? 
@@ -23,7 +23,7 @@ export const GET: RequestHandler = async ({ url }) => {
         `https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/rest/v2/broadcasts/`;
     
     const apiUrl = `${apiBaseUrl}${streamId}`;
-    console.log(`API request URL: ${apiUrl}`);
+    // console.log(`API request URL: ${apiUrl}`);
     
     try {
         const response = await fetch(apiUrl);
@@ -54,7 +54,7 @@ export const GET: RequestHandler = async ({ url }) => {
         }
 
         const data = await response.json();
-        console.log(`API response received for ${streamId}`);
+        // console.log(`API response received for ${streamId}`);
         
         // If we got data but no subTrackStreamIds, initialize it as empty array
         if (data && !data.subTrackStreamIds) {

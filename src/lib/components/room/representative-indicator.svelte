@@ -5,10 +5,10 @@
     import { createEventDispatcher } from 'svelte';
     
     export let participants;
+    export let selfName: string = '';
     
 console.log("participants from representative-indicator.svelte", participants);
 
-    let urlRepresentativeName: string;
     let videoElements = new Map();
     
     let isDragging = false;
@@ -121,6 +121,18 @@ console.log("participants from representative-indicator.svelte", participants);
             }, 300);
         }
         
+        // Cookie fallback for selfName if not provided via prop
+        if (!selfName) {
+            try {
+                const cookie = document.cookie.split('; ').find(c => c.startsWith('rep_user='));
+                if (cookie) {
+                    const value = decodeURIComponent(cookie.split('=')[1] || '');
+                    const rep = JSON.parse(value);
+                    if (rep && rep.name) selfName = rep.name;
+                }
+            } catch {}
+        }
+
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleEnd);
@@ -156,56 +168,46 @@ console.log("participants from representative-indicator.svelte", participants);
         };
     }
 
+    function extractNameFromId(id: string): string {
+        const last = (id || '').toString().split('-').pop() || '';
+        return last.replace(/_+representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
+    }
+
     function isRepresentative(participant: any) {
+        if (!participant) return false;
         if (typeof participant === 'string') {
-            return participant.includes('_representative');
-        } else if (participant && participant.streamId) {
-            return participant.streamId.includes('_representative');
+            const suffix = (participant.toString().split('-').pop() || '');
+            return /_representative$/i.test(suffix);
+        }
+        if (participant.isRepresentative !== undefined) return !!participant.isRepresentative;
+        if (participant.name) return /_representative$/i.test(String(participant.name));
+        if (participant.streamId) {
+            const suffix = (String(participant.streamId).split('-').pop() || '');
+            return /_representative$/i.test(suffix);
         }
         return false;
     }
 
     function getParticipantName(participant: any) {
-        if (typeof participant === 'string') {
-            const nameWithoutPrefix = participant.split('-').pop() || '';
-            return nameWithoutPrefix.replace(/_+representative/g, '');
-        } else if (participant && participant.streamId) {
-            const nameWithoutPrefix = participant.streamId.split('-').pop() || '';
-            return nameWithoutPrefix.replace(/_+representative/g, '');
-        }
-        return 'Unknown User';
+        if (!participant) return 'Representative';
+        if (typeof participant === 'string') return extractNameFromId(participant);
+        if (participant.name) return String(participant.name).replace(/_+representative$/i, '');
+        if (participant.streamName) return String(participant.streamName).replace(/_+representative$/i, '');
+        if (participant.streamId) return extractNameFromId(String(participant.streamId));
+        return 'Representative';
+    }
+
+    function normalizeName(value: string) {
+        return (value || '').trim().toLowerCase();
     }
 
     function shouldShowIndicator(participant: any) {
         const participantName = getParticipantName(participant);
-        return participantName !== urlRepresentativeName;
+        if (!selfName) return true;
+        return normalizeName(participantName) !== normalizeName(selfName);
     }
 
-    $: visibleRepresentatives = participants.filter(p => isRepresentative(p) && shouldShowIndicator(p));
-
-    onMount(async () => {
-        // Get URL parameters
-        const params = new URLSearchParams(window.location.search);
-        urlRepresentativeName = params.get('representativeName');
-
-        if (urlRepresentativeName) {
-            // If this is a representative, request camera access
-            try {
-                const mediaConstraints = {
-                    video: true,
-                    audio: true
-                };
-
-                // Request camera access
-                const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-                console.log('Camera access granted for representative');
-
-                // The stream will be handled by the WebRTC adaptor in the main room component
-            } catch (err) {
-                console.error('Error accessing camera:', err);
-            }
-        }
-    });
+    $: visibleRepresentatives = (participants || []).filter((p: any) => isRepresentative(p) && shouldShowIndicator(p));
 
     $: {
         console.log('Participants:', participants);
@@ -288,16 +290,26 @@ console.log("participants from representative-indicator.svelte", participants);
     bind:this={containerElement}
 >
     {#each visibleRepresentatives as participant}
+    {#key (typeof participant === 'string' ? participant : participant.streamId || participant.id)}
     <div class="representative-video">
-        <iframe 
-            src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${participant}`} 
-            frameborder="0" 
-            allowfullscreen
-        ></iframe>
+        {#if typeof participant === 'string'}
+            <iframe 
+                src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${encodeURIComponent(participant)}`} 
+                frameborder="0" 
+                allowfullscreen
+            ></iframe>
+        {:else}
+            <iframe 
+                src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${encodeURIComponent(participant.streamId || participant.id)}`} 
+                frameborder="0" 
+                allowfullscreen
+            ></iframe>
+        {/if}
         <div class="name-tag">
             {getParticipantName(participant)} (Representative)
         </div>
     </div>
+    {/key}
     {/each}
 </div>
 {/if}

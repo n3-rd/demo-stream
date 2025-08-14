@@ -160,6 +160,7 @@ $: {
         // Determine if user is a representative (check both URL param and room data)
         const urlRepName = $page.url.searchParams.get('repid');
         isRepresentative = (urlRepName !== null && urlRepName !== '') || 
+                          !!data?.representativeName ||
                           representatives?.some(rep => rep.id === (user?.id || viewroomUser?.id)) || false;
         
     }
@@ -196,13 +197,51 @@ let videoVolume = 1.0; // Add this with your other state variables
 // Add state for available representatives
 let availableRepresentatives = [];
 
+// Helper to read representative name from cookie
+function getRepresentativeCookieName(): string {
+    try {
+        const entry = document.cookie.split('; ').find(c => c.startsWith('rep_user='));
+        if (!entry) return '';
+        const json = decodeURIComponent(entry.split('=')[1] || '');
+        const rep = JSON.parse(json);
+        return (rep?.name || '').toString();
+    } catch { return ''; }
+}
+
+// Keep a self name for indicator suppression
+let repSelfName = '';
 
 function getWebSocketURL() {
-    const raw = PUBLIC_ANT_MEDIA_URL || '';
-    const host = raw.replace(/^wss?:\/\//, '').replace(/^https?:\/\//, '');
-    const needsSecure = host.includes('antmedia') || host.includes(':5443') || location.protocol === 'https:';
-    const protocol = needsSecure ? 'wss' : 'ws';
-    return `${protocol}://${host}/WebRTCAppEE/websocket`;
+    const raw = (PUBLIC_ANT_MEDIA_URL || '').trim();
+    try {
+        // Build a URL object regardless of whether protocol is provided
+        const hasProto = /^https?:\/\//i.test(raw) || /^wss?:\/\//i.test(raw);
+        const base = hasProto ? raw : `${location.protocol === 'https:' ? 'https://' : 'http://'}${raw}`;
+        const u = new URL(base);
+
+        // Normalize pathname: drop trailing /websocket if present; ensure no trailing slash
+        let appPath = (u.pathname || '').replace(/\/+$/, '');
+        if (/\/websocket$/i.test(appPath)) {
+            appPath = appPath.replace(/\/websocket$/i, '');
+        }
+        if (appPath === '' || appPath === '/') {
+            appPath = '/WebRTCAppEE';
+        }
+
+        // Decide protocol
+        const secure = u.protocol === 'https:' || u.protocol === 'wss:' || location.protocol === 'https:' || u.host.includes(':5443');
+        const wsProto = secure ? 'wss' : 'ws';
+
+        return `${wsProto}://${u.host}${appPath}/websocket`;
+    } catch {
+        // Fallback to previous behavior with extra sanitization
+        let cleaned = raw.replace(/^wss?:\/\//i, '').replace(/^https?:\/\//i, '');
+        cleaned = cleaned.replace(/[?#].*$/, '').replace(/\/+$|^\/+/, '');
+        const host = cleaned.split('/')[0];
+        const secure = host.includes(':5443') || location.protocol === 'https:';
+        const wsProto = secure ? 'wss' : 'ws';
+        return `${wsProto}://${host}/WebRTCAppEE/websocket`;
+    }
 }
 
 // Update the isWithinOneHour function for more reliable comparison
@@ -303,8 +342,8 @@ onMount(() => {
       }
     }
     
-    // Initialize WebRTC if we have a name
-    if (isAuthenticated || $anonymousUser || data?.representativeName) {
+    // Initialize WebRTC if we have a name or are a representative
+    if (isAuthenticated || $anonymousUser || data?.representativeName || isRepresentative) {
       initializeWebRTC();
     }
     
@@ -908,6 +947,10 @@ function joinRoom() {
         displayName = formatDisplayName(name);
     } else if (data.representativeName) {
         displayName = formatDisplayName(data.representativeName, true);
+    } else if (isRepresentative) {
+        // Fallback to cookie-derived name for representatives
+        const cookieName = getRepresentativeCookieName();
+        displayName = formatDisplayName(cookieName || 'Representative', true);
     } else {
         displayName = formatDisplayName($anonymousUser);
     }
@@ -1405,15 +1448,37 @@ function handleMainTrackBroadcastObject(broadcastObject) {
 function handleSubtrackBroadcastObject(broadcastObject) {
     try {
         let metadata = JSON.parse(broadcastObject.metadata || '{}');
-        let participantName = metadata.displayName || broadcastObject.streamName || 'Unknown User';
+        const derivedFromId = (String(broadcastObject.streamId || '').split('-').pop() || '').replace(/_+representative$/i, '').replace(/_/g, ' ').trim();
+        let participantName = metadata.displayName || broadcastObject.streamName || derivedFromId || 'Unknown User';
         
         allParticipants[broadcastObject.streamId] = {
             streamId: broadcastObject.streamId,
+            // Preserve both for backward compatibility
+            streamName: participantName,
             name: participantName,
-            isRepresentative: participantName.endsWith('_representative'),
-            isCameraOff: metadata.isCameraOff || false,
-            isMicMuted: metadata.isMicMuted || false
+            // Keep raw metadata string for other consumers
+            metaData: broadcastObject.metadata || JSON.stringify(metadata),
+            isRepresentative: metadata.isRepresentative ?? /_representative$/i.test(String(metadata.displayName || broadcastObject.streamName || broadcastObject.streamId)),
+            isCameraOff: !!metadata.isCameraOff,
+            isMicMuted: !!metadata.isMicMuted
         };
+
+        // Update meetingParticipants inline when possible
+        const idx = meetingParticipants.findIndex(p => (typeof p === 'string' ? p : p.streamId) === broadcastObject.streamId);
+        if (idx !== -1) {
+            const base = typeof meetingParticipants[idx] === 'string' ? { streamId: broadcastObject.streamId } : meetingParticipants[idx];
+            meetingParticipants = [
+                ...meetingParticipants.slice(0, idx),
+                {
+                    ...base,
+                    name: participantName,
+                    isRepresentative: allParticipants[broadcastObject.streamId].isRepresentative,
+                    isCameraOff: !!metadata.isCameraOff,
+                    isMicMuted: !!metadata.isMicMuted
+                },
+                ...meetingParticipants.slice(idx + 1)
+            ];
+        }
     } catch (e) {
         console.error('Error handling subtrack broadcast object:', e);
     }
@@ -1565,6 +1630,13 @@ $: {
         if (webRTCAdaptor === null) {
             initializeWebRTC();
         }
+    }
+    
+    // Compute representative self name from server data or cookie
+    if (isRepresentative && !data.representativeName) {
+        repSelfName = getRepresentativeCookieName();
+    } else if (data.representativeName) {
+        repSelfName = data.representativeName;
     }
     
     // Debug logging
@@ -2088,7 +2160,7 @@ function downloadICS(content, filename) {
       </button>
     </div>
   </div>
-{:else if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName}
+{:else if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName && !isRepresentative}
   <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
     <!-- Always render meeting room in the background -->
@@ -2121,6 +2193,7 @@ function downloadICS(content, filename) {
                     <div class="video-container bg-red h-full w-full relative">
                         <RepresentativeIndicator 
                             participants={meetingParticipants}
+                            selfName={repSelfName}
                             on:representativesUpdate={handleRepresentativesUpdate}
                         />
                         {#if isHost || isRepresentative}
@@ -2314,7 +2387,7 @@ function downloadICS(content, filename) {
     </div>
 
     <!-- Modal overlay for name input -->
-    {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName}
+    {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName && !isRepresentative}
       <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         <div class="relative z-50">
           <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />

@@ -14,11 +14,11 @@
   let uid = '';
 
   // Form data
-  let companyName = '';
-  let firstName = '';
-  let lastName = '';
-  let email = '';
-  let mobileNumber = '';
+  let companyName = 'Studio Blopp';
+  let firstName = 'Sam';
+  let lastName = 'Altman';
+  let email = 'sam@altman.com';
+  let mobileNumber = '+1234567890';
   let verificationCode = ['', '', '', '', ''];
   let verificationType = '';
 
@@ -37,6 +37,19 @@
     if (mobileNumber) mobileNumber = formatToE164(mobileNumber);
   }
 
+  function handleCodeInput(e: Event, i: number) {
+    const t = e.target as HTMLInputElement;
+    if (t.value.length > 1) t.value = t.value.slice(-1);
+    verificationCode[i] = t.value;
+    if (t.value && i < 4) {
+      const next = document.getElementById(`code-${i + 1}`) as HTMLInputElement | null;
+      next?.focus();
+    }
+    if (verificationCode.every((d) => d !== '') && verificationCode.join('').length === 5) {
+      handleVerification();
+    }
+  }
+
   async function handleLogin() {
     if (!companyName.trim() || !firstName.trim() || !lastName.trim() || !email.trim() || !mobileNumber.trim()) {
       toast.error('Please fill in all required fields');
@@ -53,6 +66,7 @@
       const res = await fetch('/api/representative/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           first_name: firstName.trim(),
           last_name: lastName.trim(),
@@ -86,14 +100,22 @@
       const res = await fetch('/api/representative/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email: email.trim(), code: verificationCode.join('') })
       });
       const result = await res.json();
       if (result.success) {
         toast.success('Verification successful');
+        // Fallback: ensure non-httpOnly rep_user cookie exists for client-side checks
+        try {
+          if (!document.cookie.includes('rep_user=')) {
+            document.cookie = `rep_user=${encodeURIComponent(JSON.stringify(result.user))}; Path=/; SameSite=Strict`;
+          }
+        } catch {}
         if (roomId) {
           const suffix = uid ? `?uid=${encodeURIComponent(uid)}` : '';
-          goto(`/room/${roomId}${suffix}`);
+          const repSuffix = result?.user?.id ? `${suffix ? '&' : '?'}repid=${encodeURIComponent(result.user.id)}` : '';
+          goto(`/room/${roomId}${suffix}${repSuffix}`);
         } else {
           goto('/representative/dashboard');
         }
@@ -180,9 +202,7 @@
             <Label class="block text-sm font-medium text-gray-700 mb-4 text-center">VERIFICATION CODE</Label>
             <div class="flex justify-center gap-3 mb-4">
               {#each Array(5) as _, i}
-                <input id={`code-${i}`} type="text" class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors" maxlength="1" pattern="[0-9]" on:input={(e) => {
-                  const t = e.target; if (t.value.length>1) t.value=t.value.slice(-1); verificationCode[i]=t.value; if (t.value && i<4) (document.querySelector(`#code-${i+1}`) )?.focus(); if (verificationCode.every(d => d!=='') && verificationCode.join('').length===5) handleVerification();
-                }} />
+                <input id={`code-${i}`} type="text" class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors" maxlength="1" pattern="[0-9]" on:input={(e) => handleCodeInput(e, i)} />
               {/each}
             </div>
             <p class="text-xs text-gray-500 text-center">Enter the 5-digit code sent to your {verificationType === 'sms' ? 'mobile phone' : 'email'}</p>

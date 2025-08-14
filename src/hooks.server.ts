@@ -33,6 +33,7 @@ declare global {
 export const handle: Handle = async ({ event, resolve }) => {
     const request = event.request;
     const cookies = cookie.parse(request.headers.get('cookie') || '');
+    const origin = request.headers.get('origin') || '';
 
     // Add CORS handling for API routes
     if (event.url.pathname.startsWith('/api')) {
@@ -40,8 +41,10 @@ export const handle: Handle = async ({ event, resolve }) => {
             return new Response(null, {
                 headers: {
                     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Origin': origin || '*',
                     'Access-Control-Allow-Headers': '*',
+                    'Access-Control-Allow-Credentials': 'true',
+                    Vary: 'Origin'
                 }
             });
         }
@@ -100,6 +103,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     const isAllowedForTransientSessions = (
         event.url.pathname.startsWith('/viewroom') ||
         event.url.pathname.startsWith('/room') ||
+        event.url.pathname.startsWith('/representative') ||
         event.url.pathname.startsWith('/api/viewroom') ||
         event.url.pathname.startsWith('/api/representative') ||
         event.url.pathname.startsWith('/api/stream') ||
@@ -141,7 +145,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     // Add CORS headers to API responses
     if (event.url.pathname.startsWith('/api')) {
-        response.headers.append('Access-Control-Allow-Origin', '*');
+        response.headers.set('Access-Control-Allow-Origin', origin || '*');
+        response.headers.set('Access-Control-Allow-Credentials', 'true');
+        response.headers.append('Vary', 'Origin');
     }
 
     return response;

@@ -24,13 +24,16 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
     const roomIdParam = params.roomId;  // Rename to make it clear this is the URL parameter
     const pb = locals.pb;
 
-    // Check for authentication - allow either normal PocketBase auth or viewroom auth
+    // Check for authentication - allow either normal PocketBase auth or viewroom/representative auth
     const isNormalAuth = locals.pb.authStore.isValid;
     const viewroomSession = cookies.get('viewroom_session');
     const viewroomUserCookie = cookies.get('viewroom_user');
+    const repSession = cookies.get('rep_session');
+    const repUserCookie = cookies.get('rep_user');
     const incomingUid = url.searchParams.get('uid') || '';
     
-    let viewroomUser = null;
+    let viewroomUser: any = null;
+    let representativeUser: { id: string; name?: string; email?: string; company?: string } | null = null;
     let authType = 'none';
     
     if (isNormalAuth) {
@@ -52,8 +55,19 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             const suffix = incomingUid ? `&uid=${encodeURIComponent(incomingUid)}` : '';
             throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
         }
+    } else if (repSession && repUserCookie) {
+        // Representative authenticated via rep cookies
+        try {
+            representativeUser = JSON.parse(repUserCookie);
+            authType = 'representative';
+        } catch (e) {
+            // If rep cookie malformed, fall back to viewroom login
+            const suffix = incomingUid ? `&uid=${encodeURIComponent(incomingUid)}` : '';
+            throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
+        }
+    } else if (url.searchParams.get('repid')) {
+        authType = 'representative';
     } else {
-        // No authentication at all - require viewroom login (preserve uid)
         const suffix = incomingUid ? `&uid=${encodeURIComponent(incomingUid)}` : '';
         throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
     }
@@ -155,6 +169,49 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
                 };
             } catch (error) {
                 console.error('Error handling representative access line 61:', error);
+                throw redirect(303, '/');
+            }
+        } else if (representativeUser) {
+            // Representative authenticated by cookie (no repid in URL)
+            try {
+                // Fetch representative to ensure it exists and for any expanded info
+                const representative = await locals.pb.collection('representatives').getOne(representativeUser.id, {
+                    expand: 'connected_content'
+                });
+
+                // Get the room with expanded relations
+                const roomRecords = await locals.pb.collection('rooms').getFullList({
+                    filter: `id = "${params.roomId}"`,
+                    expand: 'representative,host_content,representative_content,selected_video'
+                });
+
+                if (!roomRecords.length) {
+                    console.log('Room not found for representative cookie access');
+                    throw redirect(303, '/');
+                }
+
+                const room = roomRecords[0];
+
+                // Verify the representative has access to this room
+                if (!room.representative || !room.representative.includes(representativeUser.id)) {
+                    console.log('Representative (cookie) does not have access to this room');
+                    throw redirect(303, '/');
+                }
+
+                return {
+                    user: null,
+                    viewroomUser,
+                    authType,
+                    isViewroomAuthenticated: true,
+                    representatives: room.expand?.representative || [],
+                    users: [],
+                    roomId: [room],
+                    videoRepresentativesInfo: room.expand?.representative || [],
+                    representativeName: (representative.name || representativeUser.name || 'Representative') + ' (representative)',
+                    isRepresentative: true
+                };
+            } catch (error) {
+                console.error('Error handling cookie-based representative access:', error);
                 throw redirect(303, '/');
             }
         }

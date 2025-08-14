@@ -68,8 +68,8 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
     } else if (url.searchParams.get('repid')) {
         authType = 'representative';
     } else {
-        const suffix = incomingUid ? `&uid=${encodeURIComponent(incomingUid)}` : '';
-        throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
+        // Allow anonymous access (no redirect)
+        authType = 'anonymous';
     }
 
     try {

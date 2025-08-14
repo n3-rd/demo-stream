@@ -14,16 +14,8 @@ function parseRange(rangeHeader: string | null, totalSize: number) {
   return { start, end };
 }
 
-export const GET: RequestHandler = async ({ params, request, cookies }) => {
+export const GET: RequestHandler = async ({ params, request }) => {
   const { collection, id, fileId } = params as { collection: string; id: string; fileId: string };
-
-  // Basic authorization: allow if admin session OR viewroom session OR representative session exists
-  const hasAdmin = !!cookies.get('session');
-  const hasViewroom = !!cookies.get('viewroom_session');
-  const hasRep = !!cookies.get('rep_session');
-  if (!hasAdmin && !hasViewroom && !hasRep) {
-    return new Response('Forbidden', { status: 403 });
-  }
 
   try {
     // First get size and content type via direct blob id

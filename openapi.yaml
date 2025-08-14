@@ -689,15 +689,8 @@ paths:
       tags: [Representatives]
       security:
         - cookieAuth: []
-        - viewroomCookieAuth: []
-        - repCookieAuth: []
       responses:
-        '200':
-          description: Representatives retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
+        '200': { description: Representatives retrieved successfully }
     post:
       summary: Create representative
       tags: [Representatives]
@@ -709,96 +702,56 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required:
-                - first_name
-                - last_name
-                - email
-                - phone
+              required: [first_name, last_name, email, phone]
               properties:
-                first_name:
-                  type: string
-                  example: "Sam"
-                last_name:
-                  type: string
-                  example: "Altman"
-                email:
-                  type: string
-                  format: email
-                  example: "rep@company.com"
-                phone:
-                  type: string
-                  example: "+1234567890"
-                location:
-                  type: string
-                  example: "location_uuid"
-                is_active:
-                  type: string
-                  example: "true"
-                schedule:
-                  type: string
-                  example: "{\"monday\":\"9 AM - 5 PM\"}"
+                first_name: { type: string }
+                last_name: { type: string }
+                name: { type: string, description: "Optional full name; computed from first/last if provided" }
+                email: { type: string, format: email }
+                phone: { type: string }
+                is_active: { type: boolean }
+                schedule: { type: string }
       responses:
-        '200':
-          description: Representative created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
+        '200': { description: Representative created successfully }
     put:
       summary: Update representative
       tags: [Representatives]
       security:
         - cookieAuth: []
-        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
-              required:
-                - id
+              required: [id]
               properties:
-                id: { type: string, example: "rep123" }
+                id: { type: string }
                 first_name: { type: string }
                 last_name: { type: string }
-                name: { type: string, description: "Optional full name (computed as first + last)" }
+                name: { type: string }
                 email: { type: string, format: email }
                 phone: { type: string }
-                is_active: { type: string }
+                is_active: { type: boolean }
                 schedule: { type: string }
       responses:
-        '200':
-          description: Representative updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
+        '200': { description: Representative updated successfully }
     delete:
       summary: Delete representative
       tags: [Representatives]
       security:
         - cookieAuth: []
-        - viewroomCookieAuth: []
       requestBody:
         required: true
         content:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required:
-                - id
+              required: [id]
               properties:
-                id:
-                  type: string
-                  example: "rep123"
+                id: { type: string }
       responses:
-        '200':
-          description: Representative deleted successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
+        '200': { description: Representative deleted successfully }
 
   /api/locations:
     post:
@@ -1792,6 +1745,8 @@ paths:
     post:
       summary: Set representative location
       tags: [Representatives]
+      security:
+        - cookieAuth: []
       parameters:
         - in: path
           name: id
@@ -1874,3 +1829,60 @@ paths:
       responses:
         '200': { description: Verified }
         '400': { description: Invalid or expired } 
+
+  /api/representative/login:
+    post:
+      summary: Initiate representative login (sends 5-digit SMS code)
+      tags: [Representatives]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, company, email, phone]
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                company: { type: string, description: "Company name as text; resolved to company id" }
+                email: { type: string, format: email }
+                phone: { type: string, example: "+17005551234" }
+                roomId: { type: string, description: "Optional room id to infer company" }
+      responses:
+        '200': { description: Code sent }
+        '400': { description: Validation error }
+        '404': { description: Representative not found }
+
+  /api/representative/verify:
+    post:
+      summary: Verify representative code and create session (sets rep_session & rep_user cookies)
+      tags: [Representatives]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email }
+                code: { type: string, example: "12345" }
+      responses:
+        '200':
+          description: Verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  user:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      email: { type: string }
+                      name: { type: string }
+                      company: { type: string }
+        '400': { description: Invalid or expired code }
+        '404': { description: Representative not found } 

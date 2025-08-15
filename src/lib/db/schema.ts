@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, boolean, timestamp, jsonb, integer } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, boolean, timestamp, jsonb, integer, primaryKey } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -195,4 +195,12 @@ export const videos = pgTable('videos', {
   userId: uuid('user_id').notNull().references(() => users.id),
   name: text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-}); 
+});
+
+export const repDeviceTokens = pgTable('rep_device_tokens', {
+  repId: uuid('rep_id').notNull().references(() => representatives.id),
+  deviceToken: text('device_token').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.repId, table.deviceToken] })
+})); 

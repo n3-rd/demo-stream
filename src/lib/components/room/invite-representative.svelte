@@ -6,9 +6,8 @@
 	import Share from "./share.svelte";
 	import { page } from '$app/stores';
     import { Button } from "$lib/components/ui/button";
-    import { ClipboardCopy } from "lucide-svelte";
+    import { ClipboardCopy, Send } from "lucide-svelte";
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "$lib/components/ui/select";
-    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
     import { createEventDispatcher } from "svelte";
     export let shareURL: string;
 
@@ -18,6 +17,7 @@
     let dialogOpen = false;
     let selectedRepresentative: any = null;
     const joinURL = $page.url.href;
+    let isSendingInvite = false;
 
     let invitedRepresentative = '';
 
@@ -54,6 +54,49 @@
     function selectRepresentative(representative: any) {
         selectedRepresentative = representative;
         console.log('Representative selected:', representative);
+    }
+
+    async function sendInvite() {
+        if (!selectedRepresentative) return;
+        
+        isSendingInvite = true;
+        const inviteUrl = `${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}&uid=${uidExtracted}`;
+        
+        try {
+            const response = await fetch('/api/send-rep-invite', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-rep-phone': selectedRepresentative.phone || ''
+                },
+                body: JSON.stringify({
+                    rep_id: selectedRepresentative.id,
+                    room_id: $page.params.roomId,
+                    room_title: $page.data?.room?.title || 'View-Room',
+                    user_name: $page.data?.user?.name || 'Customer',
+                    invite_url: inviteUrl
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                toast.success(`Invite sent to ${selectedRepresentative.name}!`, {
+                    description: `SMS: ${result.sms_sent ? '✓' : '✗'} | Notification: ${result.notification_sent ? '✓' : '✗'}`
+                });
+            } else {
+                toast.error('Failed to send invite', {
+                    description: result.error || 'Unknown error occurred'
+                });
+            }
+        } catch (error) {
+            console.error('Error sending invite:', error);
+            toast.error('Failed to send invite', {
+                description: 'Network or server error'
+            });
+        } finally {
+            isSendingInvite = false;
+        }
     }
 </script>
 
@@ -139,6 +182,26 @@
                         </Button>
                     </div>
                     <p class="text-xs text-gray-500 mt-1">Share this link with {selectedRepresentative.name} to join as a representative</p>
+                    
+                    <!-- Send Invite Button -->
+                    <div class="mt-4">
+                        <Button
+                            class="w-full"
+                            on:click={sendInvite}
+                            disabled={isSendingInvite}
+                        >
+                            {#if isSendingInvite}
+                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Sending...
+                            {:else}
+                                <Send class="h-4 w-4 mr-2" />
+                                Send Invite via SMS & Notification
+                            {/if}
+                        </Button>
+                        <p class="text-xs text-gray-500 mt-2 text-center">
+                            Sends SMS and push notification to {selectedRepresentative.name}
+                        </p>
+                    </div>
                 </div>
             {/if}
 

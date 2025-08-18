@@ -11,23 +11,8 @@
   import HintValidate from '$lib/components/layout/hint-validate.svelte';
   import { slide } from 'svelte/transition';
   import { quintOut } from 'svelte/easing';
-	import { toast } from 'svelte-sonner';
-  import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
+	import { toast } from "svelte-sonner";
   import { onMount } from 'svelte';
-  
-  let PocketBase;
-  let pb = null;
-
-  onMount(async () => {
-    try {
-      const module = await import('pocketbase');
-      PocketBase = module.default;
-      pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
-      console.log('PocketBase initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize PocketBase:', error);
-    }
-  });
   
   export let userId = null;
   export let availableRepresentatives = [];
@@ -124,25 +109,25 @@
   }
 
   async function fetchRepresentativeDetails(rep) {
-    if (!rep || !pb) return;
+    if (!rep) return;
     
     try {
       console.log('Fetching details for representative:', rep);
       
-      // If the rep is already the full representative object from PocketBase
-      if (typeof rep === 'object' && rep.id && rep.collectionName === 'representatives') {
+      // If the rep is already the full representative object
+      if (typeof rep === 'object' && rep.id) {
         console.log('Using direct representative object from selection:', rep);
         representativeDetails = rep;
         return;
       }
       
-      // If rep has a direct ID
+      // If rep has a direct ID, fetch from the API
       if (typeof rep === 'object' && rep.id) {
         try {
-          // Try to fetch by ID directly
-          const record = await pb.collection('representatives').getOne(rep.id);
-          if (record) {
-            representativeDetails = record;
+          const response = await fetch(`/api/representatives/${rep.id}`);
+          if (response.ok) {
+            const repData = await response.json();
+            representativeDetails = repData.representative;
             console.log('Found representative by ID:', representativeDetails);
             return;
           }
@@ -162,13 +147,14 @@
           
           // Try to find by name first
           try {
-            const filter = `name='${cleanName}'`;
-            console.log('Searching with filter:', filter);
-            const records = await pb.collection('representatives').getList(1, 1, { filter });
-            if (records && records.items && records.items.length > 0) {
-              representativeDetails = records.items[0];
-              console.log('Found representative by name:', representativeDetails);
-              return;
+            const response = await fetch(`/api/representatives?name=${encodeURIComponent(cleanName)}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.representatives && data.representatives.length > 0) {
+                representativeDetails = data.representatives[0];
+                console.log('Found representative by name:', representativeDetails);
+                return;
+              }
             }
           } catch (nameError) {
             console.error('Error finding representative by name:', nameError);
@@ -184,13 +170,14 @@
           
           // Try to find by name first
           try {
-            const filter = `name='${cleanName}'`;
-            console.log('Searching with filter:', filter);
-            const records = await pb.collection('representatives').getList(1, 1, { filter });
-            if (records && records.items && records.items.length > 0) {
-              representativeDetails = records.items[0];
-              console.log('Found representative by name:', representativeDetails);
-              return;
+            const response = await fetch(`/api/representatives?name=${encodeURIComponent(cleanName)}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.representatives && data.representatives.length > 0) {
+                representativeDetails = data.representatives[0];
+                console.log('Found representative by name:', representativeDetails);
+                return;
+              }
             }
           } catch (nameError) {
             console.error('Error finding representative by name:', nameError);
@@ -201,33 +188,42 @@
       // As a fallback, if we've selected a representative from the dropdown, 
       // we can try to get all representatives and find a match
       console.log('Attempting fallback lookup for all representatives');
-      const allRepresentatives = await pb.collection('representatives').getFullList();
-      console.log('All representatives:', allRepresentatives);
-      
-      if (allRepresentatives && allRepresentatives.length > 0) {
-        // If we have a rep object with a streamId
-        if (typeof rep === 'object' && rep.streamId) {
-          const streamParts = rep.streamId.split('-');
-          const streamName = streamParts[streamParts.length - 1].replace(/_representative$/, '');
+      try {
+        const response = await fetch('/api/representatives');
+        if (response.ok) {
+          const data = await response.json();
+          const allRepresentatives = data.representatives || [];
+          console.log('All representatives:', allRepresentatives);
           
-          // Find by name match
-          const matchByName = allRepresentatives.find(r => 
-            r.name.toLowerCase() === streamName.toLowerCase()
-          );
-          
-          if (matchByName) {
-            representativeDetails = matchByName;
-            console.log('Found representative by name match:', representativeDetails);
-            return;
+          if (allRepresentatives.length > 0) {
+            // If we have a rep object with a streamId
+            if (typeof rep === 'object' && rep.streamId) {
+              const streamParts = rep.streamId.split('-');
+              const streamName = streamParts[streamParts.length - 1].replace(/_representative$/, '');
+              
+              // Find by name match
+              const matchByName = allRepresentatives.find(r => 
+                r.name.toLowerCase() === streamName.toLowerCase()
+              );
+              
+              if (matchByName) {
+                representativeDetails = matchByName;
+                console.log('Found representative by name match:', representativeDetails);
+                return;
+              }
+            }
+            
+            // If all else fails, just use the first representative
+            // You might want to remove this in production and show an error instead
+            representativeDetails = allRepresentatives[0];
+            console.log('Using first available representative as fallback:', representativeDetails);
+          } else {
+            console.error('No representatives found in the database');
+            representativeDetails = null;
           }
         }
-        
-        // If all else fails, just use the first representative
-        // You might want to remove this in production and show an error instead
-        representativeDetails = allRepresentatives[0];
-        console.log('Using first available representative as fallback:', representativeDetails);
-      } else {
-        console.error('No representatives found in the database');
+      } catch (error) {
+        console.error('Error fetching representatives:', error);
         representativeDetails = null;
       }
       
@@ -323,8 +319,16 @@
         // Fetch fresh data to make sure we have the latest scheduled_meetings
         const repId = typeof rep === 'object' && rep.id ? rep.id : null;
         if (repId) {
-          representativeDetails = await pb.collection('representatives').getOne(repId);
-          console.log('schedule console: Fetched fresh representative details:', representativeDetails);
+          try {
+            const response = await fetch(`/api/representatives/${repId}`);
+            if (response.ok) {
+              const repData = await response.json();
+              representativeDetails = repData.representative;
+              console.log('schedule console: Fetched fresh representative details:', representativeDetails);
+            }
+          } catch (error) {
+            console.error('Error fetching representative details:', error);
+          }
         } else {
           await fetchRepresentativeDetails(rep);
         }
@@ -492,85 +496,95 @@
     try {
       // First fetch representative details
       console.log('schedule console: Current representative details:', representativeDetails);
-      const currentRep = await pb.collection('representatives').getOne(representativeDetails.id);
-      console.log('schedule console: Fetched current rep data:', currentRep);
-      
-      // Parse existing meetings
-      let scheduledMeetings = {};
-      if (currentRep.scheduled_meetings) {
-        try {
-          scheduledMeetings = typeof currentRep.scheduled_meetings === 'string' 
-            ? JSON.parse(currentRep.scheduled_meetings) 
-            : { ...currentRep.scheduled_meetings };
-          console.log('schedule console: Parsed existing meetings:', scheduledMeetings);
-        } catch (e) {
-          console.error('schedule console: Error parsing existing meetings:', e);
+      try {
+        const response = await fetch(`/api/representatives/${representativeDetails.id}`);
+        if (response.ok) {
+          const repData = await response.json();
+          const currentRep = repData.representative;
+          console.log('schedule console: Fetched current rep data:', currentRep);
+          
+          // Parse existing meetings
+          let scheduledMeetings = {};
+          if (currentRep.scheduled_meetings) {
+            try {
+              scheduledMeetings = typeof currentRep.scheduled_meetings === 'string' 
+                ? JSON.parse(currentRep.scheduled_meetings) 
+                : { ...currentRep.scheduled_meetings };
+              console.log('schedule console: Parsed existing meetings:', scheduledMeetings);
+            } catch (e) {
+              console.error('schedule console: Error parsing existing meetings:', e);
+            }
+          }
+
+          const bookingDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+          console.log('schedule console: Booking date:', bookingDate);
+
+          if (!scheduledMeetings[bookingDate]) {
+            scheduledMeetings[bookingDate] = [];
+          }
+
+          // Make sure we have a selected slot
+          if (!selectedSlot) {
+            console.error('schedule console: No time slot selected');
+            toast.error('Please select a time slot');
+            return;
+          }
+
+          // Prepare meeting data
+          const newMeeting = {
+            time: selectedSlot.time,
+            customer_name: fullName,
+            customer_email: email,
+            customer_phone: phoneNumber,
+            room_name: roomName,
+            appointment_title: appointmentTitle || '',
+            additional_information: additionalInformation || '',
+            customer_address: {
+              street: address.street || '',
+              city: address.city || '',
+              state: address.state || '',
+              zip: address.zip || '',
+              country: address.country || ''
+            }
+          };
+          console.log('schedule console: New meeting to add:', newMeeting);
+
+          // Store all the data we need for appointment creation
+          pendingAppointmentData = {
+            scheduledMeetings,
+            bookingDate,
+            newMeeting,
+            representativeDetails,
+            currentRep
+          };
+          
+          // Show the confirmation dialog first
+          const urlParams = new URLSearchParams(window.location.search);
+          const uid = urlParams.get('uid') || generateUniqueRoomId();
+          const roomId = roomName || generateUniqueRoomId();
+
+          // Store the roomId for consistent usage
+          pendingAppointmentData.roomId = roomId;
+          pendingAppointmentData.uid = uid;
+
+          // Use the same domain in both places
+          const domain = window.location.hostname === 'localhost' ? 'https://viewroom.ca' : window.location.origin;
+          const roomUrl = `${domain}/room/${roomId}?uid=${uid}`;
+
+          appointmentDetails = {
+            date: selectedDate.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}),
+            time: selectedSlot.time,
+            representativeName: representativeDetails.name,
+            location: representativeDetails.location || 'Online',
+            roomUrl: roomUrl
+          };
+          showAppointmentConfirmation = true;
         }
-      }
-
-      const bookingDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
-      console.log('schedule console: Booking date:', bookingDate);
-
-      if (!scheduledMeetings[bookingDate]) {
-        scheduledMeetings[bookingDate] = [];
-      }
-
-      // Make sure we have a selected slot
-      if (!selectedSlot) {
-        console.error('schedule console: No time slot selected');
-        toast.error('Please select a time slot');
+      } catch (error) {
+        console.error('Error fetching representative details:', error);
+        toast.error('Failed to fetch representative details. Please try again.');
         return;
       }
-
-      // Prepare meeting data
-      const newMeeting = {
-        time: selectedSlot.time,
-        customer_name: fullName,
-        customer_email: email,
-        customer_phone: phoneNumber,
-        room_name: roomName,
-        appointment_title: appointmentTitle || '',
-        additional_information: additionalInformation || '',
-        customer_address: {
-          street: address.street || '',
-          city: address.city || '',
-          state: address.state || '',
-          zip: address.zip || '',
-          country: address.country || ''
-        }
-      };
-      console.log('schedule console: New meeting to add:', newMeeting);
-
-      // Store all the data we need for appointment creation
-      pendingAppointmentData = {
-        scheduledMeetings,
-        bookingDate,
-        newMeeting,
-        representativeDetails,
-        currentRep
-      };
-      
-      // Show the confirmation dialog first
-      const urlParams = new URLSearchParams(window.location.search);
-      const uid = urlParams.get('uid') || generateUniqueRoomId();
-      const roomId = roomName || generateUniqueRoomId();
-
-      // Store the roomId for consistent usage
-      pendingAppointmentData.roomId = roomId;
-      pendingAppointmentData.uid = uid;
-
-      // Use the same domain in both places
-      const domain = window.location.hostname === 'localhost' ? 'https://viewroom.ca' : window.location.origin;
-      const roomUrl = `${domain}/room/${roomId}?uid=${uid}`;
-
-      appointmentDetails = {
-        date: selectedDate.toLocaleDateString('en-US', {month: 'long', day: 'numeric', year: 'numeric'}),
-        time: selectedSlot.time,
-        representativeName: representativeDetails.name,
-        location: representativeDetails.location || 'Online',
-        roomUrl: roomUrl
-      };
-      showAppointmentConfirmation = true;
       
     } catch (error) {
       console.error('schedule console: Error in scheduling process:', error);
@@ -722,9 +736,24 @@
         scheduled_meetings: JSON.stringify(scheduledMeetings)
       };
       
-      const updatedRep = await pb.collection('representatives')
-        .update(representativeDetails.id, updateData);
-      console.log('schedule console: Successfully updated meetings:', updatedRep);
+      try {
+        const response = await fetch(`/api/representatives/${representativeDetails.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+          const updatedRep = await response.json();
+          console.log('schedule console: Successfully updated meetings:', updatedRep);
+        } else {
+          console.error('Failed to update representative meetings');
+          throw new Error('Failed to update representative meetings');
+        }
+      } catch (error) {
+        console.error('Error updating representative meetings:', error);
+        throw error;
+      }
       
       // Create a unique room ID if not provided
       const roomId = pendingAppointmentData.roomId || roomName || generateUniqueRoomId();
@@ -733,12 +762,6 @@
       // Construct the room URL with uid parameter
       const domain = window.location.hostname === 'localhost' ? 'https://viewroom.ca' : window.location.origin;
       const roomUrl = `${domain}/room/${roomId}?uid=${uid}`;
-      
-      // FIXED: Make sure PocketBase is initialized properly
-      if (!pb) {
-        console.error('PocketBase is not initialized!');
-        throw new Error('Database connection not available');
-      }
       
       // Parse the time slot properly
       const timeSlotParts = selectedSlot.time.split(' - ')[0].trim().split(' ');
@@ -763,77 +786,70 @@
       const scheduleTimeIso = scheduleDate.toISOString();
       console.log('Formatted schedule time:', scheduleTimeIso);
       
-      // FIXED: Create proper scheduled room data structure
+      // Create proper scheduled room data structure
       const scheduledRoomData = {
         title: appointmentTitle || `Meeting with ${representativeDetails.name}`,
-        representative: [representativeDetails.id], // Array of representative IDs
-        scheduled: true,
+        representative_ids: [representativeDetails.id], // Array of representative IDs
         schedule_time: scheduleTimeIso,
         customer_name: fullName,
         customer_email: email,
         customer_phone: phoneNumber,
         room_id: roomId,
         additional_information: additionalInformation || '',
-        meeting_status: 'scheduled',
         meeting_duration: 60, // Default to 60 minutes
-        join_before_minutes: 15, // Allow joining 15 minutes before
-        participants_joined: JSON.stringify([])
+        join_before_minutes: 15 // Allow joining 15 minutes before
       };
-
-      // FIXED: Only add content relations if they exist and are valid
-      // If host_content is available, add it
-      if (representativeDetails.host_content && Array.isArray(representativeDetails.host_content) && representativeDetails.host_content.length > 0) {
-        scheduledRoomData.host_content = representativeDetails.host_content;
-      }
-      
-      // If representative_content is available, add it
-      if (representativeDetails.representative_content && Array.isArray(representativeDetails.representative_content) && representativeDetails.representative_content.length > 0) {
-        scheduledRoomData.representative_content = representativeDetails.representative_content;
-      }
 
       // For debugging - log the final scheduled room data    
       console.log('Creating scheduled room record:', scheduledRoomData);
       
-      // FIXED: Explicitly handle creation errors
+      // Create the scheduled room using the new API
       try {
-        // Ensure we're using the most recent PocketBase instance
-        const scheduledRoom = await pb.collection('scheduled_rooms').create(scheduledRoomData);
-        console.log('Successfully created scheduled room record:', scheduledRoom);
+        const response = await fetch('/api/schedule-room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(scheduledRoomData)
+        });
         
-        // Add the scheduled room ID to the confirmation data
-        if (scheduledRoom && scheduledRoom.id) {
-          pendingAppointmentData.scheduledRoomId = scheduledRoom.id;
+        if (response.ok) {
+          const scheduledRoom = await response.json();
+          console.log('Successfully created scheduled room record:', scheduledRoom);
           
-          // Set variables for the success dialog
-          createdRoomId = roomId;
-          createdRoomUrl = roomUrl;
+          // Add the scheduled room ID to the confirmation data
+          if (scheduledRoom.scheduled_room && scheduledRoom.scheduled_room.id) {
+            pendingAppointmentData.scheduledRoomId = scheduledRoom.scheduled_room.id;
+            
+            // Set variables for the success dialog
+            createdRoomId = roomId;
+            createdRoomUrl = roomUrl;
+            
+            // Show confirmation popup
+            showConfirmationPopup = true;
+            
+            // REDIRECT OPTION: After confirmation is closed, user will be redirected to waiting room
+            // This code can be triggered when the confirmation is closed if preferred
+            setTimeout(() => {
+              // In a real implementation, you would use a proper navigation method
+              // window.location.href = roomUrl;
+              // Or if you're using SvelteKit:
+              // import { goto } from '$app/navigation';
+              // goto(roomUrl);
+            }, 5000); // Optional delay before redirect
+          }
+        } else {
+          const errorData = await response.json();
+          console.error('Error creating scheduled room record:', errorData);
           
-          // Show confirmation popup
-          showConfirmationPopup = true;
-          
-          // REDIRECT OPTION: After confirmation is closed, user will be redirected to waiting room
-          // This code can be triggered when the confirmation is closed if preferred
-          setTimeout(() => {
-            // In a real implementation, you would use a proper navigation method
-            // window.location.href = roomUrl;
-            // Or if you're using SvelteKit:
-            // import { goto } from '$app/navigation';
-            // goto(roomUrl);
-          }, 5000); // Optional delay before redirect
+          // Show detailed error message
+          if (errorData.error) {
+            toast.error(`Failed to create meeting record: ${errorData.error}`);
+          } else {
+            toast.error(`Failed to create meeting record: ${response.statusText}`);
+          }
         }
       } catch (scheduledRoomError) {
         console.error('Error creating scheduled room record:', scheduledRoomError);
-        console.error('Error details:', scheduledRoomError.data ? scheduledRoomError.data : scheduledRoomError.message);
-        
-        // Show detailed error message
-        if (scheduledRoomError.data) {
-          // PocketBase validation errors
-          const errorFields = Object.keys(scheduledRoomError.data);
-          const errorMessages = errorFields.map(field => `${field}: ${scheduledRoomError.data[field].message}`);
-          toast.error(`Failed to create meeting record: ${errorMessages.join(', ')}`);
-        } else {
-          toast.error(`Failed to create meeting record: ${scheduledRoomError.message}`);
-        }
+        toast.error(`Failed to create meeting record: ${scheduledRoomError.message}`);
       }
       
       // Show confirmation popup
@@ -957,12 +973,12 @@
   }
 
   // Helper function to extract participant name
-  function getParticipantName(participant) {
+  function getParticipantName(participant: any) {
     if (typeof participant === 'string') {
       const nameWithoutPrefix = participant.split('-').pop() || '';
       return nameWithoutPrefix.replace(/_+representative/g, '');
-    } else if (participant && participant.streamId) {
-      const nameWithoutPrefix = participant.streamId.split('-').pop() || '';
+    } else if (participant && typeof participant === 'object' && 'streamId' in participant) {
+      const nameWithoutPrefix = (participant.streamId as string).split('-').pop() || '';
       return nameWithoutPrefix.replace(/_+representative/g, '');
     }
     return 'Unknown User';
@@ -1437,9 +1453,8 @@
                 bind:value 
                 class="rounded-md w-full" 
                 isDateDisabled={isDateDisabled}
-                renderDate={customDateCell}
-                on:click={() => {
-                  console.log('Calendar click event triggered');
+                on:keydown={() => {
+                  console.log('Calendar keydown event triggered');
                   selectedDate = new Date(value.year, value.month - 1, value.day);
                   
                   // Fetch slots after date selection

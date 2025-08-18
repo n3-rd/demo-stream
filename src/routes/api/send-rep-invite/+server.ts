@@ -13,13 +13,18 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // Get representative info and FCM token
-    const tokenRecord = await db
-      .select()
-      .from(repDeviceTokens)
-      .where(eq(repDeviceTokens.repId, rep_id))
-      .limit(1);
+    let deviceToken = null;
+    try {
+      const tokenRecord = await db
+        .select()
+        .from(repDeviceTokens)
+        .where(eq(repDeviceTokens.repId, rep_id))
+        .limit(1);
 
-    const deviceToken = tokenRecord.length > 0 ? tokenRecord[0].deviceToken : null;
+      deviceToken = tokenRecord.length > 0 ? tokenRecord[0].deviceToken : null;
+    } catch (tokenError) {
+      console.warn('Could not fetch device token:', tokenError);
+    }
 
     // Send SMS invite
     let smsSent = false;

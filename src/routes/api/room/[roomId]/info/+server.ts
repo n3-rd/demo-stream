@@ -2,6 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/db/drizzle';
 import { rooms } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
+import {DATABASE_URL} from '$env/static/private';
 
 export async function GET({ params, locals }) {
   try {
@@ -83,7 +84,7 @@ export const PUT: RequestHandler = async ({ request, locals, params }) => {
         let pbUpdated = false;
 
         // Prefer Postgres (Drizzle) if configured
-        if (process.env.DATABASE_URL) {
+        if (DATABASE_URL) {
             const pgUpdate: Record<string, any> = {};
             if (title !== null) pgUpdate.title = title;
             if (isActiveRaw !== null) pgUpdate.isActive = isActiveRaw === 'true';

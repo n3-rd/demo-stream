@@ -1,130 +1,148 @@
 // src/routes/api/representatives.ts
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { db } from '$lib/db/drizzle';
+import { representatives } from '$lib/db/schema';
+import { eq, like, desc } from 'drizzle-orm';
 
-export async function GET({ locals }) {
-    if (!locals.pb.authStore.isValid) {
-        return json([], { status: 401 });
+export const GET: RequestHandler = async ({ url }) => {
+  try {
+    const name = url.searchParams.get('name');
+    const company = url.searchParams.get('company');
+
+    let query = db.select().from(representatives);
+
+    // Filter by name if provided
+    if (name) {
+      query = query.where(like(representatives.name, `%${name}%`));
     }
 
-    const user = locals.pb.authStore.model;
-
-    try {
-        const representatives = await locals.pb.collection('representatives').getFullList({
-            filter: `company = "${user.id}"`,
-            sort: '-created'
-        });
-
-        return json(representatives);
-    } catch (err) {
-        console.error('Error fetching representatives:', err);
-        return json([], { status: 500 });
-    }
-}
-
-export const POST: RequestHandler = async ({ request, locals }) => {
-    if (!locals.pb?.authStore.isValid) {
-        return new Response(JSON.stringify({
-            success: false,
-            message: 'Unauthorized'
-        }), { status: 401 });
+    // Filter by company if provided
+    if (company) {
+      query = query.where(eq(representatives.company, company));
     }
 
-    const formData = await request.formData();
+    // Order by creation date
+    query = query.orderBy(desc(representatives.createdAt));
+
+    const representativesList = await query;
     
-    try {
-        const first_name = String(formData.get('first_name') || '').trim();
-        const last_name = String(formData.get('last_name') || '').trim();
-        const name = [first_name, last_name].filter(Boolean).join(' ').trim() || String(formData.get('name') || '').trim();
-        const data = {
-            name,
-            first_name: first_name || null,
-            last_name: last_name || null,
-            email: formData.get('email') as string,
-            phone: formData.get('phone') as string,
-            company: locals.pb.authStore.model.id,
-            is_active: formData.get('is_active') === 'true',
-            schedule: formData.get('schedule') as string || '',
-            connected_content: []
-        } as any;
+    return json({
+      success: true,
+      representatives: representativesList
+    });
 
-        const record = await locals.pb.collection('representatives').create(data);
-        
-        return new Response(JSON.stringify({
-            success: true,
-            representative: record
-        }), { status: 200 });
-    } catch (error) {
-        console.error('Error creating representative:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            message: 'Failed to create representative'
-        }), { status: 500 });
-    }
+  } catch (error) {
+    console.error('Error fetching representatives:', error);
+    return json({ error: 'Internal server error' }, { status: 500 });
+  }
 };
 
-export const PUT: RequestHandler = async ({ request, locals }) => {
-    if (!locals.pb?.authStore.isValid) {
-        return new Response(JSON.stringify({
-            success: false,
-            message: 'Unauthorized'
-        }), { status: 401 });
-    }
-
-    const formData = await request.formData();
-    const id = formData.get('id') as string;
+export const POST: RequestHandler = async ({ request }) => {
+  try {
+    const data = await request.json();
     
-    try {
-        const first_name = String(formData.get('first_name') || '').trim();
-        const last_name = String(formData.get('last_name') || '').trim();
-        const name = [first_name, last_name].filter(Boolean).join(' ').trim() || String(formData.get('name') || '').trim();
-        const data = {
-            name,
-            first_name: first_name || null,
-            last_name: last_name || null,
-            email: formData.get('email') as string,
-            phone: formData.get('phone') as string,
-            is_active: formData.get('is_active') === 'true',
-            schedule: formData.get('schedule') as string || ''
-        } as any;
-
-        const record = await locals.pb.collection('representatives').update(id, data);
-        
-        return new Response(JSON.stringify({
-            success: true,
-            representative: record
-        }), { status: 200 });
-    } catch (error) {
-        console.error('Error updating representative:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            message: 'Failed to update representative'
-        }), { status: 500 });
+    // Validate required fields
+    if (!data.name || !data.email) {
+      return json({ 
+        error: 'Name and email are required' 
+      }, { status: 400 });
     }
+
+    // Create the representative
+    const newRepresentative = await db.insert(representatives).values({
+      name: data.name,
+      firstName: data.first_name || data.firstName,
+      lastName: data.last_name || data.lastName,
+      email: data.email,
+      phone: data.phone,
+      company: data.company,
+      isActive: data.is_active !== false,
+      schedule: data.schedule ? JSON.parse(data.schedule) : null,
+      avatar: data.avatar
+    }).returning();
+
+    return json({
+      success: true,
+      representative: newRepresentative[0]
+    });
+
+  } catch (error) {
+    console.error('Error creating representative:', error);
+    return json({ 
+      error: 'Failed to create representative' 
+    }, { status: 500 });
+  }
 };
 
-export const DELETE: RequestHandler = async ({ request, locals }) => {
-    if (!locals.pb?.authStore.isValid) {
-        return new Response(JSON.stringify({
-            success: false,
-            message: 'Unauthorized'
-        }), { status: 401 });
+export const PUT: RequestHandler = async ({ request, url }) => {
+  try {
+    const id = url.searchParams.get('id');
+    if (!id) {
+      return json({ error: 'Representative ID is required' }, { status: 400 });
     }
 
-    const formData = await request.formData();
-    const id = formData.get('id') as string;
+    const data = await request.json();
     
-    try {
-        await locals.pb.collection('representatives').delete(id);
-        
-        return new Response(JSON.stringify({
-            success: true,
-            message: 'Representative deleted successfully'
-        }), { status: 200 });
-    } catch (error) {
-        console.error('Error deleting representative:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            message: 'Failed to delete representative'
-        }), { status: 500 });
+    // Validate required fields
+    if (!data.name || !data.email) {
+      return json({ 
+        error: 'Name and email are required' 
+      }, { status: 400 });
     }
+
+    // Update the representative
+    const updatedRepresentative = await db
+      .update(representatives)
+      .set({
+        name: data.name,
+        firstName: data.first_name || data.firstName,
+        lastName: data.last_name || data.lastName,
+        email: data.email,
+        phone: data.phone,
+        isActive: data.is_active !== false,
+        schedule: data.schedule ? JSON.parse(data.schedule) : null,
+        avatar: data.avatar
+      })
+      .where(eq(representatives.id, id))
+      .returning();
+
+    if (updatedRepresentative.length === 0) {
+      return json({ error: 'Representative not found' }, { status: 404 });
+    }
+
+    return json({
+      success: true,
+      representative: updatedRepresentative[0]
+    });
+
+  } catch (error) {
+    console.error('Error updating representative:', error);
+    return json({ 
+      error: 'Failed to update representative' 
+    }, { status: 500 });
+  }
+};
+
+export const DELETE: RequestHandler = async ({ url }) => {
+  try {
+    const id = url.searchParams.get('id');
+    if (!id) {
+      return json({ error: 'Representative ID is required' }, { status: 400 });
+    }
+
+    await db
+      .delete(representatives)
+      .where(eq(representatives.id, id));
+
+    return json({
+      success: true,
+      message: 'Representative deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting representative:', error);
+    return json({ 
+      error: 'Failed to delete representative' 
+    }, { status: 500 });
+  }
 };

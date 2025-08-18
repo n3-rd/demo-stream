@@ -1765,6 +1765,93 @@ paths:
         '200': { description: Updated }
         '401': { description: Unauthorized }
 
+  /api/representatives/{id}/device-token:
+    post:
+      summary: Register a device token for a representative
+      tags: [Representatives]
+      security:
+        - repCookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+          example: "rep-abc123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_token]
+              properties:
+                device_token:
+                  type: string
+                  description: Firebase Cloud Messaging (FCM) device token
+                  example: "dQw4w9WgXcQ"
+      responses:
+        '200':
+          description: Device token registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Representative not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Remove a device token for a representative
+      tags: [Representatives]
+      security:
+        - repCookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+          example: "rep-abc123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_token]
+              properties:
+                device_token:
+                  type: string
+                  description: Firebase Cloud Messaging (FCM) device token to remove
+                  example: "dQw4w9WgXcQ"
+      responses:
+        '200':
+          description: Device token removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Representative or device token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /api/dev/mock-sms:
     get:
       summary: Get mock SMS codes (dev only)

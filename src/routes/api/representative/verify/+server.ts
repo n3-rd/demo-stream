@@ -1,20 +1,13 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 import { pb } from '$lib/pocketbase';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
   try {
-    const data = await request.json();
-    const { email, code } = data || {};
-
-    if (!email?.trim() || !code?.trim()) {
-      return json({ success: false, message: 'Email and code are required' }, { status: 400 });
-    }
-
-    const normalizedEmail = String(email).trim().toLowerCase();
+    const { email, code } = await request.json();
+    if (!email || !code) return json({ success: false, message: 'Email and code are required' }, { status: 400 });
 
     const verification = await pb.collection('verification_codes').getFirstListItem(
-      `user_email = "${normalizedEmail}" && code = "${code}" && used = false`
+      `user_email = "${email}" && code = "${code}" && used = false`
     ).catch(() => null);
 
     if (!verification) return json({ success: false, message: 'Invalid or expired code' }, { status: 400 });
@@ -24,8 +17,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
     await pb.collection('verification_codes').update(verification.id, { used: true });
 
-    // Lookup representative by email
-    const rep = await pb.collection('representatives').getFirstListItem(`email = "${normalizedEmail}"`).catch(() => null);
+    const rep = await pb.collection('representatives').getFirstListItem(`email = "${email}"`).catch(() => null);
     if (!rep) return json({ success: false, message: 'Representative not found' }, { status: 404 });
 
     // Issue representative session cookie
@@ -52,4 +44,4 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
     console.error('representative verify error', err);
     return json({ success: false, message: err?.message || 'Internal error' }, { status: 500 });
   }
-}; 
+};

@@ -1,11 +1,13 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly PUBLIC_ANT_MEDIA_URL: string;
-  readonly PUBLIC_POCKETBASE_INSTANCE: string;
-  // Add other environment variables as needed
+    readonly BREVO_API_KEY: string;
+    readonly PUBLIC_SMTP_FROM: string;
+    readonly PUBLIC_ANT_MEDIA_URL: string;
+    readonly PUBLIC_POCKETBASE_INSTANCE: string;
+    readonly PUBLIC_BREVO_SENDER_EMAIL: string;
 }
 
 interface ImportMeta {
-  readonly env: ImportMetaEnv;
+    readonly env: ImportMetaEnv;
 } 

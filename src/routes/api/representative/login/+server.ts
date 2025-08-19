@@ -1,9 +1,11 @@
 import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import type { RequestHandler } from '@sveltejs/kit';
 import { pb } from '$lib/pocketbase';
 import { telnyxSMS } from '$lib/services/telnyx';
+import { BREVO_API_KEY } from '$env/static/private';
+import { PUBLIC_BREVO_SENDER_EMAIL } from '$env/static/public';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, fetch }) => {
 	try {
 		const data = await request.json();
 		const { first_name, last_name, company, email, phone, roomId } = data || {};
@@ -68,10 +70,58 @@ export const POST: RequestHandler = async ({ request }) => {
 			verification_type: 'sms'
 		});
 
-		// Send SMS
-		await telnyxSMS.sendVerificationCode(normalizedPhone, code, company);
+		let smsSent = false;
+		let emailSent = false;
 
-		return json({ success: true, message: 'Verification code sent via SMS', verification_type: 'sms' });
+		// Send SMS
+		try {
+			smsSent = !!(await telnyxSMS.sendVerificationCode(normalizedPhone, code, company));
+		} catch (e) {
+			console.error('representative sms send error', e);
+		}
+
+		// Send Email via Brevo
+		try {
+			const emailPayload = {
+				sender: { name: "Viewroom.ca", email: PUBLIC_BREVO_SENDER_EMAIL },
+				to: [{ email: normalizedEmail, name: rep.name || 'Representative' }],
+				subject: 'Your Login Code',
+				htmlContent: `
+					<div style="font-family: Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+						<h2 style="text-align:center;color:#333;">Login Verification</h2>
+						<p>Hello${rep.name ? ` ${rep.name}` : ''},</p>
+						<p>Your login code is:</p>
+						<div style="background:#f8f9fa;border:2px solid #e9ecef;padding:30px;text-align:center;font-size:36px;font-weight:bold;letter-spacing:8px;margin:30px 0;border-radius:8px;color:#495057;">${code}</div>
+						<p><strong>This code expires in 5 minutes.</strong></p>
+					</div>
+				`,
+				tags: ['representative', 'verification']
+			};
+			const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+				method: 'POST',
+				headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
+				body: JSON.stringify(emailPayload)
+			});
+			emailSent = resp.ok;
+			if (!resp.ok) {
+				const t = await resp.text();
+				console.error('representative email send error', t);
+			}
+		} catch (e) {
+			console.error('representative email send exception', e);
+		}
+
+		const verificationMessage = smsSent && emailSent 
+			? 'Verification code sent via SMS and Email' 
+			: smsSent 
+				? 'Verification code sent via SMS' 
+				: 'Verification code sent via Email';
+
+		return json({ 
+			success: true, 
+			message: verificationMessage, 
+			verification_type: smsSent && emailSent ? 'both' : smsSent ? 'sms' : 'email' 
+		});
 	} catch (err: any) {
 		console.error('representative login error', err);
 		return json({ success: false, message: err?.message || 'Internal error' }, { status: 500 });

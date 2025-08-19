@@ -151,8 +151,10 @@ $: {
     if (room) {
         // Determine if user is host (owner of the room or anonymous host from embed)
         isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
-                               $page.url.searchParams.get('anonymous') === 'true';
-        isHost = (user?.id === room.owner_company) || isAnonymousHost;
+                           $page.url.searchParams.get('anonymous') === 'true';
+        isHost = (user?.id === room.owner_company) || 
+                 isAnonymousHost || 
+                 (room.host && room.host.includes($page.url.searchParams.get('hostUserId') || ''));
         
         // Set showGreetingPopup based on isAnonymousHost
         showGreetingPopup = isAnonymousHost;

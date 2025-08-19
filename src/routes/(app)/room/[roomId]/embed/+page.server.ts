@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
-import type { PageServerLoad, Actions } from './$types';
+import type { Actions } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
     if (!locals.pb) {
@@ -73,11 +74,47 @@ export const actions = {
             .replace(/\s+/g, '_')
             .replace(/[^a-zA-Z0-9-_]/g, '_');
 
-        // Return data for client-side navigation
-        return {
-            type: 'success',
-            roomId,
-            anonymousUserId: sanitizedUserId
-        };
+        try {
+            // Find the room
+            const rooms = await event.locals.pb.collection('rooms').getFullList({
+                filter: `id = "${roomId}"`
+            });
+
+            if (!rooms.length) {
+                return {
+                    status: 404,
+                    errors: {
+                        anonymousUserId: 'Room not found'
+                    }
+                };
+            }
+
+            const room = rooms[0];
+
+            // Update the room to add the user as a host if not already a host
+            const currentHosts = room.host || [];
+            if (!currentHosts.includes(sanitizedUserId)) {
+                await event.locals.pb.collection('rooms').update(room.id, {
+                    host: [...currentHosts, sanitizedUserId]
+                });
+            }
+
+            // Return data for client-side navigation
+            return {
+                type: 'success',
+                roomId,
+                anonymousUserId: sanitizedUserId,
+                // Add parameters to make the user a host
+                hostParams: `isHost=true&anonymous=true&hostUserId=${sanitizedUserId}`
+            };
+        } catch (error) {
+            console.error('Error joining room:', error);
+            return {
+                status: 500,
+                errors: {
+                    anonymousUserId: 'Failed to join room'
+                }
+            };
+        }
     }
 }; 

@@ -60,7 +60,7 @@
         if (!selectedRepresentative) return;
         
         isSendingInvite = true;
-        const inviteUrl = `${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}&uid=${uidExtracted}`;
+        const inviteUrl = `${$page.url.origin}/room/${$page.params.roomId}/representative?repid=${selectedRepresentative.id}&uid=${uidExtracted}`;
         
         try {
             const response = await fetch('/api/send-rep-invite', {
@@ -98,6 +98,11 @@
             isSendingInvite = false;
         }
     }
+
+    // Update the link display in the modal
+    $: inviteLink = selectedRepresentative 
+        ? `${$page.url.origin}/room/${$page.params.roomId}/representative?repid=${selectedRepresentative.id}&uid=${uidExtracted}` 
+        : '';
 </script>
 
 <!-- Comment out confirmation dialog -->
@@ -166,7 +171,7 @@
                     <div class="flex items-center gap-2 bg-gray-50 p-2 rounded">
                         <input 
                             type="text" 
-                            value={`${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}&uid=${uidExtracted}`}
+                            value={inviteLink}
                             class="flex-1 bg-transparent border-none text-sm text-gray-600 focus:outline-none"
                             readonly
                         />
@@ -174,7 +179,7 @@
                             variant="ghost"
                             size="sm"
                             on:click={() => {
-                                navigator.clipboard.writeText(`${$page.url.origin}/room/${$page.params.roomId}?repid=${selectedRepresentative.id}&uid=${uidExtracted}`);
+                                navigator.clipboard.writeText(inviteLink);
                                 toast.success('Link copied to clipboard');
                             }}
                         >

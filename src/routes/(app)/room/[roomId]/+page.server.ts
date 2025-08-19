@@ -231,6 +231,28 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
         const representatives = room.expand?.representative || [];
         const users = user ? await locals.pb.collection('users').getFullList() : [];
 
+        const hostUserId = url.searchParams.get('hostUserId');
+        
+        // If a host user is specified, add them to the room's host list
+        if (hostUserId) {
+            try {
+                // Check if the user is already a host
+                const isAlreadyHost = room.host && room.host.includes(hostUserId);
+                
+                if (!isAlreadyHost) {
+                    // Update the room to add the host
+                    await locals.pb.collection('rooms').update(room.id, {
+                        host: [...(room.host || []), hostUserId]
+                    });
+                    
+                    // Refresh the room data
+                    room.host = [...(room.host || []), hostUserId];
+                }
+            } catch (err) {
+                console.error('Failed to add host to room:', err);
+            }
+        }
+
         console.log('Room data loaded:', {
             id: room.id,
             hasHostContent: !!room.host_content,

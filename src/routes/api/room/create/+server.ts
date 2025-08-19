@@ -1,11 +1,12 @@
-import { json, type RequestHandler } from '@sveltejs/kit';
+import type { RequestHandler } from '@sveltejs/kit';
+import type { Locals } from '$types';
 
 function sanitizeStreamName(name: string): string {
-    if (!name) return '';
-    // First decode any URL encoded characters
-    const decodedName = decodeURIComponent(name);
-    // Then replace any spaces or special characters with underscores
-    return decodedName.replace(/[^a-zA-Z0-9-]/g, '_');
+    return name
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9._-]/g, '_')
+        .replace(/^_+|_+$/g, '');
 }
 
 export const POST: RequestHandler = async ({ request, cookies, locals }) => {
@@ -18,14 +19,14 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
     let userId: string | null = null;
     
     // Check if user is authenticated with PocketBase
-    if (locals.pb?.authStore.isValid) {
+    if ((locals as Locals).pb?.authStore.isValid) {
         authType = 'pocketbase';
-        userId = locals.pb.authStore.model.id;
+        userId = (locals as Locals).pb.authStore.model.id;
         viewroomUser = {
-            id: locals.pb.authStore.model.id,
-            login_name: locals.pb.authStore.model.username || locals.pb.authStore.model.email,
-            company: locals.pb.authStore.model.company_name || 'Company User',
-            email: locals.pb.authStore.model.email
+            id: (locals as Locals).pb.authStore.model.id,
+            login_name: (locals as Locals).pb.authStore.model.username || (locals as Locals).pb.authStore.model.email,
+            company: (locals as Locals).pb.authStore.model.company_name || 'Company User',
+            email: (locals as Locals).pb.authStore.model.email
         };
     } else if (viewroomSession && viewroomUserCookie) {
         // User has viewroom authentication
@@ -58,31 +59,26 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
     const roomId = `room-${Math.random().toString(36).substring(2, 7)}-${sanitizedUserId}`;
 
     try {
-        const room = await locals.pb.collection('rooms').create({
+        const room = await (locals as Locals).pb.collection('rooms').create({
             room_id: roomId,
-            associated_video: videoUrl,
-            associated_video_name: videoName,
-            created_by: userId
+            title: videoName,
+            video_url: videoUrl,
+            host_content: [videoUrl],
+            representative_content: [],
+            representative: [],
+            // Add the user as a host
+            host: [sanitizedUserId]
         });
-
-        console.log('room:', room);
 
         return new Response(JSON.stringify({
             success: true,
-            room: {
-                id: room.id,
-                room_id: roomId,
-                videoUrl: videoUrl,
-                videoName: videoName
-            },
-            message: 'Room created successfully'
+            room
         }), { status: 200 });
-    } catch (error) {
-        console.error('Error creating room:', error);
+    } catch (err) {
+        console.error('Error creating room:', err);
         return new Response(JSON.stringify({
             success: false,
-            message: 'Failed to create room',
-            status: 500
+            error: 'Failed to create room'
         }), { status: 500 });
     }
 }; 

@@ -26,7 +26,8 @@
                     // Use goto for navigation
                     const roomId = result.data.roomId;
                     const anonymousUserId = result.data.anonymousUserId;
-                    await goto(`/room/${roomId}?anonymousUserId=${anonymousUserId}&hostUserId=${anonymousUserId}`);
+                    const hostParams = result.data.hostParams;
+                    await goto(`/room/${roomId}?${hostParams}&anonymousUserId=${anonymousUserId}`);
                 } else if (result.type === 'error') {
                     toast.error('Failed to join room');
                 } else if (result.type === 'failure') {

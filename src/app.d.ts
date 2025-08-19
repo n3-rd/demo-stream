@@ -1,4 +1,50 @@
 /// <reference types="@sveltejs/kit" />
+/// <reference types="vite/client" />
+/// <reference types="svelte" />
+
+interface Locals {
+    pb: {
+        authStore: {
+            isValid: boolean;
+            model: {
+                id: string;
+                username?: string;
+                email?: string;
+                company_name?: string;
+                first_name?: string;
+                last_name?: string;
+                name?: string;
+            };
+        };
+        collection: (name: string) => {
+            create: (data: Record<string, any>) => Promise<any>;
+            getFirstListItem: (query: string) => Promise<any>;
+            getFullList: (options?: {
+                filter?: string;
+                expand?: string;
+                sort?: string;
+            }) => Promise<any[]>;
+            getOne: (id: string, options?: {
+                expand?: string;
+            }) => Promise<any>;
+            update: (id: string, data: Record<string, any>) => Promise<any>;
+        };
+    };
+    user?: {
+        id: string;
+        email?: string;
+        name?: string;
+    } | null;
+}
+
+interface ImportMetaEnv {
+    readonly VITE_PUBLIC_POCKETBASE_URL: string;
+    // Add other environment variables here
+}
+
+interface ImportMeta {
+    readonly env: ImportMetaEnv;
+}
 
 declare module '$env/static/public' {
 	export const PUBLIC_DAILY_API_KEY: string;
@@ -10,23 +56,7 @@ declare module '$env/static/public' {
 declare global {
 	namespace App {
 		// interface Error {}
-		interface Locals {
-			pb: typeof import('$lib/pocketbase').pb;
-			user: {
-				id: string;
-				email: string;
-				name?: string;
-			} | null;
-			userid: string;
-			session?: string;
-			viewroomUser?: {
-				id: string;
-				first_name: string;
-				last_name: string;
-				company: string;
-				email: string;
-			};
-		}
+		// interface Locals {}
 		// interface PageData {}
 		// interface PageState {}
 		interface Platform {}

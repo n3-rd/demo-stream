@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
-    const representativeId = url.searchParams.get('id');
+    const representativeId = url.searchParams.get('repid');
     console.log('representativeId:', representativeId);
 
     if (representativeId) {
@@ -18,21 +18,37 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
             // Verify the representative has access to this room
             if (!room.representative || !room.representative.includes(representativeId)) {
                 console.log('Representative does not have access to this room');
-                throw redirect(303, `/room/${params.roomId}/representative`);
+                return {
+                    error: 'You do not have permission to access this room.',
+                    representative: null,
+                    roomUrl: `/room/${params.roomId}`
+                };
             }
-            else {
-                // Redirect to the room with representative name appended
-                throw redirect(303, `/room/${params.roomId}?representativeName=${encodeURIComponent(representative.name + ' (representative)')}`);
-            }
-            
 
+            // If representative exists and has access, but not logged in, require login
+            return {
+                representative: {
+                    id: representative.id,
+                    name: representative.name,
+                    email: representative.email
+                },
+                roomUrl: `/room/${params.roomId}?repid=${representativeId}&uid=${url.searchParams.get('uid') || ''}`,
+                error: null
+            };
         } catch (error) {
             console.error('Error handling representative access:', error);
-            // throw redirect(303, `/room/${params.roomId}/representative`);
-            console.log('Error handling representative access:', error);
+            return {
+                error: 'Invalid representative invitation.',
+                representative: null,
+                roomUrl: `/room/${params.roomId}`
+            };
         }
     }
 
-    // If no representative ID, redirect to the regular room
-    throw redirect(303, `/room/${params.roomId}/representative`);
+    // If no representative ID, show error page
+    return {
+        error: 'No representative invitation found.',
+        representative: null,
+        roomUrl: `/room/${params.roomId}`
+    };
 };

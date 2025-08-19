@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { pb } from '$lib/pocketbase';
 import { telnyxSMS } from '$lib/services/telnyx';
 import { BREVO_API_KEY } from '$env/static/private';
-import { PUBLIC_BREVO_SENDER_EMAIL } from '$env/static/public';
+import { PUBLIC_BREVO_SENDER_EMAIL, PUBLIC_SMTP_FROM } from '$env/static/public';
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
 	try {
@@ -61,6 +61,8 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		// Generate code and store in verification_codes
 		const code = Math.floor(10000 + Math.random() * 90000).toString();
 		const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+		
+		// Create SMS verification code
 		await pb.collection('verification_codes').create({
 			user_email: normalizedEmail,
 			code,
@@ -68,6 +70,16 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			expires_at: expiresAt.toISOString(),
 			used: false,
 			verification_type: 'sms'
+		});
+
+		// Create Email verification code
+		await pb.collection('verification_codes').create({
+			user_email: normalizedEmail,
+			code,
+			phone_number: normalizedPhone,
+			expires_at: expiresAt.toISOString(),
+			used: false,
+			verification_type: 'email'
 		});
 
 		let smsSent = false;
@@ -83,7 +95,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		// Send Email via Brevo
 		try {
 			const emailPayload = {
-				sender: { name: "Viewroom.ca", email: PUBLIC_BREVO_SENDER_EMAIL },
+				sender: { name: "Viewroom.ca", email: PUBLIC_SMTP_FROM },
 				to: [{ email: normalizedEmail, name: rep.name || 'Representative' }],
 				subject: 'Your Login Code',
 				htmlContent: `
@@ -97,15 +109,18 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 				`,
 				tags: ['representative', 'verification']
 			};
+			console.log('Email Payload:', JSON.stringify(emailPayload, null, 2));
 			const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
 				method: 'POST',
 				headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
 				body: JSON.stringify(emailPayload)
 			});
+			console.log('Email Response Status:', resp.status);
+			const respText = await resp.text();
+			console.log('Email Response Body:', respText);
 			emailSent = resp.ok;
 			if (!resp.ok) {
-				const t = await resp.text();
-				console.error('representative email send error', t);
+				console.error('representative email send error', respText);
 			}
 		} catch (e) {
 			console.error('representative email send exception', e);

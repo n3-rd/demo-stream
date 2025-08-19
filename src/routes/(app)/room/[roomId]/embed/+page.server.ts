@@ -1,44 +1,13 @@
-import { error, redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { error } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ locals, params, cookies }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
     if (!locals.pb) {
         throw error(500, 'Database connection not available');
     }
 
-    // Check for authentication - allow either normal PocketBase auth or viewroom auth
-    const isNormalAuth = locals.pb.authStore.isValid;
-    const viewroomSession = cookies.get('viewroom_session');
-    const viewroomUserCookie = cookies.get('viewroom_user');
-    
-    let viewroomUser = null;
-    let authType = 'none';
-    
-    if (isNormalAuth) {
-        // User is logged in with normal PocketBase auth - allow access
-        authType = 'pocketbase';
-        viewroomUser = {
-            id: locals.pb.authStore.model.id,
-            first_name: locals.pb.authStore.model.first_name || locals.pb.authStore.model.username || 'User',
-            last_name: locals.pb.authStore.model.last_name || '',
-            company: locals.pb.authStore.model.company_name || 'Company User',
-            email: locals.pb.authStore.model.email
-        };
-    } else if (viewroomSession && viewroomUserCookie) {
-        // User has viewroom authentication
-        try {
-            viewroomUser = JSON.parse(viewroomUserCookie);
-            authType = 'viewroom';
-        } catch (e) {
-            throw redirect(303, `/viewroom/login?room=${params.roomId}`);
-        }
-    } else {
-        // No authentication at all - require viewroom login
-        throw redirect(303, `/viewroom/login?room=${params.roomId}`);
-    }
-
     try {
-        // Get the room with expanded relations, viewroom auth required
+        // Get the room with expanded relations, no authentication required
         const roomId = await locals.pb.collection('rooms').getFullList({
             filter: `id = "${params.roomId}"`,
             expand: 'representative,host_content,representative_content,selected_video'
@@ -50,16 +19,65 @@ export const load: PageServerLoad = async ({ locals, params, cookies }) => {
 
         const room = roomId[0];
 
-        // Return data for authenticated users
+        // Return data for all users
         return {
             room,
-            viewroomUser,
-            authType,
-            isViewroomAuthenticated: true,
-            isAnonymous: false
+            viewroomUser: null,
+            authType: 'none',
+            isViewroomAuthenticated: false,
+            isAnonymous: true
         };
     } catch (err) {
         console.error('Error loading room data:', err);
         throw error(500, 'Failed to load room data');
+    }
+};
+
+export const actions = {
+    joinRoom: async (event) => {
+        const formData = await event.request.formData();
+        const anonymousUserId = formData.get('anonymousUserId')?.toString() || '';
+        const roomId = event.params.roomId;
+
+        // Basic validation
+        if (!anonymousUserId || anonymousUserId.length < 3) {
+            return {
+                status: 400,
+                errors: {
+                    anonymousUserId: 'User ID must be at least 3 characters long'
+                }
+            };
+        }
+
+        if (anonymousUserId.length > 50) {
+            return {
+                status: 400,
+                errors: {
+                    anonymousUserId: 'User ID must be less than 50 characters'
+                }
+            };
+        }
+
+        // Only allow letters, numbers, underscores, and hyphens
+        if (!/^[a-zA-Z0-9_-]+$/.test(anonymousUserId)) {
+            return {
+                status: 400,
+                errors: {
+                    anonymousUserId: 'User ID can only contain letters, numbers, underscores, and hyphens'
+                }
+            };
+        }
+
+        // Sanitize the anonymous user ID
+        const sanitizedUserId = anonymousUserId
+            .replace(/\s+/g, '_')
+            .replace(/[^a-zA-Z0-9-_]/g, '_');
+
+        // Return data for client-side navigation
+        return {
+            type: 'success',
+            roomId,
+            anonymousUserId: sanitizedUserId
+        };
     }
 }; 

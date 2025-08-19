@@ -369,6 +369,16 @@ function initializeWebRTC() {
         // Reset join attempts
         joinAttempts = 0;
         
+        // Destroy existing WebRTC adaptor if it exists
+        if (webRTCAdaptor) {
+            try {
+                webRTCAdaptor.close();
+            } catch (closeError) {
+                console.warn('Error closing existing WebRTC adaptor:', closeError);
+            }
+            webRTCAdaptor = null;
+        }
+        
         // Check if mediaDevices is supported
         const supportsMedia = !!(navigator && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function');
         
@@ -393,7 +403,7 @@ function initializeWebRTC() {
             console.log('Enabling video for representative:', actualMediaConstraints);
         }
         
-        // Initialize WebRTC
+        // Initialize WebRTC with more robust configuration
         webRTCAdaptor = new WebRTCAdaptor({
             websocket_url: getWebSocketURL(),
             mediaConstraints: actualMediaConstraints,
@@ -417,7 +427,10 @@ function initializeWebRTC() {
             sdpConstraints: {
                 OfferToReceiveAudio: true,
                 OfferToReceiveVideo: true
-            }
+            },
+            // Add reconnection configuration
+            reconnectionTimeout: 5000,  // 5 seconds between reconnection attempts
+            maxReconnectionAttempts: 3  // Maximum number of reconnection attempts
         });
     } catch (error) {
         console.error('Error initializing WebRTC adapter:', error);
@@ -436,7 +449,7 @@ function initializeWebRTC() {
             });
         } catch (fallbackError) {
             console.error('Fallback initialization failed:', fallbackError);
-            alert('Your browser does not support the required features for this application. Please try a different browser.');
+            toast.error('Failed to initialize WebRTC. Please check your connection and try again.');
         }
     }
 }
@@ -879,13 +892,27 @@ function handleWebRTCError(error: string, message: string) {
     console.error("WebRTC Error:", error, message);
     connectionStatus = 'error';
     
-    // Show user-friendly error based on error type
-    if (error === "WebSocketNotConnected") {
-      toast.error("Connection to media server failed. Please check your internet connection and try again.");
-    } else if (error === "UserMediaError") {
-      toast.error("Cannot access camera or microphone. Please check your device permissions.");
-    } else {
-      console.error("WebRTC Error:", error, message);
+    // More comprehensive error handling
+    switch (error) {
+        case "WebSocketNotConnected":
+            toast.error("Connection to media server failed. Please check your internet connection and try again.");
+            break;
+        case "UserMediaError":
+            toast.error("Cannot access camera or microphone. Please check your device permissions.");
+            break;
+        case "notSetRemoteDescription":
+            // Specific handling for remote description error
+            console.warn("Remote description error. Attempting to reset WebRTC connection.");
+            // Attempt to reinitialize WebRTC
+            if (webrtcInitAttempts < MAX_WEBRTC_INIT_ATTEMPTS) {
+                setTimeout(initWithRetry, 1000);
+            } else {
+                toast.error("Persistent WebRTC connection issues. Please refresh the page.");
+            }
+            break;
+        default:
+            console.error("Unhandled WebRTC Error:", error, message);
+            toast.error("An unexpected WebRTC error occurred. Please try again.");
     }
 }
 

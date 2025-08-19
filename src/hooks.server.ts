@@ -19,13 +19,6 @@ declare global {
             user: User | null;
             userid: string;
             session?: string;
-            viewroomUser?: {
-                id: string;
-                first_name: string;
-                last_name: string;
-                company: string;
-                email: string;
-            };
         }
     }
 }
@@ -78,39 +71,35 @@ export const handle: Handle = async ({ event, resolve }) => {
         }
     }
 
-    // Protected viewroom routes - require viewroom session
-    const viewroomRoutes = /^\/viewroom\/(?!login)/;
+    // Remove viewroom route protection
+    // const viewroomRoutes = /^\/viewroom\/(?!login)/;
     
-    if (viewroomRoutes.test(event.url.pathname)) {
-        const viewroomSession = event.cookies.get('viewroom_session');
-        if (!viewroomSession) {
-            throw redirect(303, '/viewroom/login');
-        }
+    // if (viewroomRoutes.test(event.url.pathname)) {
+    //     const viewroomSession = event.cookies.get('viewroom_session');
+    //     if (!viewroomSession) {
+    //         throw redirect(303, '/viewroom/login');
+    //     }
         
-        // Add viewroom user to locals if available
-        const viewroomUserCookie = event.cookies.get('viewroom_user');
-        if (viewroomUserCookie) {
-            try {
-                event.locals.viewroomUser = JSON.parse(viewroomUserCookie);
-            } catch (e) {
-                // Invalid user cookie, redirect to login
-                throw redirect(303, '/viewroom/login');
-            }
-        }
-    }
+    //     // Add viewroom user to locals if available
+    //     const viewroomUserCookie = event.cookies.get('viewroom_user');
+    //     if (viewroomUserCookie) {
+    //         try {
+    //             event.locals.viewroomUser = JSON.parse(viewroomUserCookie);
+    //         } catch (e) {
+    //             // Invalid user cookie, redirect to login
+    //             throw redirect(303, '/viewroom/login');
+    //         }
+    //     }
+    // }
 
-    // Auto-clear viewroom/rep cookies when outside allowed paths to prevent leakage
+    // Auto-clear rep cookies when outside allowed paths to prevent leakage
     const isAllowedForTransientSessions = (
-        event.url.pathname.startsWith('/viewroom') ||
-        event.url.pathname.startsWith('/room') ||
         event.url.pathname.startsWith('/representative') ||
-        event.url.pathname.startsWith('/api/viewroom') ||
         event.url.pathname.startsWith('/api/representative') ||
         event.url.pathname.startsWith('/api/stream') ||
         event.url.pathname.startsWith('/api/files')
     );
 
-    const hadViewroom = !!event.cookies.get('viewroom_session');
     const hadRep = !!event.cookies.get('rep_session');
 
     const response = await resolve(event);
@@ -133,10 +122,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     // If navigating away, clear transient sessions so they can't access anything beyond the room context
     if (!isAllowedForTransientSessions) {
-        if (hadViewroom) {
-            response.headers.append('set-cookie', cookie.serialize('viewroom_session', '', { path: '/', maxAge: 0 }));
-            response.headers.append('set-cookie', cookie.serialize('viewroom_user', '', { path: '/', maxAge: 0 }));
-        }
         if (hadRep) {
             response.headers.append('set-cookie', cookie.serialize('rep_session', '', { path: '/', maxAge: 0 }));
             response.headers.append('set-cookie', cookie.serialize('rep_user', '', { path: '/', maxAge: 0 }));

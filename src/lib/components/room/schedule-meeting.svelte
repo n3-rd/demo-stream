@@ -13,6 +13,7 @@
   import { quintOut } from 'svelte/easing';
 	import { toast } from "svelte-sonner";
   import { onMount } from 'svelte';
+  import { PUBLIC_SMTP_FROM, PUBLIC_BREVO_API_KEY } from '$env/static/public';
   
   export let userId = null;
   export let availableRepresentatives = [];
@@ -688,19 +689,84 @@
       }
     };
     
+    // Prepare email payload for Brevo API
+    const emailPayload = {
+      sender: {
+        name: emailData.repName || "Meeting Scheduler",
+        email: PUBLIC_SMTP_FROM
+      },
+      to: [
+        {
+          email: emailData.customerEmail,
+          name: emailData.customerName
+        }
+      ],
+      cc: [
+        {
+          email: emailData.repEmail,
+          name: emailData.repName
+        }
+      ],
+      subject: `Appointment Confirmation: ${emailData.appointmentTitle || 'Meeting Scheduled'}`,
+      htmlContent: `
+        <html>
+          <body>
+            <h2>Appointment Confirmation</h2>
+            <p>Dear ${emailData.customerName},</p>
+            <p>Your appointment has been scheduled with ${emailData.repName}.</p>
+            <p>Date: ${emailData.bookingDate}</p>
+            <p>Time: ${emailData.bookingTime}</p>
+            <p>Room Link: <a href="${emailData.roomUrl}">${emailData.roomUrl}</a></p>
+            <p>Additional Information: ${emailData.additionalInformation || 'None'}</p>
+          </body>
+        </html>
+      `,
+      tags: ["appointment", "booking"]
+    };
+    
     // Show loading state and try to send email again
     showEmailConfirmModal = false;
     isEmailSending = true;
-    const emailSuccess = await sendEmailNotifications(emailData, 3); // Try harder with more retries
-    isEmailSending = false;
     
-    if (emailSuccess) {
-      // Email sent successfully on retry, create the appointment
-      await createAppointment();
-    } else {
-      // Email still failed, show confirmation popup again
+    try {
+      const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'api-key': PUBLIC_BREVO_API_KEY,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(emailPayload)
+      });
+      
+      const responseText = await resp.text();
+      let responseData;
+      
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        responseData = { text: responseText };
+        console.error('Failed to parse response as JSON:', responseText);
+      }
+      
+      isEmailSending = false;
+      
+      if (!resp.ok) {
+        console.error('Brevo API error:', resp.status, responseData);
+        showEmailConfirmModal = true;
+        emailErrorMessage = 'We still could not send the confirmation email after retrying.';
+        return false;
+      } else {
+        // Email sent successfully, create the appointment
+        await createAppointment();
+        return true;
+      }
+    } catch (error) {
+      console.error('Error in email sending process:', error);
+      isEmailSending = false;
       showEmailConfirmModal = true;
       emailErrorMessage = 'We still could not send the confirmation email after retrying.';
+      return false;
     }
   }
 
@@ -735,25 +801,7 @@
       const updateData = {
         scheduled_meetings: JSON.stringify(scheduledMeetings)
       };
-      
-      try {
-        const response = await fetch(`/api/representatives/${representativeDetails.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updateData)
-        });
-        
-        if (response.ok) {
-          const updatedRep = await response.json();
-          console.log('schedule console: Successfully updated meetings:', updatedRep);
-        } else {
-          console.error('Failed to update representative meetings');
-          throw new Error('Failed to update representative meetings');
-        }
-      } catch (error) {
-        console.error('Error updating representative meetings:', error);
-        throw error;
-      }
+// rep meetings should be updated in the database
       
       // Create a unique room ID if not provided
       const roomId = pendingAppointmentData.roomId || roomName || generateUniqueRoomId();
@@ -901,28 +949,54 @@
       try {
         console.log('schedule console: Attempt', attempt + 1, 'sending email');
         
-        // Create a copy of the data to avoid modifying the original
-        const emailData = {
-          ...data,
-          appointmentTitle: data.appointmentTitle || 'Meeting with ' + data.repName,
-          customerAddress: {
-            street: data.customerAddress?.street || '',
-            city: data.customerAddress?.city || '',
-            state: data.customerAddress?.state || '',
-            zip: data.customerAddress?.zip || '',
-            country: data.customerAddress?.country || ''
-          }
+        // Prepare email payload for Brevo API
+        const emailPayload = {
+          sender: {
+            name: data.repName || "Meeting Scheduler",
+            email: PUBLIC_SMTP_FROM
+          },
+          to: [
+            {
+              email: data.customerEmail,
+              name: data.customerName
+            }
+          ],
+          cc: [
+            {
+              email: data.repEmail,
+              name: data.repName
+            }
+          ],
+          subject: `Appointment Confirmation: ${data.appointmentTitle || 'Meeting Scheduled'}`,
+          htmlContent: `
+            <html>
+              <body>
+                <h2>Appointment Confirmation</h2>
+                <p>Dear ${data.customerName},</p>
+                <p>Your appointment has been scheduled with ${data.repName}.</p>
+                <p>Date: ${data.bookingDate}</p>
+                <p>Time: ${data.bookingTime}</p>
+                <p>Room Link: <a href="${data.roomUrl}">${data.roomUrl}</a></p>
+                <p>Additional Information: ${data.additionalInformation || 'None'}</p>
+              </body>
+            </html>
+          `,
+          tags: ["appointment", "booking"]
         };
         
-        // Use the Brevo API endpoint
-        const response = await fetch('/api/send-brevo-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(emailData)
+        // Use the Brevo API endpoint directly
+        const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            accept: 'application/json',
+            'api-key': PUBLIC_BREVO_API_KEY,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify(emailPayload)
         });
         
         // Get the full response text first to ensure we can handle any response format
-        const responseText = await response.text();
+        const responseText = await resp.text();
         let responseData;
         
         try {
@@ -932,37 +1006,29 @@
           console.error('Failed to parse response as JSON:', responseText);
         }
         
-        if (!response.ok) {
-          console.error('schedule console: Brevo API error:', response.status, responseData);
+        if (!resp.ok) {
+          console.error('schedule console: Brevo API error:', resp.status, responseData);
           
           if (attempt === maxRetries - 1) {
-            toast.error(`Email service error: ${responseData.error || response.statusText}`);
+            toast.error(`Email service error: ${responseData.error || resp.statusText}`);
             return false;
           }
         } else {
-          if (responseData.success) {
-            console.log('schedule console: Email sent successfully:', responseData);
-            toast.success('Appointment confirmation email sent successfully');
-      return true;
-          } else {
-            console.error('schedule console: Email sending failed:', responseData);
-            if (attempt === maxRetries - 1) {
-              toast.error(responseData.error || 'Failed to send email');
-              return false;
-            }
-          }
+          console.log('schedule console: Email sent successfully:', responseData);
+          toast.success('Appointment confirmation email sent successfully');
+          return true;
         }
         
         // Wait before retrying
         attempt++;
         await new Promise(r => setTimeout(r, 1000 * attempt)); // Exponential backoff
-    } catch (error) {
+      } catch (error) {
         console.error('schedule console: Error sending email (attempt ' + (attempt + 1) + '):', error);
         
         if (attempt === maxRetries - 1) {
           toast.error(`Network error: ${error.message}`);
-      return false;
-    }
+          return false;
+        }
         
         attempt++;
         await new Promise(r => setTimeout(r, 1000 * attempt));

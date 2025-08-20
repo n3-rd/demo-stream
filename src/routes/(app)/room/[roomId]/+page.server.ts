@@ -1,26 +1,8 @@
-import { json, redirect, type RequestHandler } from '@sveltejs/kit';
-import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
-import { Actions } from '@sveltejs/kit';
-import type { PageServerLoad } from "./$types";
-import { error } from '@sveltejs/kit';
-import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
-// import { pb as globalPb } from '$lib/pocketbase';
-import { PUBLIC_APP_URL } from '$env/static/public';
+import { error, redirect } from '@sveltejs/kit';
+import type { ServerLoad } from './$types';
+import type { Locals } from './$types';
 
-const DAILY_API_KEY = PUBLIC_DAILY_API_KEY as string;
-const sanitizeAssociatedVideo = (videoRef: string) => {
-    // Remove '/video/' prefix if present
-    let sanitizedVideo = videoRef.startsWith('/video/') ? videoRef.slice(7) : videoRef;
-
-    // Remove the last '.mp4' if present
-    if (sanitizedVideo.endsWith('.mp4')) {
-        sanitizedVideo = sanitizedVideo.slice(0, -4);
-    }
-
-    return sanitizedVideo;
-}
-
-export const load: PageServerLoad = async ({ locals, params, url, cookies }) => {
+export const load: ServerLoad = async ({ locals, params, url, cookies }: { locals: Locals, params: any, url: URL, cookies: any }) => {
     const roomIdParam = params.roomId;  // Rename to make it clear this is the URL parameter
     const pb = locals.pb;
 
@@ -33,7 +15,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
     const incomingUid = url.searchParams.get('uid') || '';
     
     let viewroomUser: any = null;
-    let representativeUser: { id: string; name?: string; email?: string; company?: string } | null = null;
+    let representativeUser: any = null;
     let authType = 'none';
     
     if (isNormalAuth) {
@@ -66,7 +48,41 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
         }
     } else if (url.searchParams.get('repid')) {
-        authType = 'representative';
+        // When repid is present, try to fetch representative details and set cookies
+        try {
+            const representativeId = url.searchParams.get('repid');
+            const representative = await pb.collection('representatives').getOne(representativeId);
+            
+            // Prepare representative session data
+            const repSession = JSON.stringify({ 
+                id: representative.id, 
+                email: representative.email, 
+                name: representative.name || `${representative.first_name} ${representative.last_name}`.trim(),
+                firstName: representative.first_name,
+                lastName: representative.last_name,
+                company: representative.company 
+            });
+
+            // Set session token and user data cookies
+            cookies.set('rep_session', representativeId, {
+                path: '/',
+                httpOnly: true,
+                sameSite: 'strict',
+                maxAge: 60 * 60 * 8  // 8 hours
+            });
+            cookies.set('rep_user', repSession, {
+                path: '/',
+                httpOnly: false,
+                sameSite: 'strict',
+                maxAge: 60 * 60 * 8  // 8 hours
+            });
+
+            authType = 'representative';
+        } catch (error) {
+            console.error('Failed to set representative cookies:', error);
+            // Fall back to anonymous access
+            authType = 'anonymous';
+        }
     } else {
         // Allow anonymous access (no redirect)
         authType = 'anonymous';
@@ -113,7 +129,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
         }
         
         // check if the room is active
-        const roomRecord = await locals.pb.collection('rooms').getFirstListItem(`id = "${params.roomId}"`);
+        const roomRecord = await pb.collection('rooms').getFirstListItem(`id = "${params.roomId}"`);
         if (!roomRecord.is_active) {
             throw redirect(303, '/');
         }
@@ -125,12 +141,12 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
         if (representativeId) {
             try {
                 // Get the representative from the representatives collection with expanded fields
-                const representative = await locals.pb.collection('representatives').getOne(representativeId, {
+                const representative = await pb.collection('representatives').getOne(representativeId, {
                     expand: 'connected_content'
                 });
                 
                 // Get the room with expanded relations
-                const roomRecords = await locals.pb.collection('rooms').getFullList({
+                const roomRecords = await pb.collection('rooms').getFullList({
                     filter: `id = "${params.roomId}"`,
                     expand: 'representative,host_content,representative_content,selected_video'
                 });
@@ -140,7 +156,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
                     throw redirect(303, '/');
                 }
 
-                const locations = await locals.pb.collection('locations').getFullList({
+                const locations = await pb.collection('locations').getFullList({
                     filter: `owner_company = "${locals.user?.id}"`,
                     sort: '-created'
                 });
@@ -163,7 +179,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
                     users: [],
                     roomId: [room],
                     videoRepresentativesInfo: room.expand?.representative || [],
-                    representativeName: representative.name + ' (representative)',
+                    representativeName: representative.name,
                     isRepresentative: true,
                     locations
                 };
@@ -175,12 +191,12 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             // Representative authenticated by cookie (no repid in URL)
             try {
                 // Fetch representative to ensure it exists and for any expanded info
-                const representative = await locals.pb.collection('representatives').getOne(representativeUser.id, {
+                const representative = await pb.collection('representatives').getOne(representativeUser.id, {
                     expand: 'connected_content'
                 });
 
                 // Get the room with expanded relations
-                const roomRecords = await locals.pb.collection('rooms').getFullList({
+                const roomRecords = await pb.collection('rooms').getFullList({
                     filter: `id = "${params.roomId}"`,
                     expand: 'representative,host_content,representative_content,selected_video'
                 });
@@ -207,7 +223,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
                     users: [],
                     roomId: [room],
                     videoRepresentativesInfo: room.expand?.representative || [],
-                    representativeName: (representative.name || representativeUser.name || 'Representative') + ' (representative)',
+                    representativeName: representative.name || representativeUser.name || 'Representative',
                     isRepresentative: true
                 };
             } catch (error) {
@@ -217,7 +233,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
         }
 
         // Regular room access
-        const roomRecords = await locals.pb.collection('rooms').getFullList({
+        const roomRecords = await pb.collection('rooms').getFullList({
             filter: `id = "${params.roomId}"`,
             expand: 'representative,host_content,representative_content,selected_video'
         });
@@ -229,7 +245,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
 
         const room = roomRecords[0];
         const representatives = room.expand?.representative || [];
-        const users = user ? await locals.pb.collection('users').getFullList() : [];
+        const users = user ? await pb.collection('users').getFullList() : [];
 
         const hostUserId = url.searchParams.get('hostUserId');
         
@@ -241,7 +257,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
                 
                 if (!isAlreadyHost) {
                     // Update the room to add the host
-                    await locals.pb.collection('rooms').update(room.id, {
+                    await pb.collection('rooms').update(room.id, {
                         host: [...(room.host || []), hostUserId]
                     });
                     
@@ -277,133 +293,6 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             error: true,
             message: 'Error checking room schedule. Please try again.'
         };
-    }
-};
-
-export const actions: Actions = {
-    'create-room': async ({ locals, fetch }) => {
-        const user = locals.pb.authStore.model;
-        const username = user.name;
-        const exp = Math.round(Date.now() / 1000) + 60 * 60 * 24;
-        const options = {
-            properties: {
-                exp,
-                userName: username,
-                enable_adaptive_simulcast: false,
-            }
-        };
-
-        try {
-            const res = await fetch('https://api.daily.co/v1/rooms', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${DAILY_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(options)
-            });
-
-            if (res.ok) {
-                const room = await res.json();
-                return json({
-                    success: true,
-                    room
-                }, { status: 200 });
-            } else {
-                return json({
-                    success: false
-                }, { status: res.status });
-            }
-        } catch (error) {
-            return json({
-                success: false,
-                message: 'something went wrong with the room submit!'
-            }, { status: 500 });
-        }
-    },
-    'send-email': async ({ request, locals, params }) => {
-        // Get the room ID from params
-        const roomId = params.roomId;
-        
-        // Get form data
-        const formData = await request.formData();
-        const name = formData.get('name');
-        const receipient = formData.get('receipient');
-        const url = formData.get('url');
-        
-        // Extract uid from URL if present
-        let uid = '';
-        try {
-            const urlObj = new URL(url?.toString() || '');
-            uid = urlObj.searchParams.get('uid') || '';
-        } catch (error) {
-            console.error('Error extracting uid from URL:', error);
-        }
-        
-        // Create a proper room link with uid
-        const baseUrl = PUBLIC_APP_URL || 'http://localhost:3001';
-        const roomLink = `${baseUrl}/room/${roomId}${uid ? `?uid=${uid}` : ''}`;
-        
-        try {
-            // Create email data with updated template
-            const emailData = {
-                to: receipient,
-                subject: `Invitation to join a meeting`,
-                html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #333;">You've been invited to a meeting</h2>
-                        <p>Hello ${name},</p>
-                        <p>You have been invited to join a meeting.</p>
-                        <p><strong>Room Link:</strong> <a href="${roomLink}">${roomLink}</a></p>
-                        <p>Click the link above to join the meeting.</p>
-                        <p>Best regards,<br>The Meeting Team</p>
-                    </div>
-                `
-            };
-            
-            // Send the email using your email service
-            // ... email sending code here ...
-            
-            return {
-                status: 200,
-                body: { success: true }
-            };
-        } catch (error) {
-            console.error('Error sending email:', error);
-            return {
-                status: 500,
-                body: { success: false, message: 'Failed to send email' }
-            };
-        }
-    },
-    'request-quote': async ({ request, locals }) => {
-        const formData = await request.formData();
-        const first_name = formData.get('first_name');
-        const last_name = formData.get('last_name');
-        const phone = formData.get('phone');
-        const email = formData.get('email');
-        const description = formData.get('description');
-
-        const data = {
-            first_name,
-            last_name,
-            phone,
-            email,
-            description
-        };
-        await locals.pb.collection('quotes').create(data).then((result) => {
-            console.log('Quote request created:', result);
-            return {
-                status: 200,
-                body: { message: 'Quote request created successfully' }
-            };
-        }).catch((err) => {
-            console.error('Failed to create quote request:', err);
-            return {
-                status: 500,
-                body: { error: 'Failed to create quote request' }
-            };
-        });
     }
 };
 

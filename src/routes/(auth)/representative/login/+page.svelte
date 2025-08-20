@@ -14,11 +14,11 @@
 	let uid = '';
 
 	// Form data
-	let companyName = '';
-	let firstName = '';
-	let lastName = '';
-	let email = '';
-	let mobileNumber = '';
+	let companyName = 'Studio Blopp';
+	let firstName = 'Sam';
+	let lastName = 'Altmana';
+	let email = 'sam@altman.com';
+	let mobileNumber = '+1234567890';
 	let verificationCode = ['', '', '', '', ''];
 	let verificationType = '';
 
@@ -104,21 +104,52 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ email: email.trim(), code: verificationCode.join('') })
+				body: JSON.stringify({ 
+					email: email.trim(), 
+					code: verificationCode.join(''),
+					first_name: firstName.trim(),
+					last_name: lastName.trim(),
+					company: companyName.trim()
+				})
 			});
 			const result = await res.json();
 			if (result.success) {
 				toast.success('Verification successful');
 				// Fallback: ensure non-httpOnly rep_user cookie exists for client-side checks
 				try {
-					if (!document.cookie.includes('rep_user=')) {
-						document.cookie = `rep_user=${encodeURIComponent(JSON.stringify(result.user))}; Path=/; SameSite=Strict`;
-					}
-				} catch {}
+					// Send cookie data to server for secure setting
+					await fetch('/api/representative/set-user-cookie', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						credentials: 'include',
+						body: JSON.stringify({
+							user: {
+								...result.user,
+								name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+								firstName: firstName.trim(),
+								lastName: lastName.trim(),
+								company: companyName.trim()
+							}
+						})
+					});
+				} catch (e) {
+					console.error('Failed to set representative cookie:', e);
+				}
 				if (roomId) {
-					const suffix = uid ? `?uid=${encodeURIComponent(uid)}` : '';
-					const repSuffix = result?.user?.id ? `${suffix ? '&' : '?'}repid=${encodeURIComponent(result.user.id)}` : '';
-					goto(`/room/${roomId}${suffix}${repSuffix}`);
+					// Fix URL construction - properly handle query parameters
+					const url = new URL(`/room/${roomId}`, window.location.origin);
+					
+					// Add uid parameter if it exists
+					if (uid) {
+						url.searchParams.set('uid', uid);
+					}
+					
+					// Add representative ID parameter
+					if (result?.user?.id) {
+						url.searchParams.set('repid', result.user.id);
+					}
+					
+					goto(url.pathname + url.search);
 				} else {
 					goto('/representative/dashboard');
 				}

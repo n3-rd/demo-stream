@@ -30,7 +30,7 @@
     onMount(() => {
         if (isRepresentative) {
             const representativeName = $page.url.searchParams.get('representativeName');
-            name = decodeURIComponent(representativeName + ' (Representative)' || '');
+            name = decodeURIComponent(representativeName || '');
             submitBtn?.click();
             dispatch('nameSubmitted', name.trim());
         }

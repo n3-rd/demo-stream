@@ -37,6 +37,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     import DocxViewer from '$lib/components/room/DocxViewer.svelte';
     import ImageViewer from '$lib/components/room/ImageViewer.svelte';
 	import { toast } from 'svelte-sonner';
+	import { getRepInfo } from '$lib/utils.js';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -206,8 +207,18 @@ function getRepresentativeCookieName(): string {
         if (!entry) return '';
         const json = decodeURIComponent(entry.split('=')[1] || '');
         const rep = JSON.parse(json);
-        return (rep?.name || '').toString();
-    } catch { return ''; }
+        
+        // Prioritize full name construction from firstName and lastName
+        if (rep?.firstName && rep?.lastName) {
+            return `${rep.firstName} ${rep.lastName}`.trim();
+        }
+        
+        // Fallback to name field
+        return (rep?.name || rep?.firstName || rep?.lastName || '').toString();
+    } catch { 
+        console.error('Failed to parse representative cookie');
+        return ''; 
+    }
 }
 
 // Keep a self name for indicator suppression
@@ -932,6 +943,17 @@ function formatDisplayName(name: string, isRepresentative = false): string {
     return isRepresentative ? `${formattedName}_representative` : formattedName;
 }
 
+// Helper function to get clean display name for UI (without _representative suffix)
+function getCleanDisplayName(name: string): string {
+    if (!name) return 'Unknown User';
+    return name.replace(/_+representative$/i, '').trim();
+}
+
+// can't use await at top-level in Svelte component scripts, so use an async IIFE if you want to log this
+(async () => {
+    console.log("repppp",await getRepInfo($page.url.searchParams.get('repid')));
+})();
+
 function joinRoom() {
     console.log('joinRoom called with:', {
         isScheduledMeeting,
@@ -957,15 +979,6 @@ function joinRoom() {
     
     console.log('Joining room with ID:', baseRoomId);
     
-    console.log('Joining room:', {
-        roomName,
-        sanitizedRoomName: sanitizeStreamName(roomName),
-        publishStreamId: publishStreamId || 'not set',
-        displayName: isAuthenticated ? name : $anonymousUser,
-        isRepresentative,
-        isScheduledMeeting
-    });
-
     if (!publishStreamId) {
         publishStreamId = generateRandomString(12);            
     }
@@ -977,16 +990,62 @@ function joinRoom() {
     } else if (data.representativeName) {
         displayName = formatDisplayName(data.representativeName, true);
     } else if (isRepresentative) {
-        // Fallback to cookie-derived name for representatives
-        const cookieName = getRepresentativeCookieName();
-        displayName = formatDisplayName(cookieName || 'Representative', true);
+        // Get representative name from the API response
+        const repId = $page.url.searchParams.get('repid');
+        if (repId) {
+            // Use the representative data we already fetched
+            getRepInfo(repId).then(repData => {
+                if (repData) {
+                    const repDisplayName = formatDisplayName(repData.name || `${repData.firstName} ${repData.lastName}`.trim(), true);
+                    console.log('Using representative name from API:', repDisplayName);
+                    
+                    // Now join with the correct name
+                    joinWithDisplayName(repDisplayName);
+                } else {
+                    // Fallback to cookie name
+                    const cookieName = getRepresentativeCookieName();
+                    const fallbackName = cookieName && cookieName.trim() ? cookieName : 'Representative';
+                    joinWithDisplayName(formatDisplayName(fallbackName, true));
+                }
+            }).catch(err => {
+                console.error('Error getting rep info:', err);
+                // Fallback to cookie name
+                const cookieName = getRepresentativeCookieName();
+                const fallbackName = cookieName && cookieName.trim() ? cookieName : 'Representative';
+                joinWithDisplayName(formatDisplayName(fallbackName, true));
+            });
+            return; // Exit early since we're handling this asynchronously
+        } else {
+            // Fallback to cookie name
+            const cookieName = getRepresentativeCookieName();
+            if (cookieName && cookieName.trim()) {
+                displayName = formatDisplayName(cookieName, true);
+            } else {
+                displayName = formatDisplayName('Representative', true);
+            }
+        }
     } else {
         displayName = formatDisplayName($anonymousUser);
     }
 
+    // If we have a synchronous displayName, join immediately
+    if (displayName) {
+        joinWithDisplayName(displayName);
+    }
+}
+
+// Helper function to join with a specific display name
+function joinWithDisplayName(displayName) {
     const sanitizedName = sanitizeStreamName(displayName);
-    // Use the unique room name with uid for the stream
     const sanitizedRoomName = sanitizeStreamName(roomName);
+
+    console.log('Joining room with display name:', {
+        displayName,
+        sanitizedName,
+        sanitizedRoomName,
+        isRepresentative,
+        isScheduledMeeting
+    });
 
     // First check if the stream exists
     console.log('Checking if stream exists:', sanitizedRoomName);
@@ -1651,6 +1710,36 @@ $: {
     urlRepresentativeName = data.representativeName || '';
     anonymousUserId = $anonymousUser;
     hostUserId = $page.url.searchParams.get('hostUserId');
+    
+    // Clean up URL parameters to prevent double-encoding
+    const searchParams = $page.url.searchParams;
+    const cleanParams = new URLSearchParams();
+    
+    // Carefully transfer parameters
+    if (searchParams.get('repid')) {
+        cleanParams.set('repid', searchParams.get('repid'));
+    }
+    if (searchParams.get('uid')) {
+        cleanParams.set('uid', searchParams.get('uid'));
+    }
+    if (searchParams.get('isHost')) {
+        cleanParams.set('isHost', searchParams.get('isHost'));
+    }
+    if (searchParams.get('anonymous')) {
+        cleanParams.set('anonymous', searchParams.get('anonymous'));
+    }
+    if (searchParams.get('hostUserId')) {
+        cleanParams.set('hostUserId', searchParams.get('hostUserId'));
+    }
+    
+    // Update URL if parameters are not clean
+    if (cleanParams.toString() !== searchParams.toString()) {
+        history.replaceState(
+            null, 
+            '', 
+            `${$page.url.pathname}?${cleanParams.toString()}`
+        );
+    }
     
     // If we have a representative name, set it as the anonymous user with proper formatting
     if (data.representativeName && !$anonymousUser) {

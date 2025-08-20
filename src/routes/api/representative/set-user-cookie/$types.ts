@@ -1,0 +1,1 @@
+export type RequestHandler = import('@sveltejs/kit').RequestHandler; 

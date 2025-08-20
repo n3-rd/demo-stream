@@ -46,3 +46,19 @@ export const flyAndScale = (
 		easing: cubicOut
 	};
 };
+
+const getRepInfo = async (representativeId: string) => {
+  try {
+    const response = await fetch(`/api/representatives/${representativeId}`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.representative;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching representative:', error);
+    return null;
+  }
+};
+
+export { getRepInfo }; 

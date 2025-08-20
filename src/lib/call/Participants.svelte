@@ -29,6 +29,27 @@ import Share from '$lib/components/room/share.svelte';
     return 'Unknown User';
   }
 
+  // Helper function to get clean name for comparison
+  function getCleanName(inputName: any): string {
+    if (!inputName) return '';
+    
+    // Handle different input types
+    let nameStr = '';
+    if (typeof inputName === 'string') {
+      nameStr = inputName;
+    } else if (inputName && typeof inputName === 'object') {
+      // If it's an object, try to get the name from streamId or other properties
+      if (inputName.streamId) {
+        nameStr = inputName.streamId.split('-').pop() || '';
+      } else if (inputName.name) {
+        nameStr = inputName.name;
+      }
+    }
+    
+    if (!nameStr) return '';
+    return nameStr.replace(/_+representative/g, '').replace(/__+/g, '_');
+  }
+
   function isRepresentative(participant: any) {
     if (typeof participant === 'string') {
         return participant.includes('_representative');
@@ -90,7 +111,7 @@ import Share from '$lib/components/room/share.svelte';
         <div class="flex items-center mb-3 gap-2">
           <!-- Avatar -->
           {#if formatParticipantName(participant).length > 2}
-            <div class="w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center" style="background: {participant === name ? '#A28585' : 'random'}">
+            <div class="w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center" style="background: {getCleanName(participant) === getCleanName(name) ? '#A28585' : 'random'}">
               <img
                 src={`https://ui-avatars.com/api/?name=${encodeURIComponent(formatParticipantName(participant))}&background=random`}
                 alt={`${formatParticipantName(participant)}'s avatar`}
@@ -98,7 +119,7 @@ import Share from '$lib/components/room/share.svelte';
               />
             </div>
           {:else}
-            <div class="w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center" style="background: {participant === name ? '#A28585' : 'random'}">
+            <div class="w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center" style="background: {getCleanName(participant) === getCleanName(name) ? '#A28585' : 'random'}">
               <span class="font-medium text-2xl leading-[21px] text-white">{getInitials(formatParticipantName(participant))}</span>
             </div>
           {/if}
@@ -107,12 +128,12 @@ import Share from '$lib/components/room/share.svelte';
           <div class="flex flex-col">
             <span class="font-medium text-base leading-[14px] text-white">
               {formatParticipantName(participant)}
-              {#if isHost && (participant === name || (participant.streamId && participant.streamId.endsWith(`-${name}`)))}
+              {#if isHost && (getCleanName(participant) === getCleanName(name) || (participant.streamId && participant.streamId.endsWith(`-${name}`)))}
                 <span class="text-[#D1D1D1]"> (Host)</span>
               {:else if isRepresentative(participant)}
                 <span class="text-[#D1D1D1]"> (Rep)</span>
               {/if}
-              {#if participant === name || (participant.streamId && participant.streamId === name)}
+              {#if getCleanName(participant) === getCleanName(name) || (participant.streamId && participant.streamId === name)}
                 <span class="text-[#D1D1D1]"> (You)</span>
               {/if}
             </span>

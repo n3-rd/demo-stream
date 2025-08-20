@@ -14,10 +14,10 @@
   
   const form = useForm();
   
-  // Custom validator for phone number
+  // Custom validator for phone number (must start with +)
   function phoneValidator(value) {
     if (!value) return null; // Skip validation if empty (required will catch this)
-    const phoneRegex = /^[0-9+\-\s()]{7,15}$/;
+    const phoneRegex = /^\+[0-9\-\s()]{6,14}$/;
     if (!phoneRegex.test(value)) {
       return { phone: true };
     }
@@ -199,7 +199,7 @@
                 />
                 <HintGroup for="phone">
                   <Hint on="required">Phone number is required</Hint>
-                  <Hint on="phone" hideWhenRequired>Please enter a valid phone number</Hint>
+                  <Hint on="phone" hideWhenRequired>Please enter a valid phone number eg(+1234567890)</Hint>
                 </HintGroup>
               </div>
               <div>

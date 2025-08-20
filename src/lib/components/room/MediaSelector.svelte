@@ -7,49 +7,23 @@
     export let isRepresentative: boolean;
     export let room: any;
     export let roomName: string = '';
+    export let hostContentItems: any[] = [];
+    export let repContentItems: any[] = [];
+
+
+    console.log("is representative", isRepresentative);
+    console.log("hostContentItems", hostContentItems);
+    console.log("repContentItems", repContentItems);
 
     const dispatch = createEventDispatcher();
 
-    let content = [] as Array<{
-        id: string;
-        title: string;
-        description?: string;
-        file: string; // blob id
-        thumbnail?: string | null; // blob id
-        active?: boolean;
-        // DB columns
-        type?: string; // 'video' | 'pdf' | 'docx' | 'image'
-        library_type?: string[]; // roles
-        // normalized fields for UI
-        roles?: string[];
-        fileKind?: string;
-        collectionId?: string;
-    }>;
-    let loading = false;
-
-    async function loadContent() {
-        try {
-            loading = true;
-
-            // Load all content for this room's owner company via internal API
-            if (room?.owner_company) {
-                const response = await fetch(`/api/content-library?owner=${encodeURIComponent(room.owner_company)}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    content = (data.items || []).map((item: any) => ({
-                        ...item,
-                        roles: item.library_type || [],
-                        fileKind: item.type || 'unknown',
-                        collectionId: item.collectionId || 'content_library'
-                    }));
-                    return;
-                }
-            }
-        } catch (error) {
-            console.error('Error loading content:', error);
-        } finally {
-            loading = false;
-        }
+    const normalizeContent = (items: any[]) => {
+        return (items || []).map((item: any) => ({
+            ...item,
+            roles: item.library_type || [],
+            fileKind: item.type || 'unknown',
+            collectionId: item.collectionId || 'content_library'
+        }));
     }
 
     // Check if content is active in the room
@@ -63,18 +37,21 @@
     }
 
     // Filter content based on role and active status
-    $: hostContent = content
-        .filter(item => (item.roles || []).includes('host'))
+    $: hostContent = normalizeContent(hostContentItems)
         .filter(item => room?.host_content?.includes(item.id))
         .filter(item => isContentActive(item.id, true));
         
-    $: repContent = content
-        .filter(item => (item.roles || []).includes('representative'))
+    $: repContent = normalizeContent(repContentItems)
         .filter(item => room?.representative_content?.includes(item.id))
         .filter(item => isContentActive(item.id, false));
 
+    $: {
+        console.log("hostContent", hostContent);
+        console.log("repContent", repContent);
+    }
+
     // Determine which content sections to show
-    $: showHostContent = isHost || isRepresentative;
+    $: showHostContent = isHost;
     $: showRepContent = isRepresentative;
 
     function handleMediaSelect(item: any) {
@@ -178,7 +155,7 @@
     }
 
     onMount(() => {
-        loadContent();
+        // Content is now passed as props, so no need to load here
     });
 </script>
 
@@ -319,11 +296,7 @@
         </div>
     {/if}
 
-    {#if loading}
-        <div class="text-center py-8 text-white">Loading content...</div>
-    {/if}
-
-    {#if !loading && content.length === 0}
+    {#if hostContent.length === 0 && repContent.length === 0}
         <div class="text-center py-8 text-white">No content available for this room</div>
     {/if}
 </div>

@@ -48,6 +48,7 @@ interface AudioElement extends HTMLAudioElement {
 }
 
 export let data;
+
  console.log('data from room/[roomId]/+page.svelte', data);
 
 // State management
@@ -76,7 +77,6 @@ let currentVideoTime = 0;
 let isVideoMuted = false;
 
 // Room data
-const room = data && data.roomId && data.roomId.length > 0 ? data.roomId[0] : null;
 
 // Get the base room name from the URL
 const baseRoomName = $page.url.pathname.split("/").pop().split("&")[0];
@@ -97,6 +97,9 @@ let isAnonymousHost = false;
 let isHost = false;
 const host = $page.url.pathname.split("/").pop().split("-").pop();
 let showGreetingPopup = false;
+
+// Fix room data structure - data.roomId is an array containing the room object
+const room = data?.roomId?.[0] || null;
 
 // Add retry state
 let webrtcInitAttempts = 0;
@@ -149,24 +152,36 @@ function calculateTimeRemaining(scheduledTime) {
 
 let isRepresentative = false;
 $: {
-    if (room) {
-        // Determine if user is host (owner of the room or anonymous host from embed)
-        isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
-                           $page.url.searchParams.get('anonymous') === 'true';
-        isHost = (user?.id === room.owner_company) || 
-                 isAnonymousHost || 
-                 (room.host && room.host.includes($page.url.searchParams.get('hostUserId') || ''));
-        
-        // Set showGreetingPopup based on isAnonymousHost
-        showGreetingPopup = isAnonymousHost;
-        
-        // Determine if user is a representative (check both URL param and room data)
-        const urlRepName = $page.url.searchParams.get('repid');
-        isRepresentative = (urlRepName !== null && urlRepName !== '') || 
-                          !!data?.representativeName ||
-                          representatives?.some(rep => rep.id === (user?.id || viewroomUser?.id)) || false;
-        
-    }
+    // Determine if user is host (owner of the room or anonymous host from embed)
+    isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
+                       $page.url.searchParams.get('anonymous') === 'true';
+    isHost = room ? (user?.id === room.owner_company) || 
+             isAnonymousHost || 
+             (room.host && room.host.includes($page.url.searchParams.get('hostUserId') || '')) : false;
+    
+    // Set showGreetingPopup based on isAnonymousHost
+    showGreetingPopup = isAnonymousHost;
+    
+    // Determine if user is a representative - repid URL param is the primary indicator
+    const urlRepId = $page.url.searchParams.get('repid');
+    isRepresentative = (urlRepId !== null && urlRepId !== '') || 
+                      !!data?.representativeName ||
+                      representatives?.some(rep => rep.id === (user?.id || viewroomUser?.id)) || false;
+    
+    console.log('Representative detection:', {
+        urlRepId,
+        hasRepId: urlRepId !== null && urlRepId !== '',
+        dataRepresentativeName: data?.representativeName,
+        representatives,
+        user,
+        viewroomUser,
+        isRepresentative,
+        room,
+        data,
+        roomId: data?.roomId,
+        roomIdType: typeof data?.roomId,
+        roomIdLength: data?.roomId?.length
+    });
 }
 
 // Add videoElements map declaration at the top with other state variables
@@ -303,12 +318,12 @@ onMount(() => {
     
   
     const params = new URLSearchParams(window.location.search);
-    const representativeName = params.get('repid');
+    const repId = params.get('repid');
     
     // Set isRepresentative based on URL parameter
-    if (representativeName) {
+    if (repId) {
         isRepresentative = true;
-        console.log('Detected representative mode from URL param:', representativeName);
+        console.log('Detected representative mode from URL param:', repId);
     }
 
     // Check if this is a scheduled meeting
@@ -2457,22 +2472,20 @@ function downloadICS(content, filename) {
             <MobileBottomBar 
                 roomIdentityName={room?.title || 'Meeting Room'}
                 videoRepresentatives={representatives}
-                availableRepresentatives={availableRepresentatives}
                 scheduleOpen={scheduleOpen}
                 userId={user?.id || ''}
                 joinURL={shareURL}
                 {isMicMuted}
                 {isCameraOff}
-                {isVideoMuted}
                 on:leaveRoom={leaveRoom}
                 on:toggleMicrophone={toggleMicrophone}
                 on:toggleCamera={toggleCamera}
-                on:toggleVideoMute={toggleVideoMute}
                 on:togglePanel={handlePanelToggle}
             />
 
             <!-- MediaSelector -->
-            {#if (isHost || isRepresentative) && room}
+  
+            {#if (isHost || isRepresentative)}
                 <div class="h-72 ">
                     <MediaSelector 
                         {isHost} 
@@ -2480,6 +2493,8 @@ function downloadICS(content, filename) {
                         {room} 
                         {roomName}
                         on:videoSelect={handleVideoSelect}
+                        hostContentItems={data?.hostContent}
+                        repContentItems={data?.representativeContent}
                     />
                 </div>
             {/if}

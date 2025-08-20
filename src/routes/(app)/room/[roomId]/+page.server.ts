@@ -1,8 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { ServerLoad } from './$types';
-import type { Locals } from './$types';
 
-export const load: ServerLoad = async ({ locals, params, url, cookies }: { locals: Locals, params: any, url: URL, cookies: any }) => {
+export const load: ServerLoad = async ({ locals, params, url, cookies }: { locals: App.Locals, params: any, url: URL, cookies: any }) => {
     const roomIdParam = params.roomId;  // Rename to make it clear this is the URL parameter
     const pb = locals.pb;
 
@@ -156,18 +155,30 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
                     throw redirect(303, '/');
                 }
 
+                const room = roomRecords[0];
+
                 const locations = await pb.collection('locations').getFullList({
-                    filter: `owner_company = "${locals.user?.id}"`,
+                    filter: `owner_company = "${room.owner_company}"`,
                     sort: '-created'
                 });
-
-                const room = roomRecords[0];
 
                 // Verify the representative has access to this room
                 if (!room.representative || !room.representative.includes(representativeId)) {
                     console.log('Representative does not have access to this room line 46');
                     throw redirect(303, '/');
                 }
+
+                // Fetch all host content
+                const hostContent = await locals.pb.collection('content_library').getFullList({
+                    filter: `owner_company = "${room.owner_company}" && library_type ?~ "host"`,
+                    sort: '-created'
+                });
+
+                // Fetch all representative content
+                const representativeContent = await locals.pb.collection('content_library').getFullList({
+                    filter: `owner_company = "${room.owner_company}" && library_type ?~ "representative"`,
+                    sort: '-created'
+                });
 
                 // Return data with representative info
                 return {
@@ -181,7 +192,9 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
                     videoRepresentativesInfo: room.expand?.representative || [],
                     representativeName: representative.name,
                     isRepresentative: true,
-                    locations
+                    locations,
+                    hostContent,
+                    representativeContent
                 };
             } catch (error) {
                 console.error('Error handling representative access line 61:', error);
@@ -214,6 +227,18 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
                     throw redirect(303, '/');
                 }
 
+                // Fetch all host content
+                const hostContent = await locals.pb.collection('content_library').getFullList({
+                    filter: `owner_company = "${room.owner_company}" && library_type ?~ "host"`,
+                    sort: '-created'
+                });
+
+                // Fetch all representative content
+                const representativeContent = await locals.pb.collection('content_library').getFullList({
+                    filter: `owner_company = "${room.owner_company}" && library_type ?~ "representative"`,
+                    sort: '-created'
+                });
+
                 return {
                     user: null,
                     viewroomUser,
@@ -224,7 +249,9 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
                     roomId: [room],
                     videoRepresentativesInfo: room.expand?.representative || [],
                     representativeName: representative.name || representativeUser.name || 'Representative',
-                    isRepresentative: true
+                    isRepresentative: true,
+                    hostContent,
+                    representativeContent
                 };
             } catch (error) {
                 console.error('Error handling cookie-based representative access:', error);
@@ -246,6 +273,18 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
         const room = roomRecords[0];
         const representatives = room.expand?.representative || [];
         const users = user ? await pb.collection('users').getFullList() : [];
+
+        // Fetch all host content
+        const hostContent = await locals.pb.collection('content_library').getFullList({
+            filter: `owner_company = "${room.owner_company}" && library_type ?~ "host"`,
+            sort: '-created'
+        });
+
+        // Fetch all representative content
+        const representativeContent = await locals.pb.collection('content_library').getFullList({
+            filter: `owner_company = "${room.owner_company}" && library_type ?~ "representative"`,
+            sort: '-created'
+        });
 
         const hostUserId = url.searchParams.get('hostUserId');
         
@@ -286,6 +325,8 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
             roomId: [room],
             videoRepresentativesInfo: representatives,
             isRepresentative: false,
+            hostContent,
+            representativeContent
         };
     } catch (error) {
         console.error('Error checking scheduled room:', error);

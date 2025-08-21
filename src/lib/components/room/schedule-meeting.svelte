@@ -103,10 +103,27 @@
   $: isFormValid = firstName && lastName && phoneNumber && email && 
                   selectedRepresentative && selectedDate && selectedTimeSlot;
 
-  // Update available time slots when representative or date changes
-  $: if (selectedRepresentative && selectedDate) {
-    fetchAvailableSlots(selectedRepresentative, selectedDate);
-    fetchRepresentativeDetails(selectedRepresentative);
+  // Reactive statement to update available time slots and disable unavailable slots
+  $: {
+    if (selectedRepresentative && selectedDate) {
+      console.log('Fetching available slots for:', { 
+        representative: selectedRepresentative, 
+        date: selectedDate 
+      });
+      
+      // Reset time slot selection when representative or date changes
+      selectedTimeSlot = null;
+      selectedSlot = null;
+      
+      fetchAvailableSlots(selectedRepresentative, selectedDate);
+    }
+  }
+
+  // Reactive statement to fetch representative details when selection changes
+  $: {
+    if (selectedRepresentative) {
+      fetchRepresentativeDetails(selectedRepresentative);
+    }
   }
 
   async function fetchRepresentativeDetails(rep) {
@@ -1330,6 +1347,72 @@
     // Handle other formats as needed
     return timeRange;
   }
+
+  // Reactive statement to filter and sort time slots
+  $: sortedAvailableSlots = availableSlots
+    .filter(slot => slot.available)
+    .sort((a, b) => {
+      // Convert time to 24-hour format for accurate sorting
+      const parseTime = (timeStr) => {
+        const [time, period] = timeStr.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        
+        // Adjust hours for 12-hour format
+        if (period === 'PM' && hours !== 12) hours += 12;
+        if (period === 'AM' && hours === 12) hours = 0;
+        
+        return hours * 60 + minutes;
+      };
+      
+      return parseTime(a.time) - parseTime(b.time);
+    });
+
+  // Improved time slot selection logic
+  function selectTimeSlot(slot) {
+    // If the slot is already selected, deselect it
+    if (selectedTimeSlot === slot.id) {
+      selectedTimeSlot = null;
+      selectedSlot = null;
+    } else {
+      // Only select if the slot is available
+      if (slot.available) {
+        selectedTimeSlot = slot.id;
+        selectedSlot = slot;
+        
+        // Optional: Scroll to the selected slot if it's out of view
+        const slotElement = document.getElementById(`time-slot-${slot.id}`);
+        if (slotElement) {
+          slotElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }
+      } else {
+        toast.warning('This time slot is not available.');
+      }
+    }
+    
+    // Log the selection for debugging
+    console.log('Time slot selected:', {
+      selectedSlot,
+      availableSlots
+    });
+  }
+
+  // Enhanced time slot rendering with more information
+  function renderTimeSlotClass(slot) {
+    let baseClasses = 'w-full p-3 border rounded-md text-center text-sm relative transition-colors duration-150';
+    
+    if (selectedTimeSlot === slot.id) {
+      return `${baseClasses} time-slot-selected bg-primary text-white border-primary`;
+    }
+    
+    if (!slot.available) {
+      return `${baseClasses} bg-gray-100 text-gray-400 cursor-not-allowed opacity-50`;
+    }
+    
+    return `${baseClasses} hover:bg-gray-50 hover:border-primary border-gray-300`;
+  }
 </script>
 
 
@@ -1521,6 +1604,7 @@
               <!-- Calendar UI -->
           <div class="relative mb-4 w-1/2">
             <div class="calendar-container bg-white rounded-md shadow-sm border border-gray-200">
+              {#key representativeDetails?.id || 'no-rep'}
               <Calendar 
                 bind:value 
                 class="rounded-md w-full" 
@@ -1535,6 +1619,7 @@
                   }
                 }}
               />
+              {/key}
             </div>
           </div>
 
@@ -1542,15 +1627,25 @@
           {#if selectedDate && availableSlots.length > 0}
             <div class="time-slots-container w-1/2">
               <div class="flex justify-between items-center mb-2">
-                <p class="text-sm font-medium">Available time slots:</p>
+                <p class="text-sm font-medium">
+                  {#if sortedAvailableSlots.length > 0}
+                    Available time slots: {sortedAvailableSlots.length} / {availableSlots.length}
+                  {:else}
+                    No available time slots
+                  {/if}
+                </p>
                 {#if selectedTimeSlot}
                   <button 
-                    class="text-sm text-primary hover:text-primary/80"
+                    class="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
                     on:click={() => {
                       selectedTimeSlot = null;
                       selectedSlot = null;
                     }}
                   >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                     Clear selection
                   </button>
                 {/if}
@@ -1559,17 +1654,28 @@
               <div class="time-slots-grid">
                 <!-- Time slots as vertical list -->
                 <div class="space-y-2 max-h-[250px] overflow-y-auto pr-2">
-                  {#each availableSlots as slot, i}
+                  {#each availableSlots.sort((a, b) => {
+                    // Convert time to 24-hour format for accurate sorting
+                    const parseTime = (timeStr) => {
+                      const [time, period] = timeStr.split(' ');
+                      let [hours, minutes] = time.split(':').map(Number);
+                      
+                      // Adjust hours for 12-hour format
+                      if (period === 'PM' && hours !== 12) hours += 12;
+                      if (period === 'AM' && hours === 12) hours = 0;
+                      
+                      return hours * 60 + minutes;
+                    };
+                    
+                    return parseTime(a.time) - parseTime(b.time);
+                  }) as slot, i}
                     <button 
                       type="button"
+                      id={`time-slot-${slot.id}`}
                       disabled={!slot.available}
-                      class="w-full p-3 border rounded-md text-center text-sm relative transition-colors duration-150
-                            {selectedTimeSlot === slot.id ? 'bg-primary text-white' : ''} 
-                            {!slot.available ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50'}"
+                      class={renderTimeSlotClass(slot)}
                       on:click={() => {
-                        selectedTimeSlot = slot.id;
-                        selectedSlot = slot;
-                        console.log('Selected time slot:', slot);
+                        selectTimeSlot(slot);
                       }}
                     >
                       {slot.time}
@@ -1585,7 +1691,16 @@
               </div>
             </div>
           {:else if selectedDate}
-            <p class="text-red-500 text-sm mt-3 px-2">No available time slots for this date. Please select another date.</p>
+            <div class="w-1/2 flex items-center justify-center text-center p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p class="text-yellow-800 text-sm">
+                {#if !selectedRepresentative}
+                  Please select a representative first.
+                {:else}
+                  No available time slots for this date. 
+                  Try selecting a different date or representative.
+                {/if}
+              </p>
+            </div>
           {/if}
         </div>
           </div>
@@ -1973,5 +2088,19 @@
   .time-slots-grid {
     display: flex;
     flex-direction: column;
+  }
+  
+  /* Style for selected time slot */
+  :global(.time-slot-selected) {
+    background-color: #577AB7 !important;
+    color: white !important;
+    border-color: #577AB7 !important;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(87, 122, 183, 0.3);
+  }
+  
+  :global(.time-slot-selected:hover) {
+    background-color: #4a6aa3 !important;
+    border-color: #4a6aa3 !important;
   }
 </style>

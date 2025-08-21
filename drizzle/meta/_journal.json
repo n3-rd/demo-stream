@@ -1,3 +1,11 @@
 {
-  "entries": []
-} 
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1755771634098,
+      "tag": "0000_curly_aaron_stack",
+      "breakpoints": true
+    }
+  ]
+}

@@ -158,26 +158,12 @@ export const rooms = pgTable('rooms', {
   scheduleTime: timestamp('schedule_time', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-});
-
-export const scheduledRooms = pgTable('scheduled_rooms', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  title: text('title').notNull(),
-  representative: text('representative').array(),
-  hostContent: text('host_content').array(),
-  representativeContent: text('representative_content').array(),
-  scheduled: boolean('scheduled').default(false),
-  scheduleTime: timestamp('schedule_time', { withTimezone: true }),
   customerName: text('customer_name'),
   customerEmail: text('customer_email'),
   customerPhone: text('customer_phone'),
   roomId: text('room_id'),
   additionalInformation: text('additional_information'),
-  meetingStatus: text('meeting_status'),
-  meetingDuration: integer('meeting_duration'),
-  joinBeforeMinutes: integer('join_before_minutes'),
-  participantsJoined: jsonb('participants_joined'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  representativeId: uuid('representative_id').references(() => representatives.id),
 });
 
 export const uploadedVideos = pgTable('uploaded_videos', {

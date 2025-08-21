@@ -2,7 +2,7 @@ import { error, redirect } from '@sveltejs/kit';
 import type { ServerLoad } from './$types';
 
 export const load: ServerLoad = async ({ locals, params, url, cookies }: { locals: App.Locals, params: any, url: URL, cookies: any }) => {
-    const roomIdParam = params.roomId;  // Rename to make it clear this is the URL parameter
+    const roomIdParam = params.roomId;
     const pb = locals.pb;
 
     // Check for authentication - allow either normal PocketBase auth or viewroom/representative auth
@@ -87,252 +87,65 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
         authType = 'anonymous';
     }
 
+    // Attempt to fetch the room details
     try {
-        // Try to find the scheduled room by room_id
-        const scheduledRooms = await pb.collection('scheduled_rooms').getList(1, 1, {
-            filter: `room_id = "${roomIdParam}" && scheduled = true`
-        });
-        
-        // If this is a scheduled room
-        if (scheduledRooms.items.length > 0) {
-            const scheduledRoom = scheduledRooms.items[0];
-            const scheduleTime = new Date(scheduledRoom.schedule_time);
+        const roomRecord = await pb.collection('rooms').getFirstListItem(`id = "${roomIdParam}"`);
+
+        // Check if the room is a scheduled meeting
+        if (roomRecord.scheduled) {
+            const scheduleTime = new Date(roomRecord.schedule_time);
             const currentTime = new Date();
             
             // Calculate time difference in minutes
             const timeDiffMinutes = (scheduleTime.getTime() - currentTime.getTime()) / (1000 * 60);
             
-            // Allow entry 5 minutes before scheduled time
-            const joinBeforeMinutes = scheduledRoom.join_before_minutes || 5;
+            // Use the room's join_before_minutes, with a minimum of 0
+            const joinBeforeMinutes = Math.max(roomRecord.join_before_minutes || 0, 0);
             
+            // Strict check: only allow joining within the specified join window
             if (timeDiffMinutes > joinBeforeMinutes) {
                 // Too early for the meeting
-                const formattedDate = scheduleTime.toLocaleString();
                 return {
                     error: true,
-                    message: `This meeting is scheduled for ${formattedDate}. Please return at that time.`,
+                    scheduledMeeting: true,
+                    message: `This meeting is scheduled for ${scheduleTime.toLocaleString()}. Please return at that time.`,
                     scheduledTime: scheduleTime,
-                    scheduledRoomId: roomIdParam, // Add the room ID for WebRTC
-                    user: locals.user
+                    scheduledRoomId: roomIdParam,
+                    join_before_minutes: joinBeforeMinutes,
+                    redirectTo: '/'
                 };
             }
-            
-            // Meeting is available, proceed with all meeting data
-            return {
-                scheduledRoom,
-                viewroomUser,
-                authType,
-                isViewroomAuthenticated: true,
-                // Other room data...
-            };
-        }
-        
-        // check if the room is active
-        const roomRecord = await pb.collection('rooms').getFirstListItem(`id = "${params.roomId}"`);
-        if (!roomRecord.is_active) {
-            throw redirect(303, '/');
         }
 
-        const representativeId = url.searchParams.get('repid');
-        const user = locals.pb.authStore.model;
-
-        // If there's a representative ID in the URL, handle representative access
-        if (representativeId) {
-            try {
-                // Get the representative from the representatives collection with expanded fields
-                const representative = await pb.collection('representatives').getOne(representativeId, {
-                    expand: 'connected_content'
-                });
-                
-                // Get the room with expanded relations
-                const roomRecords = await pb.collection('rooms').getFullList({
-                    filter: `id = "${params.roomId}"`,
-                    expand: 'representative,host_content,representative_content,selected_video'
-                });
-
-                if (!roomRecords.length) {
-                    console.log('Room not found line 38');
-                    throw redirect(303, '/');
-                }
-
-                const room = roomRecords[0];
-
-                const locations = await pb.collection('locations').getFullList({
-                    filter: `owner_company = "${room.owner_company}"`,
-                    sort: '-created'
-                });
-
-                // Verify the representative has access to this room
-                if (!room.representative || !room.representative.includes(representativeId)) {
-                    console.log('Representative does not have access to this room line 46');
-                    throw redirect(303, '/');
-                }
-
-                // Fetch all host content
-                const hostContent = await locals.pb.collection('content_library').getFullList({
-                    filter: `owner_company = "${room.owner_company}" && library_type ?~ "host"`,
-                    sort: '-created'
-                });
-
-                // Fetch all representative content
-                const representativeContent = await locals.pb.collection('content_library').getFullList({
-                    filter: `owner_company = "${room.owner_company}" && library_type ?~ "representative"`,
-                    sort: '-created'
-                });
-
-                // Return data with representative info
-                return {
-                    user: null,
-                    viewroomUser,
-                    authType,
-                    isViewroomAuthenticated: true,
-                    representatives: room.expand?.representative || [],
-                    users: [],
-                    roomId: [room],
-                    videoRepresentativesInfo: room.expand?.representative || [],
-                    representativeName: representative.name,
-                    isRepresentative: true,
-                    locations,
-                    hostContent,
-                    representativeContent
-                };
-            } catch (error) {
-                console.error('Error handling representative access line 61:', error);
-                throw redirect(303, '/');
-            }
-        } else if (representativeUser) {
-            // Representative authenticated by cookie (no repid in URL)
-            try {
-                // Fetch representative to ensure it exists and for any expanded info
-                const representative = await pb.collection('representatives').getOne(representativeUser.id, {
-                    expand: 'connected_content'
-                });
-
-                // Get the room with expanded relations
-                const roomRecords = await pb.collection('rooms').getFullList({
-                    filter: `id = "${params.roomId}"`,
-                    expand: 'representative,host_content,representative_content,selected_video'
-                });
-
-                if (!roomRecords.length) {
-                    console.log('Room not found for representative cookie access');
-                    throw redirect(303, '/');
-                }
-
-                const room = roomRecords[0];
-
-                // Verify the representative has access to this room
-                if (!room.representative || !room.representative.includes(representativeUser.id)) {
-                    console.log('Representative (cookie) does not have access to this room');
-                    throw redirect(303, '/');
-                }
-
-                // Fetch all host content
-                const hostContent = await locals.pb.collection('content_library').getFullList({
-                    filter: `owner_company = "${room.owner_company}" && library_type ?~ "host"`,
-                    sort: '-created'
-                });
-
-                // Fetch all representative content
-                const representativeContent = await locals.pb.collection('content_library').getFullList({
-                    filter: `owner_company = "${room.owner_company}" && library_type ?~ "representative"`,
-                    sort: '-created'
-                });
-
-                return {
-                    user: null,
-                    viewroomUser,
-                    authType,
-                    isViewroomAuthenticated: true,
-                    representatives: room.expand?.representative || [],
-                    users: [],
-                    roomId: [room],
-                    videoRepresentativesInfo: room.expand?.representative || [],
-                    representativeName: representative.name || representativeUser.name || 'Representative',
-                    isRepresentative: true,
-                    hostContent,
-                    representativeContent
-                };
-            } catch (error) {
-                console.error('Error handling cookie-based representative access:', error);
-                throw redirect(303, '/');
-            }
-        }
-
-        // Regular room access
-        const roomRecords = await pb.collection('rooms').getFullList({
-            filter: `id = "${params.roomId}"`,
-            expand: 'representative,host_content,representative_content,selected_video'
+        // Fetch additional room details
+        const expandedRoom = await pb.collection('rooms').getOne(roomIdParam, {
+            expand: 'representative,host_content,representative_content'
         });
-
-        if (!roomRecords.length) {
-            console.log('Room not found line 74');
-            throw redirect(303, '/');
-        }
-
-        const room = roomRecords[0];
-        const representatives = room.expand?.representative || [];
-        const users = user ? await pb.collection('users').getFullList() : [];
-
-        // Fetch all host content
-        const hostContent = await locals.pb.collection('content_library').getFullList({
-            filter: `owner_company = "${room.owner_company}" && library_type ?~ "host"`,
-            sort: '-created'
-        });
-
-        // Fetch all representative content
-        const representativeContent = await locals.pb.collection('content_library').getFullList({
-            filter: `owner_company = "${room.owner_company}" && library_type ?~ "representative"`,
-            sort: '-created'
-        });
-
-        const hostUserId = url.searchParams.get('hostUserId');
-        
-        // If a host user is specified, add them to the room's host list
-        if (hostUserId) {
-            try {
-                // Check if the user is already a host
-                const isAlreadyHost = room.host && room.host.includes(hostUserId);
-                
-                if (!isAlreadyHost) {
-                    // Update the room to add the host
-                    await pb.collection('rooms').update(room.id, {
-                        host: [...(room.host || []), hostUserId]
-                    });
-                    
-                    // Refresh the room data
-                    room.host = [...(room.host || []), hostUserId];
-                }
-            } catch (err) {
-                console.error('Failed to add host to room:', err);
-            }
-        }
 
         console.log('Room data loaded:', {
-            id: room.id,
-            hasHostContent: !!room.host_content,
-            hasRepContent: !!room.representative_content,
-            expandedData: room.expand
+            id: expandedRoom.id,
+            hasHostContent: !!expandedRoom.host_content,
+            hasRepContent: !!expandedRoom.representative_content,
+            expandedData: {
+                representative: expandedRoom.expand?.representative,
+                host_content: expandedRoom.expand?.host_content || [],
+                representative_content: expandedRoom.expand?.representative_content || []
+            }
         });
 
         return {
-            user: user || null,
-            viewroomUser,
-            authType,
-            isViewroomAuthenticated: true,
-            representatives,
-            users,
-            roomId: [room],
-            videoRepresentativesInfo: representatives,
-            isRepresentative: false,
-            hostContent,
-            representativeContent
+            ...expandedRoom,
+            expand: expandedRoom.expand
         };
+
     } catch (error) {
-        console.error('Error checking scheduled room:', error);
+        console.error('Error loading room:', error);
+        
+        // Redirect to home page if room not found
         return {
             error: true,
-            message: 'Error checking room schedule. Please try again.'
+            message: 'Room not found',
+            redirectTo: '/'
         };
     }
 };

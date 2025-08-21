@@ -332,6 +332,28 @@ onMount(() => {
     // Check all possible schedule data locations but be more strict about detection
     isScheduledMeeting = false; // Reset to false by default
     if (data) {
+      // Check for error in scheduled meeting first
+      if (data.error && data.scheduledMeeting) {
+        isScheduledMeeting = true;
+        scheduledMeetingTime = new Date(data.scheduledTime);
+        
+        // Ensure meetingStatus reflects the error state
+        meetingStatus = {
+          canJoin: false,
+          isPast: false,
+          joinBeforeMinutes: data.join_before_minutes || 0,
+          minutesLeft: Math.floor((scheduledMeetingTime.getTime() - new Date().getTime()) / 60000)
+        };
+        
+        console.log('Scheduled meeting not yet available:', {
+          scheduledMeetingTime, 
+          meetingStatus
+        });
+        
+        // Exit early to prevent further processing
+        return;
+      }
+      
       // Extract schedule data (handle all possible formats)
       if (data.scheduledRoom && data.scheduledRoom.schedule_time) {
         isScheduledMeeting = true;
@@ -352,7 +374,7 @@ onMount(() => {
         const meetingStatusResult = getMeetingStatus({
           scheduledRoom: { 
             schedule_time: scheduledMeetingTime,
-            join_before_minutes: data.join_before_minutes || data.scheduledRoom?.join_before_minutes || 60
+            join_before_minutes: data.join_before_minutes || data.scheduledRoom?.join_before_minutes || 0
           }
         });
         
@@ -370,9 +392,12 @@ onMount(() => {
       }
     }
     
-    // Initialize WebRTC if we have a name or are a representative
-    if (isAuthenticated || $anonymousUser || data?.representativeName || isRepresentative) {
-      initializeWebRTC();
+    // Initialize WebRTC only if meeting is available
+    if (meetingStatus.canJoin) {
+      // Initialize WebRTC if we have a name or are a representative
+      if (isAuthenticated || $anonymousUser || data?.representativeName || isRepresentative) {
+        initializeWebRTC();
+      }
     }
     
     // Ensure panels are closed initially
@@ -2133,14 +2158,14 @@ function initWithRetry() {
 // Improved getMeetingStatus function that always returns minutesLeft
 function getMeetingStatus(data) {
   // If no data, meeting is available now (not scheduled)
-  if (!data) return { canJoin: true, isPast: false, joinBeforeMinutes: 60, minutesLeft: 0 };
+  if (!data) return { canJoin: true, isPast: false, joinBeforeMinutes: 0, minutesLeft: 0 };
   
   // Extract the scheduled room data from the nested structure
   const scheduledRoom = data.scheduledRoom || data;
   
   // Get schedule time from the correct location
   const scheduleTime = scheduledRoom?.schedule_time || scheduledRoom?.scheduledTime;
-  if (!scheduleTime) return { canJoin: true, isPast: false, joinBeforeMinutes: 60, minutesLeft: 0 };
+  if (!scheduleTime) return { canJoin: true, isPast: false, joinBeforeMinutes: 0, minutesLeft: 0 };
   
   // Make sure we're working with Date objects
   const scheduleDate = scheduleTime instanceof Date ? scheduleTime : new Date(scheduleTime);
@@ -2155,11 +2180,18 @@ function getMeetingStatus(data) {
   // If negative, meeting has passed
   const isPast = minutesLeft < 0;
   
-  // Get the join_before_minutes from the scheduled room data or default to 60
-  const joinBeforeMinutes = scheduledRoom?.join_before_minutes ?? 60;
+  // Get the join_before_minutes from the scheduled room data or default to 0
+  const joinBeforeMinutes = Math.max(scheduledRoom?.join_before_minutes ?? 0, 0);
   
-  // Can join if it's not in the past and scheduled to start within the allowed time
-  const canJoin = !isPast && minutesLeft <= joinBeforeMinutes;
+  // Can join ONLY if:
+  // 1. Meeting is not in the past
+  // 2. Current time is within the allowed join window (joinBeforeMinutes)
+  // 3. Explicitly check that minutes left is less than or equal to join window
+  // 4. Ensure join window is exactly 0 if not specified
+  const canJoin = !isPast && 
+                  minutesLeft <= joinBeforeMinutes && 
+                  minutesLeft >= 0 &&
+                  (joinBeforeMinutes > 0 || minutesLeft === 0);
   
   console.log('Meeting status check:', {
     now: now.toISOString(),
@@ -2217,8 +2249,69 @@ function downloadICS(content, filename) {
   document.body.removeChild(link);
 }
 
+// Check if we need to redirect
+if (data.redirectTo) {
+
+    setTimeout(() => {
+        window.location.href = data.redirectTo;
+    }, 4000);
+}
+
+// Check if this is a scheduled meeting
+console.log('Room data on mount:', data);
+
 </script>
 
+
+{#if isScheduledMeeting && !meetingStatus.canJoin}
+  <div class="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 text-center">
+      <h2 class="text-2xl font-bold mb-6 text-red-600">Meeting Not Available</h2>
+      
+      <div class="mb-6">
+        <p class="text-lg mb-4">This meeting is scheduled for:</p>
+        <p class="text-xl font-semibold text-gray-800">
+          {scheduledMeetingTime.toLocaleString()}
+        </p>
+      </div>
+      
+      {#if meetingStatus.isPast}
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p class="text-red-800">
+            This meeting has already taken place and is no longer available.
+          </p>
+        </div>
+      {:else}
+        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p class="text-yellow-800">
+            {#if meetingStatus.joinBeforeMinutes === 0}
+              You can only join this meeting at the exact scheduled time.
+            {:else}
+              You can join this meeting {meetingStatus.joinBeforeMinutes} minute{meetingStatus.joinBeforeMinutes !== 1 ? 's' : ''} before the scheduled start time.
+            {/if}
+          </p>
+        </div>
+        
+        <div class="mb-6">
+          <p class="text-sm text-gray-500">Time remaining:</p>
+          <p class="text-2xl font-bold text-gray-800">
+            {calculateTimeRemaining(scheduledMeetingTime)}
+          </p>
+        </div>
+      {/if}
+      
+      <button 
+        class="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+        on:click={() => {
+          // Redirect to home page
+          window.location.href = '/';
+        }}
+      >
+        Return to Home
+      </button>
+    </div>
+  </div>
+{/if}
 
 {#if isScheduledMeeting && !meetingStatus.canJoin}
   <div class="flex flex-col items-center justify-center h-screen bg-[#eceef3] p-6 text-center">
@@ -2270,26 +2363,13 @@ function downloadICS(content, filename) {
         >
           Add to Calendar
         </button>
-      {:else}
-        <div class="mb-6">
-          <p class="text-sm text-gray-500">Time remaining:</p>
-          <p class="text-2xl font-bold">
-            {calculateTimeRemaining(scheduledMeetingTime)}
-          </p>
-        </div>
-        
-        <div class="mb-6 p-3 bg-green-50 border border-green-200 rounded-md">
-          <p class="text-green-800">
-            You're now in the waiting room. The meeting will start soon.
-          </p>
-        </div>
       {/if}
       
       <button 
         class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80"
-        on:click={() => window.location.reload()}
+        on:click={() => window.location.href = '/'}
       >
-        Refresh Page
+        Return to Home
       </button>
     </div>
   </div>

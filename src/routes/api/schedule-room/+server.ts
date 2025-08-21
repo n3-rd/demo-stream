@@ -1,6 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/db/drizzle';
-import { scheduledRooms } from '$lib/db/schema';
+import * as schema from '$lib/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -36,14 +36,43 @@ export const POST: RequestHandler = async ({ request }) => {
       }, { status: 400 });
     }
 
+    // Fetch the first representative to get their company
+    const firstRepresentative = await db.select().from(schema.representatives)
+      .where(eq(schema.representatives.id, representative_ids[0]))
+      .limit(1);
+
+    if (!firstRepresentative.length) {
+      return json({ 
+        error: 'Invalid representative ID' 
+      }, { status: 400 });
+    }
+
+    const ownerCompany = firstRepresentative[0].company;
+    if (!ownerCompany) {
+      return json({ 
+        error: 'Representative must be associated with a company' 
+      }, { status: 400 });
+    }
+
+    // Verify the company exists
+    const companyExists = await db.select().from(schema.users)
+      .where(eq(schema.users.id, ownerCompany))
+      .limit(1);
+
+    if (!companyExists.length) {
+      return json({ 
+        error: 'Company not found' 
+      }, { status: 404 });
+    }
+
     // Check for conflicts with existing scheduled rooms
     const conflictingRooms = await db
       .select()
-      .from(scheduledRooms)
+      .from(schema.rooms)
       .where(
         and(
-          eq(scheduledRooms.scheduled, true),
-          eq(scheduledRooms.scheduleTime, scheduleDate)
+          eq(schema.rooms.scheduled, true),
+          eq(schema.rooms.scheduleTime, scheduleDate)
         )
       );
 
@@ -54,8 +83,8 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // Create the scheduled room
-    const scheduledRoom = await db.insert(scheduledRooms).values({
-      title,
+    const scheduledRoom = await db.insert(schema.rooms).values({
+      title: title,
       representative: representative_ids,
       scheduled: true,
       scheduleTime: scheduleDate,
@@ -64,12 +93,11 @@ export const POST: RequestHandler = async ({ request }) => {
       customerPhone: customer_phone,
       roomId: room_id,
       additionalInformation: additional_information,
-      meetingStatus: 'scheduled',
-      meetingDuration: meeting_duration,
-      joinBeforeMinutes: join_before_minutes,
+      ownerCompany: ownerCompany, 
       hostContent: host_content,
       representativeContent: representative_content,
-      participantsJoined: []
+      representativeId: representative_ids[0], 
+      isActive: true
     }).returning();
 
     return json({
@@ -90,16 +118,16 @@ export const GET: RequestHandler = async ({ url }) => {
     const representativeId = url.searchParams.get('representative_id');
     const date = url.searchParams.get('date');
 
-    let query = db.select().from(scheduledRooms);
+    let query = db.select().from(schema.rooms).where(eq(schema.rooms.scheduled, true));
 
     if (roomId) {
-      query = query.where(eq(scheduledRooms.roomId, roomId));
+      query = query.where(eq(schema.rooms.roomId, roomId));
     }
 
     if (representativeId) {
       // Note: This is a simplified check since representative is stored as text array
       // In production, you might want to use a proper join table
-      query = query.where(eq(scheduledRooms.representative, [representativeId]));
+      query = query.where(eq(schema.rooms.representative, [representativeId]));
     }
 
     if (date) {
@@ -110,8 +138,8 @@ export const GET: RequestHandler = async ({ url }) => {
       
       query = query.where(
         and(
-          gte(scheduledRooms.scheduleTime, startOfDay),
-          lte(scheduledRooms.scheduleTime, endOfDay)
+          gte(schema.rooms.scheduleTime, startOfDay),
+          lte(schema.rooms.scheduleTime, endOfDay)
         )
       );
     }
@@ -142,9 +170,9 @@ export const PUT: RequestHandler = async ({ request, url }) => {
     const { id, createdAt, ...updateData } = updates;
 
     const updatedRoom = await db
-      .update(scheduledRooms)
+      .update(schema.rooms)
       .set(updateData)
-      .where(eq(scheduledRooms.roomId, roomId))
+      .where(eq(schema.rooms.roomId, roomId))
       .returning();
 
     if (updatedRoom.length === 0) {
@@ -171,8 +199,8 @@ export const DELETE: RequestHandler = async ({ url }) => {
     }
 
     await db
-      .delete(scheduledRooms)
-      .where(eq(scheduledRooms.roomId, roomId));
+      .delete(schema.rooms)
+      .where(eq(schema.rooms.roomId, roomId));
 
     return json({
       success: true,

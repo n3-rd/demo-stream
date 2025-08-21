@@ -22,11 +22,11 @@
   const dispatch = createEventDispatcher();
 
   // Form State
-  let firstName = '';
-  let lastName = '';
-  let phoneNumber = '';
-  let email = '';
-  let address = { street: '', city: '', state: '', zip: '', country: '' };
+  let firstName = 'Test';
+  let lastName = 'Test';
+  let phoneNumber = '1234567890';
+  let email = 'studioblopp@gmail.com';
+  let address = { street: '123 Main St', city: 'Anytown', state: 'CA', zip: '12345', country: 'USA' };
   let selectedDay = value.day;
   let selectedMonth = value.month;
   let selectedYear = value.year;
@@ -1175,8 +1175,8 @@
   }
 
   // Function to format schedule with even hours
-  function formatSchedule(schedule) {
-    const formattedSchedule = {};
+  function formatSchedule(schedule: Record<string, string | null>) {
+    const formattedSchedule: Record<string, string> = {};
     
     for (const [day, timeRange] of Object.entries(schedule)) {
       if (!timeRange) {
@@ -1184,11 +1184,17 @@
         continue;
       }
       
-      const [start, end] = timeRange.split(' - ');
-      const formattedStart = roundToHour(start);
-      const formattedEnd = roundToHour(end);
-      
-      formattedSchedule[day] = `${formattedStart} - ${formattedEnd}`;
+      // Add type guard to ensure timeRange is a string
+      if (typeof timeRange === 'string' && timeRange.includes(' - ')) {
+        const [start, end] = timeRange.split(' - ');
+        const formattedStart = roundToHour(start);
+        const formattedEnd = roundToHour(end);
+        
+        formattedSchedule[day] = `${formattedStart} - ${formattedEnd}`;
+      } else {
+        // Handle cases where timeRange is not a string or doesn't contain ' - '
+        formattedSchedule[day] = "";
+      }
     }
     
     return formattedSchedule;

@@ -2,7 +2,6 @@
     import { Button } from '$lib/components/ui/button';
     import { page } from '$app/stores';
     import { enhance } from '$app/forms';
-    import { goto } from '$app/navigation';
     import { toast } from 'svelte-sonner';
 
     export let data;
@@ -23,11 +22,16 @@
             loading = true;
             return async ({ result, update }) => {
                 if (result.type === 'success') {
-                    // Use goto for navigation
+                    // Use window.open to launch in a new tab
                     const roomId = result.data.roomId;
                     const anonymousUserId = result.data.anonymousUserId;
                     const hostParams = result.data.hostParams;
-                    await goto(`/room/${roomId}?${hostParams}&anonymousUserId=${anonymousUserId}`);
+                    
+                    const roomUrl = `/room/${roomId}?${hostParams}&anonymousUserId=${anonymousUserId}`;
+                    window.open(roomUrl, '_blank');
+                    
+                    // Optionally close the current window
+                    window.close();
                 } else if (result.type === 'error') {
                     toast.error('Failed to join room');
                 } else if (result.type === 'failure') {

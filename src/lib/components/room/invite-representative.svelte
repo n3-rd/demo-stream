@@ -11,7 +11,7 @@
     import { createEventDispatcher } from "svelte";
     export let shareURL: string;
 
-    export let representatives;
+    export let representatives: any[];
     let showRepresentativeList = false;
     let showInitialDialog = true;
     let dialogOpen = false;
@@ -25,6 +25,11 @@
     console.log('uidExtracted', uidExtracted);
 
     const dispatch = createEventDispatcher();
+
+    // Filter representatives by the current user's company
+    $: filteredRepresentatives = representatives.filter(rep => 
+        rep.company === $page.data?.user?.id && rep.is_active
+    );
 
     $: {
         if (selectedRepresentative) {
@@ -135,7 +140,13 @@
             </p>
             <div class="flex justify-end space-x-4">
                 <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={cancelDialog}>Cancel</button>
-                <button class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700" on:click={showNextModal}>Continue</button>
+                <button 
+                    class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700" 
+                    on:click={showNextModal}
+                    disabled={filteredRepresentatives.length === 0}
+                >
+                    Continue
+                </button>
             </div>
         </div>
     </div>
@@ -144,26 +155,32 @@
     <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
         <div class="bg-white p-6 w-full">
             <h2 class="text-lg font-semibold mb-4 text-center text-[#464646]">Select Representative</h2>
-            <div class="flex space-x-4 mb-6 justify-center flex-wrap">
-                <!-- Representatives -->
-                {#each representatives as representative}
-                <div 
-                    class="flex flex-col items-center cursor-pointer relative"
-                    on:click={() => selectRepresentative(representative)}
-                >
-                    <img 
-                        src={representative.avatar 
-                            ? `/api/files/${representative.collectionId || 'representatives'}/${representative.id}/${representative.avatar}` 
-                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(representative.name)}&background=random`} 
-                        alt="{representative.name}'s Avatar" 
-                        class="w-24 h-24 rounded-full mb-4 object-cover object-center"
-                    >
-                    <div class={`w-24 h-24 rounded-full border-4 ${selectedRepresentative === representative ? 'border-green-500' : 'border-transparent'} absolute top-0`}>
-                    </div>
-                    <span class="mt-2 text-center text-[#464646]">{representative.name}</span>
+            {#if filteredRepresentatives.length === 0}
+                <div class="text-center text-gray-500 p-4">
+                    No representatives available for your company.
                 </div>
-                {/each}
-            </div>
+            {:else}
+                <div class="flex space-x-4 mb-6 justify-center flex-wrap">
+                    <!-- Representatives -->
+                    {#each filteredRepresentatives as representative}
+                    <div 
+                        class="flex flex-col items-center cursor-pointer relative"
+                        on:click={() => selectRepresentative(representative)}
+                    >
+                        <img 
+                            src={representative.avatar 
+                                ? `/api/files/${representative.collectionId || 'representatives'}/${representative.id}/${representative.avatar}` 
+                                : `https://ui-avatars.com/api/?name=${encodeURIComponent(representative.name)}&background=random`} 
+                            alt="{representative.name}'s Avatar" 
+                            class="w-24 h-24 rounded-full mb-4 object-cover object-center"
+                        >
+                        <div class={`w-24 h-24 rounded-full border-4 ${selectedRepresentative === representative ? 'border-green-500' : 'border-transparent'} absolute top-0`}>
+                        </div>
+                        <span class="mt-2 text-center text-[#464646]">{representative.name}</span>
+                    </div>
+                    {/each}
+                </div>
+            {/if}
             
             {#if selectedRepresentative}
                 <div class="mb-6">

@@ -734,6 +734,44 @@ function handleWebRTCCallback(info: string, obj: any) {
                             playVideoStore.set(state.isPlaying || false);
                         }
                         
+                        // Handle media URL updates
+                        if (messageBody.eventType.endsWith('_url_update') && messageBody.messageBody) {
+                            const mediaUpdateData = JSON.parse(messageBody.messageBody);
+                            
+                            // Determine media type from event type
+                            const mediaType = messageBody.eventType.replace('_url_update', '');
+                            
+                            // Clear all media stores first
+                            currentVideoUrl.set('');
+                            currentPdfUrl.set('');
+                            currentDocxUrl.set('');
+                            currentImageUrl.set('');
+                            
+                            // Set the appropriate media URL
+                            switch (mediaType) {
+                                case 'video':
+                                    currentVideoUrl.set(mediaUpdateData.fileUrl);
+                                    playVideoStore.set(mediaUpdateData.shouldPlay || false);
+                                    break;
+                                case 'pdf':
+                                    currentPdfUrl.set(mediaUpdateData.fileUrl);
+                                    break;
+                                case 'docx':
+                                    currentDocxUrl.set(mediaUpdateData.fileUrl);
+                                    break;
+                                case 'image':
+                                    currentImageUrl.set(mediaUpdateData.fileUrl);
+                                    break;
+                            }
+                            
+                            // Update sync source if needed
+                            if (mediaUpdateData.fromHost) {
+                                syncSource = 'host';
+                            } else if (mediaUpdateData.fromRepresentative) {
+                                syncSource = 'representative';
+                            }
+                        }
+                        
                         // Handle video URL updates
                         if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {
                             const videoUpdateData = JSON.parse(messageBody.messageBody);
@@ -756,17 +794,32 @@ function handleWebRTCCallback(info: string, obj: any) {
                         } 
                         // Handle PDF URL updates
                         else if (messageBody.eventType === 'pdf_url_update' && messageBody.messageBody) {
-                            const pdfUpdateData = JSON.parse(messageBody.messageBody);
-                            
-                            if (pdfUpdateData.fileUrl) {
-                                // Clear all media types first
+                            try {
+                                const pdfUpdateData = JSON.parse(messageBody.messageBody);
+                                
+                                // Clear all media stores first
                                 currentVideoUrl.set('');
+                                currentPdfUrl.set('');
                                 currentDocxUrl.set('');
-                                // Then set the new PDF URL
+                                currentImageUrl.set('');
+                                
+                                // Set the PDF URL
                                 currentPdfUrl.set(pdfUpdateData.fileUrl);
-                                // Pause any playing video for document focus
-                                playVideoStore.set(false);
-                                if (videoPlayer) videoPlayer.pause();
+                                
+                                // Update sync source if needed
+                                if (pdfUpdateData.fromHost) {
+                                    syncSource = 'host';
+                                } else if (pdfUpdateData.fromRepresentative) {
+                                    syncSource = 'representative';
+                                }
+                                
+                                // Optional: handle initial scale and page if provided
+                                if (pdfUpdateData.initialScale) {
+                                    // You might want to set this in a PDF-specific store or pass to the PDF viewer
+                                    pdfScrollPosition.set(pdfUpdateData.initialScale);
+                                }
+                            } catch (error) {
+                                console.error('Error handling PDF update:', error);
                             }
                         } 
                         // Handle PDF scroll sync
@@ -1955,16 +2008,39 @@ function removeAllRemoteVideos() {
 // Example of how to use the update function
 function handleVideoSelect(event) {
     const selectedVideo = event.detail;
-    console.log('Video selected event:', {
-        selectedVideo,
-        hasFile: !!selectedVideo?.file,
-        collectionId: selectedVideo?.collectionId,
-        id: selectedVideo?.id,
-        file: selectedVideo?.file,
-        type: selectedVideo?.type,
-        roomName,
-        isDataChannelOpen
-    });
+    
+    // Determine the most accurate file type
+    const determineFileType = (item) => {
+        // Prioritize specific type checks
+        const type = (item.type || '').toLowerCase();
+        const fileKind = (item.fileKind || '').toLowerCase();
+        
+        // Explicit type mappings
+        const typeMap = {
+            'video': 'video',
+            'pdf': 'pdf',
+            'document': 'docx',
+            'image': 'image'
+        };
+
+        // Check type first
+        if (typeMap[type]) return typeMap[type];
+        
+        // Check fileKind next
+        if (typeMap[fileKind]) return typeMap[fileKind];
+        
+        // File extension fallback
+        const fileName = item.file || '';
+        if (fileName.toLowerCase().endsWith('.pdf')) return 'pdf';
+        if (fileName.toLowerCase().endsWith('.docx') || fileName.toLowerCase().endsWith('.doc')) return 'docx';
+        if (fileName.toLowerCase().endsWith('.mp4') || fileName.toLowerCase().endsWith('.avi') || fileName.toLowerCase().endsWith('.mov')) return 'video';
+        if (fileName.toLowerCase().endsWith('.jpg') || fileName.toLowerCase().endsWith('.png') || fileName.toLowerCase().endsWith('.jpeg') || fileName.toLowerCase().endsWith('.gif')) return 'image';
+        
+        // Default fallback
+        return 'unknown';
+    };
+
+    const fileType = determineFileType(selectedVideo);
     
     // Clear all media stores first
     currentVideoUrl.set('');
@@ -1972,17 +2048,10 @@ function handleVideoSelect(event) {
     currentDocxUrl.set('');
     currentImageUrl.set('');
 
-    // Determine content type and set appropriate store
+    // Determine content URL
     const fileUrl = selectedVideo && selectedVideo.file 
         ? `/api/files/${selectedVideo.collectionId || 'content_library'}/${selectedVideo.id}/${selectedVideo.file}` 
         : '';
-    
-    const fileType = (selectedVideo?.type || '').toLowerCase();
-
-    console.log('Content type and URL:', {
-        fileType,
-        fileUrl
-    });
 
     // Set the appropriate media URL based on file type
     switch (fileType) {
@@ -1994,7 +2063,6 @@ function handleVideoSelect(event) {
             currentPdfUrl.set(fileUrl);
             break;
         case 'docx':
-        case 'doc':
             currentDocxUrl.set(fileUrl);
             break;
         case 'image':
@@ -2006,29 +2074,51 @@ function handleVideoSelect(event) {
             playVideoStore.set(true);
     }
     
-    // Check if we can send updates
-    if ((isHost || isRepresentative) && webRTCAdaptor && isDataChannelOpen) {
+    // Always send update if we're the controller
+    const isCurrentController = (syncSource === 'host' && isHost) || 
+                                (syncSource === 'representative' && isRepresentative);
+    
+    if (isCurrentController && webRTCAdaptor && isDataChannelOpen) {
+        // Prepare media update message
         const mediaUpdateMessage = {
             eventType: `${fileType}_url_update`,
             messageBody: JSON.stringify({
                 fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative,
-                shouldPlay: fileType === 'video'
+                shouldPlay: fileType === 'video',
+                // Include full item details for comprehensive sync
+                fullItem: selectedVideo
             })
         };
         
-        console.log('Sending media update message:', mediaUpdateMessage);
-        
         try {
+            // Broadcast media update
             sendMessage(
                 roomName,
                 Date.now(),
                 JSON.stringify(mediaUpdateMessage),
                 roomName
             );
+
+            // Broadcast sync source if needed
+            const syncSourceUpdate = {
+                eventType: 'sync_source_change',
+                messageBody: JSON.stringify({
+                    syncSource,
+                    fromHost: isHost,
+                    fromRepresentative: isRepresentative
+                })
+            };
+
+            sendMessage(
+                roomName,
+                Date.now(),
+                JSON.stringify(syncSourceUpdate),
+                roomName
+            );
         } catch (error) {
-            console.error('Error sending media URL update:', error);
+            console.error('Error sending media update:', error);
         }
     }
 }

@@ -63,77 +63,29 @@
     $: showHostContent = isHost;
     $: showRepContent = isRepresentative;
 
-    function handleMediaSelect(item: any) {
-        console.log('Media selected:', {
-            item,
-            isHost,
-            isRepresentative,
-            roomName,
-            hasRoomId: !!room?.id
+    function handleMediaSelect(item) {
+        // Determine file type based on database types
+        const determineFileType = (content) => {
+            const type = (content.type || '').toLowerCase();
+            
+            // Explicit type mapping based on database types
+            const typeMap = {
+                'document': 'docx',
+                'video': 'video',
+                'pdf': 'pdf',
+                'image': 'image'
+            };
+
+            return typeMap[type] || 'unknown';
+        };
+
+        const fileType = determineFileType(item);
+
+        // Dispatch the media select event with the correct file type
+        dispatch('videoSelect', {
+            ...item,
+            type: fileType
         });
-        
-        // Clear ALL stores first
-        currentVideoUrl.set('');
-        currentPdfUrl.set('');
-        currentDocxUrl.set('');
-        currentImageUrl.set('');
-        
-        const fileUrl = getFileUrl(item);
-        const kind = (item.fileKind || '').toLowerCase();
-        const isVideo = kind === 'video';
-        const isPdf = kind === 'pdf';
-        const isDocx = kind === 'docx' || kind === 'doc';
-        const isImage = kind === 'image';
-        
-        console.log('File details:', {
-            fileUrl,
-            kind,
-            isVideo,
-            isPdf,
-            isDocx,
-            isImage,
-            fileName: item.file
-        });
-        
-        if (isImage) {
-            currentImageUrl.set(fileUrl);
-            broadcastMediaUpdate('image_url_update', {
-                fileUrl: fileUrl,
-                fromHost: isHost,
-                fromRepresentative: isRepresentative
-            });
-        } else if (isVideo) {
-            currentVideoUrl.set(fileUrl);
-            dispatch('videoSelect', item);
-            broadcastMediaUpdate('video_url_update', {
-                videoUrl: fileUrl,
-                fromHost: isHost,
-                fromRepresentative: isRepresentative
-            });
-        } else if (isPdf) {
-            currentPdfUrl.set(fileUrl);
-            broadcastMediaUpdate('pdf_url_update', {
-                fileUrl: fileUrl,
-                fromHost: isHost,
-                fromRepresentative: isRepresentative
-            });
-        } else if (isDocx) {
-            currentDocxUrl.set(fileUrl);
-            broadcastMediaUpdate('docx_url_update', {
-                fileUrl: fileUrl,
-                fromHost: isHost,
-                fromRepresentative: isRepresentative
-            });
-        } else {
-            // Unknown kind: default to trying video first
-            currentVideoUrl.set(fileUrl);
-            dispatch('videoSelect', item);
-            broadcastMediaUpdate('video_url_update', {
-                videoUrl: fileUrl,
-                fromHost: isHost,
-                fromRepresentative: isRepresentative
-            });
-        }
     }
 
     function broadcastMediaUpdate(eventType: string, messageData: any) {
@@ -194,6 +146,22 @@
             return null;
         }
     }
+
+    // Update the rendering logic in the template
+    function getMediaIcon(fileType) {
+        switch (fileType) {
+            case 'video':
+                return '/icons/play.svg';
+            case 'pdf':
+                return '/icons/pdf.svg';
+            case 'document':
+                return '/icons/word.svg';
+            case 'image':
+                return '/icons/image.svg';
+            default:
+                return '/icons/media.svg';
+        }
+    }
 </script>
 
 <div class="bg-[#9D9D9F] p-4 rounded-lg pb-24">
@@ -203,7 +171,7 @@
             {#if hostContent.length > 0}
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each hostContent as item}
-                        {@const fileType = (item.fileKind || 'unknown').toLowerCase()}
+                        {@const fileType = (item.type || 'unknown').toLowerCase()}
                         <div class="flex flex-col gap-3">
                             <button
                             class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
@@ -228,7 +196,7 @@
                                 <div class="w-full h-full flex items-center justify-center bg-white text-white">
                                     <img src="/icons/pdf.svg" alt="PDF" class="w-[90px] h-[90px]" />
                                 </div>
-                            {:else if fileType === 'docx' || fileType === 'doc'}
+                            {:else if fileType === 'document'}
                                 <div class="w-full h-full flex items-center justify-center bg-blue-600 text-white">
                                     <img src="/icons/word.svg" alt="DOCX" class="w-[90px] h-[90px]" />
                                 </div>
@@ -256,9 +224,8 @@
                             {/if}
                         </button>
                             
-                            <p class="text-white text-sm truncate font-semibold">{item.title}</p>
-                            
-                        </div>
+                        <p class="text-white text-sm truncate font-semibold">{item.title}</p>
+                    </div>
                     {/each}
                 </div>
             {:else}
@@ -273,7 +240,7 @@
             {#if repContent.length > 0}
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each repContent as item}
-                        {@const fileType = (item.fileKind || 'unknown').toLowerCase()}
+                        {@const fileType = (item.type || 'unknown').toLowerCase()}
                         <button
                             class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
                             on:click={() => handleMediaSelect(item)}
@@ -294,7 +261,7 @@
                                 <div class="w-full h-full flex items-center justify-center bg-red-600 text-white">
                                     PDF
                                 </div>
-                            {:else if fileType === 'docx' || fileType === 'doc'}
+                            {:else if fileType === 'document'}
                                 <div class="w-full h-full flex items-center justify-center bg-blue-600 text-white">
                                     <img src="/icons/word.svg" alt="DOCX" class="w-[90px] h-[90px]" />
                                 </div>

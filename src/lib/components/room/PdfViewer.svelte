@@ -36,14 +36,25 @@
 
     // Subscribe to PDF URL changes and zoom sync
     $: if ($currentPdfUrl) {
-        const urlParams = new URLSearchParams(new URL($currentPdfUrl).search);
-        const syncedScale = urlParams.get('scale');
-        
-        if (syncedScale && !isController) {
-            // If there's a scale parameter and we're not the controller, use it
-            updateZoomFromSync(parseFloat(syncedScale));
-        } else {
-            // Otherwise just load the PDF normally
+        try {
+            // Ensure the URL is absolute by prepending the base URL if it's a relative path
+            const fullUrl = $currentPdfUrl.startsWith('http') 
+                ? $currentPdfUrl 
+                : `${window.location.origin}${$currentPdfUrl}`;
+            
+            const urlParams = new URLSearchParams(new URL(fullUrl).search);
+            const syncedScale = urlParams.get('scale');
+            
+            if (syncedScale && !isController) {
+                // If there's a scale parameter and we're not the controller, use it
+                updateZoomFromSync(parseFloat(syncedScale));
+            } else {
+                // Otherwise just load the PDF normally
+                loadPdf(fullUrl);
+            }
+        } catch (error) {
+            console.error('Error processing PDF URL:', error);
+            // Fallback to loading the PDF directly if URL parsing fails
             loadPdf($currentPdfUrl);
         }
     }

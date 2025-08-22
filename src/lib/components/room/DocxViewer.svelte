@@ -18,10 +18,12 @@
     let isAtBottom = false;
     let previousScrollTop = 0;
     
-    // Watch for changes in the docx URL
-    $: if ($currentDocxUrl && $currentDocxUrl !== loadedDocUrl) {
-        console.log('DOCX URL changed, loading:', $currentDocxUrl);
-        loadDocx($currentDocxUrl);
+    // Reactive statement to handle DOCX URL changes
+    $: {
+        if ($currentDocxUrl) {
+            // Trigger document loading
+            loadDocx($currentDocxUrl);
+        }
     }
 
     // Watch for scroll position changes from other users
@@ -147,42 +149,46 @@
                 throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
             }
             
-            console.log('DOCX file fetched successfully, converting...');
             const arrayBuffer = await response.arrayBuffer();
             
             // Convert to HTML using mammoth
             const result = await mammoth.convertToHtml({ arrayBuffer });
-            console.log('Mammoth conversion result:', result);
             
             if (!result.value) {
                 throw new Error('Mammoth conversion returned empty content');
             }
             
-            // Store the HTML content in a variable instead of directly setting innerHTML
+            // Store the HTML content
             htmlContent = result.value;
-            console.log('DOCX content length:', htmlContent.length);
             
-            // Log any warnings
-            if (result.messages && result.messages.length > 0) {
-                console.warn('Mammoth conversion warnings:', result.messages);
-            }
-            
-            // Wait for the next tick to ensure docxContent is available
+            // Wait for the next tick to ensure DOM is updated
             await tick();
             
-            // Set innerHTML only if docxContent exists
+            // Try multiple methods to set content
             if (docxContent) {
                 docxContent.innerHTML = htmlContent;
-                // Add custom styling for better readability
-                docxContent.classList.add('docx-content');
             } else {
-                console.error('docxContent element is not available');
+                // Fallback: create a new element if not found
+                const newContentDiv = document.createElement('div');
+                newContentDiv.classList.add('docx-content-wrapper', 'p-8', 'max-w-4xl', 'mx-auto');
+                newContentDiv.innerHTML = htmlContent;
+                
+                // Replace the existing content div
+                const containerDiv = document.querySelector('.docx-container');
+                if (containerDiv) {
+                    const existingContentWrapper = containerDiv.querySelector('.docx-content-wrapper');
+                    if (existingContentWrapper) {
+                        containerDiv.replaceChild(newContentDiv, existingContentWrapper);
+                    } else {
+                        containerDiv.appendChild(newContentDiv);
+                    }
+                }
             }
             
             loadedDocUrl = url;
             
             // Reset scroll position after content is loaded
-            await tick(); // Wait another tick for DOM updates
+            await tick();
             if (docxContainer) {
                 docxContainer.scrollTop = 0;
                 previousScrollTop = 0;

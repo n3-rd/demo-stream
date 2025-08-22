@@ -122,17 +122,21 @@
 
     <!-- Message Input -->
     <div class="p-4 border-t border-[#47484B]">
-        <form on:submit|preventDefault={sendNewMessage} class="flex items-center gap-2 bg-[#47484B] rounded-full px-4 py-2">
+        <div class="flex items-center gap-2 bg-[#47484B] rounded-full px-4 py-2">
             <input 
                 type="text" 
                 placeholder="Send a message" 
                 bind:value={newText} 
-                class="flex-grow bg-transparent border-none outline-none text-white placeholder-gray-400" 
+                class="flex-grow bg-transparent border-none outline-none text-white placeholder-gray-400 pr-2 w-[80%]" 
             />
-            <button type="submit" class="w-8 h-8 flex items-center justify-center text-white">
-                <SendHorizontal size={18} />
+            <button 
+                on:click={sendNewMessage}
+                class="text-white hover:bg-gray-700 rounded-full p-2 transition-colors duration-200 ease-in-out"
+                disabled={!newText.trim()}
+            >
+                <SendHorizontal size={20} />
             </button>
-        </form>
+        </div>
     </div>
 </div>
 

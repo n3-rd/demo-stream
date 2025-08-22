@@ -38,6 +38,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
     import ImageViewer from '$lib/components/room/ImageViewer.svelte';
 	import { toast } from 'svelte-sonner';
 	import { getRepInfo } from '$lib/utils.js';
+    import { normalizeContent } from '$lib/utils/content';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -415,6 +416,9 @@ onMount(() => {
             participantsPanel.style.width = "0px";
         }
     }, 100);
+    
+    // Add a small delay to ensure MediaSelector is rendered
+    setTimeout(autoSelectFirstHostContent, 1000);
 });
 
 function initializeWebRTC() {
@@ -825,6 +829,36 @@ function handleWebRTCCallback(info: string, obj: any) {
                             const zoomData = JSON.parse(messageBody.messageBody);
                             if (zoomData.zoomLevel !== undefined) {
                                 imageZoomLevel.set(zoomData.zoomLevel);
+                            }
+                        }
+                        // Handle camera state updates
+                        else if (messageBody.eventType === 'camera_state_update' && messageBody.messageBody) {
+                            try {
+                                const cameraStateData = JSON.parse(messageBody.messageBody);
+                                
+                                // Only apply if we're not the controller
+                                const isCurrentController = (syncSource === 'host' && isHost) || 
+                                                           (syncSource === 'representative' && isRepresentative);
+                                
+                                if (!isCurrentController) {
+                                    isCameraOff = cameraStateData.isCameraOff;
+                                    
+                                    // Clear video player source if camera is off
+                                    if (videoPlayer) {
+                                        if (isCameraOff) {
+                                            videoPlayer.srcObject = null;
+                                            videoPlayer.src = '';
+                                        } else {
+                                            // Attempt to restore video stream
+                                            if (webRTCAdaptor && webRTCAdaptor.localStream) {
+                                                videoPlayer.srcObject = webRTCAdaptor.localStream;
+                                                videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('Error handling camera state update:', error);
                             }
                         }
                     }
@@ -1349,6 +1383,12 @@ function turnOnCamera() {
                 displayName,
                 sanitizeStreamName(roomName)
             );
+
+            // Ensure video is visible
+            if (videoPlayer) {
+                videoPlayer.srcObject = stream;
+                videoPlayer.play().catch(e => console.error('Error playing video:', e));
+            }
         })
         .catch(err => {
             console.error("Error reacquiring camera:", err);
@@ -1394,6 +1434,35 @@ function turnOffCamera() {
     
     // Republish with updated metadata
     webRTCAdaptor.updateMetadata(streamId, metadata);
+
+    // Clear video player source
+    if (videoPlayer) {
+        videoPlayer.srcObject = null;
+        videoPlayer.src = '';
+    }
+
+    // Broadcast camera off state
+    if (webRTCAdaptor && isDataChannelOpen) {
+        const cameraStateUpdate = {
+            eventType: 'camera_state_update',
+            messageBody: JSON.stringify({
+                isCameraOff: true,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative
+            })
+        };
+        
+        try {
+            sendMessage(
+                roomName,
+                Date.now(),
+                JSON.stringify(cameraStateUpdate),
+                roomName
+            );
+        } catch (error) {
+            console.error('Error sending camera state update:', error);
+        }
+    }
 }
 
 function toggleCamera() {
@@ -1892,87 +1961,75 @@ function handleVideoSelect(event) {
         collectionId: selectedVideo?.collectionId,
         id: selectedVideo?.id,
         file: selectedVideo?.file,
+        type: selectedVideo?.type,
         roomName,
         isDataChannelOpen
     });
     
+    // Clear all media stores first
+    currentVideoUrl.set('');
+    currentPdfUrl.set('');
+    currentDocxUrl.set('');
+    currentImageUrl.set('');
+
+    // Determine content type and set appropriate store
+    const fileUrl = selectedVideo && selectedVideo.file 
+        ? `/api/files/${selectedVideo.collectionId || 'content_library'}/${selectedVideo.id}/${selectedVideo.file}` 
+        : '';
+    
+    const fileType = (selectedVideo?.type || '').toLowerCase();
+
+    console.log('Content type and URL:', {
+        fileType,
+        fileUrl
+    });
+
+    // Set the appropriate media URL based on file type
+    switch (fileType) {
+        case 'video':
+            currentVideoUrl.set(fileUrl);
+            playVideoStore.set(true);
+            break;
+        case 'pdf':
+            currentPdfUrl.set(fileUrl);
+            break;
+        case 'docx':
+        case 'doc':
+            currentDocxUrl.set(fileUrl);
+            break;
+        case 'image':
+            currentImageUrl.set(fileUrl);
+            break;
+        default:
+            console.warn('Unknown content type, attempting to play as video:', fileType);
+            currentVideoUrl.set(fileUrl);
+            playVideoStore.set(true);
+    }
+    
     // Check if we can send updates
     if ((isHost || isRepresentative) && webRTCAdaptor && isDataChannelOpen) {
-        const newUrl = selectedVideo && selectedVideo.file 
-            ? `/api/files/${selectedVideo.collectionId || 'content_library'}/${selectedVideo.id}/${selectedVideo.file}` 
-            : '';
-        
-        console.log('Preparing to send video URL update:', {
-            newUrl,
-            roomName,
-            isHost,
-            isRepresentative
-        });
-        
-        // Update local state first
-        currentVideoUrl.set(newUrl);
-        currentPdfUrl.set(''); // Ensure PDF is cleared
-        
-        // Controller intent: start playing immediately
-        playVideoStore.set(true);
-        
-        if (videoPlayer) {
-            console.log('Updating video player source');
-            videoPlayer.src = newUrl;
-            // try to play locally
-            videoPlayer.play().catch(() => {/* ignore autoplay block */});
-        }
-        
-        // Send update to all participants
-        const videoUrlUpdate = {
-            eventType: 'video_url_update',
+        const mediaUpdateMessage = {
+            eventType: `${fileType}_url_update`,
             messageBody: JSON.stringify({
-                videoUrl: newUrl,
+                fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative,
-                shouldPlay: true
+                shouldPlay: fileType === 'video'
             })
         };
         
-        console.log('Sending video URL update message:', {
-            videoUrlUpdate,
-            roomName
-        });
+        console.log('Sending media update message:', mediaUpdateMessage);
         
         try {
             sendMessage(
                 roomName,
                 Date.now(),
-                JSON.stringify(videoUrlUpdate),
-                roomName
-            );
-            // Immediately broadcast play state and current time so late joiners sync without reselect
-            const syncAfterSelect = {
-                eventType: 'video_sync',
-                messageBody: JSON.stringify({
-                    currentTime: videoPlayer?.currentTime || 0,
-                    isPlaying: true,
-                    syncSource,
-                    fromHost: isHost,
-                    fromRepresentative: isRepresentative
-                })
-            };
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(syncAfterSelect),
+                JSON.stringify(mediaUpdateMessage),
                 roomName
             );
         } catch (error) {
-            console.error('Error sending video URL update:', error);
+            console.error('Error sending media URL update:', error);
         }
-    } else {
-        console.warn('Cannot send video update - conditions not met:', {
-            isHost,
-            isRepresentative,
-            hasWebRTCAdaptor: !!webRTCAdaptor,
-            isDataChannelOpen
-        });
     }
 }
 
@@ -2278,6 +2335,76 @@ if (data.redirectTo) {
 
 // Check if this is a scheduled meeting
 console.log('Room data on mount:', data);
+
+// Add a reference to the MediaSelector
+let mediaSelectorRef;
+
+// Remove previous references
+let mediaSelectorComponent;
+
+// Add a function to automatically select first host content
+function autoSelectFirstHostContent() {
+    console.log('Auto-select first host content called', {
+        mediaSelectorComponent: !!mediaSelectorComponent,
+        hasGetFirstHostContent: mediaSelectorComponent && typeof mediaSelectorComponent.getFirstHostContent === 'function',
+        roomHostContent: room?.host_content,
+        roomExpandHostContent: room?.expand?.host_content
+    });
+
+    if (mediaSelectorComponent && mediaSelectorComponent.getFirstHostContent) {
+        const firstHostContent = mediaSelectorComponent.getFirstHostContent();
+        
+        console.log('First host content result:', {
+            firstHostContent,
+            hasContent: !!firstHostContent
+        });
+        
+        if (firstHostContent) {
+            console.log('Automatically selecting first host content:', firstHostContent);
+            handleVideoSelect({ detail: firstHostContent });
+        } else {
+            console.warn('No first host content found to auto-select');
+        }
+    }
+}
+
+// Add a function to force media selection if no media is selected
+function ensureMediaSelection() {
+    // Remove verbose logging
+    if (!$currentVideoUrl && !$currentPdfUrl && !$currentDocxUrl && !$currentImageUrl) {
+        // Attempt to select first available content
+        if (mediaSelectorComponent && mediaSelectorComponent.getFirstHostContent) {
+            const firstHostContent = mediaSelectorComponent.getFirstHostContent();
+            
+            if (firstHostContent) {
+                handleVideoSelect({ detail: firstHostContent });
+            } else {
+                // Fallback: try to select first available content from room
+                const allContent = [
+                    ...(room?.expand?.host_content || []),
+                    ...(room?.expand?.representative_content || [])
+                ];
+                
+                if (allContent.length > 0) {
+                    const firstContent = normalizeContent(allContent)[0];
+                    handleVideoSelect({ detail: firstContent });
+                }
+            }
+        }
+    }
+}
+
+// Modify the onMount to include media selection fallback
+onMount(() => {
+    // Add multiple attempts to ensure media selection
+    const attempts = [1000, 2000, 3000, 5000, 7000];
+    attempts.forEach((delay) => {
+        setTimeout(() => {
+            autoSelectFirstHostContent();
+            ensureMediaSelection();
+        }, delay);
+    });
+});
 
 </script>
 
@@ -2594,6 +2721,7 @@ console.log('Room data on mount:', data);
                         on:videoSelect={handleVideoSelect}
                         hostContentItems={room?.expand?.host_content || []}
                         repContentItems={room?.expand?.representative_content || []}
+                        bind:this={mediaSelectorComponent}
                     />
                 </div>
             {/if}

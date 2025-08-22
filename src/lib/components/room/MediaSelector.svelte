@@ -2,6 +2,7 @@
     import { createEventDispatcher, onMount } from 'svelte';
     import { currentVideoUrl, currentPdfUrl, currentDocxUrl, currentImageUrl } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
+    import { normalizeContent } from '$lib/utils/content';
 
     export let isHost: boolean;
     export let isRepresentative: boolean;
@@ -11,14 +12,13 @@
     export let repContentItems: any[] = [];
 
 
+    // Remove verbose logging
     console.log("MediaSelector props:", {
         isHost,
         isRepresentative,
         room,
         roomName,
         hostContentItems,
-        repContentItems,
-        hostContentItemsLength: hostContentItems?.length || 0,
         repContentItemsLength: repContentItems?.length || 0
     });
     console.log("is representative", isRepresentative);
@@ -27,14 +27,6 @@
 
     const dispatch = createEventDispatcher();
 
-    const normalizeContent = (items: any[]) => {
-        return (items || []).map((item: any) => ({
-            ...item,
-            roles: item.library_type || [],
-            fileKind: item.type || 'unknown',
-            collectionId: item.collectionId || 'content_library'
-        }));
-    }
 
     // Check if content is active in the room
     function isContentActive(contentId: string, forHost: boolean) {
@@ -50,11 +42,6 @@
     $: hostContent = normalizeContent(hostContentItems)
         .filter(item => {
             const isIncluded = room?.host_content?.includes(item.id);
-            console.log('Host content filter:', { 
-                itemId: item.id, 
-                roomHostContent: room?.host_content, 
-                isIncluded 
-            });
             return isIncluded;
         })
         .filter(item => isContentActive(item.id, true));
@@ -62,18 +49,14 @@
     $: repContent = normalizeContent(repContentItems)
         .filter(item => {
             const isIncluded = room?.representative_content?.includes(item.id);
-            console.log('Rep content filter:', { 
-                itemId: item.id, 
-                roomRepContent: room?.representative_content, 
-                isIncluded 
-            });
             return isIncluded;
         })
         .filter(item => isContentActive(item.id, false));
 
     $: {
-        console.log("hostContent", hostContent);
-        console.log("repContent", repContent);
+        // Remove logging
+        // console.log("hostContent", hostContent);
+        // console.log("repContent", repContent);
     }
 
     // Determine which content sections to show
@@ -183,6 +166,34 @@
     onMount(() => {
         // Content is now passed as props, so no need to load here
     });
+
+    // Modify the getFirstHostContent method to be more robust
+    export function getFirstHostContent() {
+        try {
+            // Normalize host content items
+            const normalizedHostContent = normalizeContent(hostContentItems || []);
+
+            // Filter content based on room's host content
+            const filteredContent = normalizedHostContent.filter(item => {
+                const isIncluded = room?.host_content?.includes(item.id);
+                return isIncluded;
+            });
+
+            // Further filter active content
+            const activeContent = filteredContent.filter(item => {
+                const isActive = isContentActive(item.id, true);
+                return isActive;
+            });
+            
+            // Return the first active content item
+            const firstItem = activeContent.length > 0 ? activeContent[0] : null;
+            
+            return firstItem;
+        } catch (error) {
+            console.error('Error getting first host content:', error);
+            return null;
+        }
+    }
 </script>
 
 <div class="bg-[#9D9D9F] p-4 rounded-lg pb-24">

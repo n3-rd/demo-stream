@@ -17,6 +17,8 @@
     import HintValidate from '$lib/components/layout/hint-validate.svelte';
     import * as Select from "$lib/components/ui/select";
     import PocketBase from 'pocketbase';
+    import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '$lib/components/ui/alert-dialog';
+    import { Trash2 } from 'lucide-svelte';
 
     interface ErrorData {
         message: string;
@@ -94,6 +96,27 @@
             toast.error(message || 'Failed to process representative');
         } else {
             toast.error('Failed to process representative');
+        }
+    }
+
+    async function deleteRepresentative(repId: string) {
+        try {
+            const response = await fetch(`/api/representatives/${repId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                toast.success('Representative deleted successfully');
+                await invalidateAll();
+            } else {
+                toast.error(result.message || 'Failed to delete representative');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            toast.error('Failed to delete representative');
         }
     }
 </script>
@@ -174,6 +197,37 @@
                                    Edit
                                 </Button>
                         
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild let:builder>
+                                        <Button 
+                                            builders={[builder]}
+                                            variant="ghost"
+                                            size="sm"
+                                            class="p-0 bg-[#FFEBEE] text-[#D32F2F] py-1 px-3 hover:bg-[#FFCDD2]"
+                                        >
+                                            <Trash2 class="mr-1 h-4 w-4" /> Delete
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will permanently delete the representative {rep.name} from your system. 
+                                                This action cannot be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction 
+                                                class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                on:click={() => deleteRepresentative(rep.id)}
+                                            >
+                                                Delete
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+
                                         <Button 
                                             variant="ghost"
                                             size="sm"

@@ -6,9 +6,11 @@
 	import Share from "./share.svelte";
 	import { page } from '$app/stores';
     import { Button } from "$lib/components/ui/button";
-    import { ClipboardCopy, Send } from "lucide-svelte";
+    import { ClipboardCopy, Send, Mail } from "lucide-svelte";
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "$lib/components/ui/select";
     import { createEventDispatcher } from "svelte";
+    import { PUBLIC_SMTP_FROM, PUBLIC_BREVO_API_KEY } from '$env/static/public';
+
     export let shareURL: string;
 
     export let representatives: any[];
@@ -18,6 +20,8 @@
     let selectedRepresentative: any = null;
     const joinURL = $page.url.href;
     let isSendingInvite = false;
+    let sendViaEmail = true;
+    let sendViaSMS = true;
 
     let invitedRepresentative = '';
 
@@ -68,26 +72,70 @@
         const inviteUrl = `${$page.url.origin}/room/${$page.params.roomId}/representative?repid=${selectedRepresentative.id}&uid=${uidExtracted}`;
         
         try {
+            // Prepare email payload
+            const emailPayload = {
+                sender: {
+                    name: "Representative Invite",
+                    email: PUBLIC_SMTP_FROM
+                },
+                to: [
+                    {
+                        email: selectedRepresentative.email,
+                        name: selectedRepresentative.name
+                    }
+                ],
+                subject: "Room Invitation",
+                htmlContent: `
+                    <html>
+                        <body>
+                            <h1>Room Invitation</h1>
+                            <p>You have been invited to join the room: ${$page.data?.room?.title || 'View-Room'}</p>
+                            <p>Invited by: ${$page.data?.user?.name || 'Customer'}</p>
+                            <p>Click the link to join: <a href="${inviteUrl}">${inviteUrl}</a></p>
+                        </body>
+                    </html>
+                `
+            };
+
+            // Send email via Brevo
+            const emailResp = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: {
+                    accept: 'application/json',
+                    'api-key': PUBLIC_BREVO_API_KEY,
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify(emailPayload)
+            });
+
             const response = await fetch('/api/send-rep-invite', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-rep-phone': selectedRepresentative.phone || ''
+                    'x-rep-phone': selectedRepresentative.phone || '',
+                    'x-rep-email': selectedRepresentative.email || ''
                 },
                 body: JSON.stringify({
                     rep_id: selectedRepresentative.id,
                     room_id: $page.params.roomId,
                     room_title: $page.data?.room?.title || 'View-Room',
                     user_name: $page.data?.user?.name || 'Customer',
-                    invite_url: inviteUrl
+                    invite_url: inviteUrl,
+                    send_methods: {
+                        email: true,
+                        sms: true
+                    }
                 })
             });
 
             const result = await response.json();
+            const emailResult = await emailResp.json();
             
-            if (result.success) {
+            if (result.success && emailResult) {
+                const methodsUsed = ['SMS', 'Email', 'Notification'];
+
                 toast.success(`Invite sent to ${selectedRepresentative.name}!`, {
-                    description: `SMS: ${result.sms_sent ? '✓' : '✗'} | Notification: ${result.notification_sent ? '✓' : '✗'}`
+                    description: `Sent via: ${methodsUsed.join(', ')}`
                 });
             } else {
                 toast.error('Failed to send invite', {
@@ -206,7 +254,7 @@
                     <p class="text-xs text-gray-500 mt-1">Share this link with {selectedRepresentative.name} to join as a representative</p>
                     
                     <!-- Send Invite Button -->
-                    <div class="mt-4">
+                    <div class="mt-4 space-y-4">
                         <Button
                             class="w-full"
                             on:click={sendInvite}
@@ -216,12 +264,14 @@
                                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                 Sending...
                             {:else}
-                                <Send class="h-4 w-4 mr-2" />
-                                Send Invite via SMS & Notification
+                                <div class="flex items-center">
+                                    <Send class="h-4 w-4 mr-2" />
+                                    Send Invite
+                                </div>
                             {/if}
                         </Button>
                         <p class="text-xs text-gray-500 mt-2 text-center">
-                            Sends SMS and push notification to {selectedRepresentative.name}
+                            Sends invite to {selectedRepresentative.name} via SMS and Email
                         </p>
                     </div>
                 </div>

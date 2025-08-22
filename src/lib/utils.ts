@@ -49,6 +49,12 @@ export const flyAndScale = (
 
 const getRepInfo = async (representativeId: string) => {
   try {
+    // Check if representativeId is null, undefined, or empty
+    if (!representativeId || representativeId === 'null' || representativeId === 'undefined') {
+      console.warn('Invalid representative ID provided to getRepInfo:', representativeId);
+      return null;
+    }
+    
     const response = await fetch(`/api/representatives/${representativeId}`);
     if (response.ok) {
       const data = await response.json();

@@ -554,6 +554,9 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
             
         case "stream_not_found":
+            // This is expected when trying to play a room that doesn't have any publishers yet
+            console.log("Stream not found. This is normal if no one else is in the room yet.");
+            isNoStreamExist = true;
             break;
 
         case "broadcastObject":
@@ -942,8 +945,17 @@ function handleWebRTCCallback(info: string, obj: any) {
 }
 
 function handleWebRTCError(error: string, message: string) {
-    console.error("WebRTC Error:", error, message);
-    connectionStatus = 'error';
+    // Use console.log instead of console.error for expected errors
+    if (error === "no_stream_exist") {
+        console.log("WebRTC Info:", error, message);
+    } else {
+        console.error("WebRTC Error:", error, message);
+    }
+    
+    // Don't set error status for expected errors
+    if (error !== "no_stream_exist") {
+        connectionStatus = 'error';
+    }
     
     // More comprehensive error handling
     switch (error) {
@@ -962,6 +974,13 @@ function handleWebRTCError(error: string, message: string) {
             } else {
                 toast.error("Persistent WebRTC connection issues. Please refresh the page.");
             }
+            break;
+        case "no_stream_exist":
+            // This is expected when you're the first person in the room
+            // The room stream doesn't exist yet, which is normal
+            console.log("Room stream doesn't exist yet. This is normal if you're the first participant.");
+            isNoStreamExist = true;
+            // Don't show error toast for this expected case
             break;
         default:
             console.error("Unhandled WebRTC Error:", error, message);
@@ -990,9 +1009,9 @@ function getCleanDisplayName(name: string): string {
 }
 
 // can't use await at top-level in Svelte component scripts, so use an async IIFE if you want to log this
-(async () => {
-    console.log("repppp",await getRepInfo($page.url.searchParams.get('repid')));
-})();
+// (async () => {
+//     console.log("repppp",await getRepInfo($page.url.searchParams.get('repid')));
+// })();
 
 function joinRoom() {
     console.log('joinRoom called with:', {

@@ -98,8 +98,8 @@ let isHost = false;
 const host = $page.url.pathname.split("/").pop().split("-").pop();
 let showGreetingPopup = false;
 
-// Fix room data structure - data.roomId is an array containing the room object
-const room = data?.roomId?.[0] || null;
+// Fix room data structure - data is the room object directly from server
+const room = data?.id ? data : null;
 
 // Add retry state
 let webrtcInitAttempts = 0;
@@ -2573,8 +2573,8 @@ console.log('Room data on mount:', data);
                         {room} 
                         {roomName}
                         on:videoSelect={handleVideoSelect}
-                        hostContentItems={data?.hostContent}
-                        repContentItems={data?.representativeContent}
+                        hostContentItems={room?.expand?.host_content || []}
+                        repContentItems={room?.expand?.representative_content || []}
                     />
                 </div>
             {/if}

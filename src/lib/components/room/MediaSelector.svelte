@@ -11,6 +11,16 @@
     export let repContentItems: any[] = [];
 
 
+    console.log("MediaSelector props:", {
+        isHost,
+        isRepresentative,
+        room,
+        roomName,
+        hostContentItems,
+        repContentItems,
+        hostContentItemsLength: hostContentItems?.length || 0,
+        repContentItemsLength: repContentItems?.length || 0
+    });
     console.log("is representative", isRepresentative);
     console.log("hostContentItems", hostContentItems);
     console.log("repContentItems", repContentItems);
@@ -38,11 +48,27 @@
 
     // Filter content based on role and active status
     $: hostContent = normalizeContent(hostContentItems)
-        .filter(item => room?.host_content?.includes(item.id))
+        .filter(item => {
+            const isIncluded = room?.host_content?.includes(item.id);
+            console.log('Host content filter:', { 
+                itemId: item.id, 
+                roomHostContent: room?.host_content, 
+                isIncluded 
+            });
+            return isIncluded;
+        })
         .filter(item => isContentActive(item.id, true));
         
     $: repContent = normalizeContent(repContentItems)
-        .filter(item => room?.representative_content?.includes(item.id))
+        .filter(item => {
+            const isIncluded = room?.representative_content?.includes(item.id);
+            console.log('Rep content filter:', { 
+                itemId: item.id, 
+                roomRepContent: room?.representative_content, 
+                isIncluded 
+            });
+            return isIncluded;
+        })
         .filter(item => isContentActive(item.id, false));
 
     $: {
@@ -166,7 +192,6 @@
             {#if hostContent.length > 0}
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each hostContent as item}
-                    {#if item.active}
                         {@const fileType = (item.fileKind || 'unknown').toLowerCase()}
                         <div class="flex flex-col gap-3">
                             <button
@@ -223,7 +248,6 @@
                             <p class="text-white text-sm truncate font-semibold">{item.title}</p>
                             
                         </div>
-                        {/if}
                     {/each}
                 </div>
             {:else}
@@ -238,7 +262,6 @@
             {#if repContent.length > 0}
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each repContent as item}
-                    {#if item.active}
                         {@const fileType = (item.fileKind || 'unknown').toLowerCase()}
                         <button
                             class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
@@ -287,7 +310,6 @@
                                 <p class="text-white text-sm truncate">{item.title}</p>
                             </div>
                         </button>
-                        {/if}
                     {/each}
                 </div>
             {:else}

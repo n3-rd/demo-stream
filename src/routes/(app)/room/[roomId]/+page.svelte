@@ -1032,6 +1032,17 @@ function handleWebRTCCallback(info: string, obj: any) {
 }
 
 function handleWebRTCError(error: string, message: string) {
+    // Log full error details for debugging
+    console.error("Detailed WebRTC Error:", {
+        error,
+        message,
+        currentStreamId: publishStreamId,
+        roomName,
+        isRepresentative,
+        isHost,
+        connectionStatus
+    });
+    
     // Use console.log instead of console.error for expected errors
     if (error === "no_stream_exist") {
         console.log("WebRTC Info:", error, message);
@@ -1046,6 +1057,20 @@ function handleWebRTCError(error: string, message: string) {
     
     // More comprehensive error handling
     switch (error) {
+        case "already_publishing":
+            console.warn("Stream already in publishing state. Attempting to recover...");
+            try {
+                // Force stop all streams and reset
+                webRTCAdaptor.stop(roomName);
+                webRTCAdaptor.stop(publishStreamId);
+                
+                // Reinitialize WebRTC connection
+                setTimeout(initWithRetry, 1000);
+            } catch (recoveryError) {
+                console.error("Recovery attempt failed:", recoveryError);
+                toast.error("Stream recovery failed. Please refresh the page.");
+            }
+            break;
         case "WebSocketNotConnected":
             toast.error("Connection to media server failed. Please check your internet connection and try again.");
             break;
@@ -1409,33 +1434,7 @@ function turnOnCamera() {
             // Now turn on camera in adaptor
             webRTCAdaptor.turnOnLocalCamera();
             isCameraOff = false;
-            
-            // Update metadata and republish
-            const metadata = JSON.stringify({
-                isCameraOff: false,
-                isMicMuted,
-                isRepresentative: !!data.representativeName,
-                displayName,
-                roomId: baseRoomName,
-                uid: uniqueSessionId
-            });
-            
-            console.log('Publishing with new camera stream:', {
-                streamId,
-                metadata,
-                displayName,
-                roomName: sanitizeStreamName(roomName)
-            });
-            
-            // Republish with updated metadata
-            webRTCAdaptor.publish(
-                streamId,
-                null,
-                metadata,
-                null,
-                displayName,
-                sanitizeStreamName(roomName)
-            );
+
 
             // Ensure video is visible
             if (videoPlayer) {
@@ -1456,10 +1455,6 @@ function turnOffCamera() {
     // Update media constraints to disable video
     mediaConstraints.video = false;
     
-    // Stop video track
-    webRTCAdaptor.turnOffLocalCamera();
-    isCameraOff = true;
-    
     // Get the correct stream ID based on user type
     let displayName;
     if (isAuthenticated) {
@@ -1475,24 +1470,19 @@ function turnOffCamera() {
     
     console.log('Turning off camera for streamId:', streamId);
     
-    // Update stream metadata
-    const metadata = JSON.stringify({
-        isCameraOff: true,
-        isMicMuted,
-        isRepresentative: !!data.representativeName,
-        displayName,
-        roomId: baseRoomName,
-        uid: uniqueSessionId
-    });
-    
-    // Republish with updated metadata
-    webRTCAdaptor.updateMetadata(streamId, metadata);
 
-    // Clear video player source
-    if (videoPlayer) {
-        videoPlayer.srcObject = null;
-        videoPlayer.src = '';
+    
+    try {
+        // 3. Turn off local camera
+        webRTCAdaptor.turnOffLocalCamera();
+    } catch (turnOffError) {
+        console.warn('Error turning off local camera:', turnOffError);
     }
+    
+    isCameraOff = true;
+    
+ 
+
 
     // Broadcast camera off state
     if (webRTCAdaptor && isDataChannelOpen) {
@@ -1515,6 +1505,12 @@ function turnOffCamera() {
         } catch (error) {
             console.error('Error sending camera state update:', error);
         }
+    }
+
+    // Clear video player source
+    if (videoPlayer) {
+        videoPlayer.srcObject = null;
+        videoPlayer.src = '';
     }
 }
 

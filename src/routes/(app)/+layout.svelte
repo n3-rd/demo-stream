@@ -7,13 +7,12 @@
 	import { page } from '$app/stores';
 	let pageRoute = $page;
 	let inRoom = false;
+	let isEmbedPage = false;
 
 	afterNavigate((res)=>{
-		// console.log('before navigate', res);
 		pageRoute = $page;
 		console.log('after navigate', pageRoute);
 	})
-
 
 $:{
 	console.log('layout route', pageRoute);
@@ -23,6 +22,9 @@ $:{
 	else{
 		inRoom = false;
 	}
+
+	// Check if current page is an embed page
+	isEmbedPage = pageRoute.url.pathname.includes('/embed');
 }
 	export let data;
 
@@ -38,6 +40,8 @@ $:{
 <Toaster />
 
 <div class="div bg-bgfill">
-	<Navbar {loggedIn} {user} {representatives} {inRoom} />
+	{#if !isEmbedPage}
+		<Navbar {loggedIn} {user} {representatives} {inRoom} />
+	{/if}
 	<slot></slot>
 </div>

@@ -13,7 +13,7 @@
     let errors: { anonymousUserId?: string } = {};
 </script>
 
-<div class="container mx-auto p-4 mt-[8rem]">
+<div class="container mx-auto p-4 mt-[1rem]">
     <h1 class="text-2xl font-bold mb-4">Join Room</h1>
 
     <form 

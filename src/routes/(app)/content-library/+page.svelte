@@ -188,6 +188,13 @@
                     </Button>
                     <Button 
                         class="bg-[#577AB7] hover:bg-[#577AB7]/90 h-[39px] rounded-[3px] font-semibold text-[16px] text-white"
+                        on:click={() => {
+                            goto('/room');
+                            setTimeout(() => {
+                                const addRoomButton = document.querySelector('button[data-add-room-dialog]');
+                                if (addRoomButton) addRoomButton.click();
+                            }, 100);
+                        }}
                     >
                         Create Room
                     </Button>

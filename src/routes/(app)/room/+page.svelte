@@ -337,6 +337,7 @@
                 <Button 
                     class="bg-[#577AB7] h-[39px] rounded-[3px] font-semibold text-[16px] text-white"
                     on:click={openAddRoomDialog}
+                    data-add-room-dialog
                 >
                     Add New Room
                 </Button>

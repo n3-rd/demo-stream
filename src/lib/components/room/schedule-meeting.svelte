@@ -14,9 +14,15 @@
 	import { toast } from "svelte-sonner";
   import { onMount } from 'svelte';
   import { PUBLIC_SMTP_FROM, PUBLIC_BREVO_API_KEY } from '$env/static/public';
+  import { page } from '$app/stores';
   
   export let userId = null;
   export let availableRepresentatives = [];
+
+  // Filter representatives by the current user's company
+  $: filteredRepresentatives = availableRepresentatives.filter(rep => 
+    rep.company === $page.data?.user?.id && rep.is_active
+  );
 
   let value = today(getLocalTimeZone());
   const dispatch = createEventDispatcher();
@@ -253,42 +259,62 @@
 
   // Update the isDateDisabled function to check properly
   function isDateDisabled(date) {
-    // First check if date is in the past
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0); // Reset hours to start of day
-    const selectedDate = new Date(date.year, date.month - 1, date.day);
+    const selectedDate = new Date(Date.UTC(date.year, date.month - 1, date.day));
     
+    // Check if selected date is in the past
     if (selectedDate.getTime() < todayDate.getTime()) {
       return true; // Disable past dates
     }
     
-    // Then check if the day is in the representative's schedule
+    // If it's today's date, apply additional time restrictions
+    if (selectedDate.toDateString() === todayDate.toDateString()) {
+      const currentTimeEST = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+      const currentHourEST = new Date(currentTimeEST).getHours();
+      const currentMinutesEST = new Date(currentTimeEST).getMinutes();
+      
+      // Restrict times within one hour of the current time
+      const oneHourAgo = new Date(currentTimeEST);
+      oneHourAgo.setHours(currentHourEST - 1, currentMinutesEST, 0, 0);
+      
+      const selectedTime = new Date(Date.UTC(date.year, date.month - 1, date.day));
+      selectedTime.setHours(currentHourEST, currentMinutesEST, 0, 0);
+      
+      if (selectedTime.getTime() < oneHourAgo.getTime()) {
+        return true; // Disable times more than one hour in the past
+      }
+    }
+    
+    // Additional existing checks (representative's schedule)
     if (representativeDetails && representativeDetails.schedule) {
       try {
-        // Parse the schedule JSON if it's a string
         const scheduleData = typeof representativeDetails.schedule === 'string' 
           ? JSON.parse(representativeDetails.schedule) 
           : representativeDetails.schedule;
         
-        // Get the day of week name in lowercase
         const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayName = days[selectedDate.getDay()];
         
-        // If this day doesn't exist in the schedule or has an empty schedule, disable it
         return !scheduleData[dayName] || scheduleData[dayName] === "";
       } catch (error) {
         console.error('Error parsing schedule data:', error);
-        return false; // If there's an error, don't disable the date
+        return false;
       }
     }
     
-    return false; // If no schedule is available, allow all dates
+    return false;
   }
 
   // Generate time slots based on representative's schedule
   function generateTimeSlots(startTime, endTime) {
     console.log('schedule console: Generating time slots between:', { startTime, endTime });
     const slots = [];
+    
+    // Get current time in EST
+    const currentTimeEST = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+    const currentHourEST = new Date(currentTimeEST).getHours();
+    const currentMinutesEST = new Date(currentTimeEST).getMinutes();
     
     // Parse start and end times
     const [startHour, startPeriod] = startTime.replace(/([AP]M)/, ' $1').split(' ');
@@ -303,6 +329,12 @@
     let current24Hour = startPM ? currentHour + 12 : currentHour;
     if (startPeriod === 'AM' && currentHour === 12) current24Hour = 0;
     
+    // Adjust start time for today to respect one-hour window
+    const oneHourAgo = currentHourEST - 1;
+    if (current24Hour < oneHourAgo) {
+      current24Hour = oneHourAgo;
+    }
+    
     while (current24Hour < endHourNum) {
       const nextHour = current24Hour + 1;
       
@@ -315,7 +347,7 @@
       slots.push({
         id: slots.length + 1,
         time: `${displayHour}:00 ${currentPeriod} - ${displayNextHour}:00 ${nextPeriod}`,
-        available: true // This will be updated when checking against booked slots
+        available: true
       });
       
       current24Hour = nextHour;
@@ -1548,7 +1580,7 @@
          <!-- Representative Selection -->
          <div class="mb-4">
           <label class="block text-sm mb-1">Select Representative *</label>
-          {#if availableRepresentatives.length > 0}
+          {#if filteredRepresentatives.length > 0}
             <select 
               id="representative"
               name="representative"
@@ -1563,7 +1595,7 @@
               }}
             >
               <option value={null}>Select a representative</option>
-              {#each availableRepresentatives as rep}
+              {#each filteredRepresentatives as rep}
                 <option value={rep} data-id={rep.id || getRepresentativeId(rep)}>
                   {rep.name || getParticipantName(rep)}
                 </option>
@@ -1575,7 +1607,7 @@
               </div>
             </HintGroup>
           {:else}
-            <p class="text-red-500 text-sm">No representatives currently available</p>
+            <p class="text-red-500 text-sm">No representatives currently available for your company</p>
           {/if}
         </div>
 
@@ -1691,7 +1723,7 @@
               </div>
             </div>
           {:else if selectedDate}
-            <div class="w-1/2 flex items-center justify-center text-center p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div class="w-1/2 flex items-center justify-center text-center p-4  rounded-md">
               <p class="text-yellow-800 text-sm">
                 {#if !selectedRepresentative}
                   Please select a representative first.

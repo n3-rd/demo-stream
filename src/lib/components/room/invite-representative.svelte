@@ -14,6 +14,7 @@
     export let shareURL: string;
 
     export let representatives: any[];
+    export let locations: any[] = [];
     let showRepresentativeList = false;
     let showInitialDialog = true;
     let dialogOpen = false;
@@ -211,9 +212,16 @@
                 <div class="flex space-x-4 mb-6 justify-center flex-wrap">
                     <!-- Representatives -->
                     {#each filteredRepresentatives as representative}
-                    <div 
-                        class="flex flex-col items-center cursor-pointer relative"
+                    <button 
+                        type="button"
+                        class="flex flex-col items-center cursor-pointer relative focus:outline-none "
                         on:click={() => selectRepresentative(representative)}
+                        on:keydown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                selectRepresentative(representative);
+                            }
+                        }}
+                        aria-pressed={selectedRepresentative === representative}
                     >
                         <img 
                             src={representative.avatar 
@@ -224,8 +232,21 @@
                         >
                         <div class={`w-24 h-24 rounded-full border-4 ${selectedRepresentative === representative ? 'border-green-500' : 'border-transparent'} absolute top-0`}>
                         </div>
-                        <span class="mt-2 text-center text-[#464646]">{representative.name}</span>
-                    </div>
+                        <div>
+                            <span class="font-[Poppins] text-[23px] leading-[118%] text-[#808080]">
+                                {representative.name}
+                            </span>
+                            {#if representative.expand?.location}
+                                <div class="text-lg text-[#A0A0A0]">
+                                    {representative.expand.location.name}
+                                </div>
+                            {:else if representative.location && locations}
+                                <div class="text-lg text-[#A0A0A0]">
+                                    {locations.find(loc => loc.id === representative.location)?.name || ''}
+                                </div>
+                            {/if}
+                        </div>
+                    </button>
                     {/each}
                 </div>
             {/if}

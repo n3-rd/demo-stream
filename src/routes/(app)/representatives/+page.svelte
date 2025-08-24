@@ -31,7 +31,8 @@
     const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
 
     export let data;
-    $: ({ representatives, locations, rooms } = data || {});
+    console.log(data);
+    $: ({ representatives, locations, rooms = [] } = data || {});
 
     let showAddDialog = false;
     let editingRep: any = null;
@@ -41,9 +42,6 @@
 
     function toggleExpand(id: string) {
         expandedRep = expandedRep === id ? null : id;
-        if (expandedRep) {
-            loadConnectedRooms(expandedRep);
-        }
     }
 
     $: {
@@ -54,21 +52,7 @@
         }
     }
 
-    let connectedRoomsMap: Record<string, any[]> = {};
-
-    // Function to get rooms connected to a representative
-    async function loadConnectedRooms(repId: string) {
-        try {
-            const records = await pb.collection('rooms').getFullList({
-                filter: `representative.id ?= "${repId}"`,
-                sort: '-created',
-            });
-            connectedRoomsMap[repId] = records;
-        } catch (error) {
-            console.error('Error loading connected rooms:', error);
-            connectedRoomsMap[repId] = [];
-        }
-    }
+    // Remove the loadConnectedRooms function as we'll use server-side data
 
     function handleLocationChange(e: SelectEvent | null) {
         selectedLocation = e?.value || '';
@@ -275,21 +259,37 @@
 
                                     <!-- Connected Rooms -->
                                     <div class="bg-white rounded-lg p-6">
-                                        <h3 class=" font-semibold text-[18px] text-[#737373] mb-4">Room Connected to:</h3>
+                                        <h3 class="font-semibold text-[18px] text-[#737373] mb-4">Rooms Connected to:</h3>
                                         <div class="bg-[#E0E8F5] rounded-[3px] p-4">
-                                            {#if connectedRoomsMap[rep.id]?.length > 0}
+                                            {#if rooms.filter(room => room.representative.includes(rep.id)).length > 0}
                                                 <div class="space-y-[10px]">
-                                                    {#each connectedRoomsMap[rep.id] as room}
+                                                    {#each rooms.filter(room => room.representative.includes(rep.id)) as room}
                                                         <div class="flex items-center justify-between">
-                                                            <span class="text-[14px] text-[#808080] ">{room.title || `ViewRoom ${room.id.substring(0, 1)}`}</span>
-                                                            <div class="w-[38.71px] h-[19.5px] bg-[#DDDDDD] rounded-full relative flex items-center px-[3px]">
-                                                                <div class="w-[13.4px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976]' : 'bg-[#7C7C7C]'} {room.is_active ? 'ml-auto' : ''} transition-all duration-200"></div>
+                                                            <div class="flex flex-col">
+                                                                <span class="text-[14px] text-[#808080] font-medium">
+                                                                    {room.title || `ViewRoom ${room.id.substring(0, 6)}`}
+                                                                </span>
+                                                                <span class="text-[12px] text-[#A0A0A0]">
+                                                                    Created: {new Date(room.created).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center space-x-2">
+                                                          
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="sm"
+                                                                    on:click={() => goto(`/room/${room.id}/info`)}
+                                                                >
+                                                                    View
+                                                                </Button>
                                                             </div>
                                                         </div>
                                                     {/each}
                                                 </div>
                                             {:else}
-                                                <div class="text-[14px] text-[#808080] ">No rooms connected</div>
+                                                <div class="text-[14px] text-[#808080] text-center py-4">
+                                                    No rooms connected to this representative
+                                                </div>
                                             {/if}
                                         </div>
                                     </div>

@@ -17,16 +17,68 @@
   
   let selectedLocation = representative?.location || '';
   
+  // Reactive statement to ensure location is set
+  $: {
+    if (representative?.location) {
+      selectedLocation = representative.location;
+    }
+  }
+
+  // Custom location select state
+  let isLocationDropdownOpen = false;
+  let locationSearchTerm = '';
+
+  // Filtered and sorted locations
+  $: filteredLocations = locations
+    .filter(loc => 
+      loc.name.toLowerCase().includes(locationSearchTerm.toLowerCase())
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Function to handle location selection
+  function selectLocation(locationId: string) {
+    selectedLocation = locationId;
+    isLocationDropdownOpen = false;
+    locationSearchTerm = '';
+
+    // Trigger validation
+    const locationInput = document.querySelector('input[name="location"]') as HTMLInputElement;
+    if (locationInput) {
+      locationInput.value = selectedLocation;
+      locationInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  // Close dropdown when clicking outside
+  function handleOutsideClick(event: MouseEvent) {
+    const dropdown = document.getElementById('location-dropdown');
+    const trigger = document.getElementById('location-select-trigger');
+    
+    if (dropdown && trigger && 
+        !dropdown.contains(event.target as Node) && 
+        !trigger.contains(event.target as Node)) {
+      isLocationDropdownOpen = false;
+      locationSearchTerm = '';
+    }
+  }
+
+  // Add and remove event listener
+  onMount(() => {
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  });
+
   function handleLocationChange(e: any) {
     selectedLocation = e?.value || '';
-    // Force form validation update
-    setTimeout(() => {
-      const locationInput = document.querySelector('input[name="location"]') as HTMLInputElement;
-      if (locationInput) {
-        const event = new Event('input', { bubbles: true });
-        locationInput.dispatchEvent(event);
-      }
-    }, 0);
+    
+    // Immediately update the hidden input
+    const locationInput = document.querySelector('input[name="location"]') as HTMLInputElement;
+    if (locationInput) {
+      locationInput.value = selectedLocation;
+      locationInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 
   function handleFileChange(event: Event) {
@@ -155,16 +207,73 @@
               </div>
               <div>
                 <label for="location" class="block text-[14px] text-[#737373] mb-2">Location</label>
-                <Select.Root onSelectedChange={handleLocationChange}>
-                  <Select.Trigger class="w-full border border-[#9E9E9E] bg-white rounded-[5px] h-[38px]">
-                    <Select.Value placeholder="Select a location" />
-                  </Select.Trigger>
-                  <Select.Content>
-                    {#each locations || [] as location}
-                      <Select.Item value={location.id}>{location.name}</Select.Item>
-                    {/each}
-                  </Select.Content>
-                </Select.Root>
+                <div class="relative w-full">
+                  <button 
+                    type="button"
+                    id="location-select-trigger"
+                    class="w-full border border-[#9E9E9E] bg-white rounded-[5px] h-[38px] flex items-center justify-between px-3 cursor-pointer"
+                    on:click={() => isLocationDropdownOpen = !isLocationDropdownOpen}
+                    on:keydown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        isLocationDropdownOpen = !isLocationDropdownOpen;
+                      }
+                    }}
+                    aria-haspopup="listbox"
+                    aria-expanded={isLocationDropdownOpen}
+                    aria-labelledby="location-label"
+                  >
+                    <span class="text-sm">
+                      {locations.find(loc => loc.id === selectedLocation)?.name || 'Select a location'}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 text-gray-500">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+
+                  {#if isLocationDropdownOpen}
+                    <div 
+                      id="location-dropdown"
+                      role="listbox"
+                      aria-labelledby="location-label"
+                      class="absolute z-10 w-full mt-1 bg-white border border-[#9E9E9E] rounded-[5px] shadow-lg max-h-60 overflow-y-auto"
+                    >
+                      <div class="p-2">
+                        <input 
+                          type="text" 
+                          placeholder="Search locations..." 
+                          class="w-full border border-[#9E9E9E] rounded-[3px] px-2 py-1 text-sm mb-2"
+                          bind:value={locationSearchTerm}
+                          aria-label="Search locations"
+                        />
+                      </div>
+                      
+                      {#if filteredLocations.length === 0}
+                        <div class="px-3 py-2 text-sm text-gray-500">
+                          No locations found
+                        </div>
+                      {:else}
+                        <ul role="presentation">
+                          {#each filteredLocations as location, index}
+                            <li 
+                              role="option"
+                              tabindex="0"
+                              aria-selected={location.id === selectedLocation}
+                              class="px-3 py-2 text-sm hover:bg-[#E0E8F5] cursor-pointer {location.id === selectedLocation ? 'bg-[#E0E8F5] font-semibold' : ''}"
+                              on:click={() => selectLocation(location.id)}
+                              on:keydown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  selectLocation(location.id);
+                                }
+                              }}
+                            >
+                              {location.name}
+                            </li>
+                          {/each}
+                        </ul>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
                 <input 
                   type="hidden" 
                   name="location" 

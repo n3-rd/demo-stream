@@ -20,15 +20,24 @@ export const load: PageServerLoad = async ({ locals }) => {
             sort: '-created'
         });
 
+        // Fetch rooms for representatives in the current company
+        const representativeIds = representatives.map(rep => rep.id);
+        const rooms = await locals.pb.collection('rooms').getFullList({
+            filter: representativeIds.map(id => `representative.id ?= "${id}"`).join(' || '),
+            sort: '-created'
+        });
+
         return {
             representatives,
-            locations
+            locations,
+            rooms
         };
     } catch (err) {
         console.error('Error fetching data:', err);
         return {
             representatives: [],
-            locations: []
+            locations: [],
+            rooms: []
         };
     }
 };

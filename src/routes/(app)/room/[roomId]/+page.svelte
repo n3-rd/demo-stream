@@ -2676,6 +2676,7 @@ onMount(() => {
                         shareURL={shareURL}
                         {scheduleOpen} 
                         availableRepresentatives={availableRepresentatives}
+                        room={room}
                         on:closeSchedule={handleScheduleClose} 
                     />
                 </div>

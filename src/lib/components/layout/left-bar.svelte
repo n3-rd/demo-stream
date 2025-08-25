@@ -4,6 +4,7 @@
     export let videoRepresentatives;
     export let userId;
     export let availableRepresentatives = [];
+    export let room = null; // Add room data for filtering
     import { Button } from "$lib/components/ui/button";
     import { MessageCircleQuestion, ShareIcon } from "lucide-svelte";
     import * as Dialog from "$lib/components/ui/dialog";
@@ -70,6 +71,7 @@
             <InviteRepresentative
                 representatives={videoRepresentatives}
                 shareURL={shareURL}
+                room={room}
                 on:close={() => representativeDialogOpen = false}
             />
         </Dialog.Content>
@@ -98,6 +100,7 @@
                 <ScheduleMeeting
                     userId={userId || ''}
                     availableRepresentatives={videoRepresentatives}
+                    roomData={room}
                     on:close={() =>{
                         dispatch("closeSchedule")
                         scheduleOpen = false

@@ -15,6 +15,7 @@
 
     export let representatives: any[];
     export let locations: any[] = [];
+    export let room = null; // Room data for filtering representatives
     let showRepresentativeList = false;
     let showInitialDialog = true;
     let dialogOpen = false;
@@ -31,10 +32,19 @@
 
     const dispatch = createEventDispatcher();
 
-    // Filter representatives by the current user's company
-    $: filteredRepresentatives = representatives.filter(rep => 
-        rep.company === $page.data?.user?.id && rep.is_active
-    );
+    // Filter representatives by the current user's company and room assignment
+    $: filteredRepresentatives = representatives.filter(rep => {
+        // First check if representative is active and belongs to current user's company
+        const isActiveAndOwned = rep.company === $page.data?.user?.id && rep.is_active;
+        
+        // If we have room data, also check if representative is assigned to this room
+        if (room && room.representative && Array.isArray(room.representative)) {
+            return isActiveAndOwned && room.representative.includes(rep.id);
+        }
+        
+        // If no room data provided, just use company and active filtering
+        return isActiveAndOwned;
+    });
 
     $: {
         if (selectedRepresentative) {

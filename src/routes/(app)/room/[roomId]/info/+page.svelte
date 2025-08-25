@@ -611,45 +611,7 @@
                         </HintGroup>
                     </div>
 
-                    <div class="space-y-2">
-                        <Label for="selected_video">Select Video</Label>
-                        <Select.Root
-                            onSelectedChange={e => {
-                                selectedVideo = String(e?.value || '');
-                            }}
-                        >
-                            <Select.Trigger class="w-full">
-                              <div class="w-full flex justify-between items-center">
-                                {#if selectedVideo}
-                                  <span class="truncate flex items-center gap-2">
-                                    {#if hostContent.find(c => c.id === selectedVideo)?.thumbnail}
-                                      <img 
-                                        src={getThumbnailUrl(hostContent.find(c => c.id === selectedVideo))}
-                                        alt="Thumbnail"
-                                        class="w-6 h-6 object-cover rounded"
-                                      />
-                                    {/if}
-                                    {hostContent.find(c => c.id === selectedVideo)?.title || 'Selected video'}
-                                  </span>
-                                {:else}
-                                  <span class="text-muted-foreground">Select a video...</span>
-                                {/if}
-                              </div>
-                            </Select.Trigger>
-                            <Select.Content>
-                                {#each hostContent.filter(content => content.type === 'video') as content}
-                                    <Select.Item value={content.id} label={content.title}>
-                                        <div class="flex items-center gap-2">
-                                            {#if content.thumbnail}
-                                                <img src={getThumbnailUrl(content)} alt="Thumbnail" class="w-6 h-6 object-cover rounded" />
-                                            {/if}
-                                            {content.title}
-                                        </div>
-                                    </Select.Item>
-                                {/each}
-                            </Select.Content>
-                        </Select.Root>
-                    </div>
+               
 
                     <div class="space-y-2">
                         <Label for="representative">Representatives</Label>

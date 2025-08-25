@@ -91,7 +91,19 @@ const user = data?.user;
 const viewroomUser = data?.viewroomUser;
 const isAuthenticated = !!user || !!viewroomUser;
 const viewroomDisplayName = viewroomUser ? [viewroomUser.first_name, viewroomUser.last_name].filter(Boolean).join(' ').trim() || viewroomUser.email : '';
-const name = user ? (user?.company_name || '') : viewroomDisplayName;
+// Construct proper display name based on user type
+let name = '';
+if (user) {
+    name = user?.company_name || '';
+} else if (viewroomUser) {
+    name = viewroomDisplayName;
+} else if (data?.representativeName) {
+    // Use the representative name from server data
+    name = data.representativeName;
+} else {
+    // Will be set later when representative info is available
+    name = '';
+}
 const representatives = data?.representatives || [];
 const users = data?.users || [];
 let isAnonymousHost = false;
@@ -1113,6 +1125,39 @@ function getCleanDisplayName(name: string): string {
     return name.replace(/_+representative$/i, '').trim();
 }
 
+// Helper function to check if a message is from the current user
+// Uses the same logic as representative-indicator.svelte for consistency
+function isCurrentUserMessage(messageName: string, currentUserName: string): boolean {
+    if (!messageName || !currentUserName) return false;
+    
+    // Direct match
+    if (messageName === currentUserName) return true;
+    
+    // Extract and normalize names using representative indicator logic
+    const normalizedMessageName = extractAndNormalizeName(messageName);
+    const normalizedCurrentName = extractAndNormalizeName(currentUserName);
+    
+    // Compare normalized names
+    return normalizedMessageName === normalizedCurrentName;
+}
+
+// Extract name from various formats (streamId, displayName, etc.) like representative-indicator
+function extractAndNormalizeName(nameOrId: string): string {
+    if (!nameOrId) return '';
+    
+    let cleanName = nameOrId;
+    
+    // If it looks like a stream ID (contains dash), extract the last part
+    if (nameOrId.includes('-')) {
+        cleanName = nameOrId.split('-').pop() || '';
+    }
+    
+    // Remove "_representative" suffix and normalize underscores to spaces
+    cleanName = cleanName.replace(/_+representative$/i, '').replace(/_/g, ' ').trim();
+    
+    return cleanName.toLowerCase();
+}
+
 // can't use await at top-level in Svelte component scripts, so use an async IIFE if you want to log this
 // (async () => {
 //     console.log("repppp",await getRepInfo($page.url.searchParams.get('repid')));
@@ -1923,8 +1968,16 @@ $: {
     // Compute representative self name from server data or cookie
     if (isRepresentative && !data.representativeName) {
         repSelfName = getRepresentativeCookieName();
+        // Also update the name for chat purposes if not already set
+        if (!name && repSelfName) {
+            name = repSelfName;
+        }
     } else if (data.representativeName) {
         repSelfName = data.representativeName;
+        // Also update the name for chat purposes if not already set
+        if (!name) {
+            name = data.representativeName;
+        }
     }
     
     // Debug logging
@@ -1961,7 +2014,8 @@ function handleChatMessage(messageBody) {
     }
 
     // Check if this is a message from the current user
-    const isCurrentUser = messageBody.name === (name || $anonymousUser);
+    // Handle representative names that might have "_representative" suffix
+    const isCurrentUser = isCurrentUserMessage(messageBody.name, name || $anonymousUser);
 
     chatMessages.update(messages => {
         // Check if message already exists

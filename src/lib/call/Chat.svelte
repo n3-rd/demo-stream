@@ -37,7 +37,7 @@
     const sendNewMessage = () => {
         if (!newText.trim()) return;
         
-        const local = name || $anonymousUser;
+        const local = name || $anonymousUser || 'User';
         const newMessage = {
             name: local,
             text: newText,
@@ -60,13 +60,61 @@
 
     const toggleChat = () => (chatIsOpen = !chatIsOpen);
     
-    function getInitials(name: string): string {
-        if (!name) return 'UN';
-        const parts = name.split(/[_\s-]+/);
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
+    // Helper function to check if a message is from the current user
+    // Uses the same logic as representative-indicator.svelte for consistency
+    function isCurrentUserMessage(messageName: string, currentUserName: string): boolean {
+        if (!messageName || !currentUserName) return false;
+        
+        // Direct match
+        if (messageName === currentUserName) return true;
+        
+        // Extract and normalize names using representative indicator logic
+        const normalizedMessageName = extractAndNormalizeName(messageName);
+        const normalizedCurrentName = extractAndNormalizeName(currentUserName);
+        
+        // Compare normalized names
+        return normalizedMessageName === normalizedCurrentName;
+    }
+    
+    // Extract name from various formats (streamId, displayName, etc.) like representative-indicator
+    function extractAndNormalizeName(nameOrId: string): string {
+        if (!nameOrId) return '';
+        
+        let cleanName = nameOrId;
+        
+        // If it looks like a stream ID (contains dash), extract the last part
+        if (nameOrId.includes('-')) {
+            cleanName = nameOrId.split('-').pop() || '';
         }
-        return name.substring(0, 2).toUpperCase();
+        
+        // Remove "_representative" suffix and normalize underscores to spaces
+        cleanName = cleanName.replace(/_+representative$/i, '').replace(/_/g, ' ').trim();
+        
+        return cleanName.toLowerCase();
+    }
+    
+    function getInitials(name: string): string {
+        if (!name || name.trim() === '') return 'UN';
+        
+        // Use the same extraction logic as representative indicator
+        const cleanName = extractAndNormalizeName(name);
+        if (!cleanName) return 'UN';
+        
+        // Split by spaces and hyphens (underscores already converted to spaces)
+        const parts = cleanName.split(/[\s-]+/).filter(part => part.length > 0);
+        
+        if (parts.length >= 2) {
+            // Take first letter of first two parts
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        } else if (parts.length === 1 && parts[0].length >= 2) {
+            // Take first two letters of single part
+            return parts[0].substring(0, 2).toUpperCase();
+        } else if (parts.length === 1 && parts[0].length === 1) {
+            // Single character, duplicate it
+            return (parts[0][0] + parts[0][0]).toUpperCase();
+        }
+        
+        return 'UN';
     }
 </script>
 
@@ -92,7 +140,7 @@
                 class="flex gap-3 mb-3"
             >
                 <!-- User or participant Avatar -->
-                {#if message.name === (name || $anonymousUser)}
+                {#if isCurrentUserMessage(message.name, name || $anonymousUser)}
                     <!-- User Message (right aligned) -->
                     <div class="flex gap-3 w-full justify-end">
                         <div class="max-w-[80%] bg-white text-black rounded-lg p-3 text-sm">

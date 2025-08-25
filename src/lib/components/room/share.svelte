@@ -3,8 +3,8 @@
 	import { ClipboardCopy, Mail, MessageCircle } from 'lucide-svelte';
 	import { copyText } from '$lib/helpers/copyText';
 	import { toast } from 'svelte-sonner';
-	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+
+    import { PUBLIC_SMTP_FROM, PUBLIC_BREVO_API_KEY } from '$env/static/public';
     export let shareURL: string;
     export let representative: boolean;
     export let representativeId: string = '';
@@ -12,6 +12,7 @@
 
     // Add this at the top of your script section
     let emailSent = false;
+    let isEmailSending = false;
 
     // More robust uid extraction function
     function extractUid(url) {
@@ -64,6 +65,85 @@
         } catch (error) {
             console.error('Error in cleanUrlPreserveUid:', error);
             return url; // Return original URL if there's an error
+        }
+    }
+
+    // Function to send email using Brevo API (similar to schedule-meeting)
+    async function sendInviteEmail(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        
+        const recipientName = formData.get('name');
+        const recipientEmail = formData.get('receipient');
+        
+        if (!recipientName || !recipientEmail) {
+            toast.error('Please fill in both name and email');
+            return;
+        }
+        
+        isEmailSending = true;
+        
+        try {
+            // Clean the URL to send
+            const inviteLink = cleanUrlPreserveUid(shareURL);
+            
+            // Prepare email payload for Brevo API
+            const emailPayload = {
+                sender: {
+                    name: "Room Invitation",
+                    email: PUBLIC_SMTP_FROM
+                },
+                to: [
+                    {
+                        email: recipientEmail,
+                        name: recipientName
+                    }
+                ],
+                subject: "You're invited to join a meeting room",
+                htmlContent: `
+                    <html>
+                        <body>
+                            <h2>Meeting Room Invitation</h2>
+                            <p>Dear ${recipientName},</p>
+                            <p>You have been invited to join a meeting room.</p>
+                            <p>Click the link below to join:</p>
+                            <p><a href="${inviteLink}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Join Meeting Room</a></p>
+                            <p>Or copy and paste this link into your browser:</p>
+                            <p><a href="${inviteLink}">${inviteLink}</a></p>
+                            <br>
+                            <p>Best regards,<br>The ViewRoom Team</p>
+                        </body>
+                    </html>
+                `,
+                tags: ["room-invite", "meeting"]
+            };
+            
+            // Send email via Brevo API
+            const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: {
+                    accept: 'application/json',
+                    'api-key': PUBLIC_BREVO_API_KEY,
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify(emailPayload)
+            });
+            
+            if (response.ok) {
+                toast.success("Invite email sent successfully");
+                emailSent = true;
+                // Clear the form
+                event.target.reset();
+            } else {
+                const errorData = await response.json();
+                console.error('Brevo API error:', errorData);
+                toast.error(`Failed to send email: ${errorData.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Error sending email:', error);
+            toast.error("Failed to send invite email");
+        } finally {
+            isEmailSending = false;
         }
     }
 </script>
@@ -144,30 +224,7 @@
 
     <!-- Email Form with updated visibility logic -->
     <form class="space-y-4"
-        method="POST"
-        on:submit|preventDefault={async (e) => {
-            const formData = new FormData(e.target);
-            
-            try {
-                const response = await fetch(`/api/room/send-email`, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    toast.success("Invite mail sent successfully");
-                    emailSent = true;
-                    invalidateAll();
-                } else {
-                    toast.error(result.message || "Error sending invite mail");
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                toast.error("Failed to send invite mail");
-            }
-        }}
+        on:submit={sendInviteEmail}
     >
         <div class="flex flex-col gap-4">
             <input
@@ -193,7 +250,15 @@
 
         <Button class="w-full rounded-lg bg-primary py-2 text-white"
         type="submit"
-        >Invite</Button>
+        disabled={isEmailSending}
+        >
+            {#if isEmailSending}
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Sending...
+            {:else}
+                Invite
+            {/if}
+        </Button>
     </form>
 
     <!-- Show confirmation after sending email with the room link -->

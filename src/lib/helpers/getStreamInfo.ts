@@ -4,8 +4,6 @@ export async function getStreamInfo(roomId: string, uid?: string) {
         ? `/api/stream/info?roomId=${roomId}&uid=${uid}`
         : `/api/stream/info?roomId=${roomId}`;
 
-    console.log(`Getting stream info for roomId: ${roomId}, uid: ${uid || 'none'}, url: ${apiUrl}`);
-
     try {
         const response = await fetch(apiUrl, {
             method: 'GET',
@@ -25,16 +23,6 @@ export async function getStreamInfo(roomId: string, uid?: string) {
         }
 
         const streamInfo = await response.json();
-        
-        // Add some debug logging to help diagnose issues
-        console.log(`Stream info response:`, {
-            hasInfo: !!streamInfo,
-            hasError: !!streamInfo.error,
-            streamId: streamInfo.streamId,
-            status: streamInfo.status,
-            subTrackStreamIds: streamInfo.subTrackStreamIds?.length || 0
-        });
-
         // Check that we got a proper response with expected format
         if (streamInfo && !streamInfo.error) {
             // Ensure subTrackStreamIds exists, even if empty

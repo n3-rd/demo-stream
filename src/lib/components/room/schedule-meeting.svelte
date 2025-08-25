@@ -18,21 +18,31 @@
   
   export let userId = null;
   export let availableRepresentatives = [];
+  export let roomData = null; // Optional room data to filter representatives
 
-  // Filter representatives by the current user's company
-  $: filteredRepresentatives = availableRepresentatives.filter(rep => 
-    rep.company === $page.data?.user?.id && rep.is_active
-  );
+  // Filter representatives by the current user's company and room assignment
+  $: filteredRepresentatives = availableRepresentatives.filter(rep => {
+    // First check if representative is active and belongs to current user's company
+    const isActiveAndOwned = rep.company === $page.data?.user?.id && rep.is_active;
+    
+    // If we have room data, also check if representative is assigned to this room
+    if (roomData && roomData.representative && Array.isArray(roomData.representative)) {
+      return isActiveAndOwned && roomData.representative.includes(rep.id);
+    }
+    
+    // If no room data provided, just use company and active filtering
+    return isActiveAndOwned;
+  });
 
   let value = today(getLocalTimeZone());
   const dispatch = createEventDispatcher();
 
   // Form State
-  let firstName = 'Test';
-  let lastName = 'Test';
-  let phoneNumber = '1234567890';
-  let email = 'studioblopp@gmail.com';
-  let address = { street: '123 Main St', city: 'Anytown', state: 'CA', zip: '12345', country: 'USA' };
+  let firstName = '';
+  let lastName = '';
+  let phoneNumber = '';
+  let email = '';
+  let address = { street: '', city: '', state: '', zip: '', country: '' };
   let selectedDay = value.day;
   let selectedMonth = value.month;
   let selectedYear = value.year;
@@ -307,53 +317,164 @@
   }
 
   // Generate time slots based on representative's schedule
-  function generateTimeSlots(startTime, endTime) {
-    console.log('schedule console: Generating time slots between:', { startTime, endTime });
+  function generateTimeSlots(startTime, endTime, dateForSlots = null) {
+    console.log('🕒 SCHEDULE: Generating time slots between:', { startTime, endTime, dateForSlots });
     const slots = [];
     
-    // Get current time in EST
-    const currentTimeEST = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
-    const currentHourEST = new Date(currentTimeEST).getHours();
-    const currentMinutesEST = new Date(currentTimeEST).getMinutes();
+    // Get current time in EST - multiple approaches for debugging
+    const nowUTC = new Date();
+    
+    // Method 1: Direct timezone offset calculation
+    const nowEST = new Date(nowUTC.getTime() + (nowUTC.getTimezoneOffset() * 60000) + (-5 * 3600000)); // EST is UTC-5
+    
+    // Method 2: Intl API approach
+    const estOptions = { timeZone: 'America/New_York', hour12: false };
+    const estString = nowUTC.toLocaleString('en-US', estOptions);
+    const [estDate, estTime] = estString.split(', ');
+    const [estHour, estMinute] = estTime.split(':').map(Number);
+    
+    console.log('🕒 MULTIPLE EST CHECKS:', {
+      nowUTC: nowUTC.toISOString(),
+      method1_EST: nowEST.toISOString(),
+      method1_hour: nowEST.getHours(),
+      method2_string: estString,
+      method2_hour: estHour,
+      method2_minute: estMinute
+    });
+    
+    // Use the Intl API result as it's more reliable
+    const currentHourEST = estHour;
+    const currentMinutesEST = estMinute;
+    
+    // Check if the slot date is today in EST
+    let isToday = false;
+    if (dateForSlots) {
+      // Get current date/time in EST using a more direct approach
+      const nowUTC = new Date();
+      const todayInESTStr = nowUTC.toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+      const slotDateInESTStr = dateForSlots.toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+      
+      // Simple string comparison should work for same-day check
+      isToday = todayInESTStr === slotDateInESTStr;
+      
+      console.log('🕒 DATE COMPARISON SIMPLE:', {
+        nowUTC: nowUTC.toISOString(),
+        currentTimeInEST: nowUTC.toLocaleString('en-US', { timeZone: 'America/New_York' }),
+        todayInESTStr,
+        slotDateInESTStr,
+        isToday,
+        originalDateForSlots: dateForSlots.toISOString(),
+        dateForSlotsLocal: dateForSlots.toString()
+      });
+      
+      // Alternative approach: Extract date components directly from the selected date
+      // Since selectedDate is created from calendar selection (year: 2025, month: 8, day: 25)
+      // Let's also try comparing with current EST date components
+      const estDateComponents = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+      }).formatToParts(nowUTC);
+      
+      const currentESTYear = parseInt(estDateComponents.find(p => p.type === 'year').value);
+      const currentESTMonth = parseInt(estDateComponents.find(p => p.type === 'month').value);
+      const currentESTDay = parseInt(estDateComponents.find(p => p.type === 'day').value);
+      
+      // Also try using the selected date's UTC components
+      const selectedYear = dateForSlots.getUTCFullYear();
+      const selectedMonth = dateForSlots.getUTCMonth() + 1; // Convert to 1-based
+      const selectedDay = dateForSlots.getUTCDate();
+      
+      const isToday2 = (currentESTYear === selectedYear && currentESTMonth === selectedMonth && currentESTDay === selectedDay);
+      
+      console.log('🕒 DATE COMPARISON DETAILED:', {
+        currentESTYear,
+        currentESTMonth,
+        currentESTDay,
+        selectedYear,
+        selectedMonth,
+        selectedDay,
+        isToday2,
+        finalIsToday: isToday || isToday2
+      });
+      
+      // Use either method if they detect today
+      isToday = isToday || isToday2;
+    }
     
     // Parse start and end times
     const [startHour, startPeriod] = startTime.replace(/([AP]M)/, ' $1').split(' ');
     const [endHour, endPeriod] = endTime.replace(/([AP]M)/, ' $1').split(' ');
     
     // Convert to 24-hour format
-    let currentHour = parseInt(startHour.split(':')[0]);
-    const startPM = startPeriod === 'PM' && currentHour !== 12;
+    let scheduleStartHour = parseInt(startHour.split(':')[0]);
+    const startPM = startPeriod === 'PM' && scheduleStartHour !== 12;
     const endHourNum = parseInt(endHour.split(':')[0]) + (endPeriod === 'PM' && endHour.split(':')[0] !== '12' ? 12 : 0);
     
     // Convert to 24-hour for easier calculation
-    let current24Hour = startPM ? currentHour + 12 : currentHour;
-    if (startPeriod === 'AM' && currentHour === 12) current24Hour = 0;
+    let current24Hour = startPM ? scheduleStartHour + 12 : scheduleStartHour;
+    if (startPeriod === 'AM' && scheduleStartHour === 12) current24Hour = 0;
     
-    // Adjust start time for today to respect one-hour window
-    const oneHourAgo = currentHourEST - 1;
-    if (current24Hour < oneHourAgo) {
-      current24Hour = oneHourAgo;
-    }
+    console.log('🕒 SCHEDULE BOUNDS:', {
+      startTime,
+      endTime,
+      scheduleStartHour,
+      current24Hour,
+      endHourNum,
+      startPM
+    });
     
-    while (current24Hour < endHourNum) {
-      const nextHour = current24Hour + 1;
+    // Generate all slots first, then filter
+    const allSlots = [];
+    let hour = current24Hour;
+    
+    while (hour < endHourNum) {
+      const nextHour = hour + 1;
       
       // Convert back to 12-hour for display
-      const displayHour = current24Hour % 12 || 12;
+      const displayHour = hour % 12 || 12;
       const displayNextHour = nextHour % 12 || 12;
-      const currentPeriod = current24Hour >= 12 ? 'PM' : 'AM';
+      const currentPeriod = hour >= 12 ? 'PM' : 'AM';
       const nextPeriod = nextHour >= 12 ? 'PM' : 'AM';
       
-      slots.push({
-        id: slots.length + 1,
-        time: `${displayHour}:00 ${currentPeriod} - ${displayNextHour}:00 ${nextPeriod}`,
+      const timeSlot = `${displayHour}:00 ${currentPeriod} - ${displayNextHour}:00 ${nextPeriod}`;
+      
+      allSlots.push({
+        id: allSlots.length + 1,
+        time: timeSlot,
+        startHour: hour,
         available: true
       });
       
-      current24Hour = nextHour;
+      hour = nextHour;
     }
     
-    return slots;
+    console.log('🕒 ALL GENERATED SLOTS:', allSlots);
+    
+    // Now filter for today if applicable
+    const finalSlots = allSlots.filter(slot => {
+      if (!isToday) {
+        console.log('🕒 KEEPING slot (not today):', slot.time);
+        return true; // Keep all slots for future dates
+      }
+      
+      // For today, only keep slots that start AFTER the current hour
+      const shouldKeep = slot.startHour > currentHourEST;
+      
+      console.log('🕒 SLOT FILTER:', {
+        slotTime: slot.time,
+        slotStartHour: slot.startHour,
+        currentHourEST,
+        shouldKeep,
+        reason: shouldKeep ? 'future slot' : 'past/current slot'
+      });
+      
+      return shouldKeep;
+    });
+    
+    console.log('🕒 FINAL FILTERED SLOTS:', finalSlots);
+    return finalSlots;
   }
 
   // Update the fetchAvailableSlots function to use the representative's schedule
@@ -365,8 +486,8 @@
       console.log('Formatted date:', formattedDate);
       
       // First get the representative details to access their schedule
-      if (!representativeDetails || !representativeDetails.scheduled_meetings) {
-        // Fetch fresh data to make sure we have the latest scheduled_meetings
+      if (!representativeDetails) {
+        // Fetch fresh data to make sure we have the latest representative details
         const repId = typeof rep === 'object' && rep.id ? rep.id : null;
         if (repId) {
           try {
@@ -418,30 +539,49 @@
             }
             
             if (startStr && endStr) {
-              // Generate the time slots based on the schedule
-              generatedSlots = generateTimeSlots(startStr, endStr);
-                
-              // Get existing scheduled meetings for this date
-              let scheduledMeetings = {};
+              // Generate the time slots based on the schedule, passing the date for time filtering
+              generatedSlots = generateTimeSlots(startStr, endStr, date);
+              
+              // Get actual scheduled rooms for this representative and date
+              const repId = representativeDetails.id;
+              let actualScheduledRooms = [];
+              
+              try {
+                const scheduledResponse = await fetch(`/api/schedule-room?representative_id=${repId}&date=${formattedDate}`);
+                if (scheduledResponse.ok) {
+                  const scheduledData = await scheduledResponse.json();
+                  actualScheduledRooms = scheduledData.scheduled_rooms || [];
+                  console.log('schedule console: Found scheduled rooms:', actualScheduledRooms);
+                }
+              } catch (error) {
+                console.error('Error fetching scheduled rooms:', error);
+              }
+              
+              // Also check legacy scheduled_meetings format for backward compatibility
+              let legacyScheduledMeetings = {};
               if (representativeDetails.scheduled_meetings) {
                 try {
-                  scheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string'
+                  legacyScheduledMeetings = typeof representativeDetails.scheduled_meetings === 'string'
                     ? JSON.parse(representativeDetails.scheduled_meetings)
                     : representativeDetails.scheduled_meetings;
                   
-                  console.log('All meetings:', scheduledMeetings);
-                  console.log('Meetings for this date:', scheduledMeetings[formattedDate]);
+                  console.log('Legacy scheduled meetings:', legacyScheduledMeetings);
+                  console.log('Legacy meetings for this date:', legacyScheduledMeetings[formattedDate]);
                 } catch (e) {
-                  console.error('Error parsing scheduled meetings:', e);
-                  scheduledMeetings = {};
+                  console.error('Error parsing legacy scheduled meetings:', e);
+                  legacyScheduledMeetings = {};
                 }
               }
                 
               // Mark slots as booked if they're already scheduled
               for (const slot of generatedSlots) {
-                const isBooked = checkTimeSlotBooked(formattedDate, slot.time, scheduledMeetings);
+                // Check both actual scheduled rooms and legacy format
+                const isBookedInActualRooms = checkTimeSlotBookedInScheduledRooms(slot.time, actualScheduledRooms);
+                const isBookedInLegacy = checkTimeSlotBooked(formattedDate, slot.time, legacyScheduledMeetings);
+                const isBooked = isBookedInActualRooms || isBookedInLegacy;
+                
                 slot.available = !isBooked;
-                console.log(`Slot ${slot.time} is ${isBooked ? 'booked' : 'available'}`);
+                console.log(`Slot ${slot.time} is ${isBooked ? 'booked' : 'available'} (actual: ${isBookedInActualRooms}, legacy: ${isBookedInLegacy})`);
               }
             }
           }
@@ -459,7 +599,47 @@
     }
   }
 
-  // Improved function to check if a time slot is booked
+  // Function to check if a time slot is booked in actual scheduled rooms
+  function checkTimeSlotBookedInScheduledRooms(timeSlot, scheduledRooms) {
+    if (!scheduledRooms || !scheduledRooms.length) {
+      return false;
+    }
+    
+    console.log(`Checking time slot ${timeSlot} against ${scheduledRooms.length} scheduled rooms`);
+    
+    for (const room of scheduledRooms) {
+      if (!room.scheduleTime) continue;
+      
+      // Parse the schedule time to get the hour and create time slot format
+      const scheduleDate = new Date(room.scheduleTime);
+      const hours = scheduleDate.getHours();
+      const minutes = scheduleDate.getMinutes();
+      
+      // Convert to 12-hour format to match time slot format
+      let displayHour = hours % 12 || 12;
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const nextHour = ((hours + 1) % 12) || 12;
+      const nextPeriod = (hours + 1) >= 12 ? 'PM' : 'AM';
+      
+      // Create the time slot format: "9:00 AM - 10:00 AM"
+      const roomTimeSlot = `${displayHour}:00 ${period} - ${nextHour}:00 ${nextPeriod}`;
+      
+      // Normalize both time slots for comparison
+      const normalizedTimeSlot = timeSlot.replace(/\s+/g, '').toUpperCase();
+      const normalizedRoomTimeSlot = roomTimeSlot.replace(/\s+/g, '').toUpperCase();
+      
+      console.log(`Comparing slot "${timeSlot}" (${normalizedTimeSlot}) with room time "${roomTimeSlot}" (${normalizedRoomTimeSlot})`);
+      
+      if (normalizedTimeSlot === normalizedRoomTimeSlot) {
+        console.log(`MATCH! Slot ${timeSlot} is booked by scheduled room at ${room.scheduleTime}`);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Improved function to check if a time slot is booked (legacy format)
   function checkTimeSlotBooked(dateStr, timeSlot, scheduledMeetings) {
     if (!scheduledMeetings || !scheduledMeetings[dateStr] || !scheduledMeetings[dateStr].length) {
       return false;
@@ -1279,7 +1459,7 @@
     if (!daySchedule) return []; // No availability for this day
     
     const [startTime, endTime] = daySchedule.split(' - ');
-    const allTimeSlots = generateTimeSlots(startTime, endTime);
+    const allTimeSlots = generateTimeSlots(startTime, endTime, date);
     
     // Filter out booked slots
     return allTimeSlots.filter(slot => !isTimeSlotBooked(date, slot.time, scheduledMeetings));

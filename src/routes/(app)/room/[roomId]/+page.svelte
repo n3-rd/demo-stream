@@ -916,13 +916,6 @@ function handleWebRTCCallback(info: string, obj: any) {
                         }
                     }
                     
-                    console.log('Parsed message data:', { 
-                        data, 
-                        messageBody, 
-                        eventType: messageBody?.eventType,
-                        isHost,
-                        isRepresentative 
-                    });
                     
                     // Handle other message types
                     switch (messageBody?.eventType) {

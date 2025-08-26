@@ -1733,7 +1733,7 @@
                 class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
               <input
-                placeholder="State"
+                placeholder="State / Province"
                 bind:value={address.state}
                 class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
@@ -1741,7 +1741,7 @@
             
             <div class="grid grid-cols-2 gap-4">
               <input
-                placeholder="Zip Code"
+                placeholder="Zip Code / Postal Code"
                 bind:value={address.zip}
                 class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />

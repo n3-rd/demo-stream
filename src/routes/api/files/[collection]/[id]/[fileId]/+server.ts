@@ -3,6 +3,10 @@ import { query } from '$lib/db';
 
 const KNOWN_FIELDS = ['thumbnail', 'file', 'avatar'];
 
+// Optimal chunk size for video streaming (1MB chunks for better performance)
+const STREAMING_CHUNK_SIZE = 1024 * 1024; // 1MB
+const MAX_CHUNK_SIZE = 2 * 1024 * 1024;   // 2MB max
+
 function parseRange(rangeHeader: string | null, totalSize: number) {
   if (!rangeHeader || !rangeHeader.startsWith('bytes=')) return null;
   const [startStr, endStr] = rangeHeader.replace(/bytes=/, '').split('-');
@@ -11,7 +15,23 @@ function parseRange(rangeHeader: string | null, totalSize: number) {
   if (Number.isNaN(start)) return null;
   if (Number.isNaN(end) || end >= totalSize) end = totalSize - 1;
   if (start > end || start < 0) return null;
+  
+  // Optimize chunk size for better streaming performance
+  const requestedSize = end - start + 1;
+  if (requestedSize > MAX_CHUNK_SIZE) {
+    end = start + MAX_CHUNK_SIZE - 1;
+  }
+  
   return { start, end };
+}
+
+function isVideoFile(contentType: string): boolean {
+  return contentType.startsWith('video/') || 
+         contentType.includes('mp4') || 
+         contentType.includes('webm') || 
+         contentType.includes('mov') ||
+         contentType.includes('avi') ||
+         contentType.includes('mkv');
 }
 
 export const GET: RequestHandler = async ({ params, request }) => {
@@ -56,36 +76,73 @@ export const GET: RequestHandler = async ({ params, request }) => {
       if (!blobId) return new Response('Not found', { status: 404 });
     }
 
-    // Handle Range requests for streaming
+    // Handle Range requests for streaming (essential for video playback)
     const range = parseRange(request.headers.get('range'), totalSize);
+    const isVideo = isVideoFile(contentType);
+    
     if (range) {
       const { start, end } = range;
       const length = end - start + 1;
+      
       // Postgres bytea SUBSTRING is 1-based
       const chunkRes = await query<{ chunk: Buffer }>(
         `SELECT SUBSTRING(data FROM $1::int + 1 FOR $2::int) AS chunk FROM file_blobs WHERE id = $3 LIMIT 1`,
         [start, length, blobId]
       );
       const chunk = chunkRes.rows[0]?.chunk || Buffer.alloc(0);
+      
       const headers = new Headers();
       headers.set('Content-Type', contentType);
       headers.set('Content-Range', `bytes ${start}-${end}/${totalSize}`);
       headers.set('Accept-Ranges', 'bytes');
       headers.set('Content-Length', String(chunk.length));
+      
+      // Add video-specific streaming headers
+      if (isVideo) {
+        headers.set('Cache-Control', 'public, max-age=3600');
+        headers.set('X-Content-Type-Options', 'nosniff');
+      }
+      
+      return new Response(chunk, { status: 206, headers });
+    }
+    
+    // For videos without range requests, encourage browser to request ranges
+    if (isVideo) {
+      // Force the browser to make range requests for videos
+      const headers = new Headers();
+      headers.set('Content-Type', contentType);
+      headers.set('Accept-Ranges', 'bytes');
+      headers.set('Content-Length', String(totalSize));
+      headers.set('Cache-Control', 'public, max-age=3600');
+      
+      // Return small initial chunk to prompt range requests
+      const initialChunkSize = Math.min(STREAMING_CHUNK_SIZE, totalSize);
+      const initialChunk = await query<{ chunk: Buffer }>(
+        `SELECT SUBSTRING(data FROM 1 FOR $1::int) AS chunk FROM file_blobs WHERE id = $2 LIMIT 1`,
+        [initialChunkSize, blobId]
+      );
+      const chunk = initialChunk.rows[0]?.chunk || Buffer.alloc(0);
+      
+      headers.set('Content-Range', `bytes 0-${Math.min(initialChunkSize - 1, totalSize - 1)}/${totalSize}`);
+      headers.set('Content-Length', String(chunk.length));
+      
       return new Response(chunk, { status: 206, headers });
     }
 
-    // No range: return full file (may be large)
+    // For non-video files, return full file as before
     const full = await query<{ data: Buffer }>(
       `SELECT data FROM file_blobs WHERE id = $1 LIMIT 1`,
       [blobId]
     );
     const dataBuf = full.rows[0]?.data;
     if (!dataBuf) return new Response('Not found', { status: 404 });
+    
     const headers = new Headers();
     headers.set('Content-Type', contentType);
     headers.set('Accept-Ranges', 'bytes');
     headers.set('Content-Length', String(dataBuf.length));
+    headers.set('Cache-Control', 'public, max-age=86400'); // 24 hours for non-video files
+    
     return new Response(dataBuf, { status: 200, headers });
   } catch (err) {
     console.error('file serve error', err);

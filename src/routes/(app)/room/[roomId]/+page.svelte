@@ -2720,6 +2720,8 @@ onMount(() => {
                                     on:seeking={handleVideoStateChange}
                                     muted={isVideoMuted}
                                     loop
+                                    preload="metadata"
+                                    crossorigin="anonymous"
                                 >
                                     Your browser does not support the video element.
                                 </video>
@@ -2731,6 +2733,8 @@ onMount(() => {
                                     bind:this={videoPlayer}
                                     muted={isVideoMuted}
                                     loop
+                                    preload="metadata"
+                                    crossorigin="anonymous"
                                 >
                                     Your browser does not support the video element.
                                 </video>

@@ -105,6 +105,14 @@
 
     function getFileUrl(file: any) {
         if (!file) return '';
+        
+        // Use optimized streaming endpoint for videos
+        const fileType = (file.type || '').toLowerCase();
+        if (fileType === 'video') {
+            return `/api/stream/video/${file.collectionId || file.collection || 'content_library'}/${file.id}/${file.file}`;
+        }
+        
+        // Use regular endpoint for other files
         return `/api/files/${file.collectionId || file.collection || 'content_library'}/${file.id}/${file.file}`;
     }
 

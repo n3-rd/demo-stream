@@ -905,23 +905,23 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 const isCurrentController = (syncSource === 'host' && isHost) || 
                                                            (syncSource === 'representative' && isRepresentative);
                                 
-                                if (!isCurrentController) {
-                                    isCameraOff = cameraStateData.isCameraOff;
+                                // if (!isCurrentController) {
+                                //     isCameraOff = cameraStateData.isCameraOff;
                                     
-                                    // Clear video player source if camera is off
-                                    if (videoPlayer) {
-                                        if (isCameraOff) {
-                                            videoPlayer.srcObject = null;
-                                            videoPlayer.src = '';
-                                        } else {
-                                            // Attempt to restore video stream
-                                            if (webRTCAdaptor && webRTCAdaptor.localStream) {
-                                                videoPlayer.srcObject = webRTCAdaptor.localStream;
-                                                videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                            }
-                                        }
-                                    }
-                                }
+                                //     // Clear video player source if camera is off
+                                //     if (videoPlayer) {
+                                //         if (isCameraOff) {
+                                //             videoPlayer.srcObject = null;
+                                //             videoPlayer.src = '';
+                                //         } else {
+                                //             // Attempt to restore video stream
+                                //             if (webRTCAdaptor && webRTCAdaptor.localStream) {
+                                //                 videoPlayer.srcObject = webRTCAdaptor.localStream;
+                                //                 videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                //             }
+                                //         }
+                                //     }
+                                // }
                             } catch (error) {
                                 console.error('Error handling camera state update:', error);
                             }
@@ -1473,12 +1473,6 @@ function turnOnCamera() {
             webRTCAdaptor.turnOnLocalCamera();
             isCameraOff = false;
 
-
-            // Ensure video is visible
-            if (videoPlayer) {
-                videoPlayer.srcObject = stream;
-                videoPlayer.play().catch(e => console.error('Error playing video:', e));
-            }
         })
         .catch(err => {
             console.error("Error reacquiring camera:", err);
@@ -1490,23 +1484,23 @@ function turnOnCamera() {
 function turnOffCamera() {
     if (!webRTCAdaptor) return;
     
-    // Update media constraints to disable video
-    mediaConstraints.video = false;
+    // // Update media constraints to disable video
+    // mediaConstraints.video = false;
     
-    // Get the correct stream ID based on user type
-    let displayName;
-    if (isAuthenticated) {
-        displayName = formatDisplayName(name);
-    } else if (data.representativeName) {
-        displayName = formatDisplayName(data.representativeName, true);
-    } else {
-        displayName = formatDisplayName($anonymousUser);
-    }
+    // // Get the correct stream ID based on user type
+    // let displayName;
+    // if (isAuthenticated) {
+    //     displayName = formatDisplayName(name);
+    // } else if (data.representativeName) {
+    //     displayName = formatDisplayName(data.representativeName, true);
+    // } else {
+    //     displayName = formatDisplayName($anonymousUser);
+    // }
     
-    const sanitizedName = sanitizeStreamName(displayName);
-    const streamId = `${publishStreamId}-${sanitizedName}`;
+    // const sanitizedName = sanitizeStreamName(displayName);
+    // const streamId = `${publishStreamId}-${sanitizedName}`;
     
-    console.log('Turning off camera for streamId:', streamId);
+    // console.log('Turning off camera for streamId:', streamId);
     
 
     
@@ -1545,11 +1539,11 @@ function turnOffCamera() {
         }
     }
 
-    // Clear video player source
-    if (videoPlayer) {
-        videoPlayer.srcObject = null;
-        videoPlayer.src = '';
-    }
+    // // Clear video player source
+    // if (videoPlayer) {
+    //     videoPlayer.srcObject = null;
+    //     videoPlayer.src = '';
+    // }
 }
 
 function toggleCamera() {

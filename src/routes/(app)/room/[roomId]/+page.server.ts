@@ -122,35 +122,21 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
             expand: 'representative,host_content,representative_content'
         });
 
-        // Fetch representatives for this room
-        let representatives = [];
-        if (expandedRoom.representative && expandedRoom.representative.length > 0) {
-            representatives = await pb.collection('representatives').getFullList({
-                filter: `id ?~ "${expandedRoom.representative.join('||')}"`,
-                expand: 'location'
-            });
-        }
 
-        console.log('Room data loaded:', {
-            id: expandedRoom.id,
-            hasHostContent: !!expandedRoom.host_content,
-            hasRepContent: !!expandedRoom.representative_content,
-            expandedData: {
-                representative: expandedRoom.expand?.representative,
-                host_content: expandedRoom.expand?.host_content || [],
-                representative_content: expandedRoom.expand?.representative_content || []
-            },
-            representatives: representatives.map(rep => ({
-                id: rep.id,
-                name: rep.name || `${rep.first_name} ${rep.last_name}`.trim(),
-                avatar: rep.avatar
-            }))
-        });
+        // Fetch all representatives
+        const representatives = expandedRoom.representative && expandedRoom.representative.length > 0 
+            ? await pb.collection('representatives').getFullList({
+                filter:`id IN ("${expandedRoom.representative.join('","')}")`,
+                sort: '-created',
+                expand: 'location'
+            })
+            : [];
 
         return {
             ...expandedRoom,
             expand: expandedRoom.expand,
-            representatives: representatives
+            representatives: expandedRoom.expand?.representative,
+            authType: authType  // Add this to help with debugging
         };
 
     } catch (error) {

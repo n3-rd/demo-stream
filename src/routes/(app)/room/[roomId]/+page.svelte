@@ -50,7 +50,6 @@ interface AudioElement extends HTMLAudioElement {
 
 export let data;
 
- console.log('data from room/[roomId]/+page.svelte', data);
 
 // State management
 let webRTCAdaptor: any;
@@ -181,20 +180,7 @@ $: {
                       !!data?.representativeName ||
                       representatives?.some(rep => rep.id === (user?.id || viewroomUser?.id)) || false;
     
-    console.log('Representative detection:', {
-        urlRepId,
-        hasRepId: urlRepId !== null && urlRepId !== '',
-        dataRepresentativeName: data?.representativeName,
-        representatives,
-        user,
-        viewroomUser,
-        isRepresentative,
-        room,
-        data,
-        roomId: data?.roomId,
-        roomIdType: typeof data?.roomId,
-        roomIdLength: data?.roomId?.length
-    });
+
 }
 
 // Add videoElements map declaration at the top with other state variables
@@ -336,11 +322,9 @@ onMount(() => {
     // Set isRepresentative based on URL parameter
     if (repId) {
         isRepresentative = true;
-        console.log('Detected representative mode from URL param:', repId);
     }
 
     // Check if this is a scheduled meeting
-    console.log('Room data on mount:', data);
     
     // Check all possible schedule data locations but be more strict about detection
     isScheduledMeeting = false; // Reset to false by default
@@ -358,10 +342,6 @@ onMount(() => {
           minutesLeft: Math.floor((scheduledMeetingTime.getTime() - new Date().getTime()) / 60000)
         };
         
-        console.log('Scheduled meeting not yet available:', {
-          scheduledMeetingTime, 
-          meetingStatus
-        });
         
         // Exit early to prevent further processing
         return;
@@ -397,11 +377,6 @@ onMount(() => {
           minutesLeft: meetingStatusResult.minutesLeft || 0
         };
         
-        console.log('Found scheduled meeting:', {
-          scheduledMeetingTime, 
-          isScheduledMeeting,
-          meetingStatus
-        });
       }
     }
     
@@ -469,7 +444,6 @@ function initializeWebRTC() {
                 ...actualMediaConstraints,
                 video: true
             };
-            console.log('Enabling video for representative:', actualMediaConstraints);
         }
         
         // Initialize WebRTC with more robust configuration
@@ -571,7 +545,6 @@ function handleWebRTCCallback(info: string, obj: any) {
             
         case "stream_not_found":
             // This is expected when trying to play a room that doesn't have any publishers yet
-            console.log("Stream not found. This is normal if no one else is in the room yet.");
             isNoStreamExist = true;
             break;
 
@@ -599,7 +572,7 @@ function handleWebRTCCallback(info: string, obj: any) {
                         participantName = obj.streamName || 'Unknown User';
                     }
                 } catch (e) {
-                    console.error('Error parsing participant metadata:', e);
+                        console.error('Error parsing participant metadata:', e);
                 }
                 
                 const participant = {

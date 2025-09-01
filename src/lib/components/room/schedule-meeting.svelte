@@ -21,18 +21,8 @@
   export let roomData = null; // Optional room data to filter representatives
 
   // Filter representatives by the current user's company and room assignment
-  $: filteredRepresentatives = availableRepresentatives.filter(rep => {
-    // First check if representative is active and belongs to current user's company
-    const isActiveAndOwned = rep.company === $page.data?.user?.id && rep.is_active;
-    
-    // If we have room data, also check if representative is assigned to this room
-    if (roomData && roomData.representative && Array.isArray(roomData.representative)) {
-      return isActiveAndOwned && roomData.representative.includes(rep.id);
-    }
-    
-    // If no room data provided, just use company and active filtering
-    return isActiveAndOwned;
-  });
+  $: filteredRepresentatives = availableRepresentatives;
+  
 
   let value = today(getLocalTimeZone());
   const dispatch = createEventDispatcher();
@@ -66,22 +56,7 @@
   // Sync phone with phoneNumber
   $: phone = phoneNumber;
   
-  // Debug values
-  $: {
-    console.log('Form values:', {
-      fullName, 
-      firstName, 
-      lastName,
-      phone, 
-      phoneNumber,
-      email,
-      selectedRepresentative,
-      selectedDate,
-      selectedTimeSlot,
-      roomName,
-      isFormValid
-    });
-  }
+
 
   const form = useForm();
 
@@ -94,10 +69,6 @@
     // Convert to date object for the scheduling
     selectedDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, selectedDay));
     
-    // Log to verify the correct date is being set
-    console.log('Selected date value:', value);
-    console.log('Setting selectedDate to:', selectedDate.toISOString());
-    console.log('Date components:', { selectedDay, selectedMonth, selectedYear });
   }
 
   // Function to validate room name
@@ -122,10 +93,6 @@
   // Reactive statement to update available time slots and disable unavailable slots
   $: {
     if (selectedRepresentative && selectedDate) {
-      console.log('Fetching available slots for:', { 
-        representative: selectedRepresentative, 
-        date: selectedDate 
-      });
       
       // Reset time slot selection when representative or date changes
       selectedTimeSlot = null;
@@ -146,11 +113,9 @@
     if (!rep) return;
     
     try {
-      console.log('Fetching details for representative:', rep);
       
       // If the rep is already the full representative object
       if (typeof rep === 'object' && rep.id) {
-        console.log('Using direct representative object from selection:', rep);
         representativeDetails = rep;
         return;
       }
@@ -162,7 +127,6 @@
           if (response.ok) {
             const repData = await response.json();
             representativeDetails = repData.representative;
-            console.log('Found representative by ID:', representativeDetails);
             return;
           }
         } catch (idError) {
@@ -177,7 +141,6 @@
         if (parts.length > 1) {
           const namePart = parts[parts.length - 1];
           const cleanName = namePart.replace(/_representative$/, '');
-          console.log('Extracted name from stream ID:', cleanName);
           
           // Try to find by name first
           try {
@@ -186,7 +149,6 @@
               const data = await response.json();
               if (data.representatives && data.representatives.length > 0) {
                 representativeDetails = data.representatives[0];
-                console.log('Found representative by name:', representativeDetails);
                 return;
               }
             }
@@ -200,7 +162,6 @@
         if (parts.length > 1) {
           const namePart = parts[parts.length - 1];
           const cleanName = namePart.replace(/_representative$/, '');
-          console.log('Extracted name from object streamId:', cleanName);
           
           // Try to find by name first
           try {
@@ -209,7 +170,6 @@
               const data = await response.json();
               if (data.representatives && data.representatives.length > 0) {
                 representativeDetails = data.representatives[0];
-                console.log('Found representative by name:', representativeDetails);
                 return;
               }
             }
@@ -221,13 +181,11 @@
       
       // As a fallback, if we've selected a representative from the dropdown, 
       // we can try to get all representatives and find a match
-      console.log('Attempting fallback lookup for all representatives');
       try {
         const response = await fetch('/api/representatives');
         if (response.ok) {
           const data = await response.json();
           const allRepresentatives = data.representatives || [];
-          console.log('All representatives:', allRepresentatives);
           
           if (allRepresentatives.length > 0) {
             // If we have a rep object with a streamId
@@ -242,7 +200,6 @@
               
               if (matchByName) {
                 representativeDetails = matchByName;
-                console.log('Found representative by name match:', representativeDetails);
                 return;
               }
             }
@@ -250,7 +207,6 @@
             // If all else fails, just use the first representative
             // You might want to remove this in production and show an error instead
             representativeDetails = allRepresentatives[0];
-            console.log('Using first available representative as fallback:', representativeDetails);
           } else {
             console.error('No representatives found in the database');
             representativeDetails = null;
@@ -318,7 +274,6 @@
 
   // Generate time slots based on representative's schedule
   function generateTimeSlots(startTime, endTime, dateForSlots = null) {
-    console.log('🕒 SCHEDULE: Generating time slots between:', { startTime, endTime, dateForSlots });
     const slots = [];
     
     // Get current time in EST - multiple approaches for debugging
@@ -333,14 +288,7 @@
     const [estDate, estTime] = estString.split(', ');
     const [estHour, estMinute] = estTime.split(':').map(Number);
     
-    console.log('🕒 MULTIPLE EST CHECKS:', {
-      nowUTC: nowUTC.toISOString(),
-      method1_EST: nowEST.toISOString(),
-      method1_hour: nowEST.getHours(),
-      method2_string: estString,
-      method2_hour: estHour,
-      method2_minute: estMinute
-    });
+
     
     // Use the Intl API result as it's more reliable
     const currentHourEST = estHour;
@@ -357,15 +305,7 @@
       // Simple string comparison should work for same-day check
       isToday = todayInESTStr === slotDateInESTStr;
       
-      console.log('🕒 DATE COMPARISON SIMPLE:', {
-        nowUTC: nowUTC.toISOString(),
-        currentTimeInEST: nowUTC.toLocaleString('en-US', { timeZone: 'America/New_York' }),
-        todayInESTStr,
-        slotDateInESTStr,
-        isToday,
-        originalDateForSlots: dateForSlots.toISOString(),
-        dateForSlotsLocal: dateForSlots.toString()
-      });
+      
       
       // Alternative approach: Extract date components directly from the selected date
       // Since selectedDate is created from calendar selection (year: 2025, month: 8, day: 25)
@@ -388,16 +328,7 @@
       
       const isToday2 = (currentESTYear === selectedYear && currentESTMonth === selectedMonth && currentESTDay === selectedDay);
       
-      console.log('🕒 DATE COMPARISON DETAILED:', {
-        currentESTYear,
-        currentESTMonth,
-        currentESTDay,
-        selectedYear,
-        selectedMonth,
-        selectedDay,
-        isToday2,
-        finalIsToday: isToday || isToday2
-      });
+      
       
       // Use either method if they detect today
       isToday = isToday || isToday2;
@@ -416,14 +347,7 @@
     let current24Hour = startPM ? scheduleStartHour + 12 : scheduleStartHour;
     if (startPeriod === 'AM' && scheduleStartHour === 12) current24Hour = 0;
     
-    console.log('🕒 SCHEDULE BOUNDS:', {
-      startTime,
-      endTime,
-      scheduleStartHour,
-      current24Hour,
-      endHourNum,
-      startPM
-    });
+    
     
     // Generate all slots first, then filter
     const allSlots = [];
@@ -450,40 +374,34 @@
       hour = nextHour;
     }
     
-    console.log('🕒 ALL GENERATED SLOTS:', allSlots);
+    
     
     // Now filter for today if applicable
     const finalSlots = allSlots.filter(slot => {
       if (!isToday) {
-        console.log('🕒 KEEPING slot (not today):', slot.time);
+        
         return true; // Keep all slots for future dates
       }
       
       // For today, only keep slots that start AFTER the current hour
       const shouldKeep = slot.startHour > currentHourEST;
       
-      console.log('🕒 SLOT FILTER:', {
-        slotTime: slot.time,
-        slotStartHour: slot.startHour,
-        currentHourEST,
-        shouldKeep,
-        reason: shouldKeep ? 'future slot' : 'past/current slot'
-      });
+      
       
       return shouldKeep;
     });
     
-    console.log('🕒 FINAL FILTERED SLOTS:', finalSlots);
+    
     return finalSlots;
   }
 
   // Update the fetchAvailableSlots function to use the representative's schedule
   async function fetchAvailableSlots(rep, date) {
-    console.log('schedule console: Fetching available slots for:', { rep, date });
+    
     try {
       // Format date to YYYY-MM-DD
       const formattedDate = date.toISOString().split('T')[0];
-      console.log('Formatted date:', formattedDate);
+      
       
       // First get the representative details to access their schedule
       if (!representativeDetails) {
@@ -495,7 +413,7 @@
             if (response.ok) {
               const repData = await response.json();
               representativeDetails = repData.representative;
-              console.log('schedule console: Fetched fresh representative details:', representativeDetails);
+              
             }
           } catch (error) {
             console.error('Error fetching representative details:', error);
@@ -523,7 +441,7 @@
           // If this day exists in the schedule and has hours
           if (scheduleData[dayName] && scheduleData[dayName] !== "") {
             const hours = scheduleData[dayName];
-            console.log(`schedule console: Schedule for ${dayName}: ${hours}`);
+
             
             // Handle different format possibilities for start-end times
             let startStr, endStr;
@@ -551,7 +469,7 @@
                 if (scheduledResponse.ok) {
                   const scheduledData = await scheduledResponse.json();
                   actualScheduledRooms = scheduledData.scheduled_rooms || [];
-                  console.log('schedule console: Found scheduled rooms:', actualScheduledRooms);
+               
                 }
               } catch (error) {
                 console.error('Error fetching scheduled rooms:', error);
@@ -565,8 +483,6 @@
                     ? JSON.parse(representativeDetails.scheduled_meetings)
                     : representativeDetails.scheduled_meetings;
                   
-                  console.log('Legacy scheduled meetings:', legacyScheduledMeetings);
-                  console.log('Legacy meetings for this date:', legacyScheduledMeetings[formattedDate]);
                 } catch (e) {
                   console.error('Error parsing legacy scheduled meetings:', e);
                   legacyScheduledMeetings = {};
@@ -581,7 +497,6 @@
                 const isBooked = isBookedInActualRooms || isBookedInLegacy;
                 
                 slot.available = !isBooked;
-                console.log(`Slot ${slot.time} is ${isBooked ? 'booked' : 'available'} (actual: ${isBookedInActualRooms}, legacy: ${isBookedInLegacy})`);
               }
             }
           }
@@ -591,7 +506,6 @@
       }
       
       // Update available slots
-      console.log('Final time slots:', generatedSlots);
       availableSlots = generatedSlots;
     } catch (error) {
       console.error('Error fetching available slots:', error);
@@ -605,7 +519,6 @@
       return false;
     }
     
-    console.log(`Checking time slot ${timeSlot} against ${scheduledRooms.length} scheduled rooms`);
     
     for (const room of scheduledRooms) {
       if (!room.scheduleTime) continue;
@@ -628,10 +541,8 @@
       const normalizedTimeSlot = timeSlot.replace(/\s+/g, '').toUpperCase();
       const normalizedRoomTimeSlot = roomTimeSlot.replace(/\s+/g, '').toUpperCase();
       
-      console.log(`Comparing slot "${timeSlot}" (${normalizedTimeSlot}) with room time "${roomTimeSlot}" (${normalizedRoomTimeSlot})`);
       
       if (normalizedTimeSlot === normalizedRoomTimeSlot) {
-        console.log(`MATCH! Slot ${timeSlot} is booked by scheduled room at ${room.scheduleTime}`);
         return true;
       }
     }
@@ -648,8 +559,6 @@
     // Clean up the time slot format (remove all whitespace and make uppercase)
     const normalizedTimeSlot = timeSlot.replace(/\s+/g, '').toUpperCase();
     
-    console.log(`Checking if ${timeSlot} is booked (normalized: ${normalizedTimeSlot})`);
-    console.log(`Meetings on ${dateStr}:`, scheduledMeetings[dateStr]);
     
     // Check each existing meeting on this date
     for (const meeting of scheduledMeetings[dateStr]) {
@@ -658,10 +567,8 @@
       // Normalize meeting time format
       const normalizedMeetingTime = meeting.time.replace(/\s+/g, '').toUpperCase();
       
-      console.log(`Comparing with meeting: ${meeting.time} (normalized: ${normalizedMeetingTime})`);
       
       if (normalizedTimeSlot === normalizedMeetingTime) {
-        console.log(`MATCH! Slot ${timeSlot} is booked by meeting at ${meeting.time}`);
         return true;
       }
     }
@@ -688,7 +595,6 @@
 
   // Update handleSubmit to show confirmation first
   async function handleSubmit() {
-    console.log('schedule console: Starting handleSubmit');
     // Clear previous error state
     formError = '';
     
@@ -725,13 +631,11 @@
     
     try {
       // First fetch representative details
-      console.log('schedule console: Current representative details:', representativeDetails);
       try {
         const response = await fetch(`/api/representatives/${representativeDetails.id}`);
         if (response.ok) {
           const repData = await response.json();
           const currentRep = repData.representative;
-          console.log('schedule console: Fetched current rep data:', currentRep);
           
           // Parse existing meetings
           let scheduledMeetings = {};
@@ -740,14 +644,12 @@
               scheduledMeetings = typeof currentRep.scheduled_meetings === 'string' 
                 ? JSON.parse(currentRep.scheduled_meetings) 
                 : { ...currentRep.scheduled_meetings };
-              console.log('schedule console: Parsed existing meetings:', scheduledMeetings);
             } catch (e) {
               console.error('schedule console: Error parsing existing meetings:', e);
             }
           }
 
           const bookingDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
-          console.log('schedule console: Booking date:', bookingDate);
 
           if (!scheduledMeetings[bookingDate]) {
             scheduledMeetings[bookingDate] = [];
@@ -755,7 +657,6 @@
 
           // Make sure we have a selected slot
           if (!selectedSlot) {
-            console.error('schedule console: No time slot selected');
             toast.error('Please select a time slot');
             return;
           }
@@ -777,7 +678,6 @@
               country: address.country || ''
             }
           };
-          console.log('schedule console: New meeting to add:', newMeeting);
 
           // Store all the data we need for appointment creation
           pendingAppointmentData = {
@@ -817,7 +717,7 @@
       }
       
     } catch (error) {
-      console.error('schedule console: Error in scheduling process:', error);
+      console.error('Error in scheduling process:', error);
       toast.error('Failed to schedule the meeting. Please try again.');
     }
   }

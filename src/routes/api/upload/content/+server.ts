@@ -2,6 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { join } from 'path';
 import https from 'https';
 import { BUNNY_STORAGE_ZONE_NAME, BUNNY_ACCESS_KEY, BUNNY_REGION } from '$env/static/private';
+import { query } from '$lib/db';
 
 function getContentType(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase();
@@ -19,6 +20,16 @@ function getContentType(filename: string): string {
     case 'png': return 'image/png';
     default: return 'application/octet-stream';
   }
+}
+
+async function storeBlob(file: File | null): Promise<string | null> {
+  if (!file) return null;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { rows } = await query<{ id: string }>(
+    `INSERT INTO file_blobs (filename, content_type, data) VALUES ($1, $2, $3) RETURNING id`,
+    [file.name, file.type || getContentType(file.name), buffer]
+  );
+  return rows[0]?.id || null;
 }
 
 async function uploadToBunnyCDN(file: File, storageZoneName: string, accessKey: string, region = ''): Promise<string | null> {
@@ -79,12 +90,11 @@ async function uploadToBunnyCDN(file: File, storageZoneName: string, accessKey: 
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 
-
-  if (!locals.pb?.authStore.isValid) {
+  if (!(locals as any).pb?.authStore.isValid) {
     return json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
-  const user = locals.pb.authStore.model;
+  const user = (locals as any).pb.authStore.model;
   const formData = await request.formData();
 
   try {
@@ -139,16 +149,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }
     }
 
-    // Upload thumbnail to Bunny CDN (optional)
-    let thumbnailBunnyCdnUrl: string | null = null;
-    if (thumbnail && BUNNY_STORAGE_ZONE_NAME && BUNNY_ACCESS_KEY) {
-      try {
-        thumbnailBunnyCdnUrl = await uploadToBunnyCDN(thumbnail, BUNNY_STORAGE_ZONE_NAME, BUNNY_ACCESS_KEY, BUNNY_REGION);
-      } catch (error) {
-        console.error('Bunny CDN thumbnail upload failed:', error);
-        // Don't throw error if thumbnail upload fails
-      }
-    }
+    // Store file and thumbnail blobs
+    const fileBlobId = await storeBlob(file);
+    const thumbnailBlobId = await storeBlob(thumbnail);
 
     const contentData: Record<string, any> = {
       title,
@@ -156,20 +159,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       type,
       owner_company: user.id,
       active: formData.get('active') === 'true',
-      file: fileBunnyCdnUrl, // Store Bunny CDN URL instead of blob ID
-      thumbnail: thumbnailBunnyCdnUrl // Store thumbnail Bunny CDN URL
+      file: fileBunnyCdnUrl,
+      thumbnail: thumbnailBlobId
     };
 
     if (libraryType === 'host') {
       contentData.library_type = ['host'];
-      await locals.pb.collection('content_library').create(contentData);
+      await (locals as any).pb.collection('content_library').create(contentData);
     } else if (libraryType === 'representative') {
       contentData.library_type = ['representative'];
-      const record = await locals.pb.collection('content_library').create(contentData);
+      const record = await (locals as any).pb.collection('content_library').create(contentData);
       for (const repId of repIds) {
-        const rep = await locals.pb.collection('representatives').getOne(repId);
+        const rep = await (locals as any).pb.collection('representatives').getOne(repId);
         const connectedContent = Array.isArray(rep.connected_content) ? [...rep.connected_content, record.id] : [record.id];
-        await locals.pb.collection('representatives').update(repId, {
+        await (locals as any).pb.collection('representatives').update(repId, {
           name: rep.name,
           email: rep.email,
           phone: rep.phone,
@@ -181,11 +184,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }
     } else if (libraryType === 'both') {
       contentData.library_type = ['host', 'representative'];
-      const record = await locals.pb.collection('content_library').create(contentData);
+      const record = await (locals as any).pb.collection('content_library').create(contentData);
       for (const repId of repIds) {
-        const rep = await locals.pb.collection('representatives').getOne(repId);
+        const rep = await (locals as any).pb.collection('representatives').getOne(repId);
         const connectedContent = Array.isArray(rep.connected_content) ? [...rep.connected_content, record.id] : [record.id];
-        await locals.pb.collection('representatives').update(repId, {
+        await (locals as any).pb.collection('representatives').update(repId, {
           name: rep.name,
           email: rep.email,
           phone: rep.phone,
@@ -197,7 +200,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }
     }
 
-    return json({ success: true, type: 'success', fileUrl: fileBunnyCdnUrl, thumbnailUrl: thumbnailBunnyCdnUrl });
+    return json({ success: true, type: 'success' });
   } catch (err) {
     console.error('Error uploading content:', err);
     return json({ success: false, type: 'error', message: 'Failed to upload content' }, { status: 400 });

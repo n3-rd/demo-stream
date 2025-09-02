@@ -64,7 +64,7 @@
     }
 
     function handleContentClick(item) {
-        window.open(`${FILES_BASE}/content_library/${item.id}/${item.file}`, '_blank');
+            window.open(`${item.file}`, '_blank');
     }
     
     function scrollCarousel(type: string, direction: 'left' | 'right') {

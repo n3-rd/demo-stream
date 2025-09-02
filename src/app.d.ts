@@ -38,8 +38,9 @@ interface Locals {
 }
 
 interface ImportMetaEnv {
-    readonly VITE_PUBLIC_POCKETBASE_URL: string;
-    // Add other environment variables here
+    readonly VITE_BUNNY_ACCESS_KEY: string;
+    readonly VITE_BUNNY_STORAGE_ZONE: string;
+    readonly VITE_BUNNY_STORAGE_PASSWORD: string;
 }
 
 interface ImportMeta {

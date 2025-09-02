@@ -2060,7 +2060,7 @@ function handleVideoSelect(event) {
 
     // Determine content URL
     const fileUrl = selectedVideo && selectedVideo.file 
-        ? `/api/files/${selectedVideo.collectionId || 'content_library'}/${selectedVideo.id}/${selectedVideo.file}` 
+        ? `${selectedVideo.file}` 
         : '';
 
     // Set the appropriate media URL based on file type

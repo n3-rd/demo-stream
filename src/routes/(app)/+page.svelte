@@ -126,12 +126,8 @@
   }
 
   function handleContentClick(item) {
-      if (item.type === 'video') {
-         window.open(getFileUrl(item), '_blank');
-      } else {
-          window.open(getFileUrl(item), '_blank');
-      }
-  }
+            window.open(`${item.file}`, '_blank');
+    }
   
   function scrollCarousel(type: string, direction: 'left' | 'right') {
       const container = carouselContainers[type];

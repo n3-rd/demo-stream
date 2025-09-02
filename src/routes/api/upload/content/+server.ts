@@ -1,6 +1,7 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { join } from 'path';
-import { query } from '$lib/db';
+import https from 'https';
+import { BUNNY_STORAGE_ZONE_NAME, BUNNY_ACCESS_KEY, BUNNY_REGION } from '$env/static/private';
 
 function getContentType(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase();
@@ -20,17 +21,65 @@ function getContentType(filename: string): string {
   }
 }
 
-async function storeBlob(file: File | null): Promise<string | null> {
-  if (!file) return null;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const { rows } = await query<{ id: string }>(
-    `INSERT INTO file_blobs (filename, content_type, data) VALUES ($1, $2, $3) RETURNING id`,
-    [file.name, file.type || getContentType(file.name), buffer]
-  );
-  return rows[0]?.id || null;
+async function uploadToBunnyCDN(file: File, storageZoneName: string, accessKey: string, region = ''): Promise<string | null> {
+  return new Promise((resolve, reject) => {
+    const hostname = 'ny.storage.bunnycdn.com';
+    
+    console.log('Upload details:', {
+      storageZoneName,
+      filename: file.name,
+      fileType: file.type || getContentType(file.name),
+      fileSize: file.size
+    });
+
+    const options = {
+      method: 'PUT',
+      hostname: hostname,
+      path: `/${storageZoneName}/${encodeURIComponent(file.name)}`,
+      headers: {
+        'AccessKey': accessKey,
+        'Content-Type': file.type || getContentType(file.name),
+        'Content-Length': file.size
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        console.log('Bunny CDN response:', {
+          statusCode: res.statusCode,
+          responseData: data
+        });
+
+        if (res.statusCode === 201) {
+          // Construct the Bunny CDN URL
+          const fileUrl = `https://viewroom.b-cdn.net/${encodeURIComponent(file.name)}`;
+          resolve(fileUrl);
+        } else {
+          reject(new Error(`Upload failed with status ${res.statusCode}: ${data}`));
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error('Bunny CDN upload error:', error);
+      reject(error);
+    });
+
+    // Convert File to ArrayBuffer and then to Buffer
+    file.arrayBuffer().then(buffer => {
+      req.write(Buffer.from(buffer));
+      req.end();
+    }).catch(reject);
+  });
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
+
+
   if (!locals.pb?.authStore.isValid) {
     return json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
@@ -79,8 +128,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }
     }
 
-    const fileBlobId = await storeBlob(file);
-    const thumbnailBlobId = await storeBlob(thumbnail);
+    // Upload file to Bunny CDN
+    let fileBunnyCdnUrl: string | null = null;
+    if (file && BUNNY_STORAGE_ZONE_NAME && BUNNY_ACCESS_KEY) {
+      try {
+        fileBunnyCdnUrl = await uploadToBunnyCDN(file, BUNNY_STORAGE_ZONE_NAME, BUNNY_ACCESS_KEY, BUNNY_REGION);
+      } catch (error) {
+        console.error('Bunny CDN upload failed:', error);
+        throw error;
+      }
+    }
+
+    // Upload thumbnail to Bunny CDN (optional)
+    let thumbnailBunnyCdnUrl: string | null = null;
+    if (thumbnail && BUNNY_STORAGE_ZONE_NAME && BUNNY_ACCESS_KEY) {
+      try {
+        thumbnailBunnyCdnUrl = await uploadToBunnyCDN(thumbnail, BUNNY_STORAGE_ZONE_NAME, BUNNY_ACCESS_KEY, BUNNY_REGION);
+      } catch (error) {
+        console.error('Bunny CDN thumbnail upload failed:', error);
+        // Don't throw error if thumbnail upload fails
+      }
+    }
 
     const contentData: Record<string, any> = {
       title,
@@ -88,8 +156,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       type,
       owner_company: user.id,
       active: formData.get('active') === 'true',
-      file: fileBlobId,
-      thumbnail: thumbnailBlobId
+      file: fileBunnyCdnUrl, // Store Bunny CDN URL instead of blob ID
+      thumbnail: thumbnailBunnyCdnUrl // Store thumbnail Bunny CDN URL
     };
 
     if (libraryType === 'host') {
@@ -129,7 +197,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       }
     }
 
-    return json({ success: true, type: 'success' });
+    return json({ success: true, type: 'success', fileUrl: fileBunnyCdnUrl, thumbnailUrl: thumbnailBunnyCdnUrl });
   } catch (err) {
     console.error('Error uploading content:', err);
     return json({ success: false, type: 'error', message: 'Failed to upload content' }, { status: 400 });

@@ -2710,7 +2710,7 @@ let selectedVideo = null;
                                 {/if}
                                 <div class="play-button absolute inset-0 flex items-center justify-center">
                                     <button on:click={() => videoPlayer.play()}>
-                                       <img src="/icons/play.svg" alt="" class="h-28 w-28 object-cover">
+                                       <img src="/icons/play.svg" alt="" class="h-28 w-28 object-cover hover:scale-110 transition-all duration-300">
                                     </button>
                                 </div>
                             </div>

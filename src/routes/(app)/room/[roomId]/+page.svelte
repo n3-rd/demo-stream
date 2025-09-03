@@ -22,7 +22,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import NameInputModal from '$lib/components/name-input-modal.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
     import { Button } from '$lib/components/ui/button';
-    import { MessageSquareDashed, UsersRound, X } from 'lucide-svelte';
+    import { MessageSquareDashed, PlayCircle, UsersRound, X } from 'lucide-svelte';
 	import Participants from '$lib/call/Participants.svelte';
 	import Chat from '$lib/call/Chat.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
@@ -39,6 +39,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { toast } from 'svelte-sonner';
 	import { getRepInfo } from '$lib/utils.js';
     import { normalizeContent } from '$lib/utils/content';
+	import { Img } from 'svelte-email';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -2017,7 +2018,8 @@ function removeAllRemoteVideos() {
 
 // Example of how to use the update function
 function handleVideoSelect(event) {
-    const selectedVideo = event.detail;
+    // Set the selected video from the event detail
+    selectedVideo = event.detail;
     
     // Determine the most accurate file type
     const determineFileType = (item) => {
@@ -2067,7 +2069,10 @@ function handleVideoSelect(event) {
     switch (fileType) {
         case 'video':
             currentVideoUrl.set(fileUrl);
-            playVideoStore.set(true);
+            // Only set to play if we're the current controller
+            if (isCurrentController) {
+                playVideoStore.set(true);
+            }
             break;
         case 'pdf':
             currentPdfUrl.set(fileUrl);
@@ -2081,7 +2086,10 @@ function handleVideoSelect(event) {
         default:
             console.warn('Unknown content type, attempting to play as video:', fileType);
             currentVideoUrl.set(fileUrl);
-            playVideoStore.set(true);
+            // Only set to play if we're the current controller
+            if (isCurrentController) {
+                playVideoStore.set(true);
+            }
     }
     
     // Always send update if we're the controller
@@ -2147,18 +2155,26 @@ onMount(() => {
             currentTime: videoPlayer?.currentTime,
             playVideoStore: $playVideoStore
         });
+
+        // Only set to false on initial load or when video URL changes
+        if (!value || !videoPlayer) {
+            playVideoStore.set(false);
+        }
         
         // If we have a video player and a URL, update it
         if (videoPlayer && value) {
             console.log('Updating video player source');
             videoPlayer.src = value;
             
-            // Only play if playVideoStore is true
-            if ($playVideoStore) {
+            // Only play if playVideoStore is true and we're the controller
+            const isCurrentController = (syncSource === 'host' && isHost) || 
+                                        (syncSource === 'representative' && isRepresentative);
+            
+            if ($playVideoStore && isCurrentController) {
                 console.log('Auto-playing video based on playVideoStore');
                 videoPlayer.play().catch(e => console.error('Error playing video:', e));
             } else {
-                console.log('Not auto-playing video (playVideoStore is false)');
+                console.log('Not auto-playing video (playVideoStore is false or not controller)');
             }
         }
     });
@@ -2506,6 +2522,9 @@ onMount(() => {
     });
 });
 
+// Track the currently selected video
+let selectedVideo = null;
+
 </script>
 
 
@@ -2677,6 +2696,25 @@ onMount(() => {
                         
                         {#if $currentVideoUrl}
                             {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+                            {console.log("playvideo store", $playVideoStore)}
+                            {#if !$playVideoStore}
+                            <div class="h-full w-full absolute inset-0 z-40">
+                                {#if selectedVideo && selectedVideo.thumbnail}
+                                    <img 
+                                        src={`/api/files/${selectedVideo.collectionId || selectedVideo.collection || 'content_library'}/${selectedVideo.id}/${selectedVideo.thumbnail}`} 
+                                        alt={selectedVideo.title} 
+                                        class="absolute w-full h-full object-cover"
+                                    >
+                                {:else}
+                                    <img src="https://placehold.co/600x400?text=No+Thumbnail" alt="" class="absolute w-full h-full object-cover">
+                                {/if}
+                                <div class="play-button absolute inset-0 flex items-center justify-center">
+                                    <button on:click={() => videoPlayer.play()}>
+                                       <img src="/icons/play.svg" alt="" class="h-28 w-28 object-cover">
+                                    </button>
+                                </div>
+                            </div>
+                            {/if}
                                 <video
                                     class="w-full h-full object-contain absolute inset-0"
                                     controls={true}

@@ -175,6 +175,11 @@
                 type="text" 
                 placeholder="Send a message" 
                 bind:value={newText} 
+                on:keydown={(e) => {
+                    if (e.key === 'Enter') {
+                        sendNewMessage();
+                    }
+                }}
                 class="flex-grow bg-transparent border-none outline-none text-white placeholder-gray-400 pr-2 w-[80%]" 
             />
             <button 

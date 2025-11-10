@@ -71,7 +71,7 @@
 <Sheet.Root>
     <Sheet.Trigger>
         <Button variant="ghost" size="icon" class="w-full" id="add-notes">
-            <img src="/icons/icon-notes.svg" alt="quote" class="w-6 h-6"/>
+            <img src="/icons/new-icons/notes.png" alt="notes" class="bottom-bar-icon"/>
         </Button>
     </Sheet.Trigger>
 

@@ -6,10 +6,12 @@
     import * as Sheet from "$lib/components/ui/sheet";
     import * as Dialog from "$lib/components/ui/dialog";
     import Share from "../room/share.svelte";
+    import MediaSelector from "$lib/components/room/MediaSelector.svelte";
     import InviteRepresentative from "../room/invite-representative.svelte";
     import ScheduleMeeting from "../room/schedule-meeting.svelte";
     import Notes from "../room/notes.svelte";
     import CreateQuote from "../room/create-quote.svelte";
+	import Separator from "../ui/separator/separator.svelte";
 
 
 
@@ -21,6 +23,12 @@
     export let scheduleOpen;
     export let userId: string;
     export let videoRepresentatives: string[];
+    export let isHost = false;
+    export let isRepresentative = false;
+    export let room: any;
+    export let roomName = "";
+    export let hostContentItems: any[] = [];
+    export let repContentItems: any[] = [];
     const dispatch = createEventDispatcher();
 
     type StateSnapshot = Record<string, boolean>;
@@ -119,21 +127,21 @@
             key: "chatPanel",
             type: "panel",
             label: "Open Chat",
-            icon: { type: "image", src: "/icons/new-icons/chat.png", alt: "Open chat" },
+            icon: { type: "image", src: "/icons/new-icons/chat-2.png", alt: "Open chat" },
             panelId: "chatPanel"
         },
         {
             key: "participantsPanel",
             type: "panel",
             label: "Participants",
-            icon: { type: "component", component: UsersRound, props: { scale: 1.3, color: "#fff" } },
+            icon: { type: "image", src: "/icons/new-icons/participants.png", alt: "Participants" },
             panelId: "participantsPanel"
         },
         {
             key: "share",
             type: "dialog",
             label: "Invite People",
-            icon: { type: "component", component: ShareIcon, props: { scale: 1.3, color: "#fff" } },
+            icon: { type: "image", src: "/icons/new-icons/invite.png", alt: "Invite people" },
             content: "share",
             contentClass: "p-4 rounded-lg shadow-lg"
         },
@@ -143,7 +151,7 @@
             label: "Speak to Representative",
             icon: {
                 type: "image",
-                src: "/icons/icon-representative.svg",
+                src: "/icons/new-icons/rep.png",
                 alt: "user",
                 sizeClass: "w-5 h-5"
             },
@@ -156,7 +164,7 @@
             label: "Book Appointment",
             icon: {
                 type: "image",
-                src: "/icons/icon-calendar.svg",
+                src: "/icons/new-icons/calendar.png",
                 alt: "calendar",
                 sizeClass: "w-5 h-5"
             },
@@ -176,7 +184,7 @@
             label: "Request a Quote",
             icon: {
                 type: "image",
-                src: "/icons/icon-quotes.svg",
+                src: "/icons/new-icons/quotes.png",
                 alt: "quote",
                 sizeClass: "w-5 h-5"
             },
@@ -238,14 +246,52 @@
     function togglePanel(id: string) {
         dispatch('togglePanel', { id });
     }
+
+    let contentSheetOpen = false;
+
+    function handleMediaSelect(event: CustomEvent) {
+        dispatch("videoSelect", event.detail);
+        contentSheetOpen = false;
+    }
 </script>
 
 <div class="px-4 flex justify-center items-center">
+    <Sheet.Root bind:open={contentSheetOpen}>
+        <Sheet.Trigger>
+            <Button
+
+                class="fixed z-50 right-8 bottom-28 rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black lg:hidden"
+            >
+                Show content
+            </Button>
+        </Sheet.Trigger>
+        <Sheet.Content
+            side="bottom"
+            class="bg-bgdefault text-white rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto lg:hidden [&>button]:hidden"
+        >
+        <div class="flex w-full justify-between items-center">
+            <h2 class="text-white text-lg font-semibold">Content list</h2>
+            <Button class="rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black"
+            on:click={()=>contentSheetOpen = false}
+            >Hide content</Button>
+        </div>
+            <MediaSelector
+                {isHost}
+                {isRepresentative}
+                {room}
+                {roomName}
+                hostContentItems={hostContentItems}
+                repContentItems={repContentItems}
+                on:videoSelect={handleMediaSelect}
+            />
+        </Sheet.Content>
+    </Sheet.Root>
     <div
-        class="lg:hidden fixed bottom-4 left-0 right-0 bg-[#666669] py-6 px-4 w-[94%] mx-auto rounded-2xl"
+        class="lg:hidden fixed bottom-4 left-0 right-0 bg-[#5C5C5C] p-4 w-[94%] mx-auto rounded-2xl"
         class:is-sharing={isScreenSharing}
         data-room={roomIdentityName}
     >
+
         <div class="flex justify-between items-center">
             <!-- Primary controls -->
             <div class="flex gap-3">
@@ -259,7 +305,7 @@
                         title={control.label}
                         on:click={() => handlePrimary(control)}
                     >
-                        <img src={control.icon} alt={getAltText(control)} class="icon" />
+                        <img src={control.icon} alt={getAltText(control)} class="icon h-11 w-11" />
                     </button>
                 {/each}
             </div>
@@ -269,11 +315,11 @@
                 <Sheet.Root>
                     <Sheet.Trigger
                         aria-label="Open more controls"
-                        class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-14 hover:bg-white hover:text-black"
+                        class="flex justify-center items-center rounded-full bg-[#707172] h-14 w-14 hover:bg-white hover:text-black"
                     >
                         <img src="/icons/new-icons/more.png" alt="More options" class="icon" />
                     </Sheet.Trigger>
-                    <Sheet.Content side="bottom" class="bg-[#666669] p-6 text-white">
+                    <Sheet.Content side="bottom" class="bg-bgdefault p-6 text-white rounded-t-2xl [&>button]:hidden">
                         <div class="grid grid-cols-3 gap-y-4">
                             {#each sheetEntries as entry (entry.key)}
                                 <div class="flex flex-col gap-2">
@@ -382,19 +428,18 @@
                 </Sheet.Root>
             </div>
     
+            <Separator orientation="vertical" class="h-full" />
             <!-- Right side controls -->
             <div class="flex gap-3">
-               
-    
                 <Button
                     variant="destructive"
                     size="sm"
-                    class="flex justify-center items-center rounded-full h-10 w-16 hover:bg-red-700"
+                    class="flex justify-center items-center rounded-full h-14 w-14 hover:bg-red-700"
                     aria-label={destructiveControl.label}
                     title={destructiveControl.label}
                     on:click={() => dispatch("leaveRoom")}
                 >
-                    <img src={destructiveControl.icon} alt={destructiveControl.label} class="icon" />
+                    <img src={destructiveControl.icon} alt={destructiveControl.label} class="icon h-14 w-14" />
                 </Button>
             </div>
         </div>
@@ -403,8 +448,14 @@
 
 <style>
     .icon {
-        width: 24px;
-        height: 24px;
+        width: 38px;
+        height: 38px;
+        object-fit: contain;
+    }
+
+    :global(.bottom-bar-icon) {
+        width: 38px;
+        height: 38px;
         object-fit: contain;
     }
 
@@ -418,4 +469,8 @@
     button.is-off {
         border: 1px solid rgba(255, 255, 255, 0.45);
     }
+    button[data-melt-dialog-close] {
+        display: none!important;
+    }
+    
 </style>

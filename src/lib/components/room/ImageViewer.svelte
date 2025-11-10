@@ -160,7 +160,7 @@
         </div>
     {:else}
         <div 
-            class="absolute inset-0 flex items-center justify-center transition-transform duration-200"
+            class="absolute inset-0 flex items-center justify-center transition-transform duration-200 bg-bgdefault-light"
             bind:this={imageContainer}
             style="cursor: {isController ? 'grab' : 'default'}"
         >

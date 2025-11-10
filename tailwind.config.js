@@ -50,6 +50,10 @@ const config = {
 				},
 				bgfill: {
 					DEFAULT: '#D9E1EE'
+				},
+				bgdefault: {
+					DEFAULT: '#45474B',
+					light: '#5c5c5c'
 				}
 			},
 			borderRadius: {

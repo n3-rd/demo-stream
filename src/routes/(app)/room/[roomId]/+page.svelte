@@ -40,6 +40,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { getRepInfo } from '$lib/utils.js';
     import { normalizeContent } from '$lib/utils/content';
 	import { Img } from 'svelte-email';
+	import MobileTopBar from '$lib/components/layout/mobile-top-bar.svelte';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -2642,7 +2643,7 @@ let selectedVideo = null;
   <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
     <!-- Always render meeting room in the background -->
-    <div class="h-screen min-w-full bg-[#9d9d9f] relative overflow-hidden">
+    <div class="h-screen min-w-full bg-bgdefault relative overflow-hidden">
         {#if showGreetingPopup}
             <GreetingPopup name={data?.representativeName} host={isHost} on:dismissed={handleGreetingDismissed} />
         {/if}
@@ -2668,7 +2669,7 @@ let selectedVideo = null;
                 </div>
                 
                 <!-- Main content area -->
-                <div class="flex-grow h-full bg-[#9d9d9f] relative flex">
+                <div class="flex-grow h-[70vh] md:h-full bg-bgdefault relative flex px-2">
                     <div class="video-container bg-red h-full w-full relative">
                         <RepresentativeIndicator 
                             participants={meetingParticipants}
@@ -2846,16 +2847,28 @@ let selectedVideo = null;
                 joinURL={shareURL}
                 {isMicMuted}
                 {isCameraOff}
+                {isHost}
+                {isRepresentative}
+                {room}
+                {roomName}
+                hostContentItems={room?.expand?.host_content || []}
+                repContentItems={room?.expand?.representative_content || []}
                 on:leaveRoom={leaveRoom}
                 on:toggleMicrophone={toggleMicrophone}
                 on:toggleCamera={toggleCamera}
                 on:togglePanel={handlePanelToggle}
+                on:videoSelect={handleVideoSelect}
+            />
+
+            <MobileTopBar
+            roomIdentityName={room?.title || 'Meeting Room'}
+            roomLink={shareURL}
             />
 
             <!-- MediaSelector -->
   
             {#if (isHost || isRepresentative)}
-                <div class="h-72 ">
+                <div class="hidden h-72 lg:block">
                     <MediaSelector 
                         {isHost} 
                         {isRepresentative} 

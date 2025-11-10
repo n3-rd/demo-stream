@@ -175,17 +175,17 @@
     }
 </script>
 
-<div class="bg-[#9D9D9F] p-4 rounded-lg pb-24">
+<div class="bg-bgdefault md:p-4 pb-24">
     {#if showHostContent}
         <div class="mb-8">
             <h2 class="text-white text-lg font-semibold mb-4">Host Content</h2>
             {#if hostContent.length > 0}
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {#each hostContent as item}
                         {@const fileType = (item.type || 'unknown').toLowerCase()}
                         <div class="flex flex-col gap-3">
                             <button
-                            class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
+                            class="relative aspect-video bg-black overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
                             on:click={() => handleMediaSelect(item)}
                         >
                             {#if fileType === 'video'}
@@ -225,9 +225,6 @@
                                         class="w-full h-full object-cover"
                                     />
                                 {/if}
-                                <div class="absolute inset-0 flex items-center justify-center shadow-lg">
-                                    <img src="/icons/image.svg" alt="View" class="w-10 h-10" />
-                                </div>
                             {:else}
                                 <div class="w-full h-full flex items-center justify-center text-white">
                                     Media
@@ -253,7 +250,7 @@
                     {#each repContent as item}
                         {@const fileType = (item.type || 'unknown').toLowerCase()}
                         <button
-                            class="relative aspect-video bg-black rounded-lg overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
+                            class="relative aspect-video bg-black  overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
                             on:click={() => handleMediaSelect(item)}
                         >
                             {#if fileType === 'video'}
@@ -328,4 +325,4 @@
     .content-section:empty {
         @apply hidden;
     }
-</style> 
+</style>

@@ -11,6 +11,17 @@
   let step = 1;
   let tour: any;
 
+  const stepIconSelectors: Record<string, string> = {
+    "add-notes": "#add-notes svg, #add-notes i, #add-notes img",
+    "virtual-assistant": "#virtual-assistant svg, #virtual-assistant i, #virtual-assistant img",
+    "invite-representative": "#invite-representative svg, #invite-representative i, #invite-representative img",
+    "schedule-meeting": "#schedule-meeting svg, #schedule-meeting i, #schedule-meeting img",
+    "create-quote": "#create-quote svg, #create-quote i, #create-quote img",
+    "chat-button": "#chat-button svg, #chat-button i, #chat-button img",
+    "participants-button": "#participants-button svg, #participants-button i, #participants-button img",
+    "invite-people-button": "#invite-people-button svg, #invite-people-button i, #invite-people-button img"
+  };
+
   let tourSteps = [
     {
       id: "add-notes",
@@ -150,6 +161,33 @@
             show() {
               const currentStepElement = tour.currentStep.el;
               const footer = currentStepElement.querySelector('.shepherd-footer');
+              const header = currentStepElement.querySelector('.shepherd-header');
+              const stepId = tour.currentStep?.id;
+
+              if (stepId && header) {
+                const iconSelector = stepIconSelectors[stepId];
+                if (iconSelector) {
+                  const iconSource = document.querySelector(iconSelector);
+                  if (iconSource) {
+                    let iconWrapper = header.querySelector('.shepherd-step-icon') as HTMLElement | null;
+                    if (!iconWrapper) {
+                      iconWrapper = document.createElement('div');
+                      iconWrapper.className = 'shepherd-step-icon';
+                      header.insertBefore(iconWrapper, header.firstChild);
+                    }
+
+                    // Clear previous content
+                    iconWrapper.innerHTML = '';
+
+                    const clone = iconSource.cloneNode(true) as HTMLElement;
+                    if (clone instanceof SVGElement) {
+                      clone.setAttribute('width', '36');
+                      clone.setAttribute('height', '36');
+                    }
+                    iconWrapper.appendChild(clone);
+                  }
+                }
+              }
               
               // Remove any existing progress indicators
               const existingProgress = currentStepElement.querySelector('.shepherd-progress-counter');
@@ -219,44 +257,47 @@
 </script>
 
 <Dialog.Root bind:open={isOpen} onOpenChange={handleOpenChange}>
-  <Dialog.Content class="border-none">
+  <Dialog.Content class="relative max-w-md rounded-3xl border border-[#E4E9F4] bg-white p-8 text-center shadow-[0_25px_45px_rgba(15,33,58,0.12)]">
     {#if step === 1}
-    <Dialog.Header>
-      <Dialog.Title class="text-2xl">
-        Welcome to the <span class="text-primary">VIEW ROOM</span>
+    <Dialog.Header class="space-y-3 text-center">
+      <Dialog.Title class="text-2xl font-semibold text-[#1F2937]">
+        Welcome to the View Room
       </Dialog.Title>
-      <Dialog.Description class="text-lg">
+      <Dialog.Description class="space-y-3 text-base text-[#6B7280]">
         {#if host}
-          <p class="text-[#0997FD]">You are the host of this room.</p>
+          <p class="text-primary">You are the host of this room.</p>
           <p>
-            As host, you control all video features, invitations including Rep's,
-            and ask questions. All participants who sign in can take notes.
+            As host you control all video features, invitations including Rep's questions.
+            All participants who sign in can take notes.
           </p>
         {/if}
       </Dialog.Description>
     </Dialog.Header>
 
-    <Dialog.Footer>
-      <Button class="w-full bg-[#E8F0FA] text-primary py-3 hover:bg-[#E8F0FA]"
+    <Dialog.Footer class="mt-6 flex flex-col gap-3 lg:flex-row items-center">
+      <Button class="w-full rounded-xl bg-primary py-3 text-base font-semibold text-white shadow hover:bg-primary/90"
         on:click={() => step = 2}
-      >Get Started</Button>
+      >Join Room</Button>
+      <Button variant="outline" class=" w-full rounded-xl border border-primary/20 py-3 text-base font-semibold text-primary hover:bg-[#F3F6FC]"
+        on:click={() => dispatch("dismissed")}
+      >Leave Room</Button>
     </Dialog.Footer>
     {/if}
 
     {#if step === 2}
-      <Dialog.Header>
-        <Dialog.Title class="text-2xl text-primary">VIEWROOM FEATURES</Dialog.Title>
+      <Dialog.Header class="space-y-3 text-center">
+        <Dialog.Title class="text-2xl font-semibold text-primary uppercase tracking-wide">Viewroom Features</Dialog.Title>
       </Dialog.Header>
-      <Dialog.Description class="text-lg">
-        <p>
+      <Dialog.Description class="space-y-3 text-base text-[#6B7280]">
+        <p class="leading-relaxed">
           Features of ViewRoom will be shown to guide you through the system. Before proceeding, make sure you're ready to explore our tools and instructions.
         </p>
       </Dialog.Description>
-      <Dialog.Footer class="flex justify-between min-w-full">
-        <Button class="w-[146px] bg-[#E8F0FA] text-primary py-3 hover:bg-[#E8F0FA]"
+      <Dialog.Footer class="mt-6 flex flex-col gap-3 lg:flex-row items-center">
+        <Button class="w-full  rounded-xl bg-primary py-3 text-base font-semibold text-white shadow hover:bg-primary/90"
           on:click={startTour}
         >Continue</Button>
-        <Button class="w-[146px] bg-[#E8F0FA] text-primary py-3 hover:bg-[#E8F0FA]"
+        <Button class="w-full  rounded-xl border border-primary/20 bg-[#F3F6FC] py-3 text-base font-semibold text-primary hover:bg-[#E8F0FA]"
           on:click={() => dispatch("dismissed")}
         >Skip</Button>
       </Dialog.Footer>
@@ -290,20 +331,28 @@
     font-family: 'Poppins', sans-serif;
     font-style: normal;
     font-weight: 500;
-    font-size: 12px;
+    font-size: 18px!important;
     line-height: 18px;
     color: #000000;
     margin-bottom: 0.5rem;
-    
+    text-align: center !important;
+    width: 100%;
+    display: block;
+  }
+
+  :global(.shepherd-theme-custom .shepherd-title h3) {
+    font-size: 18px!important;
+    line-height: 18px!important;
+    text-align: center !important;
   }
 
   :global(.shepherd-theme-custom .shepherd-text) {
     font-family: 'Poppins', sans-serif;
     font-style: normal;
     font-weight: 300;
-    line-height: 18px;
+    line-height: 24px;
     color: #000000;
-    font-size: 11px;
+    font-size: 15px;
     margin: 0 auto;
   }
 
@@ -354,6 +403,12 @@
     width: 100%;
     padding: 1rem;
     margin-left: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.5rem;
   }
   
   :global(.shepherd-theme-custom .shepherd-element) {
@@ -427,5 +482,58 @@
     color: #000;
     font-size: 10px;
     font-weight: 500;
+  }
+
+  :global(.shepherd-step-icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 44px;
+    border-radius: 12px;
+    color: #000;
+    margin: 0 auto;
+  }
+
+  :global(.shepherd-step-icon img) {
+    filter: invert(1)!important;
+    height:49px!important;
+    width:49px!important;
+  }
+
+  @media (max-width: 640px) {
+    :global(.shepherd-theme-custom) {
+    margin: 0 auto;
+      background-image: none;
+      background-color: #ffffff;
+      border-radius: 18px;
+      padding: 1.5rem;
+      width: calc(100vw - 1rem);
+      margin-top: 18rem;
+      max-width: 100%;
+      box-shadow: 0 20px 40px rgba(15, 33, 58, 0.12);
+    }
+
+    :global([data-shepherd-step-id="chat-button"], [data-shepherd-step-id="participants-button"], [data-shepherd-step-id="invite-people-button"]) {
+      background-image: none !important;
+    }
+
+    :global(.shepherd-theme-custom .shepherd-content) {
+      margin-left: 0;
+      padding: 0;
+    }
+
+    :global(.shepherd-theme-custom .shepherd-header) {
+      margin-left: 0;
+      padding: 0;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    :global(.shepherd-step-icon) {
+      margin-right: 0;
+      margin-bottom: 0.5rem;
+    }
   }
 </style>

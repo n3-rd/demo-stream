@@ -3,7 +3,7 @@
     import { page } from '$app/stores';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
-
+    import { Input } from '$lib/components/ui/input';   
     export let data;
     const { room } = data;
 
@@ -12,10 +12,11 @@
     let errors: { anonymousUserId?: string } = {};
 </script>
 
-<div class="container mx-auto p-4 mt-[1rem]">
+<div class="container mx-auto mt-[1rem] p-8">
     <h1 class="text-2xl font-bold mb-4">Join Room</h1>
 
     <form 
+    class="flex flex-col justify-between h-[calc(100vh-10rem)]"
         method="POST" 
         action="?/joinRoom"
         use:enhance={() => {
@@ -46,7 +47,7 @@
             <label for="anonymousUserId" class="block text-sm font-medium text-gray-700 mb-1">
                 Enter your user ID
             </label>
-            <input 
+            <Input 
                 type="text" 
                 id="anonymousUserId"
                 name="anonymousUserId" 
@@ -57,23 +58,28 @@
             {#if errors.anonymousUserId}
                 <p class="mt-1 text-sm text-red-500">{errors.anonymousUserId}</p>
             {/if}
-            <p class="mt-1 text-sm text-gray-500">
-                This name will be used to identify you in the room.
-            </p>
-            <p class="mt-1 text-sm text-gray-500">
-                Ensure it is at least 3 characters long and unique 
-            </p>
-            <p class="mt-1 text-sm text-primary">
-                For example: JohnDoe-Bluesky
-            </p>
+           <p class="text-sm text-gray-500 py-4">
+            This Name will be used to identify you in the Room.
+Ensure it at least 3 Characters long and Unique.
+           </p>
         </div>
 
-        <Button 
+        <div class="flex flex-col gap-4">
+
+            <p class="text-sm text-gray-500">
+                As host you control all video features,
+                invitations including Rep’s questions.
+                All participants who sign in can take notes
+            </p>
+            <Button 
             type="submit" 
             disabled={loading || anonymousUserId.length < 3}
-            class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
+            class="w-full bg-primary hover:bg-primary/80 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
         >
             {loading ? 'Joining...' : 'Join Room'}
         </Button>
+        </div>
+
+
     </form>
 </div> 

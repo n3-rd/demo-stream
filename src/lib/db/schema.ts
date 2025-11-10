@@ -1,4 +1,10 @@
-import { pgTable, uuid, text, boolean, timestamp, jsonb, integer, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, boolean, timestamp, jsonb, integer, primaryKey, customType } from 'drizzle-orm/pg-core';
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -180,6 +186,14 @@ export const videos = pgTable('videos', {
   video: text('video').notNull(),
   userId: uuid('user_id').notNull().references(() => users.id),
   name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const fileBlobs = pgTable('file_blobs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  filename: text('filename').notNull(),
+  contentType: text('content_type').notNull(),
+  data: bytea('data').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

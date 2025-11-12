@@ -455,6 +455,8 @@
                                                         <div class="w-full bg-transparent">
                                                             <ScheduleMeeting
                                                                 userId={userId || ""}
+                                                                availableRepresentatives={videoRepresentatives}
+                                                                roomData={room}
                                                                 on:close={() => dispatch("closeSchedule")}
                                                             />
                                                         </div>
@@ -491,6 +493,8 @@
                                                         <div class="w-full bg-transparent">
                                                             <ScheduleMeeting
                                                                 userId={userId || ""}
+                                                                availableRepresentatives={videoRepresentatives}
+                                                                roomData={room}
                                                                 on:close={() => dispatch("closeSchedule")}
                                                             />
                                                         </div>

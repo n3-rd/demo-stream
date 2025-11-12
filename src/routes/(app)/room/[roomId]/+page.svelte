@@ -214,7 +214,7 @@ let inDataChannelOnlyMode = false;
 let videoVolume = 1.0; // Add this with your other state variables
 
 // Add state for available representatives
-let availableRepresentatives = [];
+let availableRepresentatives = [...representatives];
 
 // Helper to read representative name from cookie
 function getRepresentativeCookieName(): string {

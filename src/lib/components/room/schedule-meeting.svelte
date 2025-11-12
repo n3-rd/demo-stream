@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Bell, Download, ClipboardCopy } from 'lucide-svelte';
+  import { ArrowLeft, Clock, MapPin, Globe } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from "$lib/components/ui/card";
   import { Input } from "$lib/components/ui/input";
@@ -23,6 +23,26 @@
   // Filter representatives by the current user's company and room assignment
   $: filteredRepresentatives = availableRepresentatives;
   
+  const MEETING_DURATION = '30 minutes';
+  const TIME_ZONE_LABEL = 'Eastern time - US & Canada';
+  
+  $: hostDisplayName = roomData?.title ?? 'Name of Host';
+  $: repDisplayName = representativeDetails?.name 
+      ?? (typeof selectedRepresentative === 'object' && selectedRepresentative?.name)
+      ?? 'Select a representative';
+  $: representativeAvatarUrl = representativeDetails?.avatar
+      ? `/api/files/${representativeDetails.collectionId || 'representatives'}/${representativeDetails.id}/${representativeDetails.avatar}`
+      : null;
+  $: representativeLocation = representativeDetails?.expand?.location?.name
+      ?? representativeDetails?.location
+      ?? 'Location to be confirmed';
+  $: representativeAddress = representativeDetails?.expand?.location?.address
+      ?? representativeDetails?.address
+      ?? '';
+  
+  $: selectedDateFormatted = selectedDate
+      ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+      : '';
 
   let value = today(getLocalTimeZone());
   const dispatch = createEventDispatcher();
@@ -708,7 +728,8 @@
             location: representativeDetails.location || 'Online',
             roomUrl: roomUrl
           };
-          showAppointmentConfirmation = true;
+
+          await confirmAppointment();
         }
       } catch (error) {
         console.error('Error fetching representative details:', error);
@@ -723,8 +744,11 @@
   }
   
   // Update the confirmAppointment function to properly include the UID in the room URL
-  function confirmAppointment() {
-    showAppointmentConfirmation = false;
+  async function confirmAppointment() {
+    if (!pendingAppointmentData) {
+      toast.error('Missing appointment data for confirmation');
+      return;
+    }
     
     // Use the same roomId that was shown in the confirmation
     const roomId = pendingAppointmentData.roomId || roomName || generateUniqueRoomId();
@@ -745,7 +769,7 @@
       bookingDate: pendingAppointmentData.bookingDate,
       bookingTime: selectedSlot.time,
       roomName: roomId,
-      roomUrl: roomUrl,  // Now uses consistent URL
+      roomUrl: roomUrl, // Now uses consistent URL
       dayOfWeek: ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][selectedDate.getDay()],
       additionalInformation: additionalInformation || 'No additional information provided.',
       customerAddress: {
@@ -757,27 +781,23 @@
       }
     };
     
-    // Show loading state and try to send email
+    try {
     isEmailSending = true;
-    sendEmailNotifications(emailData)
-      .then(emailSuccess => {
+      const emailSuccess = await sendEmailNotifications(emailData);
         isEmailSending = false;
         
         if (emailSuccess) {
-          // Email sent successfully, create the appointment
-          return createAppointment();
+        await createAppointment();
         } else {
-          // Email failed, show confirmation popup
           showEmailConfirmModal = true;
           emailErrorMessage = 'The server could not send the confirmation email.';
         }
-      })
-      .catch(error => {
+    } catch (error) {
         isEmailSending = false;
         console.error('schedule console: Error in email sending process:', error);
         showEmailConfirmModal = true;
         emailErrorMessage = 'The server could not send the confirmation email.';
-      });
+    }
   }
 
   // Also update the retryEmailSending function to use the same URL format
@@ -995,23 +1015,8 @@
           // Add the scheduled room ID to the confirmation data
           if (scheduledRoom.scheduled_room && scheduledRoom.scheduled_room.id) {
             pendingAppointmentData.scheduledRoomId = scheduledRoom.scheduled_room.id;
-            
-            // Set variables for the success dialog
             createdRoomId = roomId;
             createdRoomUrl = roomUrl;
-            
-            // Show confirmation popup
-            showConfirmationPopup = true;
-            
-            // REDIRECT OPTION: After confirmation is closed, user will be redirected to waiting room
-            // This code can be triggered when the confirmation is closed if preferred
-            setTimeout(() => {
-              // In a real implementation, you would use a proper navigation method
-              // window.location.href = roomUrl;
-              // Or if you're using SvelteKit:
-              // import { goto } from '$app/navigation';
-              // goto(roomUrl);
-            }, 5000); // Optional delay before redirect
           }
         } else {
           const errorData = await response.json();
@@ -1032,6 +1037,10 @@
       // Show confirmation popup
       showConfirmationToast(representativeDetails.name, bookingDate, newMeeting.time, representativeDetails.location || 'Online', roomId);
       
+      showSuccessConfirmation = true;
+      currentStep = 1;
+      selectedTimeSlot = null;
+      selectedSlot = null;
       return roomId;
     } catch (error) {
       console.error('Error creating appointment:', error);
@@ -1181,8 +1190,9 @@
 
   function handleCancel() {
     dispatch('close'); // Dispatch close event to close the dialog
-    
-    // Also directly close/reset state if parent doesn't handle event
+    currentStep = 1;
+    selectedTimeSlot = null;
+    selectedSlot = null;
     calendarVisible = false;
     pendingAppointmentData = null;
     showEmailConfirmModal = false;
@@ -1196,29 +1206,6 @@
     const selectedDate = new Date(date.year, date.month - 1, date.day);
     // Compare timestamps instead of Date vs number
     return selectedDate.getTime() < todayDate.getTime(); // Allow current day
-  }
-
-  function handleButtonClick() {
-    console.log("Button clicked, isFormValid:", isFormValid);
-    
-    if (!isFormValid) {
-      // Check which fields are missing and show appropriate errors with toast
-      if (!firstName || !lastName) {
-        toast.error('Please enter your full name (first and last name)');
-      } else if (!email) {
-        toast.error('Please enter your email address');
-      } else if (!phoneNumber) {
-        toast.error('Please enter your phone number');
-      } else if (!selectedRepresentative) {
-        toast.error('Please select a representative');
-      } else if (!selectedDate) {
-        toast.error('Please select a date');
-      } else if (!selectedTimeSlot) {
-        toast.error('Please select a time slot');
-      }
-    } else {
-      handleSubmit();
-    }
   }
 
   // Update the showConfirmationToast function to include uid in the URL
@@ -1250,7 +1237,7 @@
     };
     
     // Show the confirmation popup
-    showConfirmationPopup = true;
+    showSuccessConfirmation = true;
   }
 
   // Add helper function to extract rep ID
@@ -1513,45 +1500,216 @@
 
   // Enhanced time slot rendering with more information
   function renderTimeSlotClass(slot) {
-    let baseClasses = 'w-full p-3 border rounded-md text-center text-sm relative transition-colors duration-150';
+    const baseClasses = 'relative w-full rounded-xl border border-[#d4dae7] bg-white px-4 py-3 text-sm font-medium text-[#3f4c5a] transition-colors duration-150 shadow-sm';
     
     if (selectedTimeSlot === slot.id) {
-      return `${baseClasses} time-slot-selected bg-primary text-white border-primary`;
+      return `${baseClasses} border-primary bg-[#e7eeff] text-primary ring-1 ring-primary/30`;
     }
     
     if (!slot.available) {
-      return `${baseClasses} bg-gray-100 text-gray-400 cursor-not-allowed opacity-50`;
+      return `${baseClasses} cursor-not-allowed border-[#e2e8f0] bg-[#f5f7fa] text-[#a0aec0] opacity-70`;
     }
     
-    return `${baseClasses} hover:bg-gray-50 hover:border-primary border-gray-300`;
+    return `${baseClasses} hover:border-primary hover:bg-[#f2f6ff]`;
   }
+
+  let currentStep = 1;
+
+  $: canAdvance = currentStep === 1
+      ? Boolean(selectedRepresentative && selectedDate)
+      : currentStep === 2
+        ? Boolean(selectedTimeSlot)
+        : Boolean(isFormValid);
+
+  $: primaryActionLabel = currentStep === 3 ? 'Book an Appointment' : 'Continue';
+
+  function handleBack() {
+    if (currentStep === 1) {
+      handleCancel();
+    } else {
+      currentStep = Math.max(1, currentStep - 1);
+    }
+  }
+
+  async function handleNextStep() {
+    if (currentStep === 1) {
+      if (!selectedRepresentative) {
+        toast.error('Please select a representative');
+        return;
+      }
+      if (!selectedDate) {
+        toast.error('Please select a date');
+        return;
+      }
+      currentStep = 2;
+      return;
+    }
+
+    if (currentStep === 2) {
+      if (!selectedTimeSlot) {
+        toast.error('Please select a time slot');
+        return;
+      }
+      currentStep = 3;
+      return;
+    }
+
+    await handleSubmit();
+  }
+
+  async function confirmBooking() {}
 </script>
 
 
-<div class="mx-auto p-4 max-h-[80vh] w-full overflow-y-auto">
-  <div class="bg-white rounded-lg p-6">
-    <div class="flex justify-between items-center mb-2">
-      <h2 class="text-xl font-semibold text-[#464646]">Book an Appointment</h2>
-      <button on:click={handleCancel} class="text-gray-500 hover:text-gray-700">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+<div class="max-h-[80vh] w-[90vw] overflow-y-auto bg-bgdefault md:bg-transparent">
+  <div class="mx-auto w-full space-y-6 px-4 py-6">
+    <div class="flex items-center gap-3">
+      <button
+        type="button"
+        class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary shadow"
+        on:click={handleBack}
+        aria-label="Go back"
+      >
+        <ArrowLeft size={18} />
       </button>
+      <h1 class="text-xl font-semibold text-white md:text-[#1f2933]">Book Appointment</h1>
       </div>
-    <p class="text-sm text-gray-500 mb-6">Please fill out this form to make an appointment</p>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Left Column - Personal Info -->
-      <div class="space-y-4">
-        <form use:form on:submit|preventDefault={handleSubmit}>
-          <!-- First Name / Last Name Row -->
-          <div class="grid grid-cols-2 gap-4 mb-4">
+    <div class="space-y-6">
+      <section class="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
+           <p class="text-xs font-semibold uppercase text-primary">Book Appointment for "{hostDisplayName}"</p>
+           <div class="mt-4 flex items-center gap-4">
+             <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-[#e2e8f0] bg-[#f1f5f9]">
+               {#if representativeAvatarUrl}
+                 <img src={representativeAvatarUrl} alt={repDisplayName} class="h-full w-full object-cover" />
+               {:else}
+                 <span class="text-base font-semibold text-primary">{repDisplayName?.charAt(0)}</span>
+               {/if}
+             </div>
+             <div class="text-sm text-[#475569]">
+               <div class="font-semibold text-[#1f2933]">{repDisplayName}</div>
+               <div class="mt-1 flex items-center gap-2 text-xs text-[#63718c]">
+                 <Clock size={14} /> {MEETING_DURATION}
+               </div>
+               <div class="mt-1 flex items-center gap-2 text-xs text-[#63718c]">
+                 <MapPin size={14} /> {representativeLocation}
+               </div>
+               {#if representativeAddress}
+                 <p class="mt-1 text-xs text-[#94a3b8]">{representativeAddress}</p>
+               {/if}
+             </div>
+           </div>
+         </section>
+
+      {#if currentStep === 1}
+        <section class="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm space-y-5">
             <div>
-              <label for="firstName" class="block text-sm mb-1">First Name</label>
+            <label class="block text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">Representative</label>
+            {#if filteredRepresentatives.length > 0}
+              <select
+                id="representative"
+                name="representative"
+                bind:value={selectedRepresentative}
+                class="mt-2 w-full rounded-xl border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
+                use:validators={[required]}
+                on:change={() => {
+                  if (selectedDate) {
+                    fetchAvailableSlots(selectedRepresentative, selectedDate);
+                  }
+                }}
+              >
+                <option value={null}>Select a representative</option>
+                {#each filteredRepresentatives as rep}
+                  <option value={rep} data-id={rep.id || getRepresentativeId(rep)}>
+                    {rep.name || getParticipantName(rep)}
+                  </option>
+                {/each}
+              </select>
+            {:else}
+              <p class="mt-2 text-sm text-red-500">No representatives currently available.</p>
+            {/if}
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-[#1f2933]">Select a Date</h3>
+              <p class="text-xs text-[#64748b]">{selectedDateFormatted || 'Choose a date'}</p>
+            </div>
+            <div class="mt-3 rounded-2xl border border-[#e2e8f0] bg-white p-2 shadow-sm">
+              {#key representativeDetails?.id || 'no-rep'}
+                <Calendar
+                  bind:value
+                  class="w-full rounded-xl"
+                  isDateDisabled={isDateDisabled}
+                  on:change={() => {
+                    selectedDate = new Date(value.year, value.month - 1, value.day);
+                    if (selectedRepresentative) {
+                      fetchAvailableSlots(selectedRepresentative, selectedDate);
+                    }
+                  }}
+                />
+              {/key}
+            </div>
+            <div class="mt-4 flex items-center justify-between text-xs text-[#64748b]">
+              <span>Time zone</span>
+              <span class="flex items-center gap-1"><Globe size={14} /> {TIME_ZONE_LABEL}</span>
+            </div>
+          </div>
+        </section>
+      {:else if currentStep === 2}
+        <section class="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-[#1f2933]">Select a Time</h3>
+              <p class="text-xs text-[#64748b]">{selectedDateFormatted}</p>
+            </div>
+            {#if sortedAvailableSlots.length > 0}
+              <span class="text-xs text-[#94a3b8]">{sortedAvailableSlots.length} slots</span>
+            {/if}
+          </div>
+
+          {#if selectedDate && availableSlots.length > 0}
+            <div class="mt-4 grid gap-2">
+              {#each availableSlots.sort((a, b) => {
+                const parseTime = (timeStr) => {
+                  const [time, period] = timeStr.split(' ');
+                  let [hours, minutes] = time.split(':').map(Number);
+                  if (period === 'PM' && hours !== 12) hours += 12;
+                  if (period === 'AM' && hours === 12) hours = 0;
+                  return hours * 60 + minutes;
+                };
+                return parseTime(a.time) - parseTime(b.time);
+              }) as slot}
+                <button
+                  type="button"
+                  id={`time-slot-${slot.id}`}
+                  disabled={!slot.available}
+                  class={renderTimeSlotClass(slot)}
+                  on:click={() => selectTimeSlot(slot)}
+                >
+                  {slot.time}
+                </button>
+              {/each}
+            </div>
+          {:else}
+            <div class="mt-6 rounded-xl bg-[#f8fafc] p-6 text-center text-sm text-[#64748b]">
+              {selectedDate ? 'No available time slots for this date. Try a different day.' : 'Select a date to view available time slots.'}
+            </div>
+          {/if}
+        </section>
+      {:else}
+        <section class="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
+          <h3 class="text-sm font-semibold text-[#1f2933]">Your Information</h3>
+          <form class="mt-4 space-y-4" use:form on:submit|preventDefault={handleSubmit}>
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label for="firstName" class="block text-xs font-medium text-[#64748b]">First Name</label>
               <input
                 id="firstName"
                 name="firstName"
                 placeholder="First Name"
                 bind:value={firstName}
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
                 use:validators={[required]}
               />
               <HintGroup for="firstName">
@@ -1561,13 +1719,13 @@
               </HintGroup>
             </div>
             <div>
-              <label for="lastName" class="block text-sm mb-1">Last Name</label>
+                <label for="lastName" class="block text-xs font-medium text-[#64748b]">Last Name</label>
               <input
                 id="lastName"
                 name="lastName"
                 placeholder="Last Name"
                 bind:value={lastName}
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
                 use:validators={[required]}
               />
               <HintGroup for="lastName">
@@ -1578,16 +1736,15 @@
             </div>
           </div>
 
-          <!-- Phone Number -->
-          <div class="mb-4">
-            <label for="phoneNumber" class="block text-sm mb-1">Phone Number</label>
+            <div>
+              <label for="phoneNumber" class="block text-xs font-medium text-[#64748b]">Phone Number</label>
               <input
                 id="phoneNumber"
                 name="phoneNumber"
                 type="tel"
-              placeholder="Enter you Number"
+                placeholder="Enter phone number"
                 bind:value={phoneNumber}
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
                 use:validators={[required]}
               />
               <HintGroup for="phoneNumber">
@@ -1597,16 +1754,15 @@
               </HintGroup>
             </div>
 
-          <!-- Email Address -->
-          <div class="mb-4">
-            <label for="email" class="block text-sm mb-1">Email Address</label>
+            <div>
+              <label for="email" class="block text-xs font-medium text-[#64748b]">Email Address</label>
               <input
                 id="email"
                 name="email"
                 type="email"
               placeholder="example@mail.com"
                 bind:value={email}
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
                 use:validators={[required, emailValidator]}
               />
               <HintGroup for="email">
@@ -1617,257 +1773,66 @@
               </HintGroup>
             </div>
 
-          <!-- Full Address -->
-          <div class="mb-4">
-            <label class="block text-sm mb-1">Full Address</label>
+            <div class="space-y-2">
+              <label class="block text-xs font-medium text-[#64748b]">Full Address</label>
               <input
               placeholder="Street Address"
               bind:value={address.street}
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm mb-2"
+                class="w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
             />
-            
-            <div class="grid grid-cols-2 gap-4 mb-2">
+              <div class="grid gap-3 md:grid-cols-2">
               <input
                 placeholder="City"
                 bind:value={address.city}
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  class="rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
               />
               <input
                 placeholder="State / Province"
                 bind:value={address.state}
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  class="rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
               />
-                </div>
-            
-            <div class="grid grid-cols-2 gap-4">
               <input
                 placeholder="Zip Code / Postal Code"
                 bind:value={address.zip}
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  class="rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
               />
               <input
                 placeholder="Country"
                 bind:value={address.country}
-                class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  class="rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
               />
             </div>
-          </div>
-        </form>
       </div>
 
-      <!-- Right Column - Schedule -->
-      <div class="space-y-4">
-         <!-- Representative Selection -->
-         <div class="mb-4">
-          <label class="block text-sm mb-1">Select Representative *</label>
-          {#if filteredRepresentatives.length > 0}
-            <select 
-              id="representative"
-              name="representative"
-              bind:value={selectedRepresentative}
-              required
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              use:validators={[required]}
-              on:change={() => {
-                if (selectedDate) {
-                  fetchAvailableSlots(selectedRepresentative, selectedDate);
-                }
-              }}
-            >
-              <option value={null}>Select a representative</option>
-              {#each filteredRepresentatives as rep}
-                <option value={rep} data-id={rep.id || getRepresentativeId(rep)}>
-                  {rep.name || getParticipantName(rep)}
-                </option>
-              {/each}
-            </select>
-            <HintGroup for="representative">
-              <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-                <Hint on="required"><HintValidate>Please select a representative</HintValidate></Hint>
-              </div>
-            </HintGroup>
-          {:else}
-            <p class="text-red-500 text-sm">No representatives currently available for your company</p>
-          {/if}
-        </div>
-
-        <!-- Date and Appointment Title -->
-        <div class="mb-4">
-          <div class="flex justify-between items-center mb-2">
-            <label class="block text-sm">Select Time and Date</label>
             <div>
-              <input
-                type="text"
-                placeholder="Appointment Title"
-                bind:value={appointmentTitle}
-                class="rounded-md border border-gray-300 px-3 py-2 text-sm w-[180px]"
-              />
+              <label class="block text-xs font-medium text-[#64748b]">Additional Information</label>
+              <textarea
+                placeholder="Add any additional context for the appointment"
+                bind:value={additionalInformation}
+                rows="3"
+                class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
+              ></textarea>
             </div>
-          </div>
-
-          <!-- Selected Date Display -->
-          {#if selectedDate}
-            <p class="text-sm font-medium mb-4">
-              {selectedDate.toLocaleDateString('en-US', {weekday: 'short', month: 'long', day: 'numeric', year: 'numeric'})}
-            </p>
+          </form>
+        </section>
           {/if}
-
-          <div class="flex calender-and-time-slots">
-              <!-- Calendar UI -->
-          <div class="relative mb-4 w-1/2">
-            <div class="calendar-container bg-white rounded-md shadow-sm border border-gray-200">
-              {#key representativeDetails?.id || 'no-rep'}
-              <Calendar 
-                bind:value 
-                class="rounded-md w-full" 
-                isDateDisabled={isDateDisabled}
-                on:keydown={() => {
-                  console.log('Calendar keydown event triggered');
-                  selectedDate = new Date(value.year, value.month - 1, value.day);
-                  
-                  // Fetch slots after date selection
-                  if (selectedRepresentative) {
-                    fetchAvailableSlots(selectedRepresentative, selectedDate);
-                  }
-                }}
-              />
-              {/key}
-            </div>
           </div>
 
-          <!-- Time Slots Section -->
-          {#if selectedDate && availableSlots.length > 0}
-            <div class="time-slots-container w-1/2">
-              <div class="flex justify-between items-center mb-2">
-                <p class="text-sm font-medium">
-                  {#if sortedAvailableSlots.length > 0}
-                    Available time slots: {sortedAvailableSlots.length} / {availableSlots.length}
-                  {:else}
-                    No available time slots
-                  {/if}
-                </p>
-                {#if selectedTimeSlot}
-                  <button 
-                    class="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
-                    on:click={() => {
-                      selectedTimeSlot = null;
-                      selectedSlot = null;
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                    Clear selection
-                  </button>
-                {/if}
-              </div>
-              
-              <div class="time-slots-grid">
-                <!-- Time slots as vertical list -->
-                <div class="space-y-2 max-h-[250px] overflow-y-auto pr-2">
-                  {#each availableSlots.sort((a, b) => {
-                    // Convert time to 24-hour format for accurate sorting
-                    const parseTime = (timeStr) => {
-                      const [time, period] = timeStr.split(' ');
-                      let [hours, minutes] = time.split(':').map(Number);
-                      
-                      // Adjust hours for 12-hour format
-                      if (period === 'PM' && hours !== 12) hours += 12;
-                      if (period === 'AM' && hours === 12) hours = 0;
-                      
-                      return hours * 60 + minutes;
-                    };
-                    
-                    return parseTime(a.time) - parseTime(b.time);
-                  }) as slot, i}
-                    <button 
-                      type="button"
-                      id={`time-slot-${slot.id}`}
-                      disabled={!slot.available}
-                      class={renderTimeSlotClass(slot)}
-                      on:click={() => {
-                        selectTimeSlot(slot);
-                      }}
-                    >
-                      {slot.time}
-                      
-                      {#if !slot.available}
-                        <div class="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-80 rounded-md">
-                          <span class="text-xs font-medium text-gray-500">Booked</span>
-                        </div>
-                      {/if}
-                    </button>
-                  {/each}
-                </div>
-              </div>
-            </div>
-          {:else if selectedDate}
-            <div class="w-1/2 flex items-center justify-center text-center p-4  rounded-md">
-              <p class="text-yellow-800 text-sm">
-                {#if !selectedRepresentative}
-                  Please select a representative first.
-                {:else}
-                  No available time slots for this date. 
-                  Try selecting a different date or representative.
-                {/if}
-              </p>
-            </div>
-          {/if}
-        </div>
-          </div>
-        
-
-        <!-- Set Reminder -->
-        <div class="mt-4 mb-4">
-          <button 
-            type="button"
-            class="flex items-center gap-2 text-sm text-primary hover:text-primary/80"
-          >
-            <Bell size={16} />
-            Set Reminder
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Footer Buttons -->
-    <div class="flex justify-end space-x-4 mt-6">
+    <div class="flex flex-col-reverse gap-3 md:flex-row md:justify-end">
       <button 
         type="button"
         on:click={handleCancel}
-        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+        class="w-full rounded-xl border border-[#d4dae7] bg-white py-3 text-sm font-semibold text-[#4a5562] transition hover:bg-[#f1f3f9] md:w-auto md:px-6"
       >
-        CANCEL
+        {currentStep === 1 ? 'Cancel' : 'Cancel booking'}
       </button>
       <button 
         type="button"
-        on:click={() => {
-          console.log("Schedule event clicked, isFormValid:", isFormValid);
-          
-          if (!isFormValid) {
-            // Show validation errors
-            if (!firstName || !lastName) {
-              toast.error('Please enter your full name (first and last name)');
-            } else if (!email) {
-              toast.error('Please enter your email address');
-            } else if (!phoneNumber) {
-              toast.error('Please enter your phone number');
-            } else if (!selectedRepresentative) {
-              toast.error('Please select a representative');
-            } else if (!selectedDate) {
-              toast.error('Please select a date');
-            } else if (!selectedTimeSlot) {
-              toast.error('Please select a time slot');
-            }
-          } else {
-            // Skip handleButtonClick and go straight to showing confirmation
-            handleSubmit();
-          }
-        }} 
-        class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/80"
+        on:click={handleNextStep}
+        class="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-[#2a4283] disabled:cursor-not-allowed disabled:bg-[#a7b4dd] md:w-auto md:px-6"
+        disabled={!canAdvance}
       >
-        SCHEDULE EVENT
+        {primaryActionLabel}
       </button>
     </div>
   </div>
@@ -1897,7 +1862,7 @@
     
     <div class="flex justify-end space-x-3">
       <button 
-        class="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100"
+        class="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 text-primary"
         on:click={() => {
           showEmailConfirmModal = false;
           pendingAppointmentData = null;
@@ -1906,7 +1871,7 @@
         Cancel Appointment
       </button>
       <button 
-        class="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100"
+        class="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 text-primary"
         on:click={() => {
           showEmailConfirmModal = false;
           completeAppointmentWithoutEmail();
@@ -1925,245 +1890,29 @@
 </div>
 {/if}
 
-<!-- Appointment confirmation modal -->
-{#if showAppointmentConfirmation && appointmentDetails}
-<div class="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
-  <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl w-full">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Left Column - Meeting Details -->
-      <div class="border-r pr-6">
-        <div class="flex items-center mb-4">
-          <button on:click={() => { showAppointmentConfirmation = false; }} class="text-primary hover:text-primary/80 mr-3">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-          </button>
-        </div>
-        
-        {#if representativeDetails}
-        <div class="flex items-center mb-5">
-          <div class="mr-3 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-            {#if representativeDetails.avatar}
-              <img 
-                src={`/api/files/${representativeDetails.collectionId || 'representatives'}/${representativeDetails.id}/${representativeDetails.avatar}`} 
-                alt="{representativeDetails.name}'s Avatar" 
-                class="w-full h-full object-cover object-center"
-              />
-            {:else}
-              <img 
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(representativeDetails.name)}&background=random`} 
-                alt="{representativeDetails.name}'s Avatar" 
-                class="w-full h-full object-cover object-center"
-              />
-            {/if}
-          </div>
-          <div>
-            <p class="font-medium">{representativeDetails.name || "Representative"}</p>
-          </div>
-        </div>
-        {/if}
-        
-        <h2 class="text-xl font-bold mb-5">{appointmentTitle || "60 minute meeting"}</h2>
-        
-        <div class="space-y-4">
-          <div class="flex items-start">
-            <div class="mr-3 text-gray-500">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-700">60 min</p>
-            </div>
-          </div>
-          
-          <!-- Virtual meeting info with room link -->
-          <div class="flex items-start">
-            <div class="mr-3 text-gray-500">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-700">
-                Virtual meeting
-                <br />
-                <span class="text-primary break-all text-xs">{appointmentDetails.roomUrl || `${origin}/${roomName}`}</span>
-              </p>
-            </div>
-          </div>
-          
-          <div class="flex items-start">
-            <div class="mr-3 text-gray-500">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-700">{appointmentDetails.time}</p>
-              <p class="text-sm text-gray-700">{appointmentDetails.date}</p>
-            </div>
-          </div>
-          
-          <div class="flex items-start">
-            <div class="mr-3 text-gray-500">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-            </div>
-            <div>
-              <p class="text-sm text-gray-700">Eastern Time - US & Canada</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Right Column - Confirmation Details -->
-      <div class="pl-2">
-        <h3 class="text-lg font-semibold mb-4">Confirm Appointment</h3>
-        
-        <div class="space-y-4 mb-6">
-          <div>
-            <label class="block text-sm mb-1">Email</label>
-            <div class="py-2 px-3 border border-gray-300 rounded-md bg-gray-50">
-              {email}
-            </div>
-          </div>
-          
-          <div>
-            <label class="block text-sm mb-1">Additional Information</label>
-            <textarea 
-              placeholder="Please share anything that will help prepare for our meeting." 
-              class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm h-24"
-              bind:value={additionalInformation}
-            ></textarea>
-          </div>
-        </div>
-        
-        <div class="text-xs text-gray-500 mb-4">
-          By proceeding, you confirm that you have read and agree to our 
-          <a href="#" class="text-primary">Terms of Use</a> and 
-          <a href="#" class="text-primary">Privacy Notice</a>.
-        </div>
-        
-        <button 
-          class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80 font-medium"
-          on:click={confirmAppointment}
-        >
-          Schedule Event
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-{/if}
-
 <!-- Success confirmation dialog -->
 {#if showSuccessConfirmation}
-<div class="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
-  <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-    <div class="mb-4 flex items-center justify-between text-[#464646]">
-      <h2 class="text-lg font-semibold">Appointment Scheduled</h2>
-      <button on:click={() => { showSuccessConfirmation = false; }} class="text-gray-500 hover:text-gray-700">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div class="w-full max-w-xs rounded-2xl bg-white p-8 text-center shadow-xl">
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary bg-[#f2f6ff] text-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-7 w-7">
+          <path d="M5 13l4 4L19 7" />
+        </svg>
     </div>
-    
-    <p class="text-sm text-gray-600 mb-4">
-      Your appointment has been successfully scheduled. Please save the meeting link to join at the scheduled time.
-    </p>
-    
-    <!-- Link Input -->
-    <div class="mb-4">
-      <label class="mb-2 block text-sm text-gray-700">
-        Meeting Link
-      </label>
-      <div class="flex items-center rounded-lg bg-gray-100 p-2 w-full">
-        <input
-          type="text"
-          value={createdRoomUrl}
-          class="flex-1 border-none bg-transparent text-gray-700 outline-none text-sm overflow-x-auto"
-          readonly
-        />
-        <Button
-          class="ml-2 shrink-0"
-          on:click={() => {
-            navigator.clipboard.writeText(createdRoomUrl);
-            toast.success('Link copied to clipboard');
-          }}
-        >
-          <ClipboardCopy size={16} />
-        </Button>
-      </div>
-      <p class="text-xs text-gray-500 mt-1">Share this link with participants to join the meeting</p>
-    </div>
-    
-    <div class="flex justify-between mt-6">
-      <Button
-        variant="outline"
-        on:click={() => {
-          generateICSFile(createdRoomId);
-        }}
-      >
-        <Download size={16} class="mr-2" />
-        Download Calendar
-      </Button>
-      
-      <Button
-        on:click={() => {
-          showSuccessConfirmation = false;
-        }}
-      >
-        Done
-      </Button>
-    </div>
-  </div>
-</div>
-{/if}
-
-<!-- Replace the existing showConfirmationPopup dialog -->
-{#if showConfirmationPopup && pendingAppointmentData}
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-[400px] max-w-full shadow-xl">
-      <h2 class="text-xl font-semibold mb-4">Appointment Confirmation</h2>
-      
-      <div class="space-y-2 mb-5">
-        <p class="font-medium">DATE: {pendingAppointmentData.formattedDate || formatDate(pendingAppointmentData.bookingDate)}</p>
-        <p>Time Slot: {selectedSlot?.time || pendingAppointmentData.timeSlot}</p>
-        <p>Representative Name: {pendingAppointmentData.representativeName || representativeDetails?.name || 'Representative'}</p>
-        {#if pendingAppointmentData.location}
-          <p>Location: {pendingAppointmentData.location}</p>
-        {/if}
-      </div>
-      
-      <!-- Add the room link section -->
-      <div class="mt-3 mb-5 pt-3 border-t border-gray-200">
-        <p class="text-sm font-medium mb-2">Room Link:</p>
-        <a href={roomUrl} target="_blank" class="text-primary underline text-sm break-all">{roomUrl}</a>
-        <Button
-          class="ml-2 shrink-0"
-          on:click={() => {
-            navigator.clipboard.writeText(roomUrl);
-            toast.success('Link copied to clipboard');
-          }}
-        >
-          <ClipboardCopy size={16} />
-        </Button>
-      </div>
-      
-      <div class="flex justify-between items-center pt-3 border-t border-gray-200">
+      <h3 class="mt-6 text-lg font-semibold text-[#1f2933]">Booking confirmed!</h3>
+      <p class="mt-2 text-sm text-[#64748b]">
+        Email has been sent. A reminder will be sent 24 hours prior.
+      </p>
         <button 
-          class="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200"
+        type="button"
+        class="mt-6 w-full rounded-xl border border-[#d4dae7] py-3 text-sm font-semibold text-[#4a5562] transition hover:bg-[#f1f3f9]"
           on:click={() => {
-            showConfirmationPopup = false;
+          showSuccessConfirmation = false;
             dispatch('close');
           }}
         >
-          Close
+        Close window
         </button>
-        
-        <!-- Add this new button for immediate entry to the waiting room -->
-        <button 
-          class="bg-primary text-white px-4 py-2 rounded hover:bg-primary/80"
-          on:click={() => {
-            showConfirmationPopup = false;
-            // Redirect to the room URL with the correct parameters
-            window.location.href = roomUrl;
-          }}
-        >
-          Go to Waiting Room
-        </button>
-      </div>
     </div>
   </div>
 {/if}
@@ -2215,4 +1964,5 @@
     background-color: #4a6aa3 !important;
     border-color: #4a6aa3 !important;
   }
+  
 </style>

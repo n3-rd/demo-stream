@@ -9,6 +9,7 @@
     import { quintOut } from 'svelte/easing';
     import { browser } from '$app/environment';
     import PocketBase from 'pocketbase';
+	import { X } from 'lucide-svelte';
 
     // Initialize PocketBase
     const pb = browser ? new PocketBase(PUBLIC_POCKETBASE_INSTANCE) : null;
@@ -230,9 +231,20 @@
     }
 </script>
 
-<div class="max-w-md p-6 bg-white rounded-lg shadow-lg">
-    <h2 class="text-2xl font-semibold mb-2 text-[#464646]">Request a Quote</h2>
-    <p class="text-gray-600 mb-4">
+<div class="max-w-md p-6 bg-bgdefault md:bg-white text-white rounded-b-none md:text-inherit md:rounded-b-lg rounded-lg shadow-lg max-h-[85vh] overflow-y-auto">
+    <div class="flex items-center gap-1">
+        <button
+        type="button"
+        class="rounded-full p-2 text-white hover:bg-white/10 md:hidden md:hover:bg-gray-200"
+        on:click={handleCancel}
+        aria-label="Close request a quote"
+    >
+        <X size={18} />
+    </button>
+        <h2 class="text-lg font-semibold text-white md:text-[#464646]">Request a Quote</h2>
+       
+    </div>
+    <p class="hidden md:block text-gray-600 mb-4">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
     </p>
 
@@ -243,13 +255,13 @@
     >
         <div class="flex gap-4">
             <div class="flex-1">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Name:</label>
+                <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">First name:</label>
                 <input
                     type="text"
                     placeholder="First Name"
                     name="first_name"
                     bind:value={firstName}
-                    class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    class="w-full px-3 py-2 border md:bg-white bg-bgdefault-light md:border border-none rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
                     use:validators={[required]}
                 />
                 <HintGroup for="first_name">
@@ -259,13 +271,13 @@
                 </HintGroup>
             </div>
             <div class="flex-1">
-                <label class="block text-gray-700 text-sm font-bold mb-2 invisible">Name:</label>
+                <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2 ">Last name:</label>
                 <input
                     type="text"
                     placeholder="Last Name"
                     name="last_name"
                     bind:value={lastName}
-                    class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                    class="w-full px-3 py-2 border md:bg-white bg-bgdefault-light md:border border-none rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
                     use:validators={[required]}
                 />
                 <HintGroup for="last_name">
@@ -277,13 +289,13 @@
         </div>
 
         <div>
-            <label class="block text-gray-700 text-sm font-bold mb-2">Phone:</label>
+            <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Phone:</label>
             <input
                 type="tel"
                 placeholder="Enter your Phone Number"
                 name="phone"
                 bind:value={phone}
-                class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                class="w-full px-3 py-2 border md:bg-white bg-bgdefault-light md:border border-none rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
                 use:validators={[required]}
             />
             <HintGroup for="phone">
@@ -294,13 +306,13 @@
         </div>
 
         <div>
-            <label class="block text-gray-700 text-sm font-bold mb-2">Email:</label>
+            <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Email:</label>
             <input
                 type="email"
                 placeholder="Enter your Email"
                 name="email"
                 bind:value={emailAddress}
-                class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                class="w-full px-3 py-2 border md:bg-white bg-bgdefault-light md:border border-none rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
                 use:validators={[required, emailValidator]}
             />
             <HintGroup for="email">
@@ -312,12 +324,12 @@
         </div>
 
         <div>
-            <label class="block text-gray-700 text-sm font-bold mb-2">What would you like a quote for?:</label>
+            <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Write a quote:</label>
             <textarea
                 placeholder="Write your quote here..."
                 name="description"
                 bind:value={quoteRequest}
-                class="w-full px-3 py-2 border rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                class="w-full px-3 py-2 border md:bg-white bg-bgdefault-light md:border border-none rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
                 rows="4"
                 use:validators={[required]}
             ></textarea>
@@ -328,21 +340,21 @@
             </HintGroup>
         </div>
 
-        <div class="flex space-x-4 mt-4">
+        <div class="flex flex-col gap-3 mt-4 sm:flex-row sm:space-x-4">
             <button
                 type="button"
                 on:click={handleCancel}
-                class="flex-1 py-3 bg-gray-200 text-sm text-gray-800 font-semibold rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                class="w-full sm:flex-1 py-3 md:block hidden bg-gray-200 text-sm text-gray-800 font-semibold rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
                 disabled={isSubmitting}
             >
                 CANCEL
             </button>
             <button
                 type="submit"
-                class="flex-1 py-3 bg-primary text-white text-sm font-semibold rounded-md hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                class="w-full sm:flex-1 py-3 bg-primary text-white text-sm font-semibold rounded-md hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 disabled={!$form.valid || isSubmitting}
             >
-                {isSubmitting ? 'SUBMITTING...' : 'SUBMIT QUOTE REQUEST'}
+                {isSubmitting ? 'SUBMITTING...' : 'REQUEST A QUOTE'}
             </button>
         </div>
     </form>

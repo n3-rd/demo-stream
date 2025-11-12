@@ -135,7 +135,7 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
         return {
             ...expandedRoom,
             expand: expandedRoom.expand,
-            representatives: expandedRoom.expand?.representative,
+            representatives,
             authType: authType  // Add this to help with debugging
         };
 

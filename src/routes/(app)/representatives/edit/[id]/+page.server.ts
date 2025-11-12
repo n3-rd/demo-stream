@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from '@sveltejs/kit';
+import { query } from '$lib/db';
 
 export const load = async ({ params, locals }) => {
   if (!locals.pb.authStore.isValid) {
@@ -51,6 +52,8 @@ export const actions = {
     const formData = await request.formData();
     
     try {
+      const existing = await locals.pb.collection('representatives').getOne(id);
+
       // Format schedule data
       const scheduleData = {
         monday: formatSchedule(formData.get('monday_start'), formData.get('monday_end')),
@@ -73,43 +76,26 @@ export const actions = {
 
       // Handle file upload
       const avatar = formData.get('avatar');
-      
-      // Check if avatar is a file and has content
+      let avatarId = existing?.avatar || null;
       if (avatar instanceof File && avatar.size > 0) {
-        // Create a new FormData instance for the API call
-        const apiFormData = new FormData();
-        
-        // Add all the regular fields
-        for (const [key, value] of Object.entries(repData)) {
-          if (key === 'schedule') {
-            apiFormData.append(key, JSON.stringify(value));
-          } else {
-            apiFormData.append(key, value as string);
-          }
-        }
-        
-        // Add the file
-        apiFormData.append('avatar', avatar);
-        
-        // Update the record with the file
-        const updatedRep = await locals.pb.collection('representatives').update(id, apiFormData);
-        
-        if (!updatedRep) {
-          return fail(400, { 
-            error: true, 
-            message: 'Failed to update representative' 
-          });
-        }
-      } else {
-        // Update without file
-        const updatedRep = await locals.pb.collection('representatives').update(id, repData);
-        
-        if (!updatedRep) {
-          return fail(400, { 
-            error: true, 
-            message: 'Failed to update representative' 
-          });
-        }
+        const buffer = Buffer.from(await avatar.arrayBuffer());
+        const { rows } = await query<{ id: string }>(
+          `INSERT INTO file_blobs (filename, content_type, data) VALUES ($1, $2, $3) RETURNING id`,
+          [avatar.name, avatar.type || 'application/octet-stream', buffer]
+        );
+        avatarId = rows[0]?.id || avatarId;
+      }
+
+      const updatedRep = await locals.pb.collection('representatives').update(id, {
+        ...repData,
+        avatar: avatarId
+      });
+      
+      if (!updatedRep) {
+        return fail(400, { 
+          error: true, 
+          message: 'Failed to update representative' 
+        });
       }
 
       // Return success

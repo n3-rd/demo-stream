@@ -6,7 +6,7 @@
 	import Share from "./share.svelte";
 	import { page } from '$app/stores';
     import { Button } from "$lib/components/ui/button";
-    import { ClipboardCopy, Send, Mail } from "lucide-svelte";
+    import { ClipboardCopy, Send, Mail, X } from "lucide-svelte";
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "$lib/components/ui/select";
     import { createEventDispatcher } from "svelte";
     import { PUBLIC_SMTP_FROM, PUBLIC_BREVO_API_KEY } from '$env/static/public';
@@ -20,6 +20,7 @@
     let showInitialDialog = true;
     let dialogOpen = false;
     let selectedRepresentative: any = null;
+    let inviteStep: "select" | "share" | "success" = "select";
     const joinURL = $page.url.href;
     let isSendingInvite = false;
     let sendViaEmail = true;
@@ -31,6 +32,8 @@
     console.log('uidExtracted', uidExtracted);
 
     const dispatch = createEventDispatcher();
+
+    console.log("[InviteRepresentative] received representatives", representatives);
 
     // Filter representatives by the current user's company and room assignment
     $: filteredRepresentatives = representatives;
@@ -44,6 +47,7 @@
     function showNextModal() {
         showInitialDialog = false;
         showRepresentativeList = true;
+        inviteStep = "select";
     }
 
     function handleClose() {
@@ -51,13 +55,30 @@
         showRepresentativeList = false;
         showInitialDialog = true;
         selectedRepresentative = null;
+        inviteStep = "select";
         dispatch('close');
     }
 
     function cancelDialog() {
-        showRepresentativeList = false;
-        showInitialDialog = true;
-        dispatch('close');
+        handleClose();
+    }
+
+    function getAvatarUrl(rep: any) {
+        if (!rep) return null;
+        const fileName = rep.avatar;
+        if (!fileName) return null;
+        const collection = rep.collectionId || rep.collection || "representatives";
+        return `/api/files/${collection}/${rep.id}/${fileName}`;
+    }
+
+    const heading = room?.title ? `${room.title} Representative` : "Select Representative";
+
+    function handleAvatarError(event: Event) {
+        const target = event.currentTarget as HTMLImageElement | null;
+        if (!target) return;
+        target.style.display = "none";
+        const fallback = target.nextElementSibling as HTMLElement | null;
+        fallback?.classList.remove("hidden");
     }
 
     function selectRepresentative(representative: any) {
@@ -137,6 +158,8 @@
                 toast.success(`Invite sent to ${selectedRepresentative.name}!`, {
                     description: `Sent via: ${methodsUsed.join(', ')}`
                 });
+                invitedRepresentative = selectedRepresentative.name;
+                inviteStep = "success";
             } else {
                 toast.error('Failed to send invite', {
                     description: result.error || 'Unknown error occurred'
@@ -184,10 +207,12 @@
         <div class="bg-white p-6 w-full text-gray-400">
             <h2 class="text-lg font-semibold mb-4 text-[#464646]">Invite Representative</h2>
             <p class="text-sm mb-6">
-                Select a representative to generate a unique invitation link. The representative will be able to join the room with their credentials and assist in the meeting.
+                Speak to a representative, you're gaining direct access to an expert who specializes in our services. They're here to guide you, answer your questions, and provide personalized assistance. Whether you're seeking advice, information, or a step-by-step walkthrough, our representatives are ready to help you. Click the 'CONTINUE' to start a conversation.
             </p>
-            <div class="flex justify-end space-x-4">
-                <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={cancelDialog}>Cancel</button>
+            <div class="flex flex-col-reverse gap-2 md:flex-row justify-end md:space-x-4">
+                <Dialog.Close asChild>
+                    <button class="px-4 py-2 bg-[#E8EDF5] text-primary rounded hover:bg-gray-400" on:click={cancelDialog}>Cancel</button>
+                </Dialog.Close>
                 <button 
                     class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700" 
                     on:click={showNextModal}
@@ -200,114 +225,119 @@
     </div>
 {:else}
     <!-- Second Modal -->
-    <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-        <div class="bg-white p-6 w-full">
-            <h2 class="text-lg font-semibold mb-4 text-center text-[#464646]">Select Representative</h2>
-            {#if filteredRepresentatives.length === 0}
-                <div class="text-center text-gray-500 p-4">
-                    No representatives available for your company.
-                </div>
-            {:else}
-                <div class="flex space-x-4 mb-6 justify-center flex-wrap">
-                    <!-- Representatives -->
-                    {#each filteredRepresentatives as representative}
-                    <button 
-                        type="button"
-                        class="flex flex-col items-center cursor-pointer relative focus:outline-none "
-                        on:click={() => selectRepresentative(representative)}
-                        on:keydown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                selectRepresentative(representative);
-                            }
-                        }}
-                        aria-pressed={selectedRepresentative === representative}
-                    >
-                        <img 
-                            src={representative.avatar 
-                                ? `/api/files/${representative.collectionId || 'representatives'}/${representative.id}/${representative.avatar}` 
-                                : `https://ui-avatars.com/api/?name=${encodeURIComponent(representative.name)}&background=random`} 
-                            alt="{representative.name}'s Avatar" 
-                            class="w-24 h-24 rounded-full mb-4 object-cover object-center"
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+        <div class="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            {#if inviteStep === "select"}
+                <div class="flex items-start justify-between">
+                    <h2 class="text-xl font-semibold text-[#1f2933]">{heading}</h2>
+                    <Dialog.Close asChild>
+                        <button
+                            type="button"
+                            class="text-gray-400 transition-colors hover:text-gray-600"
+                            on:click={cancelDialog}
                         >
-                        <div class={`w-24 h-24 rounded-full border-4 ${selectedRepresentative === representative ? 'border-green-500' : 'border-transparent'} absolute top-0`}>
-                        </div>
-                        <div>
-                            <span class="font-[Poppins] text-[23px] leading-[118%] text-[#808080]">
-                                {representative.name}
-                            </span>
-                            {#if representative.expand?.location}
-                                <div class="text-lg text-[#A0A0A0]">
-                                    {representative.expand.location.name}
-                                </div>
-                            {:else if representative.location && locations}
-                                <div class="text-lg text-[#A0A0A0]">
-                                    {locations.find(loc => loc.id === representative.location)?.name || ''}
-                                </div>
-                            {/if}
-                        </div>
-                    </button>
-                    {/each}
+                            <X size={20} />
+                        </button>
+                    </Dialog.Close>
                 </div>
-            {/if}
-            
-            {#if selectedRepresentative}
-                <div class="mb-6">
-                    <h3 class="text-sm font-medium mb-2 text-[#464646]">Invitation Link</h3>
-                    <div class="flex items-center gap-2 bg-gray-50 p-2 rounded">
-                        <input 
-                            type="text" 
-                            value={inviteLink}
-                            class="flex-1 bg-transparent border-none text-sm text-gray-600 focus:outline-none"
-                            readonly
-                        />
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            on:click={() => {
-                                navigator.clipboard.writeText(inviteLink);
-                                toast.success('Link copied to clipboard');
-                            }}
-                        >
-                            <ClipboardCopy class="h-4 w-4" />
-                        </Button>
+
+                {#if filteredRepresentatives.length === 0}
+                    <div class="mt-8 text-sm text-gray-500">
+                        No representatives available for your company.
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">Share this link with {selectedRepresentative.name} to join as a representative</p>
-                    
-                    <!-- Send Invite Button -->
-                    <div class="mt-4 space-y-4">
+                {:else}
+                    <div class="mt-6 flex flex-wrap items-center justify-center gap-6">
+                        {#each filteredRepresentatives as representative}
+                            <button
+                                type="button"
+                                class="flex flex-col items-center gap-2 focus:outline-none"
+                                on:click={() => selectRepresentative(representative)}
+                                on:keydown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        selectRepresentative(representative);
+                                    }
+                                }}
+                                aria-pressed={selectedRepresentative === representative}
+                            >
+                                <div class="relative mb-2">
+                                    <div class={`h-16 w-16 rounded-full border-2 ${selectedRepresentative === representative ? 'border-[#4B77BE]' : 'border-transparent'} overflow-hidden`}>
+                                        {#if getAvatarUrl(representative)}
+                                            <img
+                                                src={getAvatarUrl(representative)}
+                                                alt={`${representative.name}'s Avatar`}
+                                                class="h-full w-full object-cover"
+                                                on:error={handleAvatarError}
+                                                loading="lazy"
+                                            />
+                                            <div class="hidden h-full w-full items-center justify-center bg-gradient-to-br from-[#6366f1] to-[#ec4899] text-lg font-semibold text-white">
+                                                {representative.name?.slice(0, 2)?.toUpperCase()}
+                                            </div>
+                                        {:else}
+                                            <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#6366f1] to-[#ec4899] text-lg font-semibold text-white">
+                                                {representative.name?.slice(0, 2)?.toUpperCase()}
+                                            </div>
+                                        {/if}
+                                    </div>
+                                    <span class={`absolute -top-1 -left-1 h-3 w-3 rounded-full border-2 border-white ${representative.is_active !== false ? 'bg-[#22C55E]' : 'bg-gray-300'}`}></span>
+                                </div>
+                                <span class="text-sm font-semibold text-[#3f4c5a]">{representative.name}</span>
+                            </button>
+                        {/each}
+                    </div>
+                {/if}
+
+                <p class="mt-6 text-sm leading-relaxed text-[#4a5562]">
+                    Welcome to speak to a representative. Choosing the right representative can make all the difference in getting the guidance you need.
+                </p>
+                <p class="mt-1 text-xs font-semibold text-[#1f2933]">
+                    Note: <span class="font-normal text-[#4a5562]">Please choose a representative</span>
+                </p>
+
+                    <div class="mt-6 flex flex-col gap-3">
                         <Button
-                            class="w-full"
+                            class="w-full bg-[#4B77BE] hover:bg-[#3f66a4] text-white"
                             on:click={sendInvite}
-                            disabled={isSendingInvite}
+                            disabled={!selectedRepresentative || isSendingInvite}
                         >
                             {#if isSendingInvite}
-                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                <div class="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
                                 Sending...
                             {:else}
-                                <div class="flex items-center">
-                                    <Send class="h-4 w-4 mr-2" />
-                                    Send Invite
-                                </div>
+                                Continue
                             {/if}
                         </Button>
-                        <p class="text-xs text-gray-500 mt-2 text-center">
-                            Sends invite to {selectedRepresentative.name} via SMS and Email
-                        </p>
+                        <Dialog.Close asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                class="w-full bg-[#EEF2F7] text-[#4a5562] hover:bg-[#e2e8f0]"
+                                on:click={cancelDialog}
+                            >
+                                Cancel
+                            </Button>
+                        </Dialog.Close>
                     </div>
+            {:else if inviteStep === "success"}
+                <div class="flex w-full flex-col items-center gap-4 pt-4">
+                    <span class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </span>
+                    <p class="text-center text-sm leading-relaxed text-[#3f4c5a]">
+                        You've successfully sent an invitation to <span class="font-semibold">{invitedRepresentative}</span>.
+                        Please allow a moment for them to join the room and connect with you.
+                    </p>
+                    <Dialog.Close asChild>
+                        <Button
+                            class="w-full bg-[#4B77BE] hover:bg-[#3f66a4] text-white"
+                            on:click={handleClose}
+                        >
+                            OK
+                        </Button>
+                    </Dialog.Close>
                 </div>
             {/if}
-
-            <div class="flex justify-center space-x-4">
-                <button class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400" on:click={cancelDialog}>Cancel</button>
-                {#if selectedRepresentative}
-                    <button 
-                        class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700"
-                        on:click={handleClose}
-                    >
-                        Done
-                    </button>
-                {/if}
-            </div>
         </div>
     </div>
 {/if}

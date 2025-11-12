@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from '@sveltejs/kit';
+import { query } from '$lib/db';
 
 export const load = async ({ locals }) => {
   if (!locals.pb.authStore.isValid) {
@@ -48,6 +49,17 @@ export const actions = {
       const last_name = String(formData.get('last_name') || '').trim();
       const name = [first_name, last_name].filter(Boolean).join(' ').trim();
 
+      const avatarFile = formData.get('avatar');
+      let avatarId: string | null = null;
+      if (avatarFile instanceof File && avatarFile.size > 0) {
+        const buffer = Buffer.from(await avatarFile.arrayBuffer());
+        const { rows } = await query<{ id: string }>(
+          `INSERT INTO file_blobs (filename, content_type, data) VALUES ($1, $2, $3) RETURNING id`,
+          [avatarFile.name, avatarFile.type || 'application/octet-stream', buffer]
+        );
+        avatarId = rows[0]?.id || null;
+      }
+
       // Create representative data as a plain object (DB shim doesn't accept FormData)
       const repData = {
         name,
@@ -58,7 +70,8 @@ export const actions = {
         company: user.id,
         is_active: true,
         schedule: scheduleData,
-        location: String(formData.get('location') || '') || null
+        location: String(formData.get('location') || '') || null,
+        avatar: avatarId
       } as any;
 
       const createdRep = await locals.pb.collection('representatives').create(repData);

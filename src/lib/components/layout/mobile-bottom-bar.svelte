@@ -11,10 +11,13 @@
     import ScheduleMeeting from "../room/schedule-meeting.svelte";
     import Notes from "../room/notes.svelte";
     import CreateQuote from "../room/create-quote.svelte";
+    import MobileChatSheet from "$lib/components/layout/mobile-chat-sheet.svelte";
+    import MobileParticipantsSheet from "$lib/components/layout/mobile-participants-sheet.svelte";
+    import MobileQuoteSheet from "$lib/components/layout/mobile-quote-sheet.svelte";
 	import Separator from "../ui/separator/separator.svelte";
 
 
-
+    export let mobileSheetOpen = false;
     export let roomIdentityName: string;
     export let isMicMuted: boolean;
     export let isCameraOff: boolean;
@@ -27,8 +30,11 @@
     export let isRepresentative = false;
     export let room: any;
     export let roomName = "";
+    export let roomId = "";
+    export let chatName: string | null = null;
     export let hostContentItems: any[] = [];
     export let repContentItems: any[] = [];
+    export let participants: any[] = [];
     const dispatch = createEventDispatcher();
 
     type StateSnapshot = Record<string, boolean>;
@@ -179,8 +185,8 @@
             component: Notes
         },
         {
-            key: "quote",
-            type: "dialog",
+            key: "quotePanel",
+            type: "panel",
             label: "Request a Quote",
             icon: {
                 type: "image",
@@ -188,8 +194,7 @@
                 alt: "quote",
                 sizeClass: "w-5 h-5"
             },
-            content: "createQuote",
-            contentClass: "rounded-lg bg-transparent"
+            panelId: "quotePanel"
         }
     ];
 
@@ -220,12 +225,36 @@
         }
 
         if (control.type === "panel") {
+            if (control.panelId === "chatPanel") {
+                openSheet("chat");
+                return;
+            }
+            if (control.panelId === "participantsPanel") {
+                openSheet("participants");
+                return;
+            }
+            if (control.panelId === "quotePanel") {
+                openSheet("quote");
+                return;
+            }
             togglePanel(control.panelId);
         }
     }
 
     function handleSheetAction(entry: SheetEntry) {
         if (entry.type === "panel") {
+            if (entry.panelId === "chatPanel") {
+                openSheet("chat");
+                return;
+            }
+            if (entry.panelId === "participantsPanel") {
+                openSheet("participants");
+                return;
+            }
+            if (entry.panelId === "quotePanel") {
+                openSheet("quote");
+                return;
+            }
             togglePanel(entry.panelId);
         }
     }
@@ -248,10 +277,29 @@
     }
 
     let contentSheetOpen = false;
+    let chatSheetOpen = false;
+    let participantsSheetOpen = false;
+    let quoteSheetOpen = false;
+
+    function openSheet(sheet: "content" | "chat" | "participants" | "quote") {
+        contentSheetOpen = sheet === "content";
+        chatSheetOpen = sheet === "chat";
+        participantsSheetOpen = sheet === "participants";
+        quoteSheetOpen = sheet === "quote";
+        mobileSheetOpen = false;
+    }
+
+    function closeSheets() {
+        contentSheetOpen = false;
+        chatSheetOpen = false;
+        participantsSheetOpen = false;
+        quoteSheetOpen = false;
+        mobileSheetOpen = false;
+    }
 
     function handleMediaSelect(event: CustomEvent) {
         dispatch("videoSelect", event.detail);
-        contentSheetOpen = false;
+        closeSheets();
     }
 </script>
 
@@ -272,7 +320,7 @@
         <div class="flex w-full justify-between items-center">
             <h2 class="text-white text-lg font-semibold">Content list</h2>
             <Button class="rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black"
-            on:click={()=>contentSheetOpen = false}
+            on:click={closeSheets}
             >Hide content</Button>
         </div>
             <MediaSelector
@@ -284,6 +332,40 @@
                 repContentItems={repContentItems}
                 on:videoSelect={handleMediaSelect}
             />
+        </Sheet.Content>
+    </Sheet.Root>
+    <Sheet.Root bind:open={chatSheetOpen}>
+        <Sheet.Content
+            side="bottom"
+            class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
+        >
+            <MobileChatSheet
+                roomId={roomId || roomName}
+                chatName={chatName}
+                on:close={closeSheets}
+            />
+        </Sheet.Content>
+    </Sheet.Root>
+    <Sheet.Root bind:open={participantsSheetOpen}>
+        <Sheet.Content
+            side="bottom"
+            class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
+        >
+            <MobileParticipantsSheet
+                {participants}
+                {isHost}
+                currentUserName={chatName ?? ""}
+                shareURL={joinURL}
+                on:close={closeSheets}
+            />
+        </Sheet.Content>
+    </Sheet.Root>
+    <Sheet.Root bind:open={quoteSheetOpen}>
+        <Sheet.Content
+            side="bottom"
+            class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
+        >
+            <MobileQuoteSheet on:close={closeSheets} />
         </Sheet.Content>
     </Sheet.Root>
     <div
@@ -312,7 +394,7 @@
 
             <!-- Secondary controls -->
             <div class="flex items-center">
-                <Sheet.Root>
+                <Sheet.Root bind:open={mobileSheetOpen}>
                     <Sheet.Trigger
                         aria-label="Open more controls"
                         class="flex justify-center items-center rounded-full bg-[#707172] h-14 w-14 hover:bg-white hover:text-black"
@@ -328,7 +410,10 @@
                                             variant="ghost"
                                             size="icon"
                                             class="w-full"
-                                            on:click={() => handleSheetAction(entry)}
+                                            on:click={() => {
+                                                handleSheetAction(entry);
+                                                mobileSheetOpen = false;
+                                            }}
                                         >
                                             {#if entry.icon.type === "image"}
                                                 <img
@@ -374,7 +459,7 @@
                                                             />
                                                         </div>
                                                     {:else if entry.content === "createQuote"}
-                                                        <CreateQuote />
+                                                        <CreateQuote on:close={closeSheets} />
                                                     {/if}
                                                 </Dialog.Content>
                                             </Dialog.Root>
@@ -469,7 +554,8 @@
     button.is-off {
         border: 1px solid rgba(255, 255, 255, 0.45);
     }
-    button[data-melt-dialog-close] {
+    :global(button[data-melt-dialog-close]),
+    :global(button[data-melt-sheet-close]) {
         display: none!important;
     }
     

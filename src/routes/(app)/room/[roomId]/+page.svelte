@@ -2851,8 +2851,11 @@ let selectedVideo = null;
                 {isRepresentative}
                 {room}
                 {roomName}
+                roomId={roomName}
+                chatName={name}
                 hostContentItems={room?.expand?.host_content || []}
                 repContentItems={room?.expand?.representative_content || []}
+                participants={meetingParticipants}
                 on:leaveRoom={leaveRoom}
                 on:toggleMicrophone={toggleMicrophone}
                 on:toggleCamera={toggleCamera}

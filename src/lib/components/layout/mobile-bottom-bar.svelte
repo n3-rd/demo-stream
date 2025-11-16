@@ -9,11 +9,11 @@
     import MediaSelector from "$lib/components/room/MediaSelector.svelte";
     import InviteRepresentative from "../room/invite-representative.svelte";
     import ScheduleMeeting from "../room/schedule-meeting.svelte";
-    import Notes from "../room/notes.svelte";
     import CreateQuote from "../room/create-quote.svelte";
     import MobileChatSheet from "$lib/components/layout/mobile-chat-sheet.svelte";
     import MobileParticipantsSheet from "$lib/components/layout/mobile-participants-sheet.svelte";
     import MobileQuoteSheet from "$lib/components/layout/mobile-quote-sheet.svelte";
+    import MobileNotesSheet from "$lib/components/layout/mobile-notes-sheet.svelte";
 	import Separator from "../ui/separator/separator.svelte";
 
 
@@ -179,10 +179,11 @@
             bindOpen: "scheduleOpen"
         },
         {
-            key: "notes",
-            type: "component",
+            key: "notesPanel",
+            type: "panel",
             label: "Notes",
-            component: Notes
+            icon: { type: "image", src: "/icons/new-icons/notes.png", alt: "Notes" },
+            panelId: "notesPanel"
         },
         {
             key: "quotePanel",
@@ -255,6 +256,10 @@
                 openSheet("quote");
                 return;
             }
+            if (entry.panelId === "notesPanel") {
+                openSheet("notes");
+                return;
+            }
             togglePanel(entry.panelId);
         }
     }
@@ -280,12 +285,14 @@
     let chatSheetOpen = false;
     let participantsSheetOpen = false;
     let quoteSheetOpen = false;
+    let notesSheetOpen = false;
 
-    function openSheet(sheet: "content" | "chat" | "participants" | "quote") {
+    function openSheet(sheet: "content" | "chat" | "participants" | "quote" | "notes") {
         contentSheetOpen = sheet === "content";
         chatSheetOpen = sheet === "chat";
         participantsSheetOpen = sheet === "participants";
         quoteSheetOpen = sheet === "quote";
+        notesSheetOpen = sheet === "notes";
         mobileSheetOpen = false;
     }
 
@@ -294,11 +301,19 @@
         chatSheetOpen = false;
         participantsSheetOpen = false;
         quoteSheetOpen = false;
+        notesSheetOpen = false;
         mobileSheetOpen = false;
     }
 
     function handleMediaSelect(event: CustomEvent) {
         dispatch("videoSelect", event.detail);
+        closeSheets();
+    }
+
+    function handleSendNotes(event: CustomEvent) {
+        // Handle sending notes to email
+        // The MobileNotesSheet component dispatches this event with title, requirements, steps, keep
+        dispatch("sendNotes", event.detail);
         closeSheets();
     }
 </script>
@@ -366,6 +381,14 @@
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
             <MobileQuoteSheet on:close={closeSheets} />
+        </Sheet.Content>
+    </Sheet.Root>
+    <Sheet.Root bind:open={notesSheetOpen}>
+        <Sheet.Content
+            side="bottom"
+            class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
+        >
+            <MobileNotesSheet on:close={closeSheets} on:send={handleSendNotes} />
         </Sheet.Content>
     </Sheet.Root>
     <div

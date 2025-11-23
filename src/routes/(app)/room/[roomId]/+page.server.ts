@@ -122,15 +122,30 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
             expand: 'representative,host_content,representative_content'
         });
 
+        // Get the company ID for filtering - use authenticated user's company or room owner's company
+        let companyId = null;
+        if (isNormalAuth && locals.pb.authStore.model) {
+            companyId = locals.pb.authStore.model.id;
+        } else if (expandedRoom.owner_company) {
+            companyId = expandedRoom.owner_company;
+        }
 
-        // Fetch all representatives
-        const representatives = expandedRoom.representative && expandedRoom.representative.length > 0 
-            ? await pb.collection('representatives').getFullList({
-                filter:`id IN ("${expandedRoom.representative.join('","')}")`,
+        // Fetch all representatives, filtered by company if available
+        let representatives = [];
+        if (expandedRoom.representative && expandedRoom.representative.length > 0) {
+            let filter = `id IN ("${expandedRoom.representative.join('","')}")`;
+            
+            // Add company filter if we have a company ID
+            if (companyId) {
+                filter += ` && company = "${companyId}"`;
+            }
+            
+            representatives = await pb.collection('representatives').getFullList({
+                filter,
                 sort: '-created',
                 expand: 'location'
-            })
-            : [];
+            });
+        }
 
         return {
             ...expandedRoom,

@@ -35,8 +35,14 @@
 
     console.log("[InviteRepresentative] received representatives", representatives);
 
-    // Filter representatives by the current user's company and room assignment
-    $: filteredRepresentatives = representatives;
+    // Get company ID from page data for filtering
+    $: companyId = $page.data?.user?.id || $page.data?.owner_company || room?.owner_company;
+
+    // Filter representatives by the current user's company
+    // Only filter if we have a companyId, otherwise show all passed representatives
+    $: filteredRepresentatives = companyId 
+        ? representatives.filter(rep => rep.company === companyId || rep.company === String(companyId))
+        : representatives;
 
     $: {
         if (selectedRepresentative) {

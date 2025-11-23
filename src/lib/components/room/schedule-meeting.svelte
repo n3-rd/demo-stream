@@ -20,8 +20,14 @@
   export let availableRepresentatives = [];
   export let roomData = null; // Optional room data to filter representatives
 
-  // Filter representatives by the current user's company and room assignment
-  $: filteredRepresentatives = availableRepresentatives;
+  // Get company ID from page data for filtering
+  $: companyId = $page.data?.user?.id || $page.data?.owner_company || roomData?.owner_company;
+
+  // Filter representatives by the current user's company
+  // Only filter if we have a companyId, otherwise show all passed representatives
+  $: filteredRepresentatives = companyId 
+      ? availableRepresentatives.filter(rep => rep.company === companyId || rep.company === String(companyId))
+      : availableRepresentatives;
   
   const MEETING_DURATION = '30 minutes';
   const TIME_ZONE_LABEL = 'Eastern time - US & Canada';

@@ -20,13 +20,21 @@
         method="POST" 
         action="?/joinRoom"
         use:enhance={() => {
+            // Trim extra spaces before submission
+            anonymousUserId = anonymousUserId.trim();
             loading = true;
             return async ({ result, update }) => {
                 if (result.type === 'success') {
                     // Use window.open to launch in a new tab
-                    const roomId = result.data.roomId;
-                    const anonymousUserId = result.data.anonymousUserId;
-                    const hostParams = result.data.hostParams;
+                    const roomId = result.data?.roomId || $page.params.roomId;
+                    const anonymousUserId = String(result.data?.anonymousUserId || '').trim();
+                    const hostParams = result.data?.hostParams || '';
+                    
+                    if (!roomId) {
+                        toast.error('Room ID is missing');
+                        loading = false;
+                        return;
+                    }
                     
                     const roomUrl = `/room/${roomId}?${hostParams}&anonymousUserId=${anonymousUserId}`;
                     window.open(roomUrl, '_blank');
@@ -73,7 +81,7 @@ Ensure it at least 3 Characters long and Unique.
             </p>
             <Button 
             type="submit" 
-            disabled={loading || anonymousUserId.length < 3}
+            disabled={loading || anonymousUserId.trim().length < 3}
             class="w-full bg-primary hover:bg-primary/80 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out"
         >
             {loading ? 'Joining...' : 'Join Room'}

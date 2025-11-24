@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
@@ -37,36 +37,43 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 export const actions = {
     joinRoom: async (event) => {
         const formData = await event.request.formData();
-        const anonymousUserId = formData.get('anonymousUserId')?.toString() || '';
+        let anonymousUserId = formData.get('anonymousUserId')?.toString() || '';
+        // Trim extra spaces before validation
+        anonymousUserId = anonymousUserId.trim();
         const roomId = event.params.roomId;
+
+        if (!roomId) {
+            return fail(400, {
+                errors: {
+                    anonymousUserId: 'Room ID is missing'
+                }
+            });
+        }
 
         // Basic validation
         if (!anonymousUserId || anonymousUserId.length < 3) {
-            return {
-                status: 400,
+            return fail(400, {
                 errors: {
                     anonymousUserId: 'User ID must be at least 3 characters long'
                 }
-            };
+            });
         }
 
         if (anonymousUserId.length > 50) {
-            return {
-                status: 400,
+            return fail(400, {
                 errors: {
                     anonymousUserId: 'User ID must be less than 50 characters'
                 }
-            };
+            });
         }
 
         // Only allow letters, numbers, underscores, and hyphens
         if (!/^[a-zA-Z0-9_-]+$/.test(anonymousUserId)) {
-            return {
-                status: 400,
+            return fail(400, {
                 errors: {
                     anonymousUserId: 'User ID can only contain letters, numbers, underscores, and hyphens'
                 }
-            };
+            });
         }
 
         // Sanitize the anonymous user ID
@@ -81,12 +88,11 @@ export const actions = {
             });
 
             if (!rooms.length) {
-                return {
-                    status: 404,
+                return fail(404, {
                     errors: {
                         anonymousUserId: 'Room not found'
                     }
-                };
+                });
             }
 
             const room = rooms[0];
@@ -101,20 +107,18 @@ export const actions = {
 
             // Return data for client-side navigation
             return {
-                type: 'success',
                 roomId,
                 anonymousUserId: sanitizedUserId,
                 // Add parameters to make the user a host
                 hostParams: `isHost=true&anonymous=true&hostUserId=${sanitizedUserId}`
             };
-        } catch (error) {
-            console.error('Error joining room:', error);
-            return {
-                status: 500,
+        } catch (err) {
+            console.error('Error joining room:', err);
+            return fail(500, {
                 errors: {
                     anonymousUserId: 'Failed to join room'
                 }
-            };
+            });
         }
     }
 }; 

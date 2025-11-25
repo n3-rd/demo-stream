@@ -219,6 +219,11 @@
       // Setup event listeners
       tour.on('start', () => {
         console.log('Tour started');
+        // Clean up any existing step elements
+        const existingSteps = document.querySelectorAll('.shepherd-element:not(.shepherd-enabled)');
+        existingSteps.forEach((step: Element) => {
+          step.remove();
+        });
       });
 
       tour.on('complete', () => {
@@ -227,6 +232,18 @@
 
       tour.on('cancel', () => {
         console.log('Tour cancelled');
+      });
+      
+      tour.on('show', () => {
+        // Hide all steps except the current one
+        const allSteps = document.querySelectorAll('.shepherd-element');
+        allSteps.forEach((step: Element) => {
+          if (step !== tour.currentStep?.el) {
+            (step as HTMLElement).style.display = 'none';
+            (step as HTMLElement).style.visibility = 'hidden';
+            step.classList.remove('shepherd-enabled');
+          }
+        });
       });
 
       console.log('Tour initialized successfully');
@@ -257,7 +274,7 @@
 </script>
 
 <Dialog.Root bind:open={isOpen} onOpenChange={handleOpenChange}>
-  <Dialog.Content class="relative max-w-md rounded-3xl border border-[#E4E9F4] bg-white p-8 text-center shadow-[0_25px_45px_rgba(15,33,58,0.12)]">
+  <Dialog.Content class="absolute max-w-md rounded-3xl border border-[#E4E9F4] bg-white p-8 text-center shadow-[0_25px_45px_rgba(15,33,58,0.12)]">
     {#if step === 1}
     <Dialog.Header class="space-y-3 text-center">
       <Dialog.Title class="text-2xl font-semibold text-[#1F2937]">
@@ -308,23 +325,32 @@
 <style>
   :global(.shepherd-theme-custom) {
     background-image: url('/img/tutorial-bg.png');
-    background-position: center;
+    background-position: center center;
     background-repeat: no-repeat;
-    background-size: contain;
+    background-size: 100% 100%;
     color: #000000;
     border-radius: 0;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     background-color: transparent;
-    width: 800px;
-    padding: 1rem;
+    width: 400px;
+    min-height: auto;
+    padding: 0;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 9999;
+  }
+  
+  :global(.shepherd-element.shepherd-enabled) {
+    z-index: 10000;
   }
   :global([data-shepherd-step-id="chat-button"], [data-shepherd-step-id="participants-button"], [data-shepherd-step-id="invite-people-button"]) {
     background-image: url('/img/tutorial-bg-mirror.png')!important;
   }
   :global([data-shepherd-step-id="chat-button"] .shepherd-content, [data-shepherd-step-id="participants-button"] .shepherd-content, [data-shepherd-step-id="invite-people-button"] .shepherd-content) {
-   margin-right: 1rem;
-   margin-left: 0!important;
+   margin: 0;
+   padding: 1.5rem 1.5rem 0 1.5rem;
   }
 
   :global(.shepherd-theme-custom .shepherd-title) {
@@ -356,15 +382,25 @@
     margin: 0 auto;
   }
 
+  /* mobile */
+
+  @media (max-width: 640px) {
+    :global(.shepherd-theme-custom .shepherd-text) {
+      font-size: 15px!important;
+    }
+  }
+
   :global(.shepherd-theme-custom .shepherd-footer) {
     padding-top: 0.5rem;
-    padding-left: 0;
-    padding-right: 0;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-bottom: 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    margin: 0 auto;
+    margin: 0;
+    box-sizing: border-box;
   }
 
   :global(.shepherd-theme-custom .shepherd-button) {
@@ -389,10 +425,13 @@
   }
   
   :global(.shepherd-theme-custom .shepherd-content) {
-    /* width: 100%; */
-    padding: 1rem;
-    padding-bottom: 0;
-    margin-left: 1rem;
+    width: 100%;
+    padding: 1.5rem 1.5rem 0 1.5rem;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    box-sizing: border-box;
   }
   
   :global(.shepherd-theme-custom .shepherd-text p) {
@@ -401,8 +440,8 @@
   
   :global(.shepherd-theme-custom .shepherd-header) {
     width: 100%;
-    padding: 1rem;
-    margin-left: 0.5rem;
+    padding: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -412,18 +451,38 @@
   }
   
   :global(.shepherd-theme-custom .shepherd-element) {
-    width: 400px;
-    height: auto;
+    width: 400px !important;
+    min-height: auto;
+    max-width: 400px;
   }
   
 
   :global(.shepherd-has-title .shepherd-content .shepherd-header) {
     background: transparent;
     padding: 0;
+    margin: 0;
+  }
+  
+  :global(.shepherd-has-title .shepherd-content) {
+    padding-top: 1.5rem;
   }
 
-  :global(.shepherd-enabled.shepherd-element) {
-    opacity: 1;
+  :global(.shepherd-element.shepherd-enabled) {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+  }
+  
+  :global(.shepherd-element:not(.shepherd-enabled)) {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  
+  /* Ensure only the active step is visible */
+  :global(.shepherd-tour-element:not(.shepherd-enabled)) {
+    display: none !important;
   }
 
   :global(.shepherd-element[data-popper-placement^="bottom"] .shepherd-arrow) {
@@ -497,8 +556,8 @@
 
   :global(.shepherd-step-icon img) {
     filter: invert(1)!important;
-    height:49px!important;
-    width:49px!important;
+    height:30px!important;
+    width:30px!important;
   }
 
   @media (max-width: 640px) {
@@ -512,6 +571,11 @@
       margin-top: 18rem;
       max-width: 100%;
       box-shadow: 0 20px 40px rgba(15, 33, 58, 0.12);
+    }
+
+    :global(.shepherd-step-icon img) {
+      height: 49px!important;
+      width: 49px!important;
     }
 
     :global([data-shepherd-step-id="chat-button"], [data-shepherd-step-id="participants-button"], [data-shepherd-step-id="invite-people-button"]) {

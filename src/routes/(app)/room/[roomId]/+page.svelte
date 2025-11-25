@@ -93,17 +93,26 @@ const viewroomUser = data?.viewroomUser;
 const isAuthenticated = !!user || !!viewroomUser;
 const viewroomDisplayName = viewroomUser ? [viewroomUser.first_name, viewroomUser.last_name].filter(Boolean).join(' ').trim() || viewroomUser.email : '';
 // Construct proper display name based on user type
+// Prioritize anonymous user ID if anonymous mode is active (reactive to URL changes)
 let name = '';
-if (user) {
-    name = user?.company_name || '';
-} else if (viewroomUser) {
-    name = viewroomDisplayName;
-} else if (data?.representativeName) {
-    // Use the representative name from server data
-    name = data.representativeName;
-} else {
-    // Will be set later when representative info is available
-    name = '';
+$: {
+    const isAnonymousMode = $page.url.searchParams.get('anonymous') === 'true';
+    const urlAnonymousUserId = $page.url.searchParams.get('anonymousUserId') || '';
+    
+    if (isAnonymousMode && urlAnonymousUserId) {
+        // Use anonymous user ID from URL params when in anonymous mode
+        name = urlAnonymousUserId;
+    } else if (user && !isAnonymousMode) {
+        name = user?.company_name || '';
+    } else if (viewroomUser && !isAnonymousMode) {
+        name = viewroomDisplayName;
+    } else if (data?.representativeName) {
+        // Use the representative name from server data
+        name = data.representativeName;
+    } else {
+        // Will be set later when representative info is available
+        name = '';
+    }
 }
 const representatives = data?.representatives || [];
 const users = data?.users || [];
@@ -1168,8 +1177,15 @@ function joinRoom() {
     }
 
     // Format the display name based on user type
+    // Check for anonymous mode first (even if user is authenticated)
+    const isAnonymousMode = $page.url.searchParams.get('anonymous') === 'true';
+    const urlAnonymousUserId = $page.url.searchParams.get('anonymousUserId') || '';
+    
     let displayName;
-    if (isAuthenticated) {
+    if (isAnonymousMode && urlAnonymousUserId) {
+        // Use anonymous user ID when in anonymous mode, even if authenticated
+        displayName = formatDisplayName(urlAnonymousUserId);
+    } else if (isAuthenticated) {
         displayName = formatDisplayName(name);
     } else if (data.representativeName) {
         displayName = formatDisplayName(data.representativeName, true);
@@ -1915,6 +1931,9 @@ $: {
     if (searchParams.get('hostUserId')) {
         cleanParams.set('hostUserId', searchParams.get('hostUserId'));
     }
+    if (searchParams.get('anonymousUserId')) {
+        cleanParams.set('anonymousUserId', searchParams.get('anonymousUserId'));
+    }
     
     // Update URL if parameters are not clean
     if (cleanParams.toString() !== searchParams.toString()) {
@@ -1925,8 +1944,19 @@ $: {
         );
     }
     
+    // If anonymous mode is active, prioritize anonymousUserId from URL over authenticated user
+    const isAnonymousMode = searchParams.get('anonymous') === 'true';
+    const urlAnonymousUserId = searchParams.get('anonymousUserId');
+    if (isAnonymousMode && urlAnonymousUserId) {
+        // Always update anonymousUser store when in anonymous mode to ensure it matches URL param
+        if ($anonymousUser !== urlAnonymousUserId) {
+            anonymousUser.set(urlAnonymousUserId);
+        }
+        // Name will be updated by the reactive declaration above
+    }
+    
     // If we have a representative name, set it as the anonymous user with proper formatting
-    if (data.representativeName && !$anonymousUser) {
+    if (data.representativeName && !$anonymousUser && !isAnonymousMode) {
         anonymousUser.set(formatUserName(data.representativeName, true));
         // Initialize WebRTC after setting the name
         if (webRTCAdaptor === null) {

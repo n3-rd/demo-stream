@@ -49,9 +49,25 @@ export const POST: RequestHandler = async ({ request }) => {
             body: `User is waiting in Room #${room_id}`,
           },
           data: { 
-            room_id: room_id,
+            room_id: String(room_id),
             type: 'assistance_request'
           },
+          apns: {
+            payload: {
+              aps: {
+                sound: 'default',
+                badge: 1,
+                alert: {
+                  title: 'View-Room Assistance Needed',
+                  body: `User is waiting in Room #${room_id}`,
+                }
+              }
+            },
+            headers: {
+              'apns-priority': '10',
+              'apns-push-type': 'alert'
+            }
+          }
         });
 
         return json({ 

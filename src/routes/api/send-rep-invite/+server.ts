@@ -99,10 +99,26 @@ export const POST: RequestHandler = async ({ request }) => {
               body: `You've been invited to assist in ${room_title || 'a view-room'}`,
             },
             data: { 
-              room_id: room_id,
+              room_id: String(room_id),
               type: 'room_invitation',
-              invite_url: invite_url
+              invite_url: String(invite_url)
             },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                  badge: 1,
+                  alert: {
+                    title: 'View-Room Invitation',
+                    body: `You've been invited to assist in ${room_title || 'a view-room'}`,
+                  }
+                }
+              },
+              headers: {
+                'apns-priority': '10',
+                'apns-push-type': 'alert'
+              }
+            }
           });
           
           notificationSent = true;

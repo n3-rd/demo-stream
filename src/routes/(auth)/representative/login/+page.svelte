@@ -4,7 +4,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import { Loader2, Mail, Phone, Cloud, Building2 } from 'lucide-svelte';
+	import { Loader2, Mail, Phone } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { formatToE164, sanitizePhoneInput, isE164 } from '$lib/helpers/phone';
 
@@ -14,9 +14,6 @@
 	let uid = '';
 
 	// Form data
-	let companyName = '';
-	let firstName = '';
-	let lastName = '';
 	let email = '';
 	let mobileNumber = '';
 	let verificationCode = ['', '', '', '', ''];
@@ -52,7 +49,7 @@
 	}
 
 	async function handleLogin() {
-		if (!companyName.trim() || !firstName.trim() || !lastName.trim() || !email.trim() || !mobileNumber.trim()) {
+		if (!email.trim() || !mobileNumber.trim()) {
 			toast.error('Please fill in all required fields');
 			return;
 		}
@@ -70,9 +67,6 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({ 
-					first_name: firstName.trim(),
-					last_name: lastName.trim(),
-					company: companyName.trim(),
 					email: email.trim(),
 					phone: normalizedPhone,
 					roomId: roomId || undefined
@@ -106,10 +100,7 @@
 				credentials: 'include',
 				body: JSON.stringify({ 
 					email: email.trim(), 
-					code: verificationCode.join(''),
-					first_name: firstName.trim(),
-					last_name: lastName.trim(),
-					company: companyName.trim()
+					code: verificationCode.join('')
 				})
 			});
 			const result = await res.json();
@@ -123,13 +114,7 @@
 						headers: { 'Content-Type': 'application/json' },
 						credentials: 'include',
 						body: JSON.stringify({
-							user: {
-								...result.user,
-								name: `${firstName.trim()} ${lastName.trim()}`.trim(),
-								firstName: firstName.trim(),
-								lastName: lastName.trim(),
-								company: companyName.trim()
-							}
+							user: result.user
 						})
 					});
 				} catch (e) {
@@ -183,18 +168,6 @@
 		<div class="bg-white py-8 px-6 shadow-sm rounded-lg sm:px-10">
 			{#if step === 'login'}
 				<form on:submit|preventDefault={handleLogin} class="space-y-6">
-					<div>
-						<Label for="companyName" class="block text-sm font-medium text-gray-700 mb-2">COMPANY NAME</Label>
-						<Input id="companyName" bind:value={companyName} type="text" placeholder="Enter your company name" required disabled={loading} class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-					</div>
-					<div>
-						<Label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">FIRST NAME</Label>
-						<Input id="firstName" bind:value={firstName} type="text" placeholder="Enter your first name" required disabled={loading} class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-					</div>
-					<div>
-						<Label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">LAST NAME</Label>
-						<Input id="lastName" bind:value={lastName} type="text" placeholder="Enter your last name" required disabled={loading} class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
-					</div>
 					<div>
 						<Label for="email" class="block text-sm font-medium text-gray-700 mb-2">EMAIL ADDRESS</Label>
 						<Input id="email" bind:value={email} type="email" placeholder="Enter your email" required disabled={loading} class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />

@@ -3,15 +3,15 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { pb } from '$lib/pocketbase';
 import { telnyxSMS } from '$lib/services/telnyx';
 import { BREVO_API_KEY } from '$env/static/private';
-import { PUBLIC_BREVO_SENDER_EMAIL, PUBLIC_SMTP_FROM } from '$env/static/public';
+import { PUBLIC_SMTP_FROM } from '$env/static/public';
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
 	try {
 		const data = await request.json();
-		const { first_name, last_name, company, email, phone, roomId } = data || {};
+		const { email, phone } = data || {};
 
-		if (!first_name?.trim() || !last_name?.trim() || !company?.trim() || !email?.trim() || !phone?.trim()) {
-			return json({ success: false, message: 'Missing required fields' }, { status: 400 });
+		if (!email?.trim() || !phone?.trim()) {
+			return json({ success: false, message: 'Missing required fields: email and phone' }, { status: 400 });
 		}
 
 		// Normalize input
@@ -21,41 +21,25 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			return json({ success: false, message: 'Invalid phone number. Use format like +170********' }, { status: 400 });
 		}
 
-		// Resolve company id
-		let companyId: string | null = null;
-		if (roomId) {
-			try {
-				const room = await pb.collection('rooms').getOne(roomId);
-				companyId = room.owner_company || null;
-			} catch {}
-		}
-		if (!companyId) {
-			try {
-				const userCompany = await pb.collection('users').getFirstListItem(`company_name = "${company.trim()}"`);
-				companyId = userCompany?.id || null;
-			} catch {}
-		}
-		if (!companyId) {
-			return json({ success: false, message: 'Company not found' }, { status: 404 });
-		}
-
-		// Find representative by company + email + phone
+		// Find representative by email + phone
 		const reps = await pb.collection('representatives').getFullList({
-			filter: `company = "${companyId}" && email = "${normalizedEmail}" && phone = "${normalizedPhone}"`
+			filter: `email = "${normalizedEmail}" && phone = "${normalizedPhone}"`,
+			expand: 'company'
 		});
 		const rep = reps[0];
 		if (!rep) {
-			return json({ success: false, message: 'Representative not found or phone/email mismatch' }, { status: 404 });
+			return json({ success: false, message: 'Representative not found' }, { status: 404 });
 		}
 
-		// Optional name check against stored rep.name if available
-		if (rep.name) {
-			const parts = String(rep.name).trim().split(/\s+/);
-			const repFirst = parts[0] || '';
-			const repLast = parts.slice(1).join(' ') || '';
-			if (repFirst !== first_name.trim() || repLast !== last_name.trim()) {
-				return json({ success: false, message: 'Name does not match our records' }, { status: 403 });
-			}
+		// Get company name for SMS
+		let companyName = 'Viewroom.ca';
+		if (rep.expand?.company?.company_name) {
+			companyName = rep.expand.company.company_name;
+		} else if (typeof rep.company === 'string') {
+			try {
+				const company = await pb.collection('users').getOne(rep.company);
+				companyName = company.company_name || companyName;
+			} catch {}
 		}
 
 		// Generate code and store in verification_codes
@@ -87,7 +71,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
 		// Send SMS
 		try {
-			smsSent = !!(await telnyxSMS.sendVerificationCode(normalizedPhone, code, company));
+			smsSent = !!(await telnyxSMS.sendVerificationCode(normalizedPhone, code, companyName));
 		} catch (e) {
 			console.error('representative sms send error', e);
 		}

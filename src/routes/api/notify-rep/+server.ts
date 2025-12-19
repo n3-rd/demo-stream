@@ -2,14 +2,14 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/db/drizzle';
 import { repDeviceTokens } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { FIREBASE_SERVICE_ACCOUNT } from '$env/static/private';
 
 // Initialize Firebase Admin SDK
 let admin: any;
 try {
   console.log('[notify-rep] Initializing Firebase Admin SDK...');
   const firebaseAdmin = await import('firebase-admin');
-  // Check both FIREBASE_SERVICE_ACCOUNT_KEY and FIREBASE_SERVICE_ACCOUNT
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT;
+  const serviceAccount = FIREBASE_SERVICE_ACCOUNT;
   
   if (serviceAccount) {
     console.log('[notify-rep] Firebase service account env var found, parsing...');
@@ -30,7 +30,7 @@ try {
       console.error('[notify-rep] First 100 chars of service account:', serviceAccount.substring(0, 100));
     }
   } else {
-    console.warn('[notify-rep] FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_SERVICE_ACCOUNT not found in environment variables');
+    console.warn('[notify-rep] FIREBASE_SERVICE_ACCOUNT not found in environment variables');
   }
 } catch (error) {
   console.error('[notify-rep] Firebase Admin SDK initialization failed:', error);

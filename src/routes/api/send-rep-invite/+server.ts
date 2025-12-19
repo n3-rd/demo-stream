@@ -4,6 +4,7 @@ import { repDeviceTokens } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { telnyxSMS } from '$lib/services/telnyx';
 import { sendEmail } from '../../../lib/services/email';
+import { FIREBASE_SERVICE_ACCOUNT } from '$env/static/private';
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
@@ -87,8 +88,7 @@ export const POST: RequestHandler = async ({ request }) => {
         // Initialize Firebase Admin SDK
         console.log('[send-rep-invite] Initializing Firebase Admin SDK...');
         const firebaseAdmin = await import('firebase-admin');
-        // Check both FIREBASE_SERVICE_ACCOUNT_KEY and FIREBASE_SERVICE_ACCOUNT
-        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT;
+        const serviceAccount = FIREBASE_SERVICE_ACCOUNT;
         
         if (serviceAccount) {
           console.log('[send-rep-invite] Firebase service account env var found, parsing...');
@@ -145,7 +145,7 @@ export const POST: RequestHandler = async ({ request }) => {
             console.error('[send-rep-invite] First 100 chars of service account:', serviceAccount.substring(0, 100));
           }
         } else {
-          console.warn('[send-rep-invite] FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_SERVICE_ACCOUNT not found in environment variables');
+          console.warn('[send-rep-invite] FIREBASE_SERVICE_ACCOUNT not found in environment variables');
         }
       } catch (notificationError: any) {
         console.error('[send-rep-invite] Push notification error:', notificationError);

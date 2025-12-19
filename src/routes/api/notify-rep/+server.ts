@@ -6,43 +6,72 @@ import { eq } from 'drizzle-orm';
 // Initialize Firebase Admin SDK
 let admin: any;
 try {
+  console.log('[notify-rep] Initializing Firebase Admin SDK...');
   const firebaseAdmin = await import('firebase-admin');
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  // Check both FIREBASE_SERVICE_ACCOUNT_KEY and FIREBASE_SERVICE_ACCOUNT
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT;
   
   if (serviceAccount) {
-    admin = firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(JSON.parse(serviceAccount))
-    });
+    console.log('[notify-rep] Firebase service account env var found, parsing...');
+    try {
+      // Remove surrounding quotes if present and handle escaped newlines
+      let cleaned = serviceAccount.trim();
+      if ((cleaned.startsWith("'") && cleaned.endsWith("'")) || (cleaned.startsWith('"') && cleaned.endsWith('"'))) {
+        cleaned = cleaned.slice(1, -1);
+      }
+      const parsedKey = JSON.parse(cleaned);
+      admin = firebaseAdmin.initializeApp({
+        credential: firebaseAdmin.credential.cert(parsedKey)
+      });
+      console.log('[notify-rep] Firebase Admin SDK initialized successfully');
+    } catch (parseError) {
+      console.error('[notify-rep] Error parsing Firebase service account:', parseError);
+      console.error('[notify-rep] Parse error details:', parseError instanceof Error ? parseError.message : String(parseError));
+      console.error('[notify-rep] First 100 chars of service account:', serviceAccount.substring(0, 100));
+    }
+  } else {
+    console.warn('[notify-rep] FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_SERVICE_ACCOUNT not found in environment variables');
   }
 } catch (error) {
-  console.warn('Firebase Admin SDK not available:', error);
+  console.error('[notify-rep] Firebase Admin SDK initialization failed:', error);
+  console.error('[notify-rep] Error details:', error instanceof Error ? error.message : String(error));
+  console.error('[notify-rep] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
 }
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
+    console.log('[notify-rep] Received notification request');
     const { rep_id, room_id } = await request.json();
+    console.log('[notify-rep] Request data:', { rep_id, room_id });
 
     if (!rep_id || !room_id) {
+      console.error('[notify-rep] Missing required fields:', { rep_id: !!rep_id, room_id: !!room_id });
       return json({ error: 'Missing rep_id or room_id' }, { status: 400 });
     }
 
     // Get the representative's FCM token
+    console.log('[notify-rep] Querying database for FCM token for rep_id:', rep_id);
     const tokenRecord = await db
       .select()
       .from(repDeviceTokens)
       .where(eq(repDeviceTokens.repId, rep_id))
       .limit(1);
 
+    console.log('[notify-rep] Token query result:', { found: tokenRecord.length > 0, record: tokenRecord.length > 0 ? { ...tokenRecord[0], deviceToken: tokenRecord[0].deviceToken ? '***' : null } : null });
+
     if (tokenRecord.length === 0) {
+      console.error('[notify-rep] No FCM token found for rep_id:', rep_id);
       return json({ error: 'No FCM token found for this representative' }, { status: 404 });
     }
 
     const deviceToken = tokenRecord[0].deviceToken;
+    console.log('[notify-rep] Device token retrieved:', deviceToken ? `${deviceToken.substring(0, 20)}...` : 'null');
 
     // Send push notification via Firebase
     if (admin) {
+      console.log('[notify-rep] Admin SDK available, attempting to send notification...');
       try {
-        await admin.messaging().send({
+        const messagePayload = {
           token: deviceToken,
           notification: {
             title: 'View-Room Assistance Needed',
@@ -68,30 +97,48 @@ export const POST: RequestHandler = async ({ request }) => {
               'apns-push-type': 'alert'
             }
           }
-        });
+        };
+        console.log('[notify-rep] Sending notification with payload:', { ...messagePayload, token: '***' });
+        
+        const result = await admin.messaging().send(messagePayload);
+        console.log('[notify-rep] Notification sent successfully, result:', result);
 
         return json({ 
           success: true, 
-          message: 'Notification sent successfully' 
+          message: 'Notification sent successfully',
+          messageId: result
         });
-      } catch (firebaseError) {
-        console.error('Firebase notification error:', firebaseError);
+      } catch (firebaseError: any) {
+        console.error('[notify-rep] Firebase notification error:', firebaseError);
+        console.error('[notify-rep] Firebase error message:', firebaseError?.message);
+        console.error('[notify-rep] Firebase error code:', firebaseError?.code);
+        console.error('[notify-rep] Firebase error stack:', firebaseError?.stack);
+        if (firebaseError?.errorInfo) {
+          console.error('[notify-rep] Firebase error info:', firebaseError.errorInfo);
+        }
         return json({ 
           error: 'Failed to send notification',
-          details: firebaseError.message 
+          details: firebaseError?.message || 'Unknown error',
+          code: firebaseError?.code
         }, { status: 500 });
       }
     } else {
       // Fallback if Firebase is not configured
-      console.log(`Would send notification to rep ${rep_id} for room ${room_id}`);
+      console.warn('[notify-rep] Firebase Admin SDK not initialized, cannot send notification');
+      console.log(`[notify-rep] Would send notification to rep ${rep_id} for room ${room_id}`);
       return json({ 
-        success: true, 
+        success: false,
         message: 'Notification queued (Firebase not configured)' 
       });
     }
 
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    return json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('[notify-rep] Unexpected error in notification handler:', error);
+    console.error('[notify-rep] Error message:', error?.message);
+    console.error('[notify-rep] Error stack:', error?.stack);
+    return json({ 
+      error: 'Internal server error',
+      details: error?.message || 'Unknown error'
+    }, { status: 500 });
   }
 }; 

@@ -82,50 +82,82 @@ export const POST: RequestHandler = async ({ request }) => {
     // Send push notification if FCM token exists
     let notificationSent = false;
     if (deviceToken) {
+      console.log('[send-rep-invite] Device token found, attempting to send push notification');
       try {
         // Initialize Firebase Admin SDK
+        console.log('[send-rep-invite] Initializing Firebase Admin SDK...');
         const firebaseAdmin = await import('firebase-admin');
-        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+        // Check both FIREBASE_SERVICE_ACCOUNT_KEY and FIREBASE_SERVICE_ACCOUNT
+        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT;
         
         if (serviceAccount) {
-          const admin = firebaseAdmin.initializeApp({
-            credential: firebaseAdmin.credential.cert(JSON.parse(serviceAccount))
-          });
-
-          await admin.messaging().send({
-            token: deviceToken,
-            notification: {
-              title: 'View-Room Invitation',
-              body: `You've been invited to assist in ${room_title || 'a view-room'}`,
-            },
-            data: { 
-              room_id: String(room_id),
-              type: 'room_invitation',
-              invite_url: String(invite_url)
-            },
-            apns: {
-              payload: {
-                aps: {
-                  sound: 'default',
-                  badge: 1,
-                  alert: {
-                    title: 'View-Room Invitation',
-                    body: `You've been invited to assist in ${room_title || 'a view-room'}`,
-                  }
-                }
-              },
-              headers: {
-                'apns-priority': '10',
-                'apns-push-type': 'alert'
-              }
+          console.log('[send-rep-invite] Firebase service account env var found, parsing...');
+          try {
+            // Remove surrounding quotes if present and handle escaped newlines
+            let cleaned = serviceAccount.trim();
+            if ((cleaned.startsWith("'") && cleaned.endsWith("'")) || (cleaned.startsWith('"') && cleaned.endsWith('"'))) {
+              cleaned = cleaned.slice(1, -1);
             }
-          });
-          
-          notificationSent = true;
+            const parsedKey = JSON.parse(cleaned);
+            const admin = firebaseAdmin.initializeApp({
+              credential: firebaseAdmin.credential.cert(parsedKey)
+            });
+            console.log('[send-rep-invite] Firebase Admin SDK initialized successfully');
+
+            const messagePayload = {
+              token: deviceToken,
+              notification: {
+                title: 'View-Room Invitation',
+                body: `You've been invited to assist in ${room_title || 'a view-room'}`,
+              },
+              data: { 
+                room_id: String(room_id),
+                type: 'room_invitation',
+                invite_url: String(invite_url)
+              },
+              apns: {
+                payload: {
+                  aps: {
+                    sound: 'default',
+                    badge: 1,
+                    alert: {
+                      title: 'View-Room Invitation',
+                      body: `You've been invited to assist in ${room_title || 'a view-room'}`,
+                    }
+                  }
+                },
+                headers: {
+                  'apns-priority': '10',
+                  'apns-push-type': 'alert'
+                }
+              }
+            };
+            console.log('[send-rep-invite] Sending notification with payload:', { ...messagePayload, token: '***' });
+            
+            const result = await admin.messaging().send(messagePayload);
+            console.log('[send-rep-invite] Notification sent successfully, result:', result);
+            
+            notificationSent = true;
+          } catch (parseError: any) {
+            console.error('[send-rep-invite] Error parsing Firebase service account:', parseError);
+            console.error('[send-rep-invite] Parse error details:', parseError?.message);
+            console.error('[send-rep-invite] Parse error stack:', parseError?.stack);
+            console.error('[send-rep-invite] First 100 chars of service account:', serviceAccount.substring(0, 100));
+          }
+        } else {
+          console.warn('[send-rep-invite] FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_SERVICE_ACCOUNT not found in environment variables');
         }
-      } catch (notificationError) {
-        console.error('Push notification error:', notificationError);
+      } catch (notificationError: any) {
+        console.error('[send-rep-invite] Push notification error:', notificationError);
+        console.error('[send-rep-invite] Error message:', notificationError?.message);
+        console.error('[send-rep-invite] Error code:', notificationError?.code);
+        console.error('[send-rep-invite] Error stack:', notificationError?.stack);
+        if (notificationError?.errorInfo) {
+          console.error('[send-rep-invite] Firebase error info:', notificationError.errorInfo);
+        }
       }
+    } else {
+      console.log('[send-rep-invite] No device token found, skipping push notification');
     }
 
     return json({ 

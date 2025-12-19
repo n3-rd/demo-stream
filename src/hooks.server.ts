@@ -3,6 +3,17 @@ import { v4 as uuid } from '@lukeed/uuid';
 import type { Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { pb } from '$lib/pocketbase';
+import { initLogger } from '$lib/logger';
+
+// Initialize logger on server startup
+if (typeof window === 'undefined') {
+	initLogger({
+		logFile: 'logs/app.log',
+		maxLines: 10000,
+		maxSizeMB: 10,
+		enableConsole: true
+	});
+}
 
 // Define the User type
 interface User {

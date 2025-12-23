@@ -87,7 +87,7 @@ export const POST: RequestHandler = async ({ request }) => {
       try {
         // Initialize Firebase Admin SDK
         console.log('[send-rep-invite] Initializing Firebase Admin SDK...');
-        const firebaseAdmin = await import('firebase-admin');
+        const firebaseAdmin = (await import('firebase-admin')).default;
         const serviceAccount = FIREBASE_SERVICE_ACCOUNT;
         
         if (serviceAccount) {
@@ -104,6 +104,7 @@ export const POST: RequestHandler = async ({ request }) => {
             let admin;
             try {
               admin = firebaseAdmin.app();
+              console.log('[send-rep-invite] Using existing Firebase Admin SDK instance');
             } catch {
               // App doesn't exist, initialize it
               admin = firebaseAdmin.initializeApp({

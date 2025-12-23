@@ -3,12 +3,17 @@ import { db } from '$lib/db/drizzle';
 import { repDeviceTokens } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { FIREBASE_SERVICE_ACCOUNT } from '$env/static/private';
+import firebaseAdmin from 'firebase-admin';
+
+// UUID validation function
+function isValidUUID(val: unknown): val is string {
+  return typeof val === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(val);
+}
 
 // Initialize Firebase Admin SDK
 let admin: any;
 try {
   console.log('[notify-rep] Initializing Firebase Admin SDK...');
-  const firebaseAdmin = await import('firebase-admin');
   const serviceAccount = FIREBASE_SERVICE_ACCOUNT;
   
   if (serviceAccount) {
@@ -35,7 +40,13 @@ try {
     } catch (parseError) {
       console.error('[notify-rep] Error parsing Firebase service account:', parseError);
       console.error('[notify-rep] Parse error details:', parseError instanceof Error ? parseError.message : String(parseError));
+      console.error('[notify-rep] Parse error stack:', parseError instanceof Error ? parseError.stack : 'No stack trace');
+      console.error('[notify-rep] Parse error type:', typeof parseError);
+      console.error('[notify-rep] Parse error keys:', Object.keys(parseError || {}));
       console.error('[notify-rep] First 100 chars of service account:', serviceAccount.substring(0, 100));
+      console.error('[notify-rep] Service account length:', serviceAccount.length);
+      console.error('[notify-rep] firebaseAdmin available:', !!firebaseAdmin);
+      console.error('[notify-rep] firebaseAdmin.credential available:', !!firebaseAdmin?.credential);
     }
   } else {
     console.warn('[notify-rep] FIREBASE_SERVICE_ACCOUNT not found in environment variables');
@@ -55,6 +66,12 @@ export const POST: RequestHandler = async ({ request }) => {
     if (!rep_id || !room_id) {
       console.error('[notify-rep] Missing required fields:', { rep_id: !!rep_id, room_id: !!room_id });
       return json({ error: 'Missing rep_id or room_id' }, { status: 400 });
+    }
+
+    // Validate UUID format
+    if (!isValidUUID(rep_id)) {
+      console.error('[notify-rep] Invalid UUID format for rep_id:', rep_id);
+      return json({ error: 'rep_id must be a valid UUID' }, { status: 400 });
     }
 
     // Get the representative's FCM token
@@ -148,6 +165,16 @@ export const POST: RequestHandler = async ({ request }) => {
     console.error('[notify-rep] Unexpected error in notification handler:', error);
     console.error('[notify-rep] Error message:', error?.message);
     console.error('[notify-rep] Error stack:', error?.stack);
+    
+    // Handle UUID parsing errors
+    if (error?.cause?.code === '22P02') {
+      console.error('[notify-rep] Invalid UUID format');
+      return json({ 
+        error: 'Invalid UUID format',
+        details: 'rep_id must be a valid UUID'
+      }, { status: 400 });
+    }
+    
     return json({ 
       error: 'Internal server error',
       details: error?.message || 'Unknown error'

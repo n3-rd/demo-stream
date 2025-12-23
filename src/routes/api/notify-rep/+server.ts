@@ -20,10 +20,18 @@ try {
         cleaned = cleaned.slice(1, -1);
       }
       const parsedKey = JSON.parse(cleaned);
-      admin = firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.cert(parsedKey)
-      });
-      console.log('[notify-rep] Firebase Admin SDK initialized successfully');
+      
+      // Check if Firebase app is already initialized
+      try {
+        admin = firebaseAdmin.app();
+        console.log('[notify-rep] Using existing Firebase Admin SDK instance');
+      } catch {
+        // App doesn't exist, initialize it
+        admin = firebaseAdmin.initializeApp({
+          credential: firebaseAdmin.credential.cert(parsedKey)
+        });
+        console.log('[notify-rep] Firebase Admin SDK initialized successfully');
+      }
     } catch (parseError) {
       console.error('[notify-rep] Error parsing Firebase service account:', parseError);
       console.error('[notify-rep] Parse error details:', parseError instanceof Error ? parseError.message : String(parseError));
@@ -59,12 +67,16 @@ export const POST: RequestHandler = async ({ request }) => {
 
     console.log('[notify-rep] Token query result:', { found: tokenRecord.length > 0, record: tokenRecord.length > 0 ? { ...tokenRecord[0], deviceToken: tokenRecord[0].deviceToken ? '***' : null } : null });
 
-    if (tokenRecord.length === 0) {
+    if (tokenRecord.length === 0 || !tokenRecord[0].deviceToken) {
       console.error('[notify-rep] No FCM token found for rep_id:', rep_id);
       return json({ error: 'No FCM token found for this representative' }, { status: 404 });
     }
 
     const deviceToken = tokenRecord[0].deviceToken;
+    if (!deviceToken || deviceToken.trim() === '') {
+      console.error('[notify-rep] Device token is empty for rep_id:', rep_id);
+      return json({ error: 'Device token is empty' }, { status: 400 });
+    }
     console.log('[notify-rep] Device token retrieved:', deviceToken ? `${deviceToken.substring(0, 20)}...` : 'null');
 
     // Send push notification via Firebase

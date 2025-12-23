@@ -20,6 +20,13 @@
       "when": 1762740608546,
       "tag": "0002_thick_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766439864346,
+      "tag": "0003_supreme_ultimatum",
+      "breakpoints": true
     }
   ]
 }

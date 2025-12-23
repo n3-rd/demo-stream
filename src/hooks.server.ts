@@ -8,7 +8,7 @@ import { initLogger } from '$lib/logger';
 // Initialize logger on server startup
 if (typeof window === 'undefined') {
 	initLogger({
-		logFile: 'logs/app.log',
+		logFile: 'logs/app.txt',
 		maxLines: 10000,
 		maxSizeMB: 10,
 		enableConsole: true

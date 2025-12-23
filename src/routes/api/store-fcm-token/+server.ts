@@ -14,6 +14,12 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'Missing rep_id or fcm_token' }, { status: 400 });
     }
 
+    // Validate token is not empty
+    if (typeof fcm_token !== 'string' || fcm_token.trim() === '') {
+      console.error('[store-fcm-token] Invalid FCM token: empty or not a string');
+      return json({ error: 'FCM token must be a non-empty string' }, { status: 400 });
+    }
+
     // Check if token already exists for this rep
     console.log('[store-fcm-token] Checking for existing token for rep_id:', rep_id);
     const existingToken = await db

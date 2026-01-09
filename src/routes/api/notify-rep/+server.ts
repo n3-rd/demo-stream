@@ -32,10 +32,10 @@ try {
         console.log('[notify-rep] Using existing Firebase Admin SDK instance');
       } catch {
         // App doesn't exist, initialize it
-        admin = firebaseAdmin.initializeApp({
-          credential: firebaseAdmin.credential.cert(parsedKey)
-        });
-        console.log('[notify-rep] Firebase Admin SDK initialized successfully');
+      admin = firebaseAdmin.initializeApp({
+        credential: firebaseAdmin.credential.cert(parsedKey)
+      });
+      console.log('[notify-rep] Firebase Admin SDK initialized successfully');
       }
     } catch (parseError) {
       console.error('[notify-rep] Error parsing Firebase service account:', parseError);

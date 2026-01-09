@@ -5,4 +5,8 @@ import { DATABASE_URL } from '$env/static/private';
 const connectionString = DATABASE_URL;
 
 export const pool = new Pool({ connectionString });
-export const db = drizzle(pool); 
+
+pool.on('error', (err: Error) => {
+    console.error('Unexpected error on idle client', err);
+});
+export const db = drizzle(pool);

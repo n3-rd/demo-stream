@@ -5,7 +5,11 @@ const connectionString = PUBLIC_DATABASE_URL;
 
 export const dbPool = new Pool({ connectionString });
 
-export async function query<T = any>(text: string, params: any[] = []): Promise<{ rows: T[] }>{
+dbPool.on('error', (err: Error) => {
+  console.error('Unexpected error on idle client', err);
+});
+
+export async function query<T = any>(text: string, params: any[] = []): Promise<{ rows: T[] }> {
   const client = await dbPool.connect();
   try {
     const res = await client.query<T>(text, params);

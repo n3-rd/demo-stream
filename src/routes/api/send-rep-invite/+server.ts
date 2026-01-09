@@ -108,48 +108,48 @@ export const POST: RequestHandler = async ({ request }) => {
             } catch {
               // App doesn't exist, initialize it
               admin = firebaseAdmin.initializeApp({
-                credential: firebaseAdmin.credential.cert(parsedKey)
-              });
+              credential: firebaseAdmin.credential.cert(parsedKey)
+            });
             }
             console.log('[send-rep-invite] Firebase Admin SDK initialized successfully');
 
             if (!admin) {
               console.error('[send-rep-invite] Firebase Admin SDK not initialized, cannot send notification');
             } else {
-              const messagePayload = {
-                token: deviceToken,
-                notification: {
-                  title: 'View-Room Invitation',
-                  body: `You've been invited to assist in ${room_title || 'a view-room'}`,
-                },
-                data: { 
-                  room_id: String(room_id),
-                  type: 'room_invitation',
-                  invite_url: String(invite_url)
-                },
-                apns: {
-                  payload: {
-                    aps: {
-                      sound: 'default',
-                      badge: 1,
-                      alert: {
-                        title: 'View-Room Invitation',
-                        body: `You've been invited to assist in ${room_title || 'a view-room'}`,
-                      }
+            const messagePayload = {
+              token: deviceToken,
+              notification: {
+                title: 'View-Room Invitation',
+                body: `You've been invited to assist in ${room_title || 'a view-room'}`,
+              },
+              data: { 
+                room_id: String(room_id),
+                type: 'room_invitation',
+                invite_url: String(invite_url)
+              },
+              apns: {
+                payload: {
+                  aps: {
+                    sound: 'default',
+                    badge: 1,
+                    alert: {
+                      title: 'View-Room Invitation',
+                      body: `You've been invited to assist in ${room_title || 'a view-room'}`,
                     }
-                  },
-                  headers: {
-                    'apns-priority': '10',
-                    'apns-push-type': 'alert'
                   }
+                },
+                headers: {
+                  'apns-priority': '10',
+                  'apns-push-type': 'alert'
                 }
-              };
-              console.log('[send-rep-invite] Sending notification with payload:', { ...messagePayload, token: '***' });
-              
-              const result = await admin.messaging().send(messagePayload);
-              console.log('[send-rep-invite] Notification sent successfully, result:', result);
-              
-              notificationSent = true;
+              }
+            };
+            console.log('[send-rep-invite] Sending notification with payload:', { ...messagePayload, token: '***' });
+            
+            const result = await admin.messaging().send(messagePayload);
+            console.log('[send-rep-invite] Notification sent successfully, result:', result);
+            
+            notificationSent = true;
             }
           } catch (parseError: any) {
             console.error('[send-rep-invite] Error parsing Firebase service account:', parseError);

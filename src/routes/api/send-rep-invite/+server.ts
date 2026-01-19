@@ -4,6 +4,7 @@ import { repDeviceTokens } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { telnyxSMS } from '$lib/services/telnyx';
 import { sendEmail } from '../../../lib/services/email';
+import { FIREBASE_SERVICE_ACCOUNT } from '$env/static/private';
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
@@ -81,35 +82,95 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // Send push notification if FCM token exists
     let notificationSent = false;
-    if (deviceToken) {
+    if (deviceToken && deviceToken.trim() !== '') {
+      console.log('[send-rep-invite] Device token found, attempting to send push notification');
       try {
         // Initialize Firebase Admin SDK
-        const firebaseAdmin = await import('firebase-admin');
-        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+        console.log('[send-rep-invite] Initializing Firebase Admin SDK...');
+        const firebaseAdmin = (await import('firebase-admin')).default;
+        const serviceAccount = FIREBASE_SERVICE_ACCOUNT;
         
         if (serviceAccount) {
-          const admin = firebaseAdmin.initializeApp({
-            credential: firebaseAdmin.credential.cert(JSON.parse(serviceAccount))
-          });
+          console.log('[send-rep-invite] Firebase service account env var found, parsing...');
+          try {
+            // Remove surrounding quotes if present and handle escaped newlines
+            let cleaned = serviceAccount.trim();
+            if ((cleaned.startsWith("'") && cleaned.endsWith("'")) || (cleaned.startsWith('"') && cleaned.endsWith('"'))) {
+              cleaned = cleaned.slice(1, -1);
+            }
+            const parsedKey = JSON.parse(cleaned);
+            
+            // Check if Firebase app is already initialized
+            let admin;
+            try {
+              admin = firebaseAdmin.app();
+              console.log('[send-rep-invite] Using existing Firebase Admin SDK instance');
+            } catch {
+              // App doesn't exist, initialize it
+              admin = firebaseAdmin.initializeApp({
+                credential: firebaseAdmin.credential.cert(parsedKey)
+              });
+            }
+            console.log('[send-rep-invite] Firebase Admin SDK initialized successfully');
 
-          await admin.messaging().send({
-            token: deviceToken,
-            notification: {
-              title: 'View-Room Invitation',
-              body: `You've been invited to assist in ${room_title || 'a view-room'}`,
-            },
-            data: { 
-              room_id: room_id,
-              type: 'room_invitation',
-              invite_url: invite_url
-            },
-          });
-          
-          notificationSent = true;
+            if (!admin) {
+              console.error('[send-rep-invite] Firebase Admin SDK not initialized, cannot send notification');
+            } else {
+              const messagePayload = {
+                token: deviceToken,
+                notification: {
+                  title: 'View-Room Invitation',
+                  body: `You've been invited to assist in ${room_title || 'a view-room'}`,
+                },
+                data: { 
+                  room_id: String(room_id),
+                  type: 'room_invitation',
+                  invite_url: String(invite_url)
+                },
+                apns: {
+                  payload: {
+                    aps: {
+                      sound: 'default',
+                      badge: 1,
+                      alert: {
+                        title: 'View-Room Invitation',
+                        body: `You've been invited to assist in ${room_title || 'a view-room'}`,
+                      }
+                    }
+                  },
+                  headers: {
+                    'apns-priority': '10',
+                    'apns-push-type': 'alert'
+                  }
+                }
+              };
+              console.log('[send-rep-invite] Sending notification with payload:', { ...messagePayload, token: '***' });
+              
+              const result = await admin.messaging().send(messagePayload);
+              console.log('[send-rep-invite] Notification sent successfully, result:', result);
+              
+              notificationSent = true;
+            }
+          } catch (parseError: any) {
+            console.error('[send-rep-invite] Error parsing Firebase service account:', parseError);
+            console.error('[send-rep-invite] Parse error details:', parseError?.message);
+            console.error('[send-rep-invite] Parse error stack:', parseError?.stack);
+            console.error('[send-rep-invite] First 100 chars of service account:', serviceAccount.substring(0, 100));
+          }
+        } else {
+          console.warn('[send-rep-invite] FIREBASE_SERVICE_ACCOUNT not found in environment variables');
         }
-      } catch (notificationError) {
-        console.error('Push notification error:', notificationError);
+      } catch (notificationError: any) {
+        console.error('[send-rep-invite] Push notification error:', notificationError);
+        console.error('[send-rep-invite] Error message:', notificationError?.message);
+        console.error('[send-rep-invite] Error code:', notificationError?.code);
+        console.error('[send-rep-invite] Error stack:', notificationError?.stack);
+        if (notificationError?.errorInfo) {
+          console.error('[send-rep-invite] Firebase error info:', notificationError.errorInfo);
+        }
       }
+    } else {
+      console.log('[send-rep-invite] No device token found, skipping push notification');
     }
 
     return json({ 

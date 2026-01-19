@@ -9,7 +9,6 @@
     import { ClipboardCopy, Send, Mail, X } from "lucide-svelte";
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "$lib/components/ui/select";
     import { createEventDispatcher } from "svelte";
-    import { PUBLIC_SMTP_FROM, PUBLIC_BREVO_API_KEY } from '$env/static/public';
 
     export let shareURL: string;
 
@@ -99,42 +98,6 @@
         const inviteUrl = `${$page.url.origin}/room/${$page.params.roomId}/representative?repid=${selectedRepresentative.id}&uid=${uidExtracted}`;
         
         try {
-            // Prepare email payload
-            const emailPayload = {
-                sender: {
-                    name: "Representative Invite",
-                    email: PUBLIC_SMTP_FROM
-                },
-                to: [
-                    {
-                        email: selectedRepresentative.email,
-                        name: selectedRepresentative.name
-                    }
-                ],
-                subject: "Room Invitation",
-                htmlContent: `
-                    <html>
-                        <body>
-                            <h1>Room Invitation</h1>
-                            <p>You have been invited to join the room: ${$page.data?.room?.title || 'View-Room'}</p>
-                            <p>Invited by: ${$page.data?.user?.name || 'Customer'}</p>
-                            <p>Click the link to join: <a href="${inviteUrl}">${inviteUrl}</a></p>
-                        </body>
-                    </html>
-                `
-            };
-
-            // Send email via Brevo
-            const emailResp = await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
-                headers: {
-                    accept: 'application/json',
-                    'api-key': PUBLIC_BREVO_API_KEY,
-                    'content-type': 'application/json'
-                },
-                body: JSON.stringify(emailPayload)
-            });
-
             const response = await fetch('/api/send-rep-invite', {
                 method: 'POST',
                 headers: {
@@ -155,14 +118,20 @@
                 })
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const result = await response.json();
-            const emailResult = await emailResp.json();
             
-            if (result.success && emailResult) {
-                const methodsUsed = ['SMS', 'Email', 'Notification'];
+            if (result.success) {
+                const methodsUsed = [];
+                if (result.sms_sent) methodsUsed.push('SMS');
+                if (result.email_sent) methodsUsed.push('Email');
+                if (result.notification_sent) methodsUsed.push('Notification');
 
                 toast.success(`Invite sent to ${selectedRepresentative.name}!`, {
-                    description: `Sent via: ${methodsUsed.join(', ')}`
+                    description: methodsUsed.length > 0 ? `Sent via: ${methodsUsed.join(', ')}` : 'Invite sent'
                 });
                 invitedRepresentative = selectedRepresentative.name;
                 inviteStep = "success";

@@ -118,9 +118,9 @@ CREATE TABLE IF NOT EXISTS quotes (
 -- representatives
 CREATE TABLE IF NOT EXISTS representatives (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
+  name TEXT,
   email TEXT NOT NULL,
-  phone TEXT,
+  phone TEXT NOT NULL,
   avatar TEXT,
   company UUID REFERENCES users(id) ON DELETE SET NULL,
   is_active BOOLEAN DEFAULT TRUE,

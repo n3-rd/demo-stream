@@ -6,7 +6,7 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
     const requestBody = await request.json();
     console.log('Verification Request Body:', requestBody);
 
-    const { email, code, first_name, last_name, company } = requestBody;
+    const { email, code } = requestBody;
     if (!email || !code) {
       console.error('Missing email or code');
       return json({ success: false, message: 'Email and code are required' }, { status: 400 });
@@ -29,20 +29,39 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 
     await pb.collection('verification_codes').update(verification.id, { used: true });
 
-    const rep = await pb.collection('representatives').getFirstListItem(`email = "${email}"`).catch(() => null);
+    const rep = await pb.collection('representatives').getFirstListItem(`email = "${email}"`, {
+      expand: 'company'
+    }).catch(() => null);
     if (!rep) {
       console.error('Representative not found');
       return json({ success: false, message: 'Representative not found' }, { status: 404 });
     }
 
+    // Get company name if available
+    let companyName = null;
+    if (rep.expand?.company?.company_name) {
+      companyName = rep.expand.company.company_name;
+    } else if (typeof rep.company === 'string') {
+      try {
+        const company = await pb.collection('users').getOne(rep.company);
+        companyName = company.company_name || null;
+      } catch {}
+    }
+
+    // Parse name if available
+    const nameParts = rep.name ? String(rep.name).trim().split(/\s+/) : [];
+    const firstName = rep.firstName || nameParts[0] || '';
+    const lastName = rep.lastName || nameParts.slice(1).join(' ') || '';
+
     // Prepare representative session data
     const repSession = { 
       id: rep.id, 
       email: rep.email, 
-      name: `${first_name} ${last_name}`.trim(),
-      firstName: first_name,
-      lastName: last_name,
-      company: company || rep.company 
+      name: rep.name || `${firstName} ${lastName}`.trim() || '',
+      firstName,
+      lastName,
+      company: rep.company || null,
+      companyName
     };
 
     // Set cookies with extended options for persistence

@@ -91,6 +91,51 @@ representative: "rep_id_1,rep_id_2"
 videoId: "video_id"
 ```
 
+#### GET /api/room/[roomId]/info
+**Description:** Fetch full room info including connected host and representative content items. No auth required for this read (public room info).
+
+**Response:**
+```json
+{
+  "success": true,
+  "room": {
+    "id": "e4815c00-6739-4204-b767-5cefb2fca9a7",
+    "title": "Room title",
+    "owner_company": "d7fd7b15-b739-446f-b39a-4b086eae62e6",
+    "is_active": true,
+    "representative": ["rep-id-1"],
+    "scheduled": false,
+    "schedule_time": null,
+    "hostContentItems": [
+      {
+        "id": "content-uuid-1",
+        "title": "Property Tour Video",
+        "type": "video",
+        "file": "https://viewroom.ca/api/files/content_library/content-uuid-1/video.mp4",
+        "thumbnail": "https://viewroom.ca/api/files/content_library/content-uuid-1/thumb.jpg"
+      }
+    ],
+    "representativeContentItems": [
+      {
+        "id": "content-uuid-2",
+        "title": "Floor Plan",
+        "type": "pdf",
+        "file": "https://viewroom.ca/api/files/content_library/content-uuid-2/floorplan.pdf",
+        "thumbnail": "https://viewroom.ca/api/files/content_library/content-uuid-2/pdf-thumb.jpg"
+      }
+    ]
+  },
+  "company": {
+    "id": "...",
+    "name": "Company Name",
+    "email": "company@example.com"
+  }
+}
+```
+- **Content item types:** `"video"`, `"pdf"`, `"image"`, `"document"`.
+- **Content file URLs:** Served via this app at `/api/files/{collection}/{recordId}/{filename}`. Response uses absolute URLs (request origin + path). No separate content API; content is embedded in room info.
+- **File URLs and auth:** `/api/files/...` is currently allowed without auth (see hooks). For protected files, require session cookie or token in future.
+
 #### PUT /api/room/[roomId]/info
 **Description:** Update room information
 **Body:**

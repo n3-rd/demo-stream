@@ -4,10 +4,23 @@ import { rooms } from '$lib/db/schema';
 import { eq } from 'drizzle-orm';
 import {DATABASE_URL} from '$env/static/private';
 
-export async function GET({ params, locals }) {
+const isAbsoluteUrl = (s: string) => /^https?:\/\//i.test(s);
+
+/** Map content_library record to API item shape. Uses file/thumbnail as-is when already absolute (e.g. CDN), else builds /api/files/... URL. */
+function toContentItem(record: { id: string; title: string; type: string; file?: string; thumbnail?: string }, basePath = '/api/files/content_library') {
+  return {
+    id: record.id,
+    title: record.title ?? '',
+    type: record.type ?? 'document',
+    file: record.file ? (isAbsoluteUrl(record.file) ? record.file : `${basePath}/${record.id}/${record.file}`) : '',
+    thumbnail: record.thumbnail ? (isAbsoluteUrl(record.thumbnail) ? record.thumbnail : `${basePath}/${record.id}/${record.thumbnail}`) : ''
+  };
+}
+
+export async function GET({ params, locals, url }) {
   try {
     const roomId = params.roomId;
-    
+
     if (!roomId) {
       return json({
         success: false,
@@ -15,9 +28,15 @@ export async function GET({ params, locals }) {
       }, { status: 400 });
     }
 
-    // Use the locals.pb instance that's already available
+    if (!locals.pb) {
+      return json({
+        success: false,
+        message: 'Database connection not available'
+      }, { status: 503 });
+    }
+
     const room = await locals.pb.collection('rooms').getOne(roomId, {
-      expand: 'owner_company'
+      expand: 'owner_company,host_content,representative_content'
     });
 
     if (!room) {
@@ -27,21 +46,38 @@ export async function GET({ params, locals }) {
       }, { status: 404 });
     }
 
-    // Get company information from the expanded owner_company
     const ownerCompany = room.expand?.owner_company;
-    
+    const basePath = url ? `${url.origin}/api/files/content_library` : '/api/files/content_library';
+
+    const hostContent = room.expand?.host_content ?? [];
+    const representativeContent = room.expand?.representative_content ?? [];
+    const hostContentItems = Array.isArray(hostContent)
+      ? hostContent.map((c: { id: string; title: string; type: string; file?: string; thumbnail?: string }) => toContentItem(c, basePath))
+      : [];
+    const representativeContentItems = Array.isArray(representativeContent)
+      ? representativeContent.map((c: { id: string; title: string; type: string; file?: string; thumbnail?: string }) => toContentItem(c, basePath))
+      : [];
+
     return json({
       success: true,
       room: {
         id: room.id,
         title: room.title,
-        owner_company: room.owner_company
+        owner_company: room.owner_company,
+        is_active: room.is_active ?? true,
+        representative: room.representative ?? [],
+        scheduled: room.scheduled ?? false,
+        schedule_time: room.schedule_time ?? null,
+        hostContentItems,
+        representativeContentItems
       },
-      company: ownerCompany ? {
-        id: ownerCompany.id,
-        name: ownerCompany.name || ownerCompany.email,
-        email: ownerCompany.email
-      } : null
+      company: ownerCompany
+        ? {
+            id: ownerCompany.id,
+            name: ownerCompany.name ?? ownerCompany.email,
+            email: ownerCompany.email
+          }
+        : null
     });
   } catch (error) {
     console.error('Failed to fetch room info:', error);

@@ -4,15 +4,25 @@ import type { Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { pb } from '$lib/pocketbase';
 import { initLogger } from '$lib/logger';
+import type { HandleServerError } from '@sveltejs/kit';
 
 // Initialize logger on server startup
 if (typeof window === 'undefined') {
-	initLogger({
-		logFile: 'logs/app.txt',
-		maxLines: 10000,
-		maxSizeMB: 10,
-		enableConsole: true
-	});
+    initLogger({
+        logFile: 'logs/app.txt',
+        maxLines: 10000,
+        maxSizeMB: 10,
+        enableConsole: true
+    });
+
+    // Global process error handlers to prevent crashes from unhandled async errors
+    process.on('uncaughtException', (err) => {
+        console.error('Uncaught Exception:', err);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+        console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    });
 }
 
 // Define the User type
@@ -74,7 +84,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     // Protected routes pattern - adjust this based on your needs
     const protectedRoutes = /^\/(?:dashboard|admin)/;
-    
+
     if (protectedRoutes.test(event.url.pathname)) {
         // If accessing protected route without session
         if (!session) {
@@ -84,13 +94,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     // Remove viewroom route protection
     // const viewroomRoutes = /^\/viewroom\/(?!login)/;
-    
+
     // if (viewroomRoutes.test(event.url.pathname)) {
     //     const viewroomSession = event.cookies.get('viewroom_session');
     //     if (!viewroomSession) {
     //         throw redirect(303, '/viewroom/login');
     //     }
-        
+
     //     // Add viewroom user to locals if available
     //     const viewroomUserCookie = event.cookies.get('viewroom_user');
     //     if (viewroomUserCookie) {
@@ -147,4 +157,12 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
 
     return response;
+};
+
+export const handleError: HandleServerError = ({ error, event }) => {
+    console.error('Server error at', event.url.pathname, ':', error);
+    return {
+        message: 'An unexpected error occurred',
+        code: (error as any)?.code ?? 'INTERNAL_ERROR'
+    };
 };

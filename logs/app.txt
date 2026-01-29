@@ -1,0 +1,979 @@
+[2025-12-23T17:09:07.594Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "fcm_token": "test_fcm_token_17665..."
+}
+[2025-12-23T17:09:07.595Z] [log] [store-fcm-token] Checking for existing token for rep_id: 550e8400-e29b-41d4-a716-446655440000
+[2025-12-23T17:09:07.589Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:09:10.026Z] [log] [store-fcm-token] Existing token check result: {
+  "found": false
+}
+[2025-12-23T17:09:10.027Z] [log] [store-fcm-token] Inserting new token
+[2025-12-23T17:09:10.268Z] [error] [store-fcm-token] Error storing FCM token: {
+  "query": "insert into \"rep_device_tokens\" (\"rep_id\", \"device_token\", \"updated_at\") values ($1, $2, default)",
+  "params": [
+    "550e8400-e29b-41d4-a716-446655440000",
+    "test_fcm_token_1766509746"
+  ],
+  "cause": {
+    "length": 366,
+    "name": "error",
+    "severity": "ERROR",
+    "code": "23503",
+    "detail": "Key (rep_id)=(550e8400-e29b-41d4-a716-446655440000) is not present in table \"representatives\".",
+    "schema": "public",
+    "table": "rep_device_tokens",
+    "constraint": "rep_device_tokens_rep_id_representatives_id_fk",
+    "file": "ri_triggers.c",
+    "line": "2608",
+    "routine": "ri_ReportViolation"
+  }
+}
+[2025-12-23T17:09:10.271Z] [error] [store-fcm-token] Error stack: Error: Failed query: insert into "rep_device_tokens" ("rep_id", "device_token", "updated_at") values ($1, $2, default)
+params: 550e8400-e29b-41d4-a716-446655440000,test_fcm_token_1766509746
+    at NodePgPreparedQuery.queryWithCache (file:///Users/n3rd/demo-stream/node_modules/.pnpm/drizzle-orm@0.44.4_@opentelemetry+api@1.9.0_pg@8.16.3/node_modules/drizzle-orm/pg-core/session.js:41:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (/Users/n3rd/demo-stream/src/routes/api/store-fcm-token/+server.ts:36:7)
+    at async Module.render_endpoint (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:49:18)
+    at async resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:462:17)
+    at async Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:51:20)
+    at async Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:338:20)
+    at async file:///Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:524:22
+[2025-12-23T17:09:10.271Z] [error] [store-fcm-token] Error message: Failed query: insert into "rep_device_tokens" ("rep_id", "device_token", "updated_at") values ($1, $2, default)
+params: 550e8400-e29b-41d4-a716-446655440000,test_fcm_token_1766509746
+[2025-12-23T17:09:10.293Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:09:10.294Z] [error] [store-fcm-token] Missing required fields: {
+  "rep_id": true,
+  "fcm_token": false
+}
+[2025-12-23T17:09:10.293Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "fcm_token": null
+}
+[2025-12-23T17:09:10.328Z] [error] [store-fcm-token] Missing required fields: {
+  "rep_id": true,
+  "fcm_token": false
+}
+[2025-12-23T17:09:10.327Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:09:10.328Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "fcm_token": null
+}
+[2025-12-23T17:09:10.348Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:09:10.349Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "fcm_token": "updated_fcm_token_17..."
+}
+[2025-12-23T17:09:10.349Z] [log] [store-fcm-token] Checking for existing token for rep_id: 550e8400-e29b-41d4-a716-446655440000
+[2025-12-23T17:09:11.590Z] [log] [store-fcm-token] Existing token check result: {
+  "found": false
+}
+[2025-12-23T17:09:11.591Z] [log] [store-fcm-token] Inserting new token
+[2025-12-23T17:09:11.813Z] [error] [store-fcm-token] Error message: Failed query: insert into "rep_device_tokens" ("rep_id", "device_token", "updated_at") values ($1, $2, default)
+params: 550e8400-e29b-41d4-a716-446655440000,updated_fcm_token_1766509750
+[2025-12-23T17:09:11.810Z] [error] [store-fcm-token] Error storing FCM token: {
+  "query": "insert into \"rep_device_tokens\" (\"rep_id\", \"device_token\", \"updated_at\") values ($1, $2, default)",
+  "params": [
+    "550e8400-e29b-41d4-a716-446655440000",
+    "updated_fcm_token_1766509750"
+  ],
+  "cause": {
+    "length": 366,
+    "name": "error",
+    "severity": "ERROR",
+    "code": "23503",
+    "detail": "Key (rep_id)=(550e8400-e29b-41d4-a716-446655440000) is not present in table \"representatives\".",
+    "schema": "public",
+    "table": "rep_device_tokens",
+    "constraint": "rep_device_tokens_rep_id_representatives_id_fk",
+    "file": "ri_triggers.c",
+    "line": "2608",
+    "routine": "ri_ReportViolation"
+  }
+}
+[2025-12-23T17:09:11.813Z] [error] [store-fcm-token] Error stack: Error: Failed query: insert into "rep_device_tokens" ("rep_id", "device_token", "updated_at") values ($1, $2, default)
+params: 550e8400-e29b-41d4-a716-446655440000,updated_fcm_token_1766509750
+    at NodePgPreparedQuery.queryWithCache (file:///Users/n3rd/demo-stream/node_modules/.pnpm/drizzle-orm@0.44.4_@opentelemetry+api@1.9.0_pg@8.16.3/node_modules/drizzle-orm/pg-core/session.js:41:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (/Users/n3rd/demo-stream/src/routes/api/store-fcm-token/+server.ts:36:7)
+    at async Module.render_endpoint (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:49:18)
+    at async resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:462:17)
+    at async Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:51:20)
+    at async Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:338:20)
+    at async file:///Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:524:22
+[2025-12-23T17:09:11.848Z] [log] [notify-rep] Initializing Firebase Admin SDK...
+[2025-12-23T17:09:11.916Z] [log] [notify-rep] Firebase service account env var found, parsing...
+[2025-12-23T17:09:11.916Z] [error] [notify-rep] Error parsing Firebase service account: {}
+[2025-12-23T17:09:11.921Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:09:11.920Z] [error] [notify-rep] Parse error details: Cannot read properties of undefined (reading 'cert')
+[2025-12-23T17:09:11.920Z] [error] [notify-rep] First 100 chars of service account: {"type": "service_account","project_id": "viewroom-app","private_key_id": "d20b8ee5bb7e9a19b24af0fa6
+[2025-12-23T17:09:11.921Z] [log] [notify-rep] Querying database for FCM token for rep_id: 550e8400-e29b-41d4-a716-446655440000
+[2025-12-23T17:09:11.921Z] [log] [notify-rep] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "room_id": "room_test_123"
+}
+[2025-12-23T17:09:13.275Z] [log] [notify-rep] Token query result: {
+  "found": false,
+  "record": null
+}
+[2025-12-23T17:09:13.276Z] [error] [notify-rep] No FCM token found for rep_id: 550e8400-e29b-41d4-a716-446655440000
+[2025-12-23T17:09:13.302Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:09:13.302Z] [log] [notify-rep] Request data: {
+  "rep_id": "invalid-rep-id-12345",
+  "room_id": "room_test_123"
+}
+[2025-12-23T17:09:13.302Z] [log] [notify-rep] Querying database for FCM token for rep_id: invalid-rep-id-12345
+[2025-12-23T17:09:13.529Z] [error] [notify-rep] Unexpected error in notification handler: {
+  "query": "select \"rep_id\", \"device_token\", \"updated_at\" from \"rep_device_tokens\" where \"rep_device_tokens\".\"rep_id\" = $1 limit $2",
+  "params": [
+    "invalid-rep-id-12345",
+    1
+  ],
+  "cause": {
+    "length": 152,
+    "name": "error",
+    "severity": "ERROR",
+    "code": "22P02",
+    "where": "unnamed portal parameter $1 = '...'",
+    "file": "uuid.c",
+    "line": "133",
+    "routine": "string_to_uuid"
+  }
+}
+[2025-12-23T17:09:13.529Z] [error] [notify-rep] Error message: Failed query: select "rep_id", "device_token", "updated_at" from "rep_device_tokens" where "rep_device_tokens"."rep_id" = $1 limit $2
+params: invalid-rep-id-12345,1
+[2025-12-23T17:09:13.529Z] [error] [notify-rep] Error stack: Error: Failed query: select "rep_id", "device_token", "updated_at" from "rep_device_tokens" where "rep_device_tokens"."rep_id" = $1 limit $2
+params: invalid-rep-id-12345,1
+    at NodePgPreparedQuery.queryWithCache (file:///Users/n3rd/demo-stream/node_modules/.pnpm/drizzle-orm@0.44.4_@opentelemetry+api@1.9.0_pg@8.16.3/node_modules/drizzle-orm/pg-core/session.js:41:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async file:///Users/n3rd/demo-stream/node_modules/.pnpm/drizzle-orm@0.44.4_@opentelemetry+api@1.9.0_pg@8.16.3/node_modules/drizzle-orm/node-postgres/session.js:117:22
+    at async POST (/Users/n3rd/demo-stream/src/routes/api/notify-rep/+server.ts:58:25)
+    at async Module.render_endpoint (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:49:18)
+    at async resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:462:17)
+    at async Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:51:20)
+    at async Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:338:20)
+    at async file:///Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:524:22
+[2025-12-23T17:09:14.648Z] [log] [send-rep-invite] No device token found, skipping push notification
+[2025-12-23T17:09:14.672Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:09:14.672Z] [log] [notify-rep] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+[2025-12-23T17:09:14.672Z] [error] [notify-rep] Missing required fields: {
+  "rep_id": true,
+  "room_id": false
+}
+[2025-12-23T17:09:45.473Z] [log] [2m6:09:45 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/store-fcm-token/+server.ts[22m
+[2025-12-23T17:09:45.464Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:09:47.861Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:09:47.861Z] [log] [2m6:09:47 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/store-fcm-token/+server.ts[22m [33m(x2)[39m
+[2025-12-23T17:09:49.064Z] [log] [2m6:09:49 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m
+[2025-12-23T17:09:49.064Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:09:50.264Z] [log] [2m6:09:50 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m [33m(x2)[39m
+[2025-12-23T17:09:50.264Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:09:51.768Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:09:51.768Z] [log] [2m6:09:51 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m [33m(x3)[39m
+[2025-12-23T17:10:32.376Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:10:32.380Z] [log] [2m6:10:32 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/store-fcm-token/+server.ts[22m
+[2025-12-23T17:10:32.382Z] [log] [2m6:10:32 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m
+[2025-12-23T17:10:32.382Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:10:43.932Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:10:43.933Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "fcm_token": "test_fcm_token_17665..."
+}
+[2025-12-23T17:10:45.153Z] [error] [store-fcm-token] Representative not found: 550e8400-e29b-41d4-a716-446655440000
+[2025-12-23T17:10:45.171Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:10:45.171Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "fcm_token": null
+}
+[2025-12-23T17:10:45.171Z] [error] [store-fcm-token] Missing required fields: {
+  "rep_id": true,
+  "fcm_token": false
+}
+[2025-12-23T17:10:45.185Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:10:45.185Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "fcm_token": null
+}
+[2025-12-23T17:10:45.185Z] [error] [store-fcm-token] Missing required fields: {
+  "rep_id": true,
+  "fcm_token": false
+}
+[2025-12-23T17:10:45.202Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:10:45.202Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "fcm_token": "updated_fcm_token_17..."
+}
+[2025-12-23T17:10:45.426Z] [error] [store-fcm-token] Representative not found: 550e8400-e29b-41d4-a716-446655440000
+[2025-12-23T17:10:45.451Z] [log] [notify-rep] Initializing Firebase Admin SDK...
+[2025-12-23T17:10:45.451Z] [log] [notify-rep] Firebase service account env var found, parsing...
+[2025-12-23T17:10:45.453Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:10:45.452Z] [error] [notify-rep] Error parsing Firebase service account: {}
+[2025-12-23T17:10:45.452Z] [error] [notify-rep] Parse error details: Cannot read properties of undefined (reading 'cert')
+[2025-12-23T17:10:45.453Z] [log] [notify-rep] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000",
+  "room_id": "room_test_123"
+}
+[2025-12-23T17:10:45.452Z] [error] [notify-rep] First 100 chars of service account: {"type": "service_account","project_id": "viewroom-app","private_key_id": "d20b8ee5bb7e9a19b24af0fa6
+[2025-12-23T17:10:45.453Z] [log] [notify-rep] Querying database for FCM token for rep_id: 550e8400-e29b-41d4-a716-446655440000
+[2025-12-23T17:10:45.674Z] [log] [notify-rep] Token query result: {
+  "found": false,
+  "record": null
+}
+[2025-12-23T17:10:45.674Z] [error] [notify-rep] No FCM token found for rep_id: 550e8400-e29b-41d4-a716-446655440000
+[2025-12-23T17:10:45.689Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:10:45.689Z] [log] [notify-rep] Request data: {
+  "rep_id": "invalid-rep-id-12345",
+  "room_id": "room_test_123"
+}
+[2025-12-23T17:10:45.689Z] [error] [notify-rep] Invalid UUID format for rep_id: invalid-rep-id-12345
+[2025-12-23T17:10:45.917Z] [log] [send-rep-invite] No device token found, skipping push notification
+[2025-12-23T17:10:45.931Z] [log] [notify-rep] Request data: {
+  "rep_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+[2025-12-23T17:10:45.931Z] [error] [notify-rep] Missing required fields: {
+  "rep_id": true,
+  "room_id": false
+}
+[2025-12-23T17:10:45.931Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:11:27.144Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:11:27.145Z] [log] [2m6:11:27 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m [33m(x2)[39m
+[2025-12-23T17:11:31.066Z] [log] [2m6:11:31 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/send-rep-invite/+server.ts[22m
+[2025-12-23T17:11:31.065Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:11:40.391Z] [log] [2m6:11:40 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m
+[2025-12-23T17:11:40.391Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:11:42.496Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:11:42.496Z] [log] [2m6:11:42 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/send-rep-invite/+server.ts[22m
+[2025-12-23T17:11:53.020Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:11:53.021Z] [log] [2m6:11:53 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/send-rep-invite/+server.ts[22m [33m(x2)[39m
+[2025-12-23T17:11:53.021Z] [log] [2m6:11:53 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m
+[2025-12-23T17:11:53.021Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:12:46.425Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:12:46.429Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "5f196632-c227-4b2b-9ea0-85d044708052",
+  "fcm_token": "test_fcm_token_17665..."
+}
+[2025-12-23T17:12:47.655Z] [log] [store-fcm-token] Checking for existing token for rep_id: 5f196632-c227-4b2b-9ea0-85d044708052
+[2025-12-23T17:12:47.876Z] [log] [store-fcm-token] Inserting new token
+[2025-12-23T17:12:47.876Z] [log] [store-fcm-token] Existing token check result: {
+  "found": false
+}
+[2025-12-23T17:12:48.101Z] [log] [store-fcm-token] Token inserted successfully
+[2025-12-23T17:12:48.123Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:12:48.123Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "5f196632-c227-4b2b-9ea0-85d044708052",
+  "fcm_token": null
+}
+[2025-12-23T17:12:48.123Z] [error] [store-fcm-token] Missing required fields: {
+  "rep_id": true,
+  "fcm_token": false
+}
+[2025-12-23T17:12:48.136Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:12:48.136Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "5f196632-c227-4b2b-9ea0-85d044708052",
+  "fcm_token": null
+}
+[2025-12-23T17:12:48.136Z] [error] [store-fcm-token] Missing required fields: {
+  "rep_id": true,
+  "fcm_token": false
+}
+[2025-12-23T17:12:48.151Z] [log] [store-fcm-token] Received FCM token storage request
+[2025-12-23T17:12:48.152Z] [log] [store-fcm-token] Request data: {
+  "rep_id": "5f196632-c227-4b2b-9ea0-85d044708052",
+  "fcm_token": "updated_fcm_token_17..."
+}
+[2025-12-23T17:12:48.377Z] [log] [store-fcm-token] Checking for existing token for rep_id: 5f196632-c227-4b2b-9ea0-85d044708052
+[2025-12-23T17:12:48.612Z] [log] [store-fcm-token] Existing token check result: {
+  "found": true
+}
+[2025-12-23T17:12:48.613Z] [log] [store-fcm-token] Updating existing token
+[2025-12-23T17:12:48.850Z] [log] [store-fcm-token] Token updated successfully
+[2025-12-23T17:12:48.912Z] [log] [notify-rep] Initializing Firebase Admin SDK...
+[2025-12-23T17:12:48.912Z] [log] [notify-rep] Firebase service account env var found, parsing...
+[2025-12-23T17:12:48.913Z] [error] [notify-rep] Error parsing Firebase service account: {}
+[2025-12-23T17:12:48.913Z] [error] [notify-rep] Parse error details: Cannot read properties of undefined (reading 'cert')
+[2025-12-23T17:12:48.913Z] [error] [notify-rep] Parse error stack: TypeError: Cannot read properties of undefined (reading 'cert')
+    at eval (/Users/n3rd/demo-stream/src/routes/api/notify-rep/+server.ts:35:56)
+    at async instantiateModule (file:///Users/n3rd/demo-stream/node_modules/.pnpm/vite@5.4.9_@types+node@22.7.5/node_modules/vite/dist/node/chunks/dep-Cyk9bIUq.js:52961:5)
+[2025-12-23T17:12:48.913Z] [error] [notify-rep] First 100 chars of service account: {"type": "service_account","project_id": "viewroom-app","private_key_id": "d20b8ee5bb7e9a19b24af0fa6
+[2025-12-23T17:12:48.914Z] [log] [notify-rep] Request data: {
+  "rep_id": "5f196632-c227-4b2b-9ea0-85d044708052",
+  "room_id": "room_test_123"
+}
+[2025-12-23T17:12:48.914Z] [log] [notify-rep] Querying database for FCM token for rep_id: 5f196632-c227-4b2b-9ea0-85d044708052
+[2025-12-23T17:12:48.914Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:12:49.155Z] [log] [notify-rep] Token query result: {
+  "found": true,
+  "record": {
+    "repId": "5f196632-c227-4b2b-9ea0-85d044708052",
+    "deviceToken": "***",
+    "updatedAt": "2025-12-23T17:12:48.616Z"
+  }
+}
+[2025-12-23T17:12:49.155Z] [log] [notify-rep] Device token retrieved: updated_fcm_token_17...
+[2025-12-23T17:12:49.155Z] [log] [notify-rep] Would send notification to rep 5f196632-c227-4b2b-9ea0-85d044708052 for room room_test_123
+[2025-12-23T17:12:49.155Z] [warn] [notify-rep] Firebase Admin SDK not initialized, cannot send notification
+[2025-12-23T17:12:49.170Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:12:49.171Z] [log] [notify-rep] Request data: {
+  "rep_id": "invalid-rep-id-12345",
+  "room_id": "room_test_123"
+}
+[2025-12-23T17:12:49.171Z] [error] [notify-rep] Invalid UUID format for rep_id: invalid-rep-id-12345
+[2025-12-23T17:12:49.407Z] [log] [send-rep-invite] Initializing Firebase Admin SDK...
+[2025-12-23T17:12:49.407Z] [log] [send-rep-invite] Device token found, attempting to send push notification
+[2025-12-23T17:12:49.454Z] [log] [send-rep-invite] Firebase Admin SDK initialized successfully
+[2025-12-23T17:12:49.454Z] [log] [send-rep-invite] Sending notification with payload: {
+  "token": "***",
+  "notification": {
+    "title": "View-Room Invitation",
+    "body": "You've been invited to assist in Test Room"
+  },
+  "data": {
+    "room_id": "room_test_123",
+    "type": "room_invitation",
+    "invite_url": "https://example.com/room/room_test_123"
+  },
+  "apns": {
+    "payload": {
+      "aps": {
+        "sound": "default",
+        "badge": 1,
+        "alert": {
+          "title": "View-Room Invitation",
+          "body": "You've been invited to assist in Test Room"
+        }
+      }
+    },
+    "headers": {
+      "apns-priority": "10",
+      "apns-push-type": "alert"
+    }
+  }
+}
+[2025-12-23T17:12:49.408Z] [log] [send-rep-invite] Firebase service account env var found, parsing...
+[2025-12-23T17:12:50.361Z] [error] [send-rep-invite] Error parsing Firebase service account: {
+  "code": "messaging/invalid-argument",
+  "message": "The registration token is not a valid FCM registration token"
+}
+[2025-12-23T17:12:50.364Z] [error] [send-rep-invite] Parse error details: The registration token is not a valid FCM registration token
+[2025-12-23T17:12:50.364Z] [error] [send-rep-invite] Parse error stack: Error: The registration token is not a valid FCM registration token
+    at FirebaseMessagingError.fromServerError (/Users/n3rd/demo-stream/node_modules/.pnpm/firebase-admin@13.4.0/node_modules/firebase-admin/lib/utils/error.js:269:16)
+    at createFirebaseError (/Users/n3rd/demo-stream/node_modules/.pnpm/firebase-admin@13.4.0/node_modules/firebase-admin/lib/messaging/messaging-errors-internal.js:36:47)
+    at /Users/n3rd/demo-stream/node_modules/.pnpm/firebase-admin@13.4.0/node_modules/firebase-admin/lib/messaging/messaging-api-request-internal.js:74:75
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (/Users/n3rd/demo-stream/src/routes/api/send-rep-invite/+server.ts:129:30)
+    at async Module.render_endpoint (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:49:18)
+    at async resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:462:17)
+    at async Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:51:20)
+    at async Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:338:20)
+    at async file:///Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:524:22
+[2025-12-23T17:12:50.364Z] [error] [send-rep-invite] First 100 chars of service account: {"type": "service_account","project_id": "viewroom-app","private_key_id": "d20b8ee5bb7e9a19b24af0fa6
+[2025-12-23T17:12:50.393Z] [log] [notify-rep] Request data: {
+  "rep_id": "5f196632-c227-4b2b-9ea0-85d044708052"
+}
+[2025-12-23T17:12:50.393Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:12:50.394Z] [error] [notify-rep] Missing required fields: {
+  "rep_id": true,
+  "room_id": false
+}
+[2025-12-23T17:13:22.960Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:13:22.967Z] [log] [2m6:13:22 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m [33m(x2)[39m
+[2025-12-23T17:13:26.768Z] [log] [notify-rep] Initializing Firebase Admin SDK...
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] Error parsing Firebase service account: {}
+[2025-12-23T17:13:26.768Z] [log] [notify-rep] Firebase service account env var found, parsing...
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] Parse error stack: TypeError: Cannot read properties of undefined (reading 'cert')
+    at eval (/Users/n3rd/demo-stream/src/routes/api/notify-rep/+server.ts:35:56)
+    at async instantiateModule (file:///Users/n3rd/demo-stream/node_modules/.pnpm/vite@5.4.9_@types+node@22.7.5/node_modules/vite/dist/node/chunks/dep-Cyk9bIUq.js:52961:5)
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] Parse error keys: []
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] Service account length: 2341
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] Parse error type: object
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] First 100 chars of service account: {"type": "service_account","project_id": "viewroom-app","private_key_id": "d20b8ee5bb7e9a19b24af0fa6
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] Parse error details: Cannot read properties of undefined (reading 'cert')
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] firebaseAdmin available: true
+[2025-12-23T17:13:26.769Z] [error] [notify-rep] firebaseAdmin.credential available: false
+[2025-12-23T17:13:26.770Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:13:26.770Z] [log] [notify-rep] Request data: {
+  "rep_id": "5f196632-c227-4b2b-9ea0-85d044708052",
+  "room_id": "test_room"
+}
+[2025-12-23T17:13:26.770Z] [log] [notify-rep] Querying database for FCM token for rep_id: 5f196632-c227-4b2b-9ea0-85d044708052
+[2025-12-23T17:13:27.906Z] [log] [notify-rep] Device token retrieved: updated_fcm_token_17...
+[2025-12-23T17:13:27.905Z] [log] [notify-rep] Token query result: {
+  "found": true,
+  "record": {
+    "repId": "5f196632-c227-4b2b-9ea0-85d044708052",
+    "deviceToken": "***",
+    "updatedAt": "2025-12-23T17:12:48.616Z"
+  }
+}
+[2025-12-23T17:13:27.906Z] [warn] [notify-rep] Firebase Admin SDK not initialized, cannot send notification
+[2025-12-23T17:13:27.906Z] [log] [notify-rep] Would send notification to rep 5f196632-c227-4b2b-9ea0-85d044708052 for room test_room
+[2025-12-23T17:13:35.893Z] [log] [2m6:13:35 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m [33m(x3)[39m
+[2025-12-23T17:13:35.892Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:13:39.991Z] [log] [notify-rep] Initializing Firebase Admin SDK...
+[2025-12-23T17:13:39.991Z] [log] [notify-rep] Firebase service account env var found, parsing...
+[2025-12-23T17:13:39.991Z] [log] [notify-rep] Using existing Firebase Admin SDK instance
+[2025-12-23T17:13:39.992Z] [log] [notify-rep] Received notification request
+[2025-12-23T17:13:39.992Z] [log] [notify-rep] Request data: {
+  "rep_id": "5f196632-c227-4b2b-9ea0-85d044708052",
+  "room_id": "test_room"
+}
+[2025-12-23T17:13:39.992Z] [log] [notify-rep] Querying database for FCM token for rep_id: 5f196632-c227-4b2b-9ea0-85d044708052
+[2025-12-23T17:13:41.071Z] [log] [notify-rep] Device token retrieved: updated_fcm_token_17...
+[2025-12-23T17:13:41.071Z] [log] [notify-rep] Token query result: {
+  "found": true,
+  "record": {
+    "repId": "5f196632-c227-4b2b-9ea0-85d044708052",
+    "deviceToken": "***",
+    "updatedAt": "2025-12-23T17:12:48.616Z"
+  }
+}
+[2025-12-23T17:13:41.071Z] [log] [notify-rep] Admin SDK available, attempting to send notification...
+[2025-12-23T17:13:41.071Z] [log] [notify-rep] Sending notification with payload: {
+  "token": "***",
+  "notification": {
+    "title": "View-Room Assistance Needed",
+    "body": "User is waiting in Room #test_room"
+  },
+  "data": {
+    "room_id": "test_room",
+    "type": "assistance_request"
+  },
+  "apns": {
+    "payload": {
+      "aps": {
+        "sound": "default",
+        "badge": 1,
+        "alert": {
+          "title": "View-Room Assistance Needed",
+          "body": "User is waiting in Room #test_room"
+        }
+      }
+    },
+    "headers": {
+      "apns-priority": "10",
+      "apns-push-type": "alert"
+    }
+  }
+}
+[2025-12-23T17:13:41.565Z] [error] [notify-rep] Firebase notification error: {
+  "code": "messaging/invalid-argument",
+  "message": "The registration token is not a valid FCM registration token"
+}
+[2025-12-23T17:13:41.566Z] [error] [notify-rep] Firebase error code: messaging/invalid-argument
+[2025-12-23T17:13:41.565Z] [error] [notify-rep] Firebase error message: The registration token is not a valid FCM registration token
+[2025-12-23T17:13:41.566Z] [error] [notify-rep] Firebase error stack: Error: The registration token is not a valid FCM registration token
+    at FirebaseMessagingError.fromServerError (/Users/n3rd/demo-stream/node_modules/.pnpm/firebase-admin@13.4.0/node_modules/firebase-admin/lib/utils/error.js:269:16)
+    at createFirebaseError (/Users/n3rd/demo-stream/node_modules/.pnpm/firebase-admin@13.4.0/node_modules/firebase-admin/lib/messaging/messaging-errors-internal.js:36:47)
+    at /Users/n3rd/demo-stream/node_modules/.pnpm/firebase-admin@13.4.0/node_modules/firebase-admin/lib/messaging/messaging-api-request-internal.js:74:75
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (/Users/n3rd/demo-stream/src/routes/api/notify-rep/+server.ts:115:24)
+    at async Module.render_endpoint (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/endpoint.js:49:18)
+    at async resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:462:17)
+    at async Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:51:20)
+    at async Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:338:20)
+    at async file:///Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/exports/vite/dev/index.js:524:22
+[2025-12-23T17:13:41.566Z] [error] [notify-rep] Firebase error info: {
+  "code": "messaging/invalid-argument",
+  "message": "The registration token is not a valid FCM registration token"
+}
+[2025-12-23T17:13:55.442Z] [log] [2m6:13:55 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/send-rep-invite/+server.ts[22m
+[2025-12-23T17:13:55.442Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:14:01.455Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:14:01.455Z] [log] [2m6:14:01 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/notify-rep/+server.ts[22m
+[2025-12-23T17:14:01.455Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2025-12-23T17:14:01.455Z] [log] [2m6:14:01 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/send-rep-invite/+server.ts[22m
+[2026-01-29T18:13:55.699Z] [warn] Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[2026-01-29T18:16:47.984Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:16:48.012Z] [log] [2m7:16:48 PM[22m [36m[1m[vite][22m[39m [32m.env changed, restarting server...[39m
+[2026-01-29T18:16:48.126Z] [warn] [1m[33mYour jsconfig.json should extend the configuration generated by SvelteKit:[22m[39m
+[2026-01-29T18:16:48.126Z] [warn] {
+  "extends": "./.svelte-kit/tsconfig.json"
+}
+[2026-01-29T18:16:48.192Z] [log] [2m7:16:48 PM[22m [36m[1m[vite][22m[39m server restarted.
+[2026-01-29T18:16:59.330Z] [log] 📱 Sending SMS to +1234567890: Your Admin verification code is: 108849. This code expires in 10 minutes.
+[2026-01-29T18:16:59.330Z] [log] 📱 Sending SMS to +1234567890: Your Admin verification code is: 108849. This code expires in 10 minutes.
+[2026-01-29T18:17:04.969Z] [error] ❌ Telnyx SMS Error: 401 {"errors":[{"code":"10009","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10009"},"title":"Authentication failed","source":{"pointer":"/"},"detail":"No key found matching the ID 'KEY0198666BE031479670E50F8BA466D8A1' with the provided secret."}]}
+[2026-01-29T18:17:04.969Z] [error] ❌ Telnyx SMS Error: 401 {"errors":[{"code":"10009","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10009"},"title":"Authentication failed","source":{"pointer":"/"},"detail":"No key found matching the ID 'KEY0198666BE031479670E50F8BA466D8A1' with the provided secret."}]}
+[2026-01-29T18:17:04.971Z] [error] ❌ Failed to send SMS: {}
+[2026-01-29T18:17:04.971Z] [error] ❌ Failed to send SMS: {}
+[2026-01-29T18:17:09.323Z] [error] passwordless email send error {"message":"Key not found","code":"unauthorized"}
+
+[2026-01-29T18:17:09.322Z] [error] passwordless email send error {"message":"Key not found","code":"unauthorized"}
+
+[2026-01-29T18:17:17.655Z] [log] 📱 Sending SMS to +1234567890: Your Admin verification code is: 373224. This code expires in 10 minutes.
+[2026-01-29T18:17:17.655Z] [log] 📱 Sending SMS to +1234567890: Your Admin verification code is: 373224. This code expires in 10 minutes.
+[2026-01-29T18:17:19.715Z] [error] ❌ Telnyx SMS Error: 401 {"errors":[{"code":"10009","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10009"},"title":"Authentication failed","source":{"pointer":"/"},"detail":"No key found matching the ID 'KEY0198666BE031479670E50F8BA466D8A1' with the provided secret."}]}
+[2026-01-29T18:17:19.717Z] [error] ❌ Failed to send SMS: {}
+[2026-01-29T18:17:19.715Z] [error] ❌ Telnyx SMS Error: 401 {"errors":[{"code":"10009","meta":{"url":"https://developers.telnyx.com/docs/overview/errors/10009"},"title":"Authentication failed","source":{"pointer":"/"},"detail":"No key found matching the ID 'KEY0198666BE031479670E50F8BA466D8A1' with the provided secret."}]}
+[2026-01-29T18:17:19.716Z] [error] ❌ Failed to send SMS: {}
+[2026-01-29T18:17:22.813Z] [error] passwordless email send error {"message":"Key not found","code":"unauthorized"}
+
+[2026-01-29T18:17:22.813Z] [error] passwordless email send error {"message":"Key not found","code":"unauthorized"}
+
+[2026-01-29T18:17:35.313Z] [log] [2m7:17:35 PM[22m [36m[1m[vite][22m[39m [32m.env changed, restarting server...[39m
+[2026-01-29T18:17:35.310Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:17:35.310Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:17:35.313Z] [log] [2m7:17:35 PM[22m [36m[1m[vite][22m[39m [32m.env changed, restarting server...[39m
+[2026-01-29T18:17:35.402Z] [warn] [1m[33mYour jsconfig.json should extend the configuration generated by SvelteKit:[22m[39m
+[2026-01-29T18:17:35.402Z] [warn] [1m[33mYour jsconfig.json should extend the configuration generated by SvelteKit:[22m[39m
+[2026-01-29T18:17:35.402Z] [warn] {
+  "extends": "./.svelte-kit/tsconfig.json"
+}
+[2026-01-29T18:17:35.402Z] [warn] {
+  "extends": "./.svelte-kit/tsconfig.json"
+}
+[2026-01-29T18:17:35.447Z] [log] [2m7:17:35 PM[22m [36m[1m[vite][22m[39m server restarted.
+[2026-01-29T18:17:35.447Z] [log] [2m7:17:35 PM[22m [36m[1m[vite][22m[39m server restarted.
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] Mock SMS to +1234567890: Your Admin verification code is: 567399. This code expires in 10 minutes.
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] Mock SMS to +1234567890: Your Admin verification code is: 567399. This code expires in 10 minutes.
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] SMS stored in mock receiver. Code: 567399
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] Mock SMS to +1234567890: Your Admin verification code is: 567399. This code expires in 10 minutes.
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] SMS stored in mock receiver. Code: 567399
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] SMS stored in mock receiver. Code: 567399
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] ⭐ Quick Access: Visit /dev/mock-sms to view all codes or copy this code: 567399
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] ⭐ Quick Access: Visit /dev/mock-sms to view all codes or copy this code: 567399
+[2026-01-29T18:17:49.013Z] [log] 📱 [DEV MODE] ⭐ Quick Access: Visit /dev/mock-sms to view all codes or copy this code: 567399
+[2026-01-29T18:17:52.567Z] [error] passwordless email send error {"message":"Key not found","code":"unauthorized"}
+
+[2026-01-29T18:17:52.567Z] [error] passwordless email send error {"message":"Key not found","code":"unauthorized"}
+
+[2026-01-29T18:17:52.567Z] [error] passwordless email send error {"message":"Key not found","code":"unauthorized"}
+
+[2026-01-29T18:18:10.423Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-01-29T18:18:10.423Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-01-29T18:18:10.422Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-01-29T18:20:33.076Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:20:33.076Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:20:33.082Z] [log] [2m7:20:33 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/room/[roomId]/info/+server.ts[22m
+[2026-01-29T18:20:33.082Z] [log] [2m7:20:33 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/room/[roomId]/info/+server.ts[22m
+[2026-01-29T18:20:33.082Z] [log] [2m7:20:33 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/room/[roomId]/info/+server.ts[22m
+[2026-01-29T18:20:33.076Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:20:33.337Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-01-29T18:20:33.337Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-01-29T18:20:33.337Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-01-29T18:20:37.498Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:20:37.498Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:20:37.498Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[2026-01-29T18:20:37.499Z] [log] [2m7:20:37 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/room/[roomId]/info/+server.ts[22m [33m(x2)[39m
+[2026-01-29T18:20:37.499Z] [log] [2m7:20:37 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/room/[roomId]/info/+server.ts[22m [33m(x2)[39m
+[2026-01-29T18:20:37.499Z] [log] [2m7:20:37 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/room/[roomId]/info/+server.ts[22m [33m(x2)[39m
+[2026-01-29T18:20:37.659Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-01-29T18:20:37.659Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-01-29T18:20:37.659Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}

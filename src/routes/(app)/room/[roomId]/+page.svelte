@@ -197,6 +197,47 @@ $: {
 // Add videoElements map declaration at the top with other state variables
 let videoElements = new Map();
 
+// Dual camera streaming state (rep front/back from mobile LIVE mode)
+let representativeStreams: {
+	odooRepId: string | null;
+	front: { streamId: string | null; mediaStream: MediaStream | null; playing: boolean };
+	back: { streamId: string | null; mediaStream: MediaStream | null; playing: boolean };
+	isLive: boolean;
+} = {
+	odooRepId: null,
+	front: { streamId: null, mediaStream: null, playing: false },
+	back: { streamId: null, mediaStream: null, playing: false },
+	isLive: false
+};
+/** Stream IDs currently shown in dual-camera layout (so RepresentativeIndicator can hide them) */
+let dualCameraStreamIds: string[] = [];
+
+function parseStreamId(streamId: string): {
+	uniqueId: string;
+	odooRepId: string | null;
+	cameraType: string;
+	isBackCamera: boolean;
+	isFrontCamera: boolean;
+} {
+	const match = streamId.match(/^(.+)-(.+)_(front|back)$/);
+	if (match) {
+		return {
+			uniqueId: match[1],
+			odooRepId: match[2],
+			cameraType: match[3],
+			isBackCamera: match[3] === 'back',
+			isFrontCamera: match[3] === 'front'
+		};
+	}
+	return {
+		uniqueId: streamId,
+		odooRepId: null,
+		cameraType: 'unknown',
+		isBackCamera: false,
+		isFrontCamera: false
+	};
+}
+
 // Stream configuration
 let publishStreamId = null;
 let showNameModal = !isAuthenticated;
@@ -574,6 +615,21 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
         case "streamJoined":
             if (obj.streamId) {
+                const streamInfo = parseStreamId(obj.streamId);
+                // Dual camera: subscribe to front/back streams and track state
+                if (streamInfo.isBackCamera) {
+                    representativeStreams.back.streamId = obj.streamId;
+                    representativeStreams.isLive = true;
+                    representativeStreams.odooRepId = streamInfo.odooRepId;
+                    if (!dualCameraStreamIds.includes(obj.streamId)) dualCameraStreamIds = [...dualCameraStreamIds, obj.streamId];
+                    if (webRTCAdaptor) webRTCAdaptor.play(obj.streamId);
+                } else if (streamInfo.isFrontCamera) {
+                    representativeStreams.front.streamId = obj.streamId;
+                    representativeStreams.odooRepId = representativeStreams.odooRepId ?? streamInfo.odooRepId;
+                    if (!dualCameraStreamIds.includes(obj.streamId)) dualCameraStreamIds = [...dualCameraStreamIds, obj.streamId];
+                    if (webRTCAdaptor) webRTCAdaptor.play(obj.streamId);
+                }
+
                 let participantName = 'Unknown User';
                 try {
                     if (obj.metadata) {
@@ -592,6 +648,28 @@ function handleWebRTCCallback(info: string, obj: any) {
                     isRepresentative: participantName.endsWith('_representative')
                 };
                 handleNewParticipant(participant);
+            }
+            break;
+        case "streamLeaved":
+        case "streamLeft":
+            if (obj.streamId) {
+                const streamInfo = parseStreamId(obj.streamId);
+                if (streamInfo.isBackCamera) {
+                    representativeStreams.back.streamId = null;
+                    representativeStreams.back.mediaStream = null;
+                    representativeStreams.back.playing = false;
+                    representativeStreams.isLive = false;
+                    dualCameraStreamIds = dualCameraStreamIds.filter((id) => id !== obj.streamId);
+                    const backEl = document.getElementById('back-camera-video') as HTMLVideoElement;
+                    if (backEl) backEl.srcObject = null;
+                } else if (streamInfo.isFrontCamera) {
+                    representativeStreams.front.streamId = null;
+                    representativeStreams.front.mediaStream = null;
+                    representativeStreams.front.playing = false;
+                    dualCameraStreamIds = dualCameraStreamIds.filter((id) => id !== obj.streamId);
+                    const frontEl = document.getElementById('front-camera-video') as HTMLVideoElement;
+                    if (frontEl) frontEl.srcObject = null;
+                }
             }
             break;
         case "data_channel_opened":
@@ -1696,6 +1774,23 @@ function handleMainTrackBroadcastObject(broadcastObject) {
     currentTracks.forEach(trackId => {
         if (!allParticipants[trackId].isFake && !participantIds.includes(trackId)) {
             console.log("stream removed:" + trackId);
+            const streamInfo = parseStreamId(trackId);
+            if (streamInfo.isBackCamera) {
+                representativeStreams.back.streamId = null;
+                representativeStreams.back.mediaStream = null;
+                representativeStreams.back.playing = false;
+                representativeStreams.isLive = false;
+                dualCameraStreamIds = dualCameraStreamIds.filter((id) => id !== trackId);
+                const backEl = document.getElementById('back-camera-video') as HTMLVideoElement;
+                if (backEl) backEl.srcObject = null;
+            } else if (streamInfo.isFrontCamera) {
+                representativeStreams.front.streamId = null;
+                representativeStreams.front.mediaStream = null;
+                representativeStreams.front.playing = false;
+                dualCameraStreamIds = dualCameraStreamIds.filter((id) => id !== trackId);
+                const frontEl = document.getElementById('front-camera-video') as HTMLVideoElement;
+                if (frontEl) frontEl.srcObject = null;
+            }
             delete allParticipants[trackId];
         }
     });
@@ -1704,6 +1799,20 @@ function handleMainTrackBroadcastObject(broadcastObject) {
     participantIds.forEach(pid => {
         if (allParticipants[pid] === undefined) {
             webRTCAdaptor.getBroadcastObject(pid);
+        }
+        // Dual camera: subscribe to existing front/back streams when we first see them
+        const streamInfo = parseStreamId(pid);
+        if (streamInfo.isBackCamera) {
+            representativeStreams.back.streamId = pid;
+            representativeStreams.isLive = true;
+            representativeStreams.odooRepId = streamInfo.odooRepId;
+            if (!dualCameraStreamIds.includes(pid)) dualCameraStreamIds = [...dualCameraStreamIds, pid];
+            webRTCAdaptor.play(pid);
+        } else if (streamInfo.isFrontCamera) {
+            representativeStreams.front.streamId = pid;
+            representativeStreams.odooRepId = representativeStreams.odooRepId ?? streamInfo.odooRepId;
+            if (!dualCameraStreamIds.includes(pid)) dualCameraStreamIds = [...dualCameraStreamIds, pid];
+            webRTCAdaptor.play(pid);
         }
     });
 
@@ -1778,8 +1887,28 @@ function playVideo(obj) {
 
     const incomingTrackId = obj.trackId.substring("ARDAMSx".length);
     const streamId = obj.stream.id;
+    const streamInfo = parseStreamId(streamId);
 
     if (incomingTrackId == roomId || incomingTrackId == publishStreamId) {
+        return;
+    }
+
+    // Dual camera: route front/back video to dedicated elements
+    if (obj.track.kind === "video" && (streamInfo.isFrontCamera || streamInfo.isBackCamera)) {
+        const slot = streamInfo.isBackCamera ? representativeStreams.back : representativeStreams.front;
+        if (!slot.mediaStream) slot.mediaStream = new MediaStream();
+        slot.mediaStream.addTrack(obj.track);
+        const videoId = streamInfo.isBackCamera ? 'back-camera-video' : 'front-camera-video';
+        const videoEl = document.getElementById(videoId) as HTMLVideoElement;
+        if (videoEl) {
+            videoEl.srcObject = slot.mediaStream;
+            slot.playing = true;
+            videoEl.play().catch((e) => console.warn('Dual-camera autoplay:', e));
+        }
+        obj.track.onended = () => {};
+        obj.stream.onremovetrack = (event: MediaStreamTrackEvent) => {
+            if (slot.mediaStream && event.track) slot.mediaStream.removeTrack(event.track);
+        };
         return;
     }
 
@@ -2045,6 +2174,20 @@ function removeAllRemoteVideos() {
     }
     // Clear video elements map
     videoElements = new Map();
+    // Clear dual-camera state
+    representativeStreams.front.streamId = null;
+    representativeStreams.front.mediaStream = null;
+    representativeStreams.front.playing = false;
+    representativeStreams.back.streamId = null;
+    representativeStreams.back.mediaStream = null;
+    representativeStreams.back.playing = false;
+    representativeStreams.isLive = false;
+    representativeStreams.odooRepId = null;
+    dualCameraStreamIds = [];
+    const backEl = document.getElementById('back-camera-video') as HTMLVideoElement;
+    const frontEl = document.getElementById('front-camera-video') as HTMLVideoElement;
+    if (backEl) backEl.srcObject = null;
+    if (frontEl) frontEl.srcObject = null;
 }
 
 // Example of how to use the update function
@@ -2701,8 +2844,32 @@ let selectedVideo = null;
                 <!-- Main content area -->
                 <div class="flex-grow h-[70vh] md:h-full bg-bgdefault relative flex px-2">
                     <div class="video-container bg-red h-full w-full relative">
+                        <!-- Dual camera: back camera (main) when rep is LIVE -->
+                        <div
+                            id="back-camera-container"
+                            class="dual-camera-back-container"
+                            class:hidden={!representativeStreams.isLive}
+                        >
+                            <video id="back-camera-video" autoplay playsinline class="dual-camera-back-video"></video>
+                            {#if representativeStreams.isLive}
+                                <div class="dual-camera-live-indicator">
+                                    <span class="dual-camera-live-dot"></span>
+                                    <span>LIVE</span>
+                                </div>
+                            {/if}
+                            <div class="dual-camera-label">Back Camera</div>
+                        </div>
+                        <!-- Dual camera: front camera PIP (always in DOM so playVideo can attach; hidden when no front stream) -->
+                        <div
+                            id="front-camera-container"
+                            class="dual-camera-front-pip"
+                            class:hidden={!representativeStreams.front.streamId}
+                        >
+                            <video id="front-camera-video" autoplay playsinline class="dual-camera-front-video"></video>
+                            <div class="dual-camera-label">Rep</div>
+                        </div>
                         <RepresentativeIndicator 
-                            participants={meetingParticipants}
+                            participants={meetingParticipants.filter((p) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''))}
                             selfName={repSelfName}
                             on:representativesUpdate={handleRepresentativesUpdate}
                         />
@@ -2725,6 +2892,8 @@ let selectedVideo = null;
                             </div>
                         {/if}
                         
+                        <!-- Main content (hidden when rep is LIVE with back camera) -->
+                        <div class="dual-camera-content-wrap" class:hidden={representativeStreams.isLive}>
                         {#if $currentVideoUrl}
                             {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
                             {console.log("playvideo store", $playVideoStore)}
@@ -2795,7 +2964,7 @@ let selectedVideo = null;
                                 No media selected
                             </div>
                         {/if}
-                        
+                        </div>
                       
                     </div>
 
@@ -2970,10 +3139,95 @@ let selectedVideo = null;
     align-items: center;
     justify-content: center;
     position: relative;
+    background: #000;
 }
 
 .video-container video {
     position: absolute;
+}
+
+/* Dual camera: back camera full screen during LIVE */
+.dual-camera-back-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+}
+.dual-camera-back-container.hidden {
+    display: none;
+}
+.dual-camera-back-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* Dual camera: front PIP */
+.dual-camera-front-pip {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 180px;
+    height: 240px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 3px solid #fff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 20;
+}
+.dual-camera-front-pip.hidden {
+    display: none;
+}
+.dual-camera-front-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.dual-camera-label {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+.dual-camera-live-indicator {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: #ef4444;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 30;
+}
+.dual-camera-live-dot {
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    animation: dual-camera-pulse 1s infinite;
+}
+@keyframes dual-camera-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+.dual-camera-content-wrap {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+}
+.dual-camera-content-wrap.hidden {
+    display: none;
 }
 
 .panel {

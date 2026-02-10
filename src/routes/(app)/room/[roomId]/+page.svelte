@@ -78,6 +78,10 @@ let isVideoPlaying = false;
 let currentVideoTime = 0;
 let isVideoMuted = false;
 
+// Live mode from data channel (rep GO LIVE = composited stream full-screen)
+let isRepLive = false;
+let liveCameraMode: string | null = null;
+
 // Room data
 
 // Get the base room name from the URL
@@ -721,7 +725,9 @@ function handleWebRTCCallback(info: string, obj: any) {
                                         docxScrollPosition: $docxScrollPosition,
                                         isPlaying: $playVideoStore,
                                         currentTime: videoPlayer?.currentTime || 0,
-                                        syncSource
+                                        syncSource,
+                                        isLive: isRepLive,
+                                        ...(liveCameraMode && { cameraMode: liveCameraMode })
                                     })
                                 };
                                 sendMessage(
@@ -806,6 +812,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                             
                             // Update play state
                             playVideoStore.set(state.isPlaying || false);
+
+                            // Live mode (for late joiners)
+                            if (state.isLive !== undefined) {
+                                isRepLive = state.isLive;
+                                liveCameraMode = state.cameraMode || null;
+                            }
                         }
                         
                         // Handle media URL updates
@@ -993,6 +1005,17 @@ function handleWebRTCCallback(info: string, obj: any) {
                     
                     // Handle other message types
                     switch (messageBody?.eventType) {
+                        case 'live_mode_change': {
+                            try {
+                                const payload = JSON.parse(messageBody.messageBody);
+                                isRepLive = !!payload.isLive;
+                                liveCameraMode = payload.cameraMode || null;
+                                console.log(`[LiveMode] isLive=${isRepLive}, cameraMode=${liveCameraMode}`);
+                            } catch (e) {
+                                console.error('Error parsing live_mode_change:', e);
+                            }
+                            break;
+                        }
                         case 'chat_message':
                             handleChatMessage(messageBody);
                             break;
@@ -2844,26 +2867,32 @@ let selectedVideo = null;
                 <!-- Main content area -->
                 <div class="flex-grow h-[70vh] md:h-full bg-bgdefault relative flex px-2">
                     <div class="video-container bg-red h-full w-full relative">
-                        <!-- Dual camera: back camera (main) when rep is LIVE -->
+                        <!-- Rep stream: full-screen when GO LIVE (data channel), else back+front when dual streams -->
                         <div
                             id="back-camera-container"
                             class="dual-camera-back-container"
-                            class:hidden={!representativeStreams.isLive}
+                            class:live-fullscreen={isRepLive}
+                            class:hidden={!isRepLive && !representativeStreams.isLive}
                         >
                             <video id="back-camera-video" autoplay playsinline class="dual-camera-back-video"></video>
-                            {#if representativeStreams.isLive}
+                            {#if isRepLive}
+                                <div class="live-badge">
+                                    <span class="live-badge-dot"></span>
+                                    <span>LIVE</span>
+                                </div>
+                            {:else if representativeStreams.isLive}
                                 <div class="dual-camera-live-indicator">
                                     <span class="dual-camera-live-dot"></span>
                                     <span>LIVE</span>
                                 </div>
+                                <div class="dual-camera-label">Back Camera</div>
                             {/if}
-                            <div class="dual-camera-label">Back Camera</div>
                         </div>
-                        <!-- Dual camera: front camera PIP (always in DOM so playVideo can attach; hidden when no front stream) -->
+                        <!-- Dual camera: front camera PIP (hidden when rep is in live mode – composited stream has front in it) -->
                         <div
                             id="front-camera-container"
                             class="dual-camera-front-pip"
-                            class:hidden={!representativeStreams.front.streamId}
+                            class:hidden={isRepLive || !representativeStreams.front.streamId}
                         >
                             <video id="front-camera-video" autoplay playsinline class="dual-camera-front-video"></video>
                             <div class="dual-camera-label">Rep</div>
@@ -2892,8 +2921,8 @@ let selectedVideo = null;
                             </div>
                         {/if}
                         
-                        <!-- Main content (hidden when rep is LIVE with back camera) -->
-                        <div class="dual-camera-content-wrap" class:hidden={representativeStreams.isLive}>
+                        <!-- Main content (hidden when rep is LIVE or dual-camera back is showing) -->
+                        <div class="dual-camera-content-wrap" class:hidden={isRepLive || representativeStreams.isLive}>
                         {#if $currentVideoUrl}
                             {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
                             {console.log("playvideo store", $playVideoStore)}
@@ -3157,6 +3186,42 @@ let selectedVideo = null;
 }
 .dual-camera-back-container.hidden {
     display: none;
+}
+/* Live mode (data channel): composited rep stream full-screen */
+.dual-camera-back-container.live-fullscreen {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: #000;
+}
+.dual-camera-back-container.live-fullscreen .dual-camera-back-video {
+    object-fit: contain;
+}
+.live-badge {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: #e53e3e;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 30;
+}
+.live-badge-dot {
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    animation: live-badge-pulse 1.5s ease-in-out infinite;
+}
+@keyframes live-badge-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
 .dual-camera-back-video {
     width: 100%;

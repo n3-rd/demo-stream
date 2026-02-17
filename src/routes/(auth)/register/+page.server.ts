@@ -59,7 +59,12 @@ export const actions = {
 		// Store full registration data in verification record
 		const formattedPhone = telnyxSMS.formatPhoneNumber(body.phone.toString());
 		
-		// Check if there's already a pending verification for this email/phone
+		// Generate a fresh verification code
+		const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+		const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+		// Check if there's already a pending verification for this email/phone — update it instead of blocking
+		let verificationData: any;
 		try {
 			const existingVerification = await locals.pb.collection('admin_phone_verification')
 				.getList(1, 1, {
@@ -67,34 +72,32 @@ export const actions = {
 				});
 
 			if (existingVerification.items.length > 0) {
-				return { 
-					type: 'failure',
-					data: { 
-						success: false, 
-						message: 'A verification code was already sent recently. Please check your phone or wait before requesting a new one.'
-					}
-				};
+				verificationData = await locals.pb.collection('admin_phone_verification').update(existingVerification.items[0].id, {
+					verification_code: verificationCode,
+					expires_at: expiresAt.toISOString(),
+					company_name: body.name.toString(),
+					password: body.password.toString(),
+					website: body.website?.toString() || ''
+				});
 			}
 		} catch (err) {
 			// No existing verification, continue
 		}
 
-		// Generate verification code
-		const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-		const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-		// Store complete registration data in verification record
+		// Create new record if no existing one was updated
 		try {
-			const verificationData = await locals.pb.collection('admin_phone_verification').create({
-				phone: formattedPhone,
-				verification_code: verificationCode,
-				email: body.email.toString(),
-				expires_at: expiresAt.toISOString(),
-				used: false,
-				company_name: body.name.toString(),
-				password: body.password.toString(),
-				website: body.website?.toString() || ''
-			});
+			if (!verificationData) {
+				verificationData = await locals.pb.collection('admin_phone_verification').create({
+					phone: formattedPhone,
+					verification_code: verificationCode,
+					email: body.email.toString(),
+					expires_at: expiresAt.toISOString(),
+					used: false,
+					company_name: body.name.toString(),
+					password: body.password.toString(),
+					website: body.website?.toString() || ''
+				});
+			}
 
 			// Send SMS via Telnyx
 			const smsSent = await telnyxSMS.sendVerificationCode(

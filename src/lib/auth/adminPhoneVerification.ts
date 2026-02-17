@@ -63,26 +63,30 @@ export async function sendAdminPhoneVerification(
         filter: `phone = "${formattedPhone}" && email = "${request.email}" && used = false && expires_at > "${new Date().toISOString()}"`
       }).catch(() => ({ items: [] }));
 
-    if (existingVerification.items.length > 0) {
-      return {
-        success: false,
-        message: 'A verification code was already sent recently. Please wait before requesting a new one.'
-      };
-    }
-
     // Generate verification code
     const verificationCode = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-    // Store verification code in database
-    const verificationData = await pb.collection('admin_phone_verification').create({
-      phone: formattedPhone,
-      verification_code: verificationCode,
-      email: request.email,
-      expires_at: expiresAt.toISOString(),
-      used: false,
-      company_name: request.company_name
-    });
+    let verificationData: any;
+
+    if (existingVerification.items.length > 0) {
+      // Update existing record with fresh code and expiry
+      verificationData = await pb.collection('admin_phone_verification').update(existingVerification.items[0].id, {
+        verification_code: verificationCode,
+        expires_at: expiresAt.toISOString(),
+        company_name: request.company_name
+      });
+    } else {
+      // Store new verification code in database
+      verificationData = await pb.collection('admin_phone_verification').create({
+        phone: formattedPhone,
+        verification_code: verificationCode,
+        email: request.email,
+        expires_at: expiresAt.toISOString(),
+        used: false,
+        company_name: request.company_name
+      });
+    }
 
     // Send SMS via Telnyx
     const smsSent = await telnyxSMS.sendVerificationCode(
@@ -146,8 +150,15 @@ export async function sendAdminEmailVerification(
 
     if (existing.items.length > 0) {
       const rec = existing.items[0];
-      verificationCode = rec.verification_code;
+      verificationCode = generateVerificationCode();
       verificationId = rec.id;
+      // Update existing record with fresh code and expiry
+      const freshExpiry = new Date(Date.now() + 10 * 60 * 1000);
+      await pb.collection('admin_phone_verification').update(rec.id, {
+        verification_code: verificationCode,
+        expires_at: freshExpiry.toISOString(),
+        company_name: request.company_name
+      });
     } else {
       verificationCode = generateVerificationCode();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now

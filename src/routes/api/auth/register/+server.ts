@@ -72,15 +72,26 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
             return resp.ok;
         };
 
-        // If pending exists, reuse its code and resend to both channels
+        // If pending exists, generate a fresh code, update the record, and resend
         if (existingVerificationRecord) {
+            const freshCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const freshExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+            await locals.pb.collection('admin_phone_verification').update(existingVerificationRecord.id, {
+                verification_code: freshCode,
+                expires_at: freshExpiry.toISOString(),
+                company_name: name,
+                password: password,
+                website: website || ''
+            });
+
             let smsSent = false;
             let emailSent = false;
             await Promise.all([
                 (async () => {
-                    try { smsSent = !!(await telnyxSMS.sendVerificationCode(formattedPhone, existingVerificationRecord.verification_code, name)); } catch (e) { console.error('SMS resend error:', e); }
+                    try { smsSent = !!(await telnyxSMS.sendVerificationCode(formattedPhone, freshCode, name)); } catch (e) { console.error('SMS resend error:', e); }
                 })(),
-                (async () => { try { emailSent = await sendEmail(existingVerificationRecord.verification_code); } catch (e) { console.error('Email resend error:', e); } })()
+                (async () => { try { emailSent = await sendEmail(freshCode); } catch (e) { console.error('Email resend error:', e); } })()
             ]);
 
             if (!smsSent && !emailSent) {

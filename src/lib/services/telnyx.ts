@@ -43,11 +43,27 @@ export class TelnyxSMSService {
   }
 
   async sendSMS(to: string, message: string): Promise<boolean> {
+    // Normalize: single E.164 number (Telnyx rejects multiple or invalid)
+    const raw = typeof to === 'string' ? to.trim() : String(to ?? '');
+    const single = raw.includes(',') ? raw.split(',')[0].trim() : raw;
+    const normalized = formatToE164(single);
+    if (!normalized || !isE164(normalized)) {
+      console.error('❌ Telnyx SMS: invalid "to" address (must be single E.164 number):', to);
+      return false;
+    }
+    // Known placeholder/test numbers: don't call Telnyx (they reject); in dev use mock
+    const digits = normalized.replace(/\D/g, '');
+    const isPlaceholder = /^1?234567890$/.test(digits);
+    if (isPlaceholder && !dev) {
+      console.warn('⚠️ Telnyx SMS: skipping placeholder number (use a real number for SMS):', normalized);
+      return false;
+    }
+
     // Check SMS mode - use mock in dev mode unless explicitly set to production
     const useMockSMS = dev && PUBLIC_SMS_MODE !== 'production';
     
     if (useMockSMS) {
-      console.log(`📱 [DEV MODE] Mock SMS to ${to}: ${message}`);
+      console.log(`📱 [DEV MODE] Mock SMS to ${normalized}: ${message}`);
       
       // Extract verification code from message
       const codeMatch = message.match(/\b\d{6}\b/);
@@ -55,7 +71,7 @@ export class TelnyxSMSService {
       
       const mockSMS: MockSMS = {
         id: `mock_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        to,
+        to: normalized,
         message,
         timestamp: new Date(),
         code
@@ -74,7 +90,7 @@ export class TelnyxSMSService {
 
     // Production mode: Send real SMS via Telnyx
     try {
-      console.log(`📱 Sending SMS to ${to}: ${message}`);
+      console.log(`📱 Sending SMS to ${normalized}: ${message}`);
       
       const response = await fetch(`${this.baseURL}/messages`, {
         method: 'POST',
@@ -84,7 +100,7 @@ export class TelnyxSMSService {
         },
         body: JSON.stringify({
           from: this.fromNumber,
-          to: to,
+          to: normalized,
           text: message,
         }),
       });

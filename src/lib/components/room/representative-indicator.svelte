@@ -8,9 +8,9 @@
 
 	const dispatch = createEventDispatcher();
 	const ASPECT = 9 / 16;
-	const MIN_W = 240;
-	const MAX_W = 720;
-	const DEFAULT_W = 360;
+	const MIN_W = 320;
+	const MAX_W = 960;
+	const DEFAULT_W = 648;
 
 	let panelWidth = DEFAULT_W;
 	let posX = 0;

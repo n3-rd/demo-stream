@@ -1,315 +1,260 @@
 <script lang="ts">
 	import { PUBLIC_ANT_MEDIA_URL } from '$env/static/public';
-    import { onMount } from 'svelte';
-    import { page } from '$app/stores';
-    import { createEventDispatcher } from 'svelte';
-    
-    export let participants;
-    export let selfName: string = '';
-    
-console.log("participants from representative-indicator.svelte", participants);
+	import { onMount, tick } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 
-    let videoElements = new Map();
-    
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let containerX = 0;
-    let containerY = 0;
-    let containerWidth = 200;
-    let containerHeight = 150;
-    let containerElement;
-    let videoContainerElement;
+	export let participants: any[] = [];
+	export let selfName: string = '';
 
-    const dispatch = createEventDispatcher();
+	const dispatch = createEventDispatcher();
+	const ASPECT = 9 / 16;
+	const MIN_W = 240;
+	const MAX_W = 720;
+	const DEFAULT_W = 360;
 
-    function getVideoContainer() {
-        const container = document.querySelector('.video-container');
-        if (!container) {
-            console.error('Video container not found');
-        }
-        return container;
-    }
+	let panelWidth = DEFAULT_W;
+	let posX = 0;
+	let posY = 0;
+	let ready = false;
 
-    function handleMouseDown(event) {
-        if (event.target.tagName === 'IFRAME' || event.target.classList.contains('name-tag')) {
-            return;
-        }
-        
-        isDragging = true;
-        startX = event.clientX - containerX;
-        startY = event.clientY - containerY;
-        event.preventDefault();
-    }
+	let panelEl: HTMLElement;
+	let parentEl: HTMLElement | null = null;
 
-    function updatePosition(clientX, clientY) {
-        if (!isDragging || !videoContainerElement || !containerElement) return;
+	let dragging = false;
+	let resizing = false;
+	let dragOffsetX = 0;
+	let dragOffsetY = 0;
+	let resizeStartX = 0;
+	let resizeStartW = 0;
 
-        const videoRect = videoContainerElement.getBoundingClientRect();
-        const containerRect = containerElement.getBoundingClientRect();
-        
-        let newX = clientX - videoRect.left - startX;
-        let newY = clientY - videoRect.top - startY;
-        
-        newX = Math.max(0, Math.min(newX, videoRect.width - containerRect.width));
-        newY = Math.max(0, Math.min(newY, videoRect.height - containerRect.height));
-        
-        containerX = newX;
-        containerY = newY;
-    }
+	$: panelHeight = visibleRepresentatives.length * Math.round(panelWidth * ASPECT) + (visibleRepresentatives.length - 1) * 6 + 8;
 
-    function handleMouseMove(event) {
-        if (isDragging) {
-            updatePosition(event.clientX, event.clientY);
-            event.preventDefault();
-        }
-    }
+	function clampPos() {
+		if (!parentEl) return;
+		const pr = parentEl.getBoundingClientRect();
+		posX = Math.max(0, Math.min(posX, pr.width - panelWidth));
+		posY = Math.max(0, Math.min(posY, pr.height - panelHeight - 24));
+	}
 
-    function handleEnd() {
-        isDragging = false;
-    }
+	function anchorBottomRight() {
+		if (!parentEl) return;
+		const pr = parentEl.getBoundingClientRect();
+		posX = pr.width - panelWidth - 16;
+		posY = pr.height - panelHeight - 16;
+		clampPos();
+	}
 
-    $: if (visibleRepresentatives && videoContainerElement && containerElement) {
-        containerHeight = Math.min(150, visibleRepresentatives.length * 120 + 8);
-        
-        const videoRect = videoContainerElement.getBoundingClientRect();
-        
-        containerX = videoRect.width - containerWidth - 20;
-        containerY = videoRect.height - containerHeight - 20;
-    }
+	// --- Drag ---
+	function onDragStart(e: MouseEvent) {
+		const t = e.target as HTMLElement;
+		if (!t || t.closest('.resize-handle')) return;
+		e.preventDefault();
+		dragging = true;
+		const pr = parentEl!.getBoundingClientRect();
+		dragOffsetX = e.clientX - pr.left - posX;
+		dragOffsetY = e.clientY - pr.top - posY;
+	}
 
-    onMount(() => {
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleEnd);
-        
-        setTimeout(() => {
-            containerElement = document.querySelector('.representatives-container');
-            videoContainerElement = getVideoContainer();
-            
-            if (videoContainerElement && containerElement) {
-                const videoRect = videoContainerElement.getBoundingClientRect();
-                
-                containerX = videoRect.width - containerWidth - 20;
-                containerY = videoRect.height - containerHeight - 20;
-                
-                console.log("Initial positioning:", { containerX, containerY, 
-                    videoWidth: videoRect.width, videoHeight: videoRect.height });
-            } else {
-                console.error("Could not find required elements for positioning");
-            }
-        }, 200);
-        
-        if (typeof ResizeObserver !== 'undefined') {
-            const resizeObserver = new ResizeObserver(() => {
-                if (videoContainerElement && containerElement) {
-                    const videoRect = videoContainerElement.getBoundingClientRect();
-                    
-                    if (containerX + containerWidth > videoRect.width) {
-                        containerX = Math.max(0, videoRect.width - containerWidth - 20);
-                    }
-                    
-                    if (containerY + containerHeight > videoRect.height) {
-                        containerY = Math.max(0, videoRect.height - containerHeight - 20);
-                    }
-                }
-            });
-            
-            setTimeout(() => {
-                if (videoContainerElement) {
-                    resizeObserver.observe(videoContainerElement);
-                }
-            }, 300);
-        }
-        
-        // Cookie fallback for selfName if not provided via prop
-        if (!selfName) {
-            try {
-                const cookie = document.cookie.split('; ').find(c => c.startsWith('rep_user='));
-                if (cookie) {
-                    const value = decodeURIComponent(cookie.split('=')[1] || '');
-                    const rep = JSON.parse(value);
-                    if (rep && rep.name) selfName = rep.name;
-                }
-            } catch {}
-        }
+	// --- Resize ---
+	function onResizeStart(e: MouseEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		resizing = true;
+		resizeStartX = e.clientX;
+		resizeStartW = panelWidth;
+	}
 
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleEnd);
-        };
-    });
+	function onPointerMove(e: MouseEvent) {
+		if (dragging && parentEl) {
+			const pr = parentEl.getBoundingClientRect();
+			posX = e.clientX - pr.left - dragOffsetX;
+			posY = e.clientY - pr.top - dragOffsetY;
+			clampPos();
+		} else if (resizing) {
+			const dx = e.clientX - resizeStartX;
+			panelWidth = Math.max(MIN_W, Math.min(resizeStartW + dx, MAX_W));
+			if (parentEl) {
+				const pr = parentEl.getBoundingClientRect();
+				panelWidth = Math.min(panelWidth, pr.width - 20);
+			}
+			clampPos();
+		}
+	}
 
-    function srcObject(node, stream) {
-        if (node && stream) {
-            try {
-                node.srcObject = stream;
-                node.play().catch(err => console.error('Error playing video:', err));
-            } catch (err) {
-                console.error('Error setting srcObject:', err);
-            }
-        }
-        
-        return {
-            update(newStream) {
-                if (node && newStream && node.srcObject !== newStream) {
-                    try {
-                        node.srcObject = newStream;
-                        node.play().catch(err => console.error('Error playing video:', err));
-                    } catch (err) {
-                        console.error('Error updating srcObject:', err);
-                    }
-                }
-            },
-            destroy() {
-                if (node) {
-                    node.srcObject = null;
-                }
-            }
-        };
-    }
+	function onPointerEnd() {
+		dragging = false;
+		resizing = false;
+	}
 
-    function extractNameFromId(id: string): string {
-        const last = (id || '').toString().split('-').pop() || '';
-        return last.replace(/_+representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
-    }
+	// --- Filtering ---
+	function extractNameFromId(id: string): string {
+		const last = (id || '').toString().split('-').pop() || '';
+		return last.replace(/_+representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
+	}
 
-    function isRepresentative(participant: any) {
-        if (!participant) return false;
-        if (typeof participant === 'string') {
-            const suffix = (participant.toString().split('-').pop() || '');
-            return /_representative$/i.test(suffix);
-        }
-        if (participant.isRepresentative !== undefined) return !!participant.isRepresentative;
-        if (participant.name) return /_representative$/i.test(String(participant.name));
-        if (participant.streamId) {
-            const suffix = (String(participant.streamId).split('-').pop() || '');
-            return /_representative$/i.test(suffix);
-        }
-        return false;
-    }
+	function isRep(participant: any) {
+		if (!participant) return false;
+		if (typeof participant === 'string') return /_representative$/i.test(participant.split('-').pop() || '');
+		if (participant.isRepresentative !== undefined) return !!participant.isRepresentative;
+		if (participant.name) return /_representative$/i.test(String(participant.name));
+		if (participant.streamId) return /_representative$/i.test(String(participant.streamId).split('-').pop() || '');
+		return false;
+	}
 
-    function getParticipantName(participant: any) {
-        if (!participant) return 'Representative';
-        if (typeof participant === 'string') return extractNameFromId(participant);
-        if (participant.name) return String(participant.name).replace(/_+representative$/i, '');
-        if (participant.streamName) return String(participant.streamName).replace(/_+representative$/i, '');
-        if (participant.streamId) return extractNameFromId(String(participant.streamId));
-        return 'Representative';
-    }
+	function getParticipantName(participant: any) {
+		if (!participant) return 'Representative';
+		if (typeof participant === 'string') return extractNameFromId(participant);
+		if (participant.name) return String(participant.name).replace(/_+representative$/i, '');
+		if (participant.streamName) return String(participant.streamName).replace(/_+representative$/i, '');
+		if (participant.streamId) return extractNameFromId(String(participant.streamId));
+		return 'Representative';
+	}
 
-    function normalizeName(value: string) {
-        return (value || '').trim().toLowerCase();
-    }
+	function normalizeName(v: string) { return (v || '').trim().toLowerCase(); }
 
-    function shouldShowIndicator(participant: any) {
-        const participantName = getParticipantName(participant);
-        if (!selfName) return true;
-        return normalizeName(participantName) !== normalizeName(selfName);
-    }
+	function shouldShow(p: any) {
+		if (!selfName) return true;
+		return normalizeName(getParticipantName(p)) !== normalizeName(selfName);
+	}
 
-    $: visibleRepresentatives = (participants || []).filter((p: any) => isRepresentative(p) && shouldShowIndicator(p));
+	$: visibleRepresentatives = (participants || []).filter((p: any) => isRep(p) && shouldShow(p));
 
-    $: {
-        console.log('Participants:', participants);
-        console.log('Visible Representatives:', visibleRepresentatives);
-    }
+	onMount(() => {
+		window.addEventListener('mousemove', onPointerMove);
+		window.addEventListener('mouseup', onPointerEnd);
+
+		if (!selfName) {
+			try {
+				const cookie = document.cookie.split('; ').find(c => c.startsWith('rep_user='));
+				if (cookie) {
+					const rep = JSON.parse(decodeURIComponent(cookie.split('=')[1] || ''));
+					if (rep?.name) selfName = rep.name;
+				}
+			} catch {}
+		}
+
+		return () => {
+			window.removeEventListener('mousemove', onPointerMove);
+			window.removeEventListener('mouseup', onPointerEnd);
+		};
+	});
+
+	async function initPosition(node: HTMLElement) {
+		await tick();
+		parentEl = node.closest('.video-container') as HTMLElement || node.parentElement;
+		ready = true;
+		anchorBottomRight();
+
+		if (typeof ResizeObserver !== 'undefined' && parentEl) {
+			const ro = new ResizeObserver(() => clampPos());
+			ro.observe(parentEl);
+			return { destroy: () => ro.disconnect() };
+		}
+	}
 </script>
 
-<style>
-    .video-container {
-        position: relative;
-     
-    }
-    
-    .video-container video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .representatives-container {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.5);
-        border-radius: 8px;
-        overflow: hidden;
-        cursor: move;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 4px;
-        touch-action: none;
-        z-index: 50;
-        user-select: none;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    .representatives-container:hover {
-        background: rgba(0, 0, 0, 0.7);
-    }
-
-    .representative-video {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 16/9;
-        border-radius: 4px;
-        overflow: hidden;
-        background: #000;
-    }
-
-    .name-tag {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        padding: 4px;
-        font-size: 12px;
-        text-align: center;
-        pointer-events: none;
-    }
-
-    iframe {
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        border: none;
-    }
-</style>
-
 {#if visibleRepresentatives.length > 0}
-<div 
-    class="representatives-container"
-    style="
-        left: {containerX}px;
-        top: {containerY}px;
-        width: {containerWidth}px;
-        height: {containerHeight}px;
-    "
-    on:mousedown={handleMouseDown}
-    bind:this={containerElement}
+<div
+	class="rep-panel"
+	class:is-dragging={dragging}
+	class:is-resizing={resizing}
+	style="left:{posX}px;top:{posY}px;width:{panelWidth}px;opacity:{ready ? 1 : 0}"
+	on:mousedown={onDragStart}
+	bind:this={panelEl}
+	use:initPosition
+	role="group"
+	aria-label="Representative cameras"
 >
-    {#each visibleRepresentatives as participant}
-    {#key (typeof participant === 'string' ? participant : participant.streamId || participant.id)}
-    <div class="representative-video">
-        {#if typeof participant === 'string'}
-            <iframe 
-                src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${encodeURIComponent(participant)}`} 
-                frameborder="0" 
-                allowfullscreen
-            ></iframe>
-        {:else}
-            <iframe 
-                src={`https://${PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id=${encodeURIComponent(participant.streamId || participant.id)}`} 
-                frameborder="0" 
-                allowfullscreen
-            ></iframe>
-        {/if}
-        <div class="name-tag">
-            {getParticipantName(participant)} (Representative)
-        </div>
-    </div>
-    {/key}
-    {/each}
+	{#each visibleRepresentatives as participant (typeof participant === 'string' ? participant : participant.streamId || participant.id)}
+		<div class="rep-video" style="padding-top:{ASPECT * 100}%">
+			<iframe
+				title="{getParticipantName(participant)} camera"
+				src="https://{PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id={encodeURIComponent(typeof participant === 'string' ? participant : participant.streamId || participant.id)}"
+				allowfullscreen
+			></iframe>
+			<span class="rep-name">{getParticipantName(participant)}</span>
+		</div>
+	{/each}
+
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
+	<div class="resize-handle" on:mousedown={onResizeStart}>
+		<svg width="12" height="12" viewBox="0 0 12 12"><path d="M11 1v10H1" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.5" stroke-linecap="round"/><path d="M11 5v6H5" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5" stroke-linecap="round"/></svg>
+	</div>
 </div>
 {/if}
+
+<style>
+	.rep-panel {
+		position: absolute;
+		z-index: 50;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 4px;
+		background: rgba(0, 0, 0, 0.55);
+		border-radius: 10px;
+		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+		cursor: move;
+		user-select: none;
+		touch-action: none;
+		transition: box-shadow 0.15s, background 0.15s, opacity 0.25s;
+	}
+	.rep-panel:hover {
+		background: rgba(0, 0, 0, 0.7);
+		box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55);
+	}
+	.rep-panel.is-dragging,
+	.rep-panel.is-resizing {
+		transition: none;
+	}
+
+	.rep-video {
+		position: relative;
+		width: 100%;
+		padding-top: 56.25%; /* 16:9 fallback */
+		border-radius: 6px;
+		overflow: hidden;
+		background: #111;
+	}
+	.rep-video iframe {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		border: none;
+		pointer-events: none;
+	}
+
+	.rep-name {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		padding: 3px 8px;
+		background: linear-gradient(transparent, rgba(0,0,0,.75));
+		color: #fff;
+		font-size: 12px;
+		font-weight: 500;
+		text-align: center;
+		pointer-events: none;
+		line-height: 1.6;
+	}
+
+	.resize-handle {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		width: 28px;
+		height: 28px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: nwse-resize;
+		border-radius: 0 0 10px 0;
+		opacity: 0.5;
+		transition: opacity 0.15s;
+	}
+	.resize-handle:hover {
+		opacity: 1;
+	}
+</style>

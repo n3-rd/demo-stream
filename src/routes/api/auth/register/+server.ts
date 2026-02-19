@@ -1,6 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { telnyxSMS } from '$lib/services/telnyx';
-import { env } from '$env/dynamic/private';
+import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
 
 export const POST: RequestHandler = async ({ request, locals, fetch }) => {
@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
 
         // Helper to send email via Brevo
         const sendEmail = async (code: string) => {
-            if (!env.BREVO_API_KEY || !PUBLIC_SMTP_FROM) return false;
+            if (!BREVO_API_KEY || !PUBLIC_SMTP_FROM) return false;
             const emailPayload = {
                 sender: { name: "Viewroom.ca", email: PUBLIC_SMTP_FROM },
                 to: [{ email, name }],
@@ -62,7 +62,7 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
             };
             const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
                 method: 'POST',
-                headers: { accept: 'application/json', 'api-key': env.BREVO_API_KEY, 'content-type': 'application/json' },
+                headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
                 body: JSON.stringify(emailPayload)
             });
             if (!resp.ok) {

@@ -294,6 +294,33 @@ function getRepresentativeCookieName(): string {
 // Keep a self name for indicator suppression
 let repSelfName = '';
 
+// Representatives currently in the meeting (non-dual-camera, non-self) — used to replace content view with their camera
+function isRepParticipant(p: any): boolean {
+	if (typeof p === 'string') return /_representative$/i.test((p.split('-').pop() || ''));
+	return !!(p.isRepresentative || /_representative$/i.test(p.name || '') || /_representative$/i.test(String(p.streamId || '').split('-').pop() || ''));
+}
+function getRepStreamId(p: any): string {
+	return typeof p === 'string' ? p : (p.streamId || p.id || '');
+}
+function getRepDisplayName(p: any): string {
+	if (typeof p === 'string') {
+		const last = (p.split('-').pop() || '');
+		return last.replace(/_representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
+	}
+	return (p.name || p.streamName || 'Representative').replace(/_representative$/i, '').replace(/_/g, ' ').trim();
+}
+$: repParticipantsInMeeting = meetingParticipants.filter((p: any) => {
+	if (!isRepParticipant(p)) return false;
+	const sid = getRepStreamId(p);
+	if (dualCameraStreamIds.includes(sid)) return false;
+	if (repSelfName) {
+		const cleanName = getRepDisplayName(p).toLowerCase();
+		if (cleanName === repSelfName.trim().toLowerCase()) return false;
+	}
+	return true;
+});
+$: hasRepInMeeting = repParticipantsInMeeting.length > 0;
+
 function getWebSocketURL() {
     const raw = (PUBLIC_ANT_MEDIA_URL || '').trim();
     try {
@@ -2897,11 +2924,13 @@ let selectedVideo = null;
                             <video id="front-camera-video" autoplay playsinline class="dual-camera-front-video"></video>
                             <div class="dual-camera-label">Rep</div>
                         </div>
+                        {#if !hasRepInMeeting}
                         <RepresentativeIndicator 
                             participants={meetingParticipants.filter((p) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''))}
                             selfName={repSelfName}
                             on:representativesUpdate={handleRepresentativesUpdate}
                         />
+                        {/if}
                         {#if isHost || isRepresentative}
                             <div class="absolute top-1 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
                                 <Button
@@ -2921,6 +2950,21 @@ let selectedVideo = null;
                             </div>
                         {/if}
                         
+                        {#if hasRepInMeeting && !isRepLive && !representativeStreams.isLive}
+                        <!-- Representative camera replaces content view while rep is in the meeting -->
+                        <div class="rep-camera-fullview">
+                            {#each repParticipantsInMeeting as rep (getRepStreamId(rep))}
+                                <div class="rep-camera-slot">
+                                    <iframe
+                                        title="{getRepDisplayName(rep)} camera"
+                                        src="https://{PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id={encodeURIComponent(getRepStreamId(rep))}"
+                                        allowfullscreen
+                                    ></iframe>
+                                    <span class="rep-camera-name">{getRepDisplayName(rep)}</span>
+                                </div>
+                            {/each}
+                        </div>
+                        {:else}
                         <!-- Main content (hidden when rep is LIVE or dual-camera back is showing) -->
                         <div class="dual-camera-content-wrap" class:hidden={isRepLive || representativeStreams.isLive}>
                         {#if $currentVideoUrl}
@@ -2994,6 +3038,7 @@ let selectedVideo = null;
                             </div>
                         {/if}
                         </div>
+                        {/if}
                       
                     </div>
 
@@ -3293,6 +3338,41 @@ let selectedVideo = null;
 }
 .dual-camera-content-wrap.hidden {
     display: none;
+}
+
+.rep-camera-fullview {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    background: #000;
+}
+.rep-camera-slot {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+}
+.rep-camera-slot iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+.rep-camera-name {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .panel {

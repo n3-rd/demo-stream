@@ -307,6 +307,30 @@ $: liveRepStreamId = (() => {
 	return null;
 })();
 
+// Find rep display name from meetingParticipants for indicator label
+$: liveRepName = (() => {
+	for (const p of meetingParticipants) {
+		if (typeof p === 'string') {
+			if (/_representative$/i.test(p.split('-').pop() || ''))
+				return (p.split('-').pop() || '').replace(/_representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
+		} else if (p?.isRepresentative || /_representative$/i.test(p?.name || '')) {
+			return (p.name || '').replace(/_representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
+		}
+	}
+	return 'Representative';
+})();
+
+// Live: large = back camera only, indicator = selfie (front) only. Non-live: indicator = normal reps.
+$: indicatorParticipants = (() => {
+	if (isRepLive) {
+		if (representativeStreams.front.streamId) {
+			return [{ streamId: representativeStreams.front.streamId, name: liveRepName + '_representative', isRepresentative: true }];
+		}
+		return []; // back/composited is in large; don't show it in indicator
+	}
+	return meetingParticipants.filter((p: any) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''));
+})();
+
 function getWebSocketURL() {
     const raw = (PUBLIC_ANT_MEDIA_URL || '').trim();
     try {
@@ -2940,8 +2964,10 @@ let selectedVideo = null;
                                     <div>isRepLive: <strong>{isRepLive}</strong></div>
                                     <div>liveCameraMode: <strong>{liveCameraMode ?? 'null'}</strong></div>
                                     <div>liveRepStreamId: <strong>{liveRepStreamId ?? 'none'}</strong></div>
+                                    <div>liveRepName: <strong>{liveRepName}</strong></div>
                                     <div>back stream: <strong>{representativeStreams.back.streamId ?? 'none'}</strong> {representativeStreams.back.playing ? '▶' : '⏸'}</div>
                                     <div>front stream: <strong>{representativeStreams.front.streamId ?? 'none'}</strong> {representativeStreams.front.playing ? '▶' : '⏸'}</div>
+                                    <div>indicator mode: <strong>{isRepLive && representativeStreams.front.streamId ? 'front-cam only' : 'normal'}</strong></div>
                                     <div>dualCameraStreamIds: <strong>{dualCameraStreamIds.length ? dualCameraStreamIds.join(', ') : 'none'}</strong></div>
                                     <div class="dev-stream-overlay-title" style="margin-top:4px">Participants ({meetingParticipants.length})</div>
                                     {#each meetingParticipants as p}
@@ -2963,7 +2989,7 @@ let selectedVideo = null;
                             <div class="dual-camera-label">Rep</div>
                         </div>
                         <RepresentativeIndicator 
-                            participants={meetingParticipants.filter((p) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''))}
+                            participants={indicatorParticipants}
                             selfName={repSelfName}
                             on:representativesUpdate={handleRepresentativesUpdate}
                         />

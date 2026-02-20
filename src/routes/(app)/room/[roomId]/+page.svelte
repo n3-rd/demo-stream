@@ -320,14 +320,12 @@ $: liveRepName = (() => {
 	return 'Representative';
 })();
 
-// Live: large = back camera only, indicator = selfie (front) only. Non-live: indicator = normal reps.
+// PIP (selfie/front) only in rep indicator. Normal stream (back) only in big view.
 $: indicatorParticipants = (() => {
-	if (isRepLive) {
-		if (representativeStreams.front.streamId) {
-			return [{ streamId: representativeStreams.front.streamId, name: liveRepName + '_representative', isRepresentative: true }];
-		}
-		return []; // back/composited is in large; don't show it in indicator
+	if (representativeStreams.front.streamId) {
+		return [{ streamId: representativeStreams.front.streamId, name: liveRepName + '_representative', isRepresentative: true }];
 	}
+	if (isRepLive) return []; // back/composited in big view only
 	return meetingParticipants.filter((p: any) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''));
 })();
 
@@ -2979,11 +2977,11 @@ let selectedVideo = null;
                                 </div>
                             {/if}
                         </div>
-                        <!-- Dual camera: front camera PIP (hidden when rep is in live mode – composited stream has front in it) -->
+                        <!-- Front camera (selfie) only in rep indicator, not as overlay here -->
                         <div
                             id="front-camera-container"
-                            class="dual-camera-front-pip"
-                            class:hidden={isRepLive || !representativeStreams.front.streamId}
+                            class="dual-camera-front-pip hidden"
+                            aria-hidden="true"
                         >
                             <video id="front-camera-video" autoplay playsinline class="dual-camera-front-video"></video>
                             <div class="dual-camera-label">Rep</div>

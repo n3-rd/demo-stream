@@ -294,32 +294,18 @@ function getRepresentativeCookieName(): string {
 // Keep a self name for indicator suppression
 let repSelfName = '';
 
-// Representatives currently in the meeting (non-dual-camera, non-self) — used to replace content view with their camera
-function isRepParticipant(p: any): boolean {
-	if (typeof p === 'string') return /_representative$/i.test((p.split('-').pop() || ''));
-	return !!(p.isRepresentative || /_representative$/i.test(p.name || '') || /_representative$/i.test(String(p.streamId || '').split('-').pop() || ''));
-}
-function getRepStreamId(p: any): string {
-	return typeof p === 'string' ? p : (p.streamId || p.id || '');
-}
-function getRepDisplayName(p: any): string {
-	if (typeof p === 'string') {
-		const last = (p.split('-').pop() || '');
-		return last.replace(/_representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
+// Find the rep's regular stream ID for live mode (when no _back stream exists)
+$: liveRepStreamId = (() => {
+	if (representativeStreams.back.streamId) return null;
+	for (const p of meetingParticipants) {
+		const sid = typeof p === 'string' ? p : p?.streamId;
+		const isRep = typeof p === 'string'
+			? /_representative$/i.test((p.split('-').pop() || ''))
+			: (p?.isRepresentative || /_representative$/i.test(p?.name || ''));
+		if (isRep && sid && !dualCameraStreamIds.includes(sid)) return sid;
 	}
-	return (p.name || p.streamName || 'Representative').replace(/_representative$/i, '').replace(/_/g, ' ').trim();
-}
-$: repParticipantsInMeeting = meetingParticipants.filter((p: any) => {
-	if (!isRepParticipant(p)) return false;
-	const sid = getRepStreamId(p);
-	if (dualCameraStreamIds.includes(sid)) return false;
-	if (repSelfName) {
-		const cleanName = getRepDisplayName(p).toLowerCase();
-		if (cleanName === repSelfName.trim().toLowerCase()) return false;
-	}
-	return true;
-});
-$: hasRepInMeeting = repParticipantsInMeeting.length > 0;
+	return null;
+})();
 
 function getWebSocketURL() {
     const raw = (PUBLIC_ANT_MEDIA_URL || '').trim();
@@ -1709,6 +1695,29 @@ function updateSyncSource(newSource: 'host' | 'representative') {
     }
 }
 
+function toggleDevLiveMode() {
+	const goingLive = !isRepLive;
+	isRepLive = goingLive;
+	liveCameraMode = goingLive ? 'dual' : null;
+	console.log(`[DEV] Simulated live_mode_change: isLive=${isRepLive}, cameraMode=${liveCameraMode}`);
+
+	if (webRTCAdaptor && isDataChannelOpen) {
+		try {
+			sendMessage(
+				roomName,
+				Date.now(),
+				JSON.stringify({
+					eventType: 'live_mode_change',
+					messageBody: JSON.stringify({ isLive: goingLive, cameraMode: 'dual' })
+				}),
+				roomName
+			);
+		} catch (e) {
+			console.error('[DEV] Error sending simulated live_mode_change:', e);
+		}
+	}
+}
+
 // Update the video state change handler
 function handleVideoStateChange() {
     if (!videoPlayer) return;
@@ -2901,7 +2910,18 @@ let selectedVideo = null;
                             class:live-fullscreen={isRepLive}
                             class:hidden={!isRepLive && !representativeStreams.isLive}
                         >
-                            <video id="back-camera-video" autoplay playsinline class="dual-camera-back-video"></video>
+                            {#if isRepLive && liveRepStreamId && !representativeStreams.back.streamId}
+                                <!-- Live mode using rep's regular stream (no _back stream available) -->
+                                <iframe
+                                    title="Representative live stream"
+                                    src="https://{PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id={encodeURIComponent(liveRepStreamId)}&playOrder=webrtc"
+                                    class="dual-camera-back-video"
+                                    style="border:none;width:100%;height:100%;position:absolute;inset:0"
+                                    allowfullscreen
+                                ></iframe>
+                            {:else}
+                                <video id="back-camera-video" autoplay playsinline class="dual-camera-back-video"></video>
+                            {/if}
                             {#if isRepLive}
                                 <div class="live-badge">
                                     <span class="live-badge-dot"></span>
@@ -2914,6 +2934,24 @@ let selectedVideo = null;
                                 </div>
                                 <div class="dual-camera-label">Back Camera</div>
                             {/if}
+                            {#if dev}
+                                <div class="dev-stream-overlay">
+                                    <div class="dev-stream-overlay-title">DEV Stream Debug</div>
+                                    <div>isRepLive: <strong>{isRepLive}</strong></div>
+                                    <div>liveCameraMode: <strong>{liveCameraMode ?? 'null'}</strong></div>
+                                    <div>liveRepStreamId: <strong>{liveRepStreamId ?? 'none'}</strong></div>
+                                    <div>back stream: <strong>{representativeStreams.back.streamId ?? 'none'}</strong> {representativeStreams.back.playing ? '▶' : '⏸'}</div>
+                                    <div>front stream: <strong>{representativeStreams.front.streamId ?? 'none'}</strong> {representativeStreams.front.playing ? '▶' : '⏸'}</div>
+                                    <div>dualCameraStreamIds: <strong>{dualCameraStreamIds.length ? dualCameraStreamIds.join(', ') : 'none'}</strong></div>
+                                    <div class="dev-stream-overlay-title" style="margin-top:4px">Participants ({meetingParticipants.length})</div>
+                                    {#each meetingParticipants as p}
+                                        {@const sid = typeof p === 'string' ? p : p.streamId}
+                                        {@const pname = typeof p === 'string' ? p.split('-').pop() : p.name}
+                                        {@const isRep = typeof p === 'string' ? /_representative$/i.test(p.split('-').pop() || '') : p.isRepresentative}
+                                        <div style="font-size:10px;opacity:0.85">{isRep ? '🎥' : '👤'} {pname} <span style="opacity:0.5">({sid})</span></div>
+                                    {/each}
+                                </div>
+                            {/if}
                         </div>
                         <!-- Dual camera: front camera PIP (hidden when rep is in live mode – composited stream has front in it) -->
                         <div
@@ -2924,13 +2962,11 @@ let selectedVideo = null;
                             <video id="front-camera-video" autoplay playsinline class="dual-camera-front-video"></video>
                             <div class="dual-camera-label">Rep</div>
                         </div>
-                        {#if !hasRepInMeeting}
                         <RepresentativeIndicator 
                             participants={meetingParticipants.filter((p) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''))}
                             selfName={repSelfName}
                             on:representativesUpdate={handleRepresentativesUpdate}
                         />
-                        {/if}
                         {#if isHost || isRepresentative}
                             <div class="absolute top-1 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
                                 <Button
@@ -2947,24 +2983,18 @@ let selectedVideo = null;
                                 >
                                     Rep Ctrl
                                 </Button>
+                                {#if dev}
+                                    <Button
+                                        variant={isRepLive ? 'destructive' : 'secondary'}
+                                        size="sm"
+                                        on:click={toggleDevLiveMode}
+                                    >
+                                        {isRepLive ? '⏹ Stop Live' : '🔴 Sim Go Live'}
+                                    </Button>
+                                {/if}
                             </div>
                         {/if}
                         
-                        {#if hasRepInMeeting && !isRepLive && !representativeStreams.isLive}
-                        <!-- Representative camera replaces content view while rep is in the meeting -->
-                        <div class="rep-camera-fullview">
-                            {#each repParticipantsInMeeting as rep (getRepStreamId(rep))}
-                                <div class="rep-camera-slot">
-                                    <iframe
-                                        title="{getRepDisplayName(rep)} camera"
-                                        src="https://{PUBLIC_ANT_MEDIA_URL}/WebRTCAppEE/play.html?id={encodeURIComponent(getRepStreamId(rep))}"
-                                        allowfullscreen
-                                    ></iframe>
-                                    <span class="rep-camera-name">{getRepDisplayName(rep)}</span>
-                                </div>
-                            {/each}
-                        </div>
-                        {:else}
                         <!-- Main content (hidden when rep is LIVE or dual-camera back is showing) -->
                         <div class="dual-camera-content-wrap" class:hidden={isRepLive || representativeStreams.isLive}>
                         {#if $currentVideoUrl}
@@ -3038,7 +3068,6 @@ let selectedVideo = null;
                             </div>
                         {/if}
                         </div>
-                        {/if}
                       
                     </div>
 
@@ -3242,6 +3271,32 @@ let selectedVideo = null;
 .dual-camera-back-container.live-fullscreen .dual-camera-back-video {
     object-fit: contain;
 }
+.dev-stream-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    z-index: 60;
+    background: rgba(0, 0, 0, 0.8);
+    color: #0f0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 255, 0, 0.2);
+    max-width: 420px;
+    max-height: 50%;
+    overflow-y: auto;
+    pointer-events: none;
+}
+.dev-stream-overlay-title {
+    font-weight: bold;
+    color: #0ff;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .live-badge {
     position: absolute;
     top: 16px;
@@ -3338,41 +3393,6 @@ let selectedVideo = null;
 }
 .dual-camera-content-wrap.hidden {
     display: none;
-}
-
-.rep-camera-fullview {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    display: flex;
-    flex-direction: column;
-    background: #000;
-}
-.rep-camera-slot {
-    position: relative;
-    flex: 1;
-    min-height: 0;
-}
-.rep-camera-slot iframe {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-}
-.rep-camera-name {
-    position: absolute;
-    bottom: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 4px 12px;
-    background: rgba(0, 0, 0, 0.6);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 6px;
-    pointer-events: none;
-    z-index: 1;
 }
 
 .panel {

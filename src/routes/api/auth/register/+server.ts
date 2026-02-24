@@ -42,57 +42,64 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
             existingVerificationRecord = existingVerification.items[0] || null;
         } catch {}
 
-        // Helper to send email via Brevo
-        const sendEmail = async (code: string) => {
-            if (!BREVO_API_KEY || !PUBLIC_SMTP_FROM) return false;
-            const emailPayload = {
-                sender: { name: "Viewroom.ca", email: PUBLIC_SMTP_FROM },
-                to: [{ email, name }],
-                subject: 'Your verification code',
-                htmlContent: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                      <h2 style="color: #333; text-align: center;">Account Verification</h2>
-                      <p>Hello ${name},</p>
-                      <p>Your verification code is:</p>
-                      <div style="background: #f8f9fa; border: 2px solid #e9ecef; padding: 30px; text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 8px; margin: 30px 0; border-radius: 8px; color: #495057;">${code}</div>
-                      <p><strong>This code expires in 10 minutes.</strong></p>
-                    </div>
-                `,
-                tags: ['registration', 'verification', 'email']
-            };
-            const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
-                method: 'POST',
-                headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
-                body: JSON.stringify(emailPayload)
-            });
-            if (!resp.ok) {
-                const t = await resp.text();
-                console.error('Brevo email send error:', t);
+        // Same send pattern as passwordless/send-code: SMS first, then email via Brevo
+        const sendCode = async (code: string): Promise<{ smsSent: boolean; emailSent: boolean }> => {
+            let smsSent = false;
+            let emailSent = false;
+            // 1. Send SMS (same as login)
+            try {
+                smsSent = !!(await telnyxSMS.sendVerificationCode(formattedPhone, code, name));
+            } catch (e) {
+                console.error('register sms send error', e);
             }
-            return resp.ok;
+            // 2. Send email via Brevo (same payload shape as login)
+            try {
+                if (BREVO_API_KEY && PUBLIC_SMTP_FROM) {
+                    const emailPayload = {
+                        sender: { name: "Viewroom.ca", email: PUBLIC_SMTP_FROM },
+                        to: [{ email, name: name || 'User' }],
+                        subject: 'Your verification code',
+                        htmlContent: `
+          <div style="font-family: Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+            <h2 style="text-align:center;color:#333;">Account Verification</h2>
+            <p>Hello${name ? ` ${name}` : ''},</p>
+            <p>Your verification code is:</p>
+            <div style="background:#f8f9fa;border:2px solid #e9ecef;padding:30px;text-align:center;font-size:36px;font-weight:bold;letter-spacing:8px;margin:30px 0;border-radius:8px;color:#495057;">${code}</div>
+            <p><strong>This code expires in 10 minutes.</strong></p>
+          </div>
+        `,
+                        tags: ['registration', 'verification']
+                    };
+                    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+                        method: 'POST',
+                        headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
+                        body: JSON.stringify(emailPayload)
+                    });
+                    emailSent = resp.ok;
+                    if (!resp.ok) {
+                        const t = await resp.text();
+                        console.error('register email send error', t);
+                    }
+                }
+            } catch (e) {
+                console.error('register email send exception', e);
+            }
+            return { smsSent, emailSent };
         };
 
         // If pending exists, generate a fresh code, update the record, and resend
         if (existingVerificationRecord) {
             const freshCode = Math.floor(100000 + Math.random() * 900000).toString();
-            const freshExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
             await locals.pb.collection('admin_phone_verification').update(existingVerificationRecord.id, {
                 verification_code: freshCode,
-                expires_at: freshExpiry.toISOString(),
+                expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
                 company_name: name,
                 password: password,
                 website: website || ''
             });
 
-            let smsSent = false;
-            let emailSent = false;
-            await Promise.all([
-                (async () => {
-                    try { smsSent = !!(await telnyxSMS.sendVerificationCode(formattedPhone, freshCode, name)); } catch (e) { console.error('SMS resend error:', e); }
-                })(),
-                (async () => { try { emailSent = await sendEmail(freshCode); } catch (e) { console.error('Email resend error:', e); } })()
-            ]);
+            const { smsSent, emailSent } = await sendCode(freshCode);
 
             if (!smsSent && !emailSent) {
                 return new Response(JSON.stringify({ type: 'failure', data: { message: 'Failed to send verification code via SMS and Email. Please try again.' } }), { status: 500 });
@@ -133,14 +140,7 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
             website: website || ''
         });
 
-        let smsSent = false;
-        let emailSent = false;
-        await Promise.all([
-            (async () => {
-                try { smsSent = !!(await telnyxSMS.sendVerificationCode(formattedPhone, verificationCode, name)); } catch (e) { console.error('SMS send error:', e); }
-            })(),
-            (async () => { try { emailSent = await sendEmail(verificationCode); } catch (e) { console.error('Email send error:', e); } })()
-        ]);
+        const { smsSent, emailSent } = await sendCode(verificationCode);
 
         if (!smsSent && !emailSent) {
             await locals.pb.collection('admin_phone_verification').delete(verificationData.id).catch(() => {});

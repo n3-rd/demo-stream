@@ -119,11 +119,15 @@ class CollectionShim {
       const clauses = filter.split('&&').map(s => s.trim()).filter(Boolean);
       if (clauses.length) {
         const sqlClauses = clauses.map((clause) => {
-          const m = clause.match(/^(\w+)\s*=\s*"([^"]*)"$/);
+          const m = clause.match(/^(\w+)\s*([=~?]+)\s*"([^"]*)"$/);
           if (!m) return null;
-          const [, field, value] = m;
-          params.push(value);
-          return `${field} = $${params.length}`;
+          const [, field, op, value] = m;
+          if (op === '?~') {
+            params.push(value);
+            return `${field} @> ARRAY[$${params.length}]::text[]`;
+          }
+          params.push(value)
+          return `${field} ${op} $${params.length}`;
         }).filter(Boolean) as string[];
         if (sqlClauses.length) where = `WHERE ${sqlClauses.join(' AND ')}`;
       }

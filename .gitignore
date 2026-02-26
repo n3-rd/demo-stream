@@ -11,4 +11,4 @@ node_modules
 /static/video
 *.mdc
 PHONE_VERIFICATION_FLOW.md
-logs/
+logs/*

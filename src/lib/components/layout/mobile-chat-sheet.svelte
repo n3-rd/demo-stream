@@ -5,6 +5,7 @@
     export let roomId = "";
     export let chatName: string | null = null;
     export let userId: string | null = null;
+    export let userRole: 'host' | 'guest' | 'representative' = 'guest';
 
     const dispatch = createEventDispatcher();
 
@@ -18,6 +19,7 @@
         {roomId}
         name={chatName}
         {userId}
+        {userRole}
         variant="mobile"
         showClose
         on:close={handleClose}

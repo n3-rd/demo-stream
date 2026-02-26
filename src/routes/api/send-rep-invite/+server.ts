@@ -21,6 +21,8 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    console.log('[send-rep-invite] rep invite url:', invite_url);
+
     // Get representative info and FCM token
     let deviceToken = null;
     try {

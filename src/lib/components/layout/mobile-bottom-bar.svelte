@@ -40,6 +40,16 @@
     export let micPermission: string = 'unknown';
     /** 'granted' | 'denied' | 'prompt' | 'unknown' */
     export let cameraPermission: string = 'unknown';
+    let userRole: 'host' | 'guest' | 'representative' = 'guest';
+    $: {
+        if (isHost) {
+            userRole = 'host';
+        } else if (isRepresentative) {
+            userRole = 'representative';
+        } else {
+            userRole = 'guest';
+        }
+    }
     const dispatch = createEventDispatcher();
 
     type StateSnapshot = Record<string, boolean>;
@@ -363,6 +373,7 @@
                 roomId={roomId || roomName}
                 chatName={chatName}
                 userId={chatUserId}
+                {userRole}
                 on:close={closeSheets}
             />
         </Sheet.Content>

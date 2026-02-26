@@ -83,6 +83,7 @@ let videoPlayer;
 let isVideoPlaying = false;
 let currentVideoTime = 0;
 let isVideoMuted = false;
+let userRole: 'host' | 'guest' | 'representative' = 'guest';
 let hasVideoPlayed = false;
 
 // Live mode from data channel (rep GO LIVE = composited stream full-screen)
@@ -202,6 +203,13 @@ $: {
                       !!data?.representativeName ||
                       representatives?.some(rep => rep.id === (user?.id || viewroomUser?.id)) || false;
     
+    if (isHost) {
+        userRole = 'host';
+    } else if (isRepresentative) {
+        userRole = 'representative';
+    } else {
+        userRole = 'guest';
+    }
 
 }
 
@@ -3228,7 +3236,7 @@ let selectedVideo = null;
                                 </Button>
                             </div>
                             <div class="h-full">
-                                <Chat roomId={roomName} name={name} userId={publishStreamId} />
+                                <Chat roomId={roomName} name={name} userId={publishStreamId} {userRole} />
                             </div>
                         </div>
                     </div>

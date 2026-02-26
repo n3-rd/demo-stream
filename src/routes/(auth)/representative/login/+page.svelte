@@ -35,6 +35,21 @@
 		if (mobileNumber) mobileNumber = formatToE164(mobileNumber);
 	}
 
+  // Paste handling
+  function handlePaste(event: ClipboardEvent) {
+    event.preventDefault();
+    const paste = event.clipboardData?.getData('text');
+    if (paste && /^\d{5}$/.test(paste)) {
+      const digits = paste.split('');
+      for (let i = 0; i < 5; i++) {
+        verificationCode[i] = digits[i] || '';
+        const input = document.querySelector(`#code-${i}`) as HTMLInputElement;
+        if (input) input.value = verificationCode[i];
+      }
+      handleVerification();
+    }
+  }
+
 	function handleCodeInput(e: Event, i: number) {
 		const t = e.target as HTMLInputElement;
 		if (t.value.length > 1) t.value = t.value.slice(-1);
@@ -210,7 +225,7 @@
 						<Label class="block text-sm font-medium text-gray-700 mb-4 text-center">VERIFICATION CODE</Label>
 						<div class="flex justify-center gap-3 mb-4">
 							{#each Array(5) as _, i}
-								<input id={`code-${i}`} type="text" class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors" maxlength="1" pattern="[0-9]" on:input={(e) => handleCodeInput(e, i)} />
+								<input id={`code-${i}`} type="text" class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors" maxlength="1" pattern="[0-9]" on:input={(e) => handleCodeInput(e, i)} on:paste={handlePaste} />
 							{/each}
 						</div>
 						<p class="text-xs text-gray-500 text-center">Enter the 5-digit code sent to your {verificationType === 'sms' ? 'mobile phone' : 'email'}</p>

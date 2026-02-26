@@ -157,6 +157,22 @@ export class AntMediaService {
                 this.handleNewStream(obj);
                 break;
 
+            case "play_started":
+                console.log("Stream playback started", obj?.streamId);
+                break;
+
+            case "play_finished":
+                console.log("Stream playback finished", obj?.streamId);
+                break;
+
+            case "streamLeaved":
+            case "streamLeft":
+                console.log("Stream left event:", obj);
+                if (obj.streamId) {
+                    this.handleParticipantLeft(obj.streamId);
+                }
+                break;
+
             case "localStream":
                 this.localStream = obj;
                 this.callbacks.onLocalStream?.(obj);
@@ -281,13 +297,6 @@ export class AntMediaService {
             throw new Error('WebRTCAdaptor not initialized. Call initialize() first.');
         }
 
-        this.webRTCAdaptor.publish
-        // receive sync
-        this.webRTCAdaptor.webSocketAdaptor. = (event) => {
-            console.log('received sync', event.data);
-        }
-
-
         this.roomId = roomId;
         const streamId = roomId;
         const streamName = userName;
@@ -296,11 +305,8 @@ export class AntMediaService {
         try {
             console.log('Joining room with streamId:', streamId, 'and streamName:', streamName);
 
-            await new Promise(resolve => setTimeout(resolve, 2000));
             this.webRTCAdaptor.play(streamId);
             console.log('joined room', streamId);
-
-            await new Promise(resolve => setTimeout(resolve, 2000));
 
             return streamId;
         } catch (error) {

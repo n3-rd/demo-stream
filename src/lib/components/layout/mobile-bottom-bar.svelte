@@ -169,39 +169,39 @@
             content: "inviteRepresentative",
             contentClass: "p-4 rounded-lg shadow-lg"
         },
-        {
-            key: "schedule",
-            type: "dialog",
-            label: "Book Appointment",
-            icon: {
-                type: "image",
-                src: "/icons/new-icons/calendar.png",
-                alt: "calendar",
-                sizeClass: "w-5 h-5"
-            },
-            content: "schedule",
-            contentClass: "p-4 rounded-lg w-auto bg-transparent flex flex-col gap-2",
-            bindOpen: "scheduleOpen"
-        },
-        {
-            key: "notesPanel",
-            type: "panel",
-            label: "Notes",
-            icon: { type: "image", src: "/icons/new-icons/notes.png", alt: "Notes" },
-            panelId: "notesPanel"
-        },
-        {
-            key: "quotePanel",
-            type: "panel",
-            label: "Request a Quote",
-            icon: {
-                type: "image",
-                src: "/icons/new-icons/quotes.png",
-                alt: "quote",
-                sizeClass: "w-5 h-5"
-            },
-            panelId: "quotePanel"
-        }
+        // {
+        //     key: "schedule",
+        //     type: "dialog",
+        //     label: "Book Appointment",
+        //     icon: {
+        //         type: "image",
+        //         src: "/icons/new-icons/calendar.png",
+        //         alt: "calendar",
+        //         sizeClass: "w-5 h-5"
+        //     },
+        //     content: "schedule",
+        //     contentClass: "p-4 rounded-lg w-auto bg-transparent flex flex-col gap-2",
+        //     bindOpen: "scheduleOpen"
+        // },
+        // {
+        //     key: "notesPanel",
+        //     type: "panel",
+        //     label: "Notes",
+        //     icon: { type: "image", src: "/icons/new-icons/notes.png", alt: "Notes" },
+        //     panelId: "notesPanel"
+        // },
+        // {
+        //     key: "quotePanel",
+        //     type: "panel",
+        //     label: "Request a Quote",
+        //     icon: {
+        //         type: "image",
+        //         src: "/icons/new-icons/quotes.png",
+        //         alt: "quote",
+        //         sizeClass: "w-5 h-5"
+        //     },
+        //     panelId: "quotePanel"
+        // }
     ];
 
     const destructiveControl: { icon: string; label: string } = {
@@ -390,14 +390,14 @@
             <MobileQuoteSheet on:close={closeSheets} />
         </Sheet.Content>
     </Sheet.Root>
-    <Sheet.Root bind:open={notesSheetOpen}>
+    <!-- <Sheet.Root bind:open={notesSheetOpen}>
         <Sheet.Content
             side="bottom"
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
             <MobileNotesSheet on:close={closeSheets} on:send={handleSendNotes} />
         </Sheet.Content>
-    </Sheet.Root>
+    </Sheet.Root> -->
     <div
         class="lg:hidden fixed bottom-4 left-0 right-0 bg-[#5C5C5C] p-4 w-[94%] mx-auto rounded-2xl"
         class:is-sharing={isScreenSharing}

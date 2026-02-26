@@ -42,7 +42,7 @@
         </Dialog.Content>
     </Dialog.Root> -->
 
-    <Notes scale={1.3} color="#fff" />
+    <!-- <Notes scale={1.3} color="#fff" /> -->
 
     <Button
     variant="ghost"
@@ -76,7 +76,7 @@
             />
         </Dialog.Content>
     </Dialog.Root>
-    <Dialog.Root bind:open={scheduleOpen} class="max-w-[80vw]">
+    <!-- <Dialog.Root bind:open={scheduleOpen} class="max-w-[80vw]">
         <Dialog.Trigger>
             <Button
                 variant="ghost"
@@ -108,8 +108,8 @@
                 />
             </div>
         </Dialog.Content>
-    </Dialog.Root>
-    <Dialog.Root bind:open={quoteDialogOpen}>
+    </Dialog.Root> -->
+    <!-- <Dialog.Root bind:open={quoteDialogOpen}>
         <Dialog.Trigger>
             <Button
                 variant="ghost"
@@ -127,5 +127,5 @@
         <Dialog.Content class="rounded-lg bg-transparent">
             <CreateQuote on:close={() => quoteDialogOpen = false} />
         </Dialog.Content>
-    </Dialog.Root>
+    </Dialog.Root> -->
 </div>

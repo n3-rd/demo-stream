@@ -257,8 +257,14 @@
         });
 
         if (videoEl) {
-            videoEl.addEventListener('play', () => isPaused = false);
-            videoEl.addEventListener('pause', () => isPaused = true);
+            videoEl.addEventListener('play', () => {
+                isPaused = false;
+                playVideoStore.set(true);
+            });
+            videoEl.addEventListener('pause', () => {
+                isPaused = true;
+                playVideoStore.set(false);
+            });
         }
 
         // Add event listener for participant joined

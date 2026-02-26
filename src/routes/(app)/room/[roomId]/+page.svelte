@@ -1,3 +1,4 @@
+/// <reference types="@sveltejs/kit/amp" />
 <script lang="ts">
 	import { dev } from '$app/environment';
 import {
@@ -82,6 +83,7 @@ let videoPlayer;
 let isVideoPlaying = false;
 let currentVideoTime = 0;
 let isVideoMuted = false;
+let hasVideoPlayed = false;
 
 // Live mode from data channel (rep GO LIVE = composited stream full-screen)
 let isRepLive = false;
@@ -1865,6 +1867,9 @@ function handleVideoStateChange() {
     
     // Update the playVideoStore to match the current play state
     const isPlaying = !videoPlayer.paused;
+    if (isPlaying) {
+        hasVideoPlayed = true;
+    }
     playVideoStore.set(isPlaying);
     
     console.log('Video state change:', { 
@@ -3138,7 +3143,7 @@ let selectedVideo = null;
                         {#if $currentVideoUrl}
                             {#if (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
                             {console.log("playvideo store", $playVideoStore)}
-                            {#if !$playVideoStore}
+                            {#if !hasVideoPlayed}
                             <div class="h-full w-full absolute inset-0 z-40">
                                 {#if selectedVideo && selectedVideo.thumbnail}
                                     <img 

@@ -454,7 +454,7 @@
         <Dialog.Header>
             <Dialog.Title>Add New Room</Dialog.Title>
         </Dialog.Header>
-        <form method="POST" on:submit|preventDefault={onSubmitCreateRoom}>
+        <form method="POST" use:form on:submit|preventDefault={onSubmitCreateRoom}>
             <div class="space-y-4 py-4">
                 <div class="space-y-2">
                     <Label for="title">Title</Label>
@@ -482,7 +482,7 @@
                 <div class="space-y-2">
                     <Label for="representative">Representatives</Label>
                     <Select.Root>
-                        <Select.Trigger class="w-full {$form['representative[]'] && $form['representative[]'].errors?.required ? 'border-red-500' : ''}">
+                        <Select.Trigger class="w-full">
                           <div class="w-full flex justify-between items-center">
                             {#if selectedRepresentatives.length > 0}
                               <span class="truncate flex items-center gap-1 flex-wrap">
@@ -575,11 +575,7 @@
                         type="hidden" 
                         name="representative[]" 
                         value={selectedRepresentatives.join(',')}
-                        use:validators={[arrayValidator]}
                     />
-                    <HintGroup for="representative[]">
-                        <Hint on="required">At least one representative must be selected</Hint>
-                    </HintGroup>
                 </div>
 
                 <div class="space-y-2">

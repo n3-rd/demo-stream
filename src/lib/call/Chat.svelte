@@ -11,6 +11,7 @@
     
     export let roomId: string;
     export let name: string | null = null;
+    export let userId: string | null = null;
     export let variant: 'default' | 'mobile' = 'default';
     export let showClose = false;
 
@@ -39,6 +40,7 @@
         const local = name || $anonymousUser || 'User';
         const newMessage = {
             name: local,
+            senderId: userId,
             text: newText,
             eventType: 'chat_message'
         };
@@ -179,7 +181,7 @@
                     class="flex gap-3 mb-3"
                 >
                     <!-- User or participant Avatar -->
-                    {#if isCurrentUserMessage(message.name, name || $anonymousUser)}
+                    {#if isCurrentUserMessage(message.name, name || $anonymousUser, message.senderId, userId)}
                         <!-- User Message (right aligned) -->
                         <div class="flex gap-3 w-full justify-end">
                             <div class="max-w-[80%] bg-white text-black rounded-lg p-3 text-sm">

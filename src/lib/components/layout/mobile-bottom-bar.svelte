@@ -32,6 +32,7 @@
     export let roomName = "";
     export let roomId = "";
     export let chatName: string | null = null;
+    export let chatUserId: string | null = null;
     export let hostContentItems: any[] = [];
     export let repContentItems: any[] = [];
     export let participants: any[] = [];
@@ -357,6 +358,7 @@
             <MobileChatSheet
                 roomId={roomId || roomName}
                 chatName={chatName}
+                userId={chatUserId}
                 on:close={closeSheets}
             />
         </Sheet.Content>
@@ -370,6 +372,7 @@
                 {participants}
                 {isHost}
                 currentUserName={chatName ?? ""}
+                localStreamId={chatUserId}
                 shareURL={joinURL}
                 on:close={closeSheets}
             />

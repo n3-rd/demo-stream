@@ -12,11 +12,11 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
     const repSession = cookies.get('rep_session');
     const repUserCookie = cookies.get('rep_user');
     const incomingUid = url.searchParams.get('uid') || '';
-    
+
     let viewroomUser: any = null;
     let representativeUser: any = null;
     let authType = 'none';
-    
+
     if (isNormalAuth) {
         // User is logged in with normal PocketBase auth - allow access
         authType = 'pocketbase';
@@ -51,15 +51,15 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
         try {
             const representativeId = url.searchParams.get('repid');
             const representative = await pb.collection('representatives').getOne(representativeId);
-            
+
             // Prepare representative session data
-            const repSession = JSON.stringify({ 
-                id: representative.id, 
-                email: representative.email, 
+            const repSession = JSON.stringify({
+                id: representative.id,
+                email: representative.email,
                 name: representative.name || `${representative.first_name} ${representative.last_name}`.trim(),
                 firstName: representative.first_name,
                 lastName: representative.last_name,
-                company: representative.company 
+                company: representative.company
             });
 
             // Set session token and user data cookies
@@ -89,19 +89,21 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
 
     // Attempt to fetch the room details
     try {
-        const roomRecord = await pb.collection('rooms').getFirstListItem(`id = "${roomIdParam}"`);
+        // Try searching by room_id first (for short URLs), then by primary id
+        const roomRecord = await pb.collection('rooms').getFirstListItem(`room_id = "${roomIdParam}" || id = "${roomIdParam}"`);
+        const actualRoomId = roomRecord.id;
 
         // Check if the room is a scheduled meeting
         if (roomRecord.scheduled) {
             const scheduleTime = new Date(roomRecord.schedule_time);
             const currentTime = new Date();
-            
+
             // Calculate time difference in minutes
             const timeDiffMinutes = (scheduleTime.getTime() - currentTime.getTime()) / (1000 * 60);
-            
+
             // Use the room's join_before_minutes, with a minimum of 0
             const joinBeforeMinutes = Math.max(roomRecord.join_before_minutes || 0, 0);
-            
+
             // Strict check: only allow joining within the specified join window
             if (timeDiffMinutes > joinBeforeMinutes) {
                 // Too early for the meeting
@@ -110,7 +112,7 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
                     scheduledMeeting: true,
                     message: `This meeting is scheduled for ${scheduleTime.toLocaleString()}. Please return at that time.`,
                     scheduledTime: scheduleTime,
-                    scheduledRoomId: roomIdParam,
+                    scheduledRoomId: actualRoomId,
                     join_before_minutes: joinBeforeMinutes,
                     redirectTo: '/'
                 };
@@ -118,7 +120,7 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
         }
 
         // Fetch additional room details
-        const expandedRoom = await pb.collection('rooms').getOne(roomIdParam, {
+        const expandedRoom = await pb.collection('rooms').getOne(actualRoomId, {
             expand: 'representative,host_content,representative_content'
         });
 
@@ -134,12 +136,12 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
         let representatives = [];
         if (expandedRoom.representative && expandedRoom.representative.length > 0) {
             let filter = `id IN ("${expandedRoom.representative.join('","')}")`;
-            
+
             // Add company filter if we have a company ID
             if (companyId) {
                 filter += ` && company = "${companyId}"`;
             }
-            
+
             representatives = await pb.collection('representatives').getFullList({
                 filter,
                 sort: '-created',
@@ -156,7 +158,7 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
 
     } catch (error) {
         console.error('Error loading room:', error);
-        
+
         // Redirect to home page if room not found
         return {
             error: true,

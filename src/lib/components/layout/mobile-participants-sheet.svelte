@@ -8,6 +8,7 @@
     export let participants: any[] = [];
     export let isHost = false;
     export let currentUserName: string | null = null;
+    export let localStreamId: string | null = null;
     export let shareURL = "";
 
     const dispatch = createEventDispatcher();
@@ -52,6 +53,11 @@
     }
 
     function isCurrentUser(participant: any): boolean {
+        // First try to match by unique stream ID
+        if (localStreamId && participant?.streamId && participant.streamId.startsWith(localStreamId)) {
+            return true;
+        }
+
         if (!currentUserName) return false;
         const normalized = normalizeName(participant?.name ?? participant?.streamName ?? participant?.streamId ?? participant);
         const normalizedCurrent = normalizeName(currentUserName);

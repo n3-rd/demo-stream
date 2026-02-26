@@ -13,6 +13,7 @@
     export let name: string;
     export let shareURL: string;
     export let roomId: string = "";
+    export let userId: string | null = null;
     export let users: any[] = [];
     export let isChatOpen: boolean = false;
     export let isParticipantsOpen: boolean = false;
@@ -35,7 +36,7 @@
                 // If chat is closed, increment unread count
                 if (!isChatOpen) {
                     const incomingMessages = newMessages.filter(msg => {
-                        return !isCurrentUserMessage(msg.name, name || $anonymousUser);
+                        return !isCurrentUserMessage(msg.name, name || $anonymousUser, msg.senderId, userId);
                     });
                     
                     if (incomingMessages.length > 0) {

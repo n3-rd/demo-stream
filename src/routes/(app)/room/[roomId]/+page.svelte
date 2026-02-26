@@ -495,8 +495,6 @@ onMount(() => {
         }
     }, 100);
     
-    // Add a small delay to ensure MediaSelector is rendered
-    setTimeout(autoSelectFirstHostContent, 1000);
 });
 
 function initializeWebRTC() {
@@ -1158,7 +1156,8 @@ function handleWebRTCCallback(info: string, obj: any) {
 
 function handleWebRTCError(error: string, message: string) {
     // Log full error details for debugging
-    console.error("Detailed WebRTC Error:", {
+    const logMethod = error === "no_stream_exist" ? console.log : console.error;
+    logMethod("Detailed WebRTC Error:", {
         error,
         message,
         currentStreamId: publishStreamId,
@@ -1278,7 +1277,7 @@ function joinRoom() {
     console.log('Joining room with ID:', baseRoomId);
     
     if (!publishStreamId) {
-        publishStreamId = generateRandomString(12);            
+        publishStreamId = generateRandomString(8);            
     }
 
     // Format the display name based on user type
@@ -1454,7 +1453,12 @@ function leaveRoom() {
 
 // Helper functions
 function generateRandomString(length: number): string {
-    return Math.random().toString(36).substring(2, length + 2);
+    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
 }
 
 setInterval(() => {
@@ -2192,8 +2196,8 @@ function handleChatMessage(messageBody) {
     }
 
     // Check if this is a message from the current user
-    // Handle representative names that might have "_representative" suffix
-    const isCurrentUser = isCurrentUserMessage(messageBody.name, name || $anonymousUser);
+    // Use publishStreamId as a unique session ID to distinguish between users with same name
+    const isCurrentUser = isCurrentUserMessage(messageBody.name, name || $anonymousUser, messageBody.senderId, publishStreamId);
 
     chatMessages.update(messages => {
         // Check if message already exists
@@ -2242,6 +2246,9 @@ function removeAllRemoteVideos() {
 
 // Example of how to use the update function
 function handleVideoSelect(event) {
+    const isCurrentController = (syncSource === 'host' && isHost) || 
+                               (syncSource === 'representative' && isRepresentative);
+
     // Set the selected video from the event detail
     selectedVideo = event.detail;
     
@@ -2293,10 +2300,6 @@ function handleVideoSelect(event) {
     switch (fileType) {
         case 'video':
             currentVideoUrl.set(fileUrl);
-            // Only set to play if we're the current controller
-            if (isCurrentController) {
-                playVideoStore.set(true);
-            }
             break;
         case 'pdf':
             currentPdfUrl.set(fileUrl);
@@ -2310,16 +2313,9 @@ function handleVideoSelect(event) {
         default:
             console.warn('Unknown content type, attempting to play as video:', fileType);
             currentVideoUrl.set(fileUrl);
-            // Only set to play if we're the current controller
-            if (isCurrentController) {
-                playVideoStore.set(true);
-            }
     }
     
     // Always send update if we're the controller
-    const isCurrentController = (syncSource === 'host' && isHost) || 
-                                (syncSource === 'representative' && isRepresentative);
-    
     if (isCurrentController && webRTCAdaptor && isDataChannelOpen) {
         // Prepare media update message
         const mediaUpdateMessage = {
@@ -2736,14 +2732,13 @@ function ensureMediaSelection() {
 
 // Modify the onMount to include media selection fallback
 onMount(() => {
-    // Add multiple attempts to ensure media selection
-    const attempts = [1000, 2000, 3000, 5000, 7000];
-    attempts.forEach((delay) => {
-        setTimeout(() => {
+    // Single delayed attempt to ensure media selection
+    setTimeout(() => {
+        if (!selectedVideo) {
             autoSelectFirstHostContent();
             ensureMediaSelection();
-        }, delay);
-    });
+        }
+    }, 2000);
 });
 
 // Track the currently selected video
@@ -3077,7 +3072,9 @@ let selectedVideo = null;
                                     <X scale={1.3} color="#fff" />
                                 </Button>
                             </div>
-                            <Chat roomId={roomName} name={name} />
+                            <div class="h-full">
+                                <Chat roomId={roomName} name={name} userId={publishStreamId} />
+                            </div>
                         </div>
                     </div>
 
@@ -3094,7 +3091,14 @@ let selectedVideo = null;
                                     <X scale={1.3} color="#fff" />
                                 </Button>
                             </div>
-                            <Participants participants={meetingParticipants} isHost={isHost} name={name} users={users} shareURL={shareURL} />
+                            <Participants 
+                                participants={meetingParticipants} 
+                                isHost={isHost} 
+                                name={name} 
+                                users={users} 
+                                shareURL={shareURL} 
+                                localStreamId={publishStreamId}
+                            />
                         </div>
                     </div>
                 </div>
@@ -3108,6 +3112,7 @@ let selectedVideo = null;
                         {shareURL} 
                         roomId={roomName}
                         {users}
+                        userId={publishStreamId}
                         isChatOpen={chatPanelOpen}
                         isParticipantsOpen={participantsPanelOpen}
                         participantCount={selfIncludedParticipantCount}
@@ -3128,8 +3133,9 @@ let selectedVideo = null;
                 {isHost}
                 {isRepresentative}
                 {room}
-                {roomName}
+                roomName={roomName}
                 roomId={roomName}
+                chatUserId={publishStreamId}
                 chatName={name}
                 hostContentItems={room?.expand?.host_content || []}
                 repContentItems={room?.expand?.representative_content || []}

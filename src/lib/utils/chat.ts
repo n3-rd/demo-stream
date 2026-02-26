@@ -17,7 +17,17 @@ export function extractAndNormalizeName(nameOrId: string): string {
 }
 
 // Helper function to check if a message is from the current user
-export function isCurrentUserMessage(messageName: string, currentUserName: string): boolean {
+export function isCurrentUserMessage(
+    messageName: string,
+    currentUserName: string,
+    messageSenderId?: string,
+    currentUserId?: string
+): boolean {
+    // If we have unique IDs, use them as they are much more reliable
+    if (messageSenderId && currentUserId) {
+        return messageSenderId === currentUserId;
+    }
+
     if (!messageName || !currentUserName) return false;
 
     // Direct match

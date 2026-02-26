@@ -13,11 +13,11 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
     // Check for authentication - allow either normal PocketBase auth or viewroom auth
     const viewroomSession = cookies.get('viewroom_session');
     const viewroomUserCookie = cookies.get('viewroom_user');
-    
+
     let viewroomUser: any = null;
     let authType = 'none';
     let userId: string | null = null;
-    
+
     // Check if user is authenticated with PocketBase
     if ((locals as Locals).pb?.authStore.isValid) {
         authType = 'pocketbase';
@@ -54,9 +54,10 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
     const videoUrl = formData.get('videoUrl') as string;
     const videoName = formData.get('videoName') as string;
 
-    // Sanitize the userId/anonymousUserId before creating room ID
+    // Generate a shorter, cleaner room ID
+    const shortId = Math.random().toString(36).substring(2, 10);
+    const roomId = `room-${shortId}`;
     const sanitizedUserId = sanitizeStreamName(userId || '');
-    const roomId = `room-${Math.random().toString(36).substring(2, 7)}-${sanitizedUserId}`;
 
     try {
         const room = await (locals as Locals).pb.collection('rooms').create({

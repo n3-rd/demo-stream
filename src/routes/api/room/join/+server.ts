@@ -2,15 +2,15 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ request, cookies, locals }) => {
     console.log('Join room API called');
-    
+
     // Check for authentication - allow either normal PocketBase auth or viewroom auth
     const isNormalAuth = locals.pb.authStore.isValid;
     const viewroomSession = cookies.get('viewroom_session');
     const viewroomUserCookie = cookies.get('viewroom_user');
-    
+
     let viewroomUser: any = null;
     let authType = 'none';
-    
+
     if (isNormalAuth) {
         // User is logged in with normal PocketBase auth - allow access
         authType = 'pocketbase';
@@ -46,7 +46,8 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
 
     try {
         // Find the room in PocketBase
-        const room = await locals.pb.collection('rooms').getFirstListItem(`room_id="${roomId}"`);
+        // Try searching by room_id first (for short URLs), then by primary id
+        const room = await locals.pb.collection('rooms').getFirstListItem(`room_id = "${roomId}" || id = "${roomId}"`);
 
         if (room) {
             console.log('Room found:', room);

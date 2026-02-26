@@ -9,6 +9,7 @@ import Share from '$lib/components/room/share.svelte';
 
   export let isHost: boolean;
   export let name: string;
+  export let localStreamId: string = "";
   export let users: any[] = []; // Provide a default empty array
   const pageName = $page.url.pathname.split('/').pop().split('-').pop();
   // Create a clean URL without query parameters
@@ -111,7 +112,7 @@ import Share from '$lib/components/room/share.svelte';
         <div class="flex items-center mb-3 gap-2">
           <!-- Avatar -->
           {#if formatParticipantName(participant).length > 2}
-            <div class="w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center" style="background: {getCleanName(participant) === getCleanName(name) ? '#A28585' : 'random'}">
+            <div class="w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center" style="background: {(localStreamId && participant.streamId && participant.streamId.startsWith(localStreamId)) || getCleanName(participant) === getCleanName(name) ? '#A28585' : 'random'}">
               <img
                 src={`https://ui-avatars.com/api/?name=${encodeURIComponent(formatParticipantName(participant))}&background=random`}
                 alt={`${formatParticipantName(participant)}'s avatar`}
@@ -119,7 +120,7 @@ import Share from '$lib/components/room/share.svelte';
               />
             </div>
           {:else}
-            <div class="w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center" style="background: {getCleanName(participant) === getCleanName(name) ? '#A28585' : 'random'}">
+            <div class="w-[50px] h-[50px] rounded-full overflow-hidden flex items-center justify-center" style="background: {(localStreamId && participant.streamId && participant.streamId.startsWith(localStreamId)) || getCleanName(participant) === getCleanName(name) ? '#A28585' : 'random'}">
               <span class="font-medium text-2xl leading-[21px] text-white">{getInitials(formatParticipantName(participant))}</span>
             </div>
           {/if}
@@ -133,7 +134,7 @@ import Share from '$lib/components/room/share.svelte';
               {:else if isRepresentative(participant)}
                 <span class="text-[#D1D1D1]"> (Rep)</span>
               {/if}
-              {#if getCleanName(participant) === getCleanName(name) || (participant.streamId && participant.streamId === name)}
+              {#if (localStreamId && participant.streamId && participant.streamId.startsWith(localStreamId)) || getCleanName(participant) === getCleanName(name)}
                 <span class="text-[#D1D1D1]"> (You)</span>
               {/if}
             </span>

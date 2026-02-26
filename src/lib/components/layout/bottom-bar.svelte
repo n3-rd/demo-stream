@@ -2,8 +2,12 @@
     export let roomIdentityName;
     export let isMicMuted;
     export let isCameraOff;
+    /** 'granted' | 'denied' | 'prompt' | 'unknown' */
+    export let micPermission = 'unknown';
+    /** 'granted' | 'denied' | 'prompt' | 'unknown' */
+    export let cameraPermission = 'unknown';
     import { Button } from "$lib/components/ui/button";
-    import { Mic, MicOff, Settings, CameraOffIcon, CameraIcon, Monitor, Volume2, VolumeX } from "lucide-svelte";
+    import { Mic, MicOff, Settings, CameraOffIcon, CameraIcon, Monitor, Volume2, VolumeX, AlertTriangle } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
     export let isScreenSharing = false;
     export let isVideoMuted = false;
@@ -14,6 +18,9 @@
         const newVolume = parseFloat(event.target.value);
         dispatch('volumeChange', { volume: newVolume });
     }
+
+    $: micBlocked = micPermission === 'denied';
+    $: cameraBlocked = cameraPermission === 'denied';
 </script>
  <!-- Bottom controls bar -->
  <div
@@ -23,34 +30,58 @@
      {roomIdentityName}
  </div>
  <div class="controls flex items-center gap-3">
-     <button
-         class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
-         on:click={() => dispatch("toggleMicrophone")}
-     >
-         {#if isMicMuted}
-             <MicOff
-                 color="#fff"
-                 size={24}
-                 class="hover:text-black"
-             />
-         {:else}
-             <Mic color="#fff" size={24} class="hover:text-black" />
+     <!-- Microphone button with permission warning -->
+     <div class="relative">
+         <button
+             class="flex justify-center items-center rounded-full h-10 w-10 hover:bg-white hover:text-black"
+             class:bg-red-700={micBlocked}
+             class:bg-[#707172]={!micBlocked}
+             title={micBlocked ? 'Microphone blocked — click to request access' : (isMicMuted ? 'Unmute microphone' : 'Mute microphone')}
+             on:click={() => micBlocked ? dispatch('requestMicPermission') : dispatch("toggleMicrophone")}
+         >
+             {#if micBlocked}
+                 <MicOff color="#fff" size={24} />
+             {:else if isMicMuted}
+                 <MicOff color="#fff" size={24} class="hover:text-black" />
+             {:else}
+                 <Mic color="#fff" size={24} class="hover:text-black" />
+             {/if}
+         </button>
+         {#if micBlocked}
+             <span class="permission-badge" title="Microphone access denied">
+                 <AlertTriangle size={10} color="#fff" />
+             </span>
          {/if}
-     </button>
-     <button
-         class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
-         on:click={() => dispatch("toggleCamera")}
-     >
-         {#if isCameraOff}
-             <CameraOffIcon color="#fff" size={24} class="hover:text-black" />
-         {:else}
-             <CameraIcon color="#fff" size={24} class="hover:text-black" />
+     </div>
+
+     <!-- Camera button with permission warning -->
+     <div class="relative">
+         <button
+             class="flex justify-center items-center rounded-full h-10 w-10 hover:bg-white hover:text-black"
+             class:bg-red-700={cameraBlocked}
+             class:bg-[#707172]={!cameraBlocked}
+             title={cameraBlocked ? 'Camera blocked — click to request access' : (isCameraOff ? 'Turn camera on' : 'Turn camera off')}
+             on:click={() => cameraBlocked ? dispatch('requestCameraPermission') : dispatch("toggleCamera")}
+         >
+             {#if cameraBlocked}
+                 <CameraOffIcon color="#fff" size={24} />
+             {:else if isCameraOff}
+                 <CameraOffIcon color="#fff" size={24} class="hover:text-black" />
+             {:else}
+                 <CameraIcon color="#fff" size={24} class="hover:text-black" />
+             {/if}
+         </button>
+         {#if cameraBlocked}
+             <span class="permission-badge" title="Camera access denied">
+                 <AlertTriangle size={10} color="#fff" />
+             </span>
          {/if}
-     </button>
+     </div>
 
      <button
          class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
          on:click={() => dispatch("toggleVideoMute")}
+         title={isVideoMuted ? 'Unmute video' : 'Mute video'}
      >
          {#if isVideoMuted}
              <VolumeX color="#fff" size={24} class="hover:text-black" />
@@ -60,7 +91,7 @@
      </button>
      
      <!-- Volume Adjustment Slider -->
-     <div class="flex items-center bg-[#707172] rounded-full px-2 h-10">
+     <div class="flex items-center bg-[#707172] rounded-full px-2 h-10" title="Adjust video volume">
          <Volume2 color="#fff" size={16} />
          <input 
              type="range" 
@@ -116,5 +147,19 @@
         background: white;
         border-radius: 50%;
         cursor: pointer;
+    }
+
+    .permission-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 16px;
+        height: 16px;
+        background-color: #f59e0b;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
     }
 </style>

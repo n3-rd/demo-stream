@@ -1245,38 +1245,7 @@ function getCleanDisplayName(name: string): string {
     return name.replace(/_+representative$/i, '').trim();
 }
 
-// Helper function to check if a message is from the current user
-// Uses the same logic as representative-indicator.svelte for consistency
-function isCurrentUserMessage(messageName: string, currentUserName: string): boolean {
-    if (!messageName || !currentUserName) return false;
-    
-    // Direct match
-    if (messageName === currentUserName) return true;
-    
-    // Extract and normalize names using representative indicator logic
-    const normalizedMessageName = extractAndNormalizeName(messageName);
-    const normalizedCurrentName = extractAndNormalizeName(currentUserName);
-    
-    // Compare normalized names
-    return normalizedMessageName === normalizedCurrentName;
-}
-
-// Extract name from various formats (streamId, displayName, etc.) like representative-indicator
-function extractAndNormalizeName(nameOrId: string): string {
-    if (!nameOrId) return '';
-    
-    let cleanName = nameOrId;
-    
-    // If it looks like a stream ID (contains dash), extract the last part
-    if (nameOrId.includes('-')) {
-        cleanName = nameOrId.split('-').pop() || '';
-    }
-    
-    // Remove "_representative" suffix and normalize underscores to spaces
-    cleanName = cleanName.replace(/_+representative$/i, '').replace(/_/g, ' ').trim();
-    
-    return cleanName.toLowerCase();
-}
+import { isCurrentUserMessage, extractAndNormalizeName, getInitials } from '$lib/utils/chat';
 
 // can't use await at top-level in Svelte component scripts, so use an async IIFE if you want to log this
 // (async () => {
@@ -3131,36 +3100,19 @@ let selectedVideo = null;
                 </div>
 
                 <!-- Right sidebar controls -->
-                <div class="flex-col gap-3 h-full justify-end hidden lg:flex">
-                 
-                    <div class="w-14 h-auto bg-red flex flex-col gap-4 justify-end">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            class="w-full hover:bg-red-700 relative"
-                            id="participants-button"
-                            on:click={() => togglePanel("participantsPanel")}
-                        >
-                            <div class="absolute -top-2 left-8 w-6 h-6 flex items-center justify-center bg-[#47484b] text-white rounded-full">
-                                {selfIncludedParticipantCount}
-                            </div>
-                            <img src="/icons/icon-participants.svg" alt="Participants" class="w-11 h-11" />
-                        </Button>
-                    </div>
-
-                    <div class="w-14 h-auto bg-red flex flex-col gap-1 justify-end items-center">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            class="w-full hover:bg-red-700"
-                            id="chat-button"
-                            on:click={() => togglePanel("chatPanel")}
-                        >
-                        <img src="/icons/icon-chat.svg" alt="Chat" class="w-9 h-9" />
-                        </Button>
-                        <p class="text-white text-sm">Chat</p>
-                    </div>
-
+                <div class="hidden lg:flex h-full">
+                    <RightBar 
+                        participants={meetingParticipants} 
+                        {isHost} 
+                        {name} 
+                        {shareURL} 
+                        roomId={roomName}
+                        {users}
+                        isChatOpen={chatPanelOpen}
+                        isParticipantsOpen={participantsPanelOpen}
+                        participantCount={selfIncludedParticipantCount}
+                        on:togglePanel={handlePanelToggle}
+                    />
                 </div>
             </div>
 

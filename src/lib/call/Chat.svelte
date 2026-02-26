@@ -63,26 +63,40 @@
             newText = '';
         } else {
             const userMessage = {
+                role: 'user',
+                content: newText
+            };
+
+            const currentMessages = [...aiMessages.map(msg => ({ role: msg.senderId === 'ai-bot' ? 'assistant' : 'user', content: msg.text })), userMessage];
+
+            aiMessages = [...aiMessages, {
                 name: name || $anonymousUser || 'User',
                 senderId: userId,
                 text: newText,
                 eventType: 'chat_message',
                 timestamp: Date.now()
-            };
-            aiMessages = [...aiMessages, userMessage];
-
-            const aiResponse = {
-                name: 'AI Chatbot',
-                senderId: 'ai-bot',
-                text: 'AI response',
-                eventType: 'chat_message',
-                timestamp: Date.now() + 1
-            };
-            setTimeout(() => {
-                aiMessages = [...aiMessages, aiResponse];
-            }, 500);
+            }];
 
             newText = '';
+
+            fetch('/api/ai/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ messages: currentMessages })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const aiResponse = {
+                    name: 'AI Chatbot',
+                    senderId: 'ai-bot',
+                    text: data.content,
+                    eventType: 'chat_message',
+                    timestamp: Date.now() + 1
+                };
+                aiMessages = [...aiMessages, aiResponse];
+            });
         }
     };
 

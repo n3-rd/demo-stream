@@ -101,6 +101,9 @@ importers:
       nodemailer:
         specifier: ^6.9.15
         version: 6.9.15
+      openai:
+        specifier: ^6.25.0
+        version: 6.25.0(zod@4.0.17)
       pdf.worker.min.js:
         specifier: link:pdfjs-dist/build/pdf.worker.min.js
         version: link:pdfjs-dist/build/pdf.worker.min.js
@@ -3446,6 +3449,18 @@ packages:
   open@8.4.2:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
+
+  openai@6.25.0:
+    resolution: {integrity: sha512-mEh6VZ2ds2AGGokWARo18aPISI1OhlgdEIC1ewhkZr8pSIT31dec0ecr9Nhxx0JlybyOgoAT1sWeKtwPZzJyww==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.25 || ^4.0
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
 
   option@0.2.4:
     resolution: {integrity: sha512-pkEqbDyl8ou5cpq+VsnQbe/WlEy5qS7xPzMS1U55OCG9KPvwFD46zDbxQIj3egJSFc3D+XhYOPUzz49zQAVy7A==}
@@ -8365,6 +8380,10 @@ snapshots:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
+
+  openai@6.25.0(zod@4.0.17):
+    optionalDependencies:
+      zod: 4.0.17
 
   option@0.2.4: {}
 

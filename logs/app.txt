@@ -977,3 +977,646 @@ params: invalid-rep-id-12345,1
   "status": 404,
   "text": "Not Found"
 }
+[2026-02-26T10:14:23.964Z] [log] [2m11:14:23 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/routes/(app)/representatives/+page.svelte, /src/app.css[22m
+[2026-02-26T10:14:23.954Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:14:36.488Z] [log] [2m11:14:36 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/routes/(app)/representatives/+page.svelte, /src/app.css[22m [33m(x2)[39m
+[2026-02-26T10:14:36.481Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:14:46.054Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:14:46.061Z] [log] [2m11:14:46 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/routes/(app)/representatives/+page.svelte, /src/app.css[22m [33m(x3)[39m
+[2026-02-26T10:17:29.766Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:17:29.773Z] [log] [2m11:17:29 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/routes/(app)/representatives/new/+page.svelte, /src/app.css, /src/routes/(app)/representatives/new/+page.svelte?svelte&type=style&lang.css[22m
+[2026-02-26T10:23:43.306Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:23:43.323Z] [log] [2m11:23:43 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m
+[2026-02-26T10:23:51.500Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:23:51.507Z] [log] [2m11:23:51 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/invite-representative.svelte, /src/app.css[22m
+[2026-02-26T10:24:35.729Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:26:03.259Z] [log] [2m11:26:03 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/invite-representative.svelte, /src/app.css[22m [33m(x2)[39m
+[2026-02-26T10:26:03.257Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:26:05.660Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:26:05.661Z] [log] [2m11:26:05 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/invite-representative.svelte, /src/app.css[22m [33m(x3)[39m
+[2026-02-26T10:26:28.139Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:26:28.140Z] [log] [2m11:26:28 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m
+[2026-02-26T10:26:42.415Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:26:43.966Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:31:58.278Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:31:58.287Z] [log] [2m11:31:58 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/invite-representative.svelte, /src/app.css[22m
+[2026-02-26T10:32:15.834Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:32:15.854Z] [log] [2m11:32:15 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m
+[2026-02-26T10:32:18.178Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:32:29.670Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:32:29.674Z] [log] [2m11:32:29 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/invite-representative.svelte, /src/app.css[22m
+[2026-02-26T10:33:07.157Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:33:38.861Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:35:51.250Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:35:51.273Z] [log] [2m11:35:51 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m
+[2026-02-26T10:35:52.208Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:36:07.911Z] [log] [2m11:36:07 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m [33m(x2)[39m
+[2026-02-26T10:36:07.898Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:36:08.340Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:36:34.740Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:36:34.747Z] [log] [2m11:36:34 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/invite-representative.svelte, /src/app.css[22m
+[2026-02-26T10:38:39.982Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:38:40.003Z] [log] [2m11:38:39 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m
+[2026-02-26T10:38:40.754Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:42:52.289Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:42:52.303Z] [log] [2m11:42:52 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m [33m(x2)[39m
+[2026-02-26T10:42:53.051Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:43:23.457Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:43:23.467Z] [log] [2m11:43:23 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m [33m(x3)[39m
+[2026-02-26T10:43:24.124Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:43:42.151Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:43:42.159Z] [log] [2m11:43:42 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/invite-representative.svelte, /src/app.css[22m
+[2026-02-26T10:44:08.652Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:51:56.294Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:51:56.329Z] [log] [2m11:51:56 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m
+[2026-02-26T10:51:58.181Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:52:48.651Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:52:48.662Z] [log] [2m11:52:48 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/api/room/manage/+server.ts[22m
+[2026-02-26T10:52:49.466Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:54:45.595Z] [log] [2m11:54:45 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m
+[2026-02-26T10:54:45.575Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:54:48.747Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T10:55:02.021Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T10:55:02.054Z] [log] [2m11:55:02 AM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/app.d.ts[22m
+[2026-02-26T10:55:48.052Z] [log] [send-rep-invite] No device token found, skipping push notification
+[2026-02-26T11:01:46.931Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:01:46.980Z] [log] [2m12:01:46 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/schedule-meeting.svelte, /src/app.css[22m
+[2026-02-26T11:01:55.480Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:01:55.498Z] [log] [2m12:01:55 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/schedule-meeting.svelte, /src/app.css[22m [33m(x2)[39m
+[2026-02-26T11:02:03.465Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:02:03.475Z] [log] [2m12:02:03 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/schedule-meeting.svelte, /src/app.css[22m [33m(x3)[39m
+[2026-02-26T11:05:46.187Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:05:46.201Z] [log] [2m12:05:46 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m
+[2026-02-26T11:06:39.309Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:06:39.316Z] [log] [2m12:06:39 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m [33m(x2)[39m
+[2026-02-26T11:06:51.277Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:06:51.286Z] [log] [2m12:06:51 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/routes/(app)/room/[roomId]/+page.server.ts[22m [33m(x3)[39m
+[2026-02-26T11:12:59.168Z] [error] [2m12:12:59 PM[22m [31m[1m[vite][22m[39m Pre-transform error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file
+[2026-02-26T11:12:59.171Z] [error] [2m12:12:59 PM[22m [31m[1m[vite][22m[39m Pre-transform error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file
+[2026-02-26T11:12:59.169Z] [error] [2m12:12:59 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file[39m
+  Plugin: [35mvite-plugin-svelte[39m
+  File: [36m/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte[39m
+[33m   
+   [33mUnexpected end of file[33m
+   1568|  
+   1569|    async function confirmBooking() {}
+   1570|  
+      |  ^
+   [39m
+[2026-02-26T11:12:59.169Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:13:58.942Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:13:58.975Z] [log] [2m12:13:58 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/app.d.ts[22m
+[2026-02-26T11:14:03.470Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:14:03.486Z] [error] [2m12:14:03 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file[39m
+  Plugin: [35mvite-plugin-svelte[39m
+  File: [36m/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte[39m
+[33m   
+   [33mUnexpected end of file[33m
+   1568|  
+   1569|    async function confirmBooking() {}
+   1570|  
+      |  ^
+   [39m
+[2026-02-26T11:14:55.502Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:14:55.779Z] [log] [2m12:14:55 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/schedule-meeting.svelte, /src/app.css, /src/lib/components/room/schedule-meeting.svelte?svelte&type=style&lang.css[22m [33m(x2)[39m
+[2026-02-26T11:14:55.528Z] [log] [2m12:14:55 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/lib/components/room/schedule-meeting.svelte, /src/app.css, /src/lib/components/room/schedule-meeting.svelte?svelte&type=style&lang.css[22m
+[2026-02-26T11:14:55.779Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:15:45.767Z] [error] [2m12:15:45 PM[22m [31m[1m[vite][22m[39m Pre-transform error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file
+[2026-02-26T11:15:45.768Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:15:45.768Z] [error] [2m12:15:45 PM[22m [31m[1m[vite][22m[39m Pre-transform error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file [33m(x2)[39m
+[2026-02-26T11:15:45.788Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:15:45.788Z] [error] [2m12:15:45 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file[39m
+  Plugin: [35mvite-plugin-svelte[39m
+  File: [36m/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte[39m
+[33m   
+   [33mUnexpected end of file[33m
+   1568|  
+   1569|    async function confirmBooking() {}
+   1570|  
+      |  ^
+   [39m
+[2026-02-26T11:16:05.737Z] [warn] Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[2026-02-26T11:16:19.197Z] [error] [2m12:16:19 PM[22m [31m[1m[vite][22m[39m Pre-transform error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file
+[2026-02-26T11:16:19.348Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:16:19.349Z] [error] [2m12:16:19 PM[22m [31m[1m[vite][22m[39m Pre-transform error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file [33m(x2)[39m
+[2026-02-26T11:16:19.451Z] [log] 
+
+
+
+
+
+
+
+
+
+
+
+[2026-02-26T11:16:19.451Z] [error] [2m12:16:19 PM[22m [31m[1m[vite][22m[39m [31mInternal server error: Error while preprocessing /Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte - Transform failed with 1 error:
+/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte:1570:0: ERROR: Unexpected end of file[39m
+  Plugin: [35mvite-plugin-svelte[39m
+  File: [36m/Users/n3rd/demo-stream/src/lib/components/room/schedule-meeting.svelte[39m
+[33m   
+   [33mUnexpected end of file[33m
+   1568|  
+   1569|    async function confirmBooking() {}
+   1570|  
+      |  ^
+   [39m
+[2026-02-26T11:22:05.712Z] [log] 📱 [DEV MODE] SMS stored in mock receiver. Code: 485700
+[2026-02-26T11:22:05.712Z] [log] 📱 [DEV MODE] ⭐ Quick Access: Visit /dev/mock-sms to view all codes or copy this code: 485700
+[2026-02-26T11:22:05.711Z] [log] 📱 [DEV MODE] Mock SMS to +19097055234: Your Studio Blopp verification code is: 485700. This code expires in 10 minutes.
+[2026-02-26T11:22:08.733Z] [error] passwordless email send error {"message":"Key not found","code":"unauthorized"}
+
+[2026-02-26T11:24:26.474Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T11:24:38.275Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}
+[2026-02-26T11:26:42.863Z] [error] Server error at /.well-known/appspecific/com.chrome.devtools.json : {
+  "stack": "Error: Not found: /.well-known/appspecific/com.chrome.devtools.json\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:530:13)\n    at resolve (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:330:5)\n    at Object.handle (/Users/n3rd/demo-stream/src/hooks.server.ts:126:28)\n    at Module.respond (/Users/n3rd/demo-stream/node_modules/.pnpm/@sveltejs+kit@2.7.0_@sveltejs+vite-plugin-svelte@3.1.2_svelte@4.2.19_vite@5.4.9_@types+node@2_wjtuamwxdv4sx5vdddtoorfkoi/node_modules/@sveltejs/kit/src/runtime/server/respond.js:327:40)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)",
+  "status": 404,
+  "text": "Not Found"
+}

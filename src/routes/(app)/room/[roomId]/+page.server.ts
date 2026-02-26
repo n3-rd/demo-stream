@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/db/drizzle';
-import { rooms, representatives, locations, users } from '$lib/db/schema';
+import { rooms, representatives, locations, users, contentLibrary } from '$lib/db/schema';
 import { eq, or, and, inArray } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -105,7 +105,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
         // Company ID for additional lookups
         const companyId = isNormalAuth ? locals.user.id : roomRecord.ownerCompany;
 
-        // Fetch Representatives with locations using a JOIN
+        // Fetch Representations with locations using a JOIN
         let roomRepresentatives = [];
         const repIds = roomRecord.representative || [];
 
@@ -132,8 +132,28 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             // Flatten for UI compat (transform location object to 'expand.location')
             roomRepresentatives = repsWithLocations.map(r => ({
                 ...r,
+                first_name: r.firstName,
+                last_name: r.lastName,
+                is_active: r.isActive,
                 expand: { location: r.location }
             }));
+        }
+
+        // Fetch Room Content
+        let expandedHostContent = [];
+        let expandedRepContent = [];
+
+        const hostContentIds = roomRecord.hostContent || [];
+        const repContentIds = roomRecord.representativeContent || [];
+
+        if (hostContentIds.length > 0) {
+            expandedHostContent = await db.select().from(contentLibrary)
+                .where(inArray(contentLibrary.id, hostContentIds));
+        }
+
+        if (repContentIds.length > 0) {
+            expandedRepContent = await db.select().from(contentLibrary)
+                .where(inArray(contentLibrary.id, repContentIds));
         }
 
         // Return room data with snake_case fields for UI compatibility
@@ -154,6 +174,19 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             additional_information: roomRecord.additionalInformation,
             representative_id: roomRecord.representativeId,
             representatives: roomRepresentatives,
+            expand: {
+                representative: roomRepresentatives,
+                host_content: expandedHostContent.map((c: any) => ({
+                    ...c,
+                    owner_company: c.ownerCompany,
+                    library_type: c.libraryType
+                })),
+                representative_content: expandedRepContent.map((c: any) => ({
+                    ...c,
+                    owner_company: c.ownerCompany,
+                    library_type: c.libraryType
+                }))
+            },
             authType,
             debug: {
                 hasRepField: !!roomRecord.representative,

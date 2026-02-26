@@ -116,15 +116,22 @@
   $: isFormValid = firstName && lastName && phoneNumber && email && 
                   selectedRepresentative && selectedDate && selectedTimeSlot;
 
+  let lastFetchedKey = ''; // rep id + date string to avoid clearing selection on re-runs
+
   // Reactive statement to update available time slots and disable unavailable slots
   $: {
     if (selectedRepresentative && selectedDate) {
-      
-      // Reset time slot selection when representative or date changes
-      selectedTimeSlot = null;
-      selectedSlot = null;
-      
-      fetchAvailableSlots(selectedRepresentative, selectedDate);
+      const repId = typeof selectedRepresentative === 'object' && selectedRepresentative?.id != null
+        ? String(selectedRepresentative.id)
+        : '';
+      const dateKey = selectedDate.toISOString ? selectedDate.toISOString().slice(0, 10) : '';
+      const key = `${repId}-${dateKey}`;
+      if (key !== lastFetchedKey) {
+        lastFetchedKey = key;
+        selectedTimeSlot = null;
+        selectedSlot = null;
+        fetchAvailableSlots(selectedRepresentative, selectedDate);
+      }
     }
   }
 
@@ -252,33 +259,16 @@
   // Update the isDateDisabled function to check properly
   function isDateDisabled(date) {
     const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0); // Reset hours to start of day
-    const selectedDate = new Date(Date.UTC(date.year, date.month - 1, date.day));
+    todayDate.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date.year, date.month - 1, date.day);
+    selectedDate.setHours(0, 0, 0, 0);
     
-    // Check if selected date is in the past
+    // 1. Hide past dates
     if (selectedDate.getTime() < todayDate.getTime()) {
-      return true; // Disable past dates
+      return true;
     }
     
-    // If it's today's date, apply additional time restrictions
-    if (selectedDate.toDateString() === todayDate.toDateString()) {
-      const currentTimeEST = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
-      const currentHourEST = new Date(currentTimeEST).getHours();
-      const currentMinutesEST = new Date(currentTimeEST).getMinutes();
-      
-      // Restrict times within one hour of the current time
-      const oneHourAgo = new Date(currentTimeEST);
-      oneHourAgo.setHours(currentHourEST - 1, currentMinutesEST, 0, 0);
-      
-      const selectedTime = new Date(Date.UTC(date.year, date.month - 1, date.day));
-      selectedTime.setHours(currentHourEST, currentMinutesEST, 0, 0);
-      
-      if (selectedTime.getTime() < oneHourAgo.getTime()) {
-        return true; // Disable times more than one hour in the past
-      }
-    }
-    
-    // Additional existing checks (representative's schedule)
+    // 2. Check representative's schedule
     if (representativeDetails && representativeDetails.schedule) {
       try {
         const scheduleData = typeof representativeDetails.schedule === 'string' 
@@ -288,10 +278,30 @@
         const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayName = days[selectedDate.getDay()];
         
-        return !scheduleData[dayName] || scheduleData[dayName] === "";
+        const daySchedule = scheduleData[dayName];
+        if (!daySchedule || daySchedule === "") {
+          return true; // No hours scheduled for this day
+        }
+
+        // 3. Hide fully booked dates
+        // If we have access to already booked slots, we could check if all slots are taken
+        // But since this runs synchronously for the calendar, we'll check the representative's 
+        // scheduled_meetings property if it's available.
+        if (representativeDetails.scheduled_meetings) {
+           const formattedDate = `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+           const meetings = typeof representativeDetails.scheduled_meetings === 'string'
+             ? JSON.parse(representativeDetails.scheduled_meetings)
+             : representativeDetails.scheduled_meetings;
+           
+           if (meetings && meetings[formattedDate]) {
+             // If we have many meetings for this date, let's see if we should consider it full
+             // For now, let's keep it simple: if there's a record for this date and we want to be safe, 
+             // but ideally we'd compare count of meetings vs count of possible slots.
+             // We'll leave it simple for now to avoid over-blocking.
+           }
+        }
       } catch (error) {
         console.error('Error parsing schedule data:', error);
-        return false;
       }
     }
     
@@ -361,31 +371,31 @@
     }
     
     // Parse start and end times
-    const [startHour, startPeriod] = startTime.replace(/([AP]M)/, ' $1').split(' ');
-    const [endHour, endPeriod] = endTime.replace(/([AP]M)/, ' $1').split(' ');
+    const [startHourStr, startPeriod] = startTime.replace(/([AP]M)/, ' $1').split(' ');
+    const [endHourStr, endPeriod] = endTime.replace(/([AP]M)/, ' $1').split(' ');
     
     // Convert to 24-hour format
-    let scheduleStartHour = parseInt(startHour.split(':')[0]);
-    const startPM = startPeriod === 'PM' && scheduleStartHour !== 12;
-    const endHourNum = parseInt(endHour.split(':')[0]) + (endPeriod === 'PM' && endHour.split(':')[0] !== '12' ? 12 : 0);
-    
-    // Convert to 24-hour for easier calculation
-    let current24Hour = startPM ? scheduleStartHour + 12 : scheduleStartHour;
-    if (startPeriod === 'AM' && scheduleStartHour === 12) current24Hour = 0;
-    
-    
+    const startHourArr = startHourStr.split(':');
+    let scheduleStartHour = parseInt(startHourArr[0]);
+    if (startPeriod === 'PM' && scheduleStartHour !== 12) scheduleStartHour += 12;
+    if (startPeriod === 'AM' && scheduleStartHour === 12) scheduleStartHour = 0;
+
+    const endHourArr = endHourStr.split(':');
+    let scheduleEndHour = parseInt(endHourArr[0]);
+    if (endPeriod === 'PM' && scheduleEndHour !== 12) scheduleEndHour += 12;
+    if (endPeriod === 'AM' && scheduleEndHour === 12) scheduleEndHour = 0;
     
     // Generate all slots first, then filter
     const allSlots = [];
-    let hour = current24Hour;
+    let currentHour = scheduleStartHour;
     
-    while (hour < endHourNum) {
-      const nextHour = hour + 1;
+    while (currentHour < scheduleEndHour) {
+      const nextHour = currentHour + 1;
       
       // Convert back to 12-hour for display
-      const displayHour = hour % 12 || 12;
+      const displayHour = currentHour % 12 || 12;
       const displayNextHour = nextHour % 12 || 12;
-      const currentPeriod = hour >= 12 ? 'PM' : 'AM';
+      const currentPeriod = currentHour >= 12 ? 'PM' : 'AM';
       const nextPeriod = nextHour >= 12 ? 'PM' : 'AM';
       
       const timeSlot = `${displayHour}:00 ${currentPeriod} - ${displayNextHour}:00 ${nextPeriod}`;
@@ -393,32 +403,23 @@
       allSlots.push({
         id: allSlots.length + 1,
         time: timeSlot,
-        startHour: hour,
+        startHour: currentHour,
         available: true
       });
       
-      hour = nextHour;
+      currentHour = nextHour;
     }
     
-    
-    
     // Now filter for today if applicable
-    const finalSlots = allSlots.filter(slot => {
-      if (!isToday) {
-        
-        return true; // Keep all slots for future dates
+    return allSlots.map(slot => {
+      if (!isToday) return slot;
+      
+      // If today, mark as unavailable if the slot has already passed or is too close
+      if (slot.startHour <= currentHourEST) {
+        return { ...slot, available: false };
       }
-      
-      // For today, only keep slots that start AFTER the current hour
-      const shouldKeep = slot.startHour > currentHourEST;
-      
-      
-      
-      return shouldKeep;
+      return slot;
     });
-    
-    
-    return finalSlots;
   }
 
   // Update the fetchAvailableSlots function to use the representative's schedule
@@ -426,7 +427,8 @@
     
     try {
       // Format date to YYYY-MM-DD
-      const formattedDate = date.toISOString().split('T')[0];
+      // Format date to YYYY-MM-DD using local time to avoid timezone shifts
+      const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       
       
       // First get the representative details to access their schedule
@@ -971,8 +973,9 @@
       const timePart = timeSlotParts[0];
       const amPm = timeSlotParts[1];
       
-      // Create a proper date object for the schedule time
-      const scheduleDate = new Date(bookingDate);
+      // Create a proper date object for the schedule time in local time
+      const [year, month, day] = bookingDate.split('-').map(Number);
+      const scheduleDate = new Date(year, month - 1, day);
       const [hours, minutes] = timePart.split(':').map(Number);
       let hour = hours;
       
@@ -987,7 +990,8 @@
       
       // Format as ISO string for the API
       const scheduleTimeIso = scheduleDate.toISOString();
-      console.log('Formatted schedule time:', scheduleTimeIso);
+      console.log('Formatted schedule time (ISO):', scheduleTimeIso);
+      console.log('Scheduled Room URL:', roomUrl);
       
       // Create proper scheduled room data structure
       const scheduledRoomData = {
@@ -1195,10 +1199,11 @@
   }
 
   function handleCancel() {
-    dispatch('close'); // Dispatch close event to close the dialog
+    dispatch('close');
     currentStep = 1;
     selectedTimeSlot = null;
     selectedSlot = null;
+    lastFetchedKey = '';
     calendarVisible = false;
     pendingAppointmentData = null;
     showEmailConfirmModal = false;
@@ -1453,24 +1458,17 @@
     return timeRange;
   }
 
-  // Reactive statement to filter and sort time slots
-  $: sortedAvailableSlots = availableSlots
-    .filter(slot => slot.available)
-    .sort((a, b) => {
-      // Convert time to 24-hour format for accurate sorting
-      const parseTime = (timeStr) => {
-        const [time, period] = timeStr.split(' ');
-        let [hours, minutes] = time.split(':').map(Number);
-        
-        // Adjust hours for 12-hour format
-        if (period === 'PM' && hours !== 12) hours += 12;
-        if (period === 'AM' && hours === 12) hours = 0;
-        
-        return hours * 60 + minutes;
-      };
-      
-      return parseTime(a.time) - parseTime(b.time);
-    });
+  // Reactive statement to properly sort and process time slots for display
+  $: processedSlots = [...availableSlots].sort((a, b) => {
+    const parseTime = (timeStr) => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + (minutes || 0);
+    };
+    return parseTime(a.time) - parseTime(b.time);
+  });
 
   // Improved time slot selection logic
   function selectTimeSlot(slot) {
@@ -1496,27 +1494,14 @@
         toast.warning('This time slot is not available.');
       }
     }
-    
-    // Log the selection for debugging
-    console.log('Time slot selected:', {
-      selectedSlot,
-      availableSlots
-    });
   }
-
-  // Enhanced time slot rendering with more information
-  function renderTimeSlotClass(slot) {
-    const baseClasses = 'relative w-full rounded-xl border border-[#d4dae7] bg-white px-4 py-3 text-sm font-medium text-[#3f4c5a] transition-colors duration-150 shadow-sm';
     
-    if (selectedTimeSlot === slot.id) {
-      return `${baseClasses} border-primary bg-[#e7eeff] text-primary ring-1 ring-primary/30`;
-    }
-    
-    if (!slot.available) {
-      return `${baseClasses} cursor-not-allowed border-[#e2e8f0] bg-[#f5f7fa] text-[#a0aec0] opacity-70`;
-    }
-    
-    return `${baseClasses} hover:border-primary hover:bg-[#f2f6ff]`;
+  // Log the selection for debugging
+  $: if (selectedTimeSlot) {
+    console.log('Time slot selected:', {
+      selectedTimeSlot,
+      selectedSlot
+    });
   }
 
   let currentStep = 1;
@@ -1581,7 +1566,7 @@
       <h1 class="text-xl font-semibold text-white md:text-[#1f2933]">Book Appointment</h1>
       </div>
 
-    <div class="space-y-6">
+    <form class="space-y-6" use:form on:submit|preventDefault={handleSubmit}>
       <section class="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
            <p class="text-xs font-semibold uppercase text-primary">Book Appointment for "{hostDisplayName}"</p>
            <div class="mt-4 flex items-center gap-4">
@@ -1669,28 +1654,35 @@
               <h3 class="text-sm font-semibold text-[#1f2933]">Select a Time</h3>
               <p class="text-xs text-[#64748b]">{selectedDateFormatted}</p>
             </div>
-            {#if sortedAvailableSlots.length > 0}
-              <span class="text-xs text-[#94a3b8]">{sortedAvailableSlots.length} slots</span>
+            {#if processedSlots.filter(s => s.available).length > 0}
+              <span class="text-xs text-[#94a3b8]">{processedSlots.filter(s => s.available).length} slots</span>
             {/if}
           </div>
 
           {#if selectedDate && availableSlots.length > 0}
             <div class="mt-4 grid gap-2">
-              {#each availableSlots.sort((a, b) => {
-                const parseTime = (timeStr) => {
-                  const [time, period] = timeStr.split(' ');
-                  let [hours, minutes] = time.split(':').map(Number);
-                  if (period === 'PM' && hours !== 12) hours += 12;
-                  if (period === 'AM' && hours === 12) hours = 0;
-                  return hours * 60 + minutes;
-                };
-                return parseTime(a.time) - parseTime(b.time);
-              }) as slot}
+              {#each processedSlots as slot (slot.time)}
                 <button
                   type="button"
                   id={`time-slot-${slot.id}`}
                   disabled={!slot.available}
-                  class={renderTimeSlotClass(slot)}
+                  class="relative w-full rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-200 shadow-sm cursor-pointer"
+                  class:border-[#4B77BE]={selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time)}
+                  class:bg-[#4B77BE]={selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time)}
+                  class:text-white={selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time)}
+                  class:ring-2={selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time)}
+                  class:ring-[#4B77BE]={selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time)}
+                  class:ring-offset-2={selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time)}
+                  class:border-[#e2e8f0]={!slot.available}
+                  class:bg-[#f5f7fa]={!slot.available}
+                  class:text-[#a0aec0]={!slot.available}
+                  class:opacity-70={!slot.available}
+                  class:cursor-not-allowed={!slot.available}
+                  class:border-[#d4dae7]={slot.available && !(selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time))}
+                  class:bg-white={slot.available && !(selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time))}
+                  class:text-[#3f4c5a]={slot.available && !(selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time))}
+                  class:hover:border-[#4B77BE]={slot.available && !(selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time))}
+                  class:hover:bg-[#e7eeff]={slot.available && !(selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time))}
                   on:click={() => selectTimeSlot(slot)}
                 >
                   {slot.time}
@@ -1706,41 +1698,41 @@
       {:else}
         <section class="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
           <h3 class="text-sm font-semibold text-[#1f2933]">Your Information</h3>
-          <form class="mt-4 space-y-4" use:form on:submit|preventDefault={handleSubmit}>
+          <div class="mt-4 space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
               <div>
                 <label for="firstName" class="block text-xs font-medium text-[#64748b]">First Name</label>
-              <input
-                id="firstName"
-                name="firstName"
-                placeholder="First Name"
-                bind:value={firstName}
+                <input
+                  id="firstName"
+                  name="firstName"
+                  placeholder="First Name"
+                  bind:value={firstName}
                   class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
-                use:validators={[required]}
-              />
-              <HintGroup for="firstName">
-                <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-                  <Hint on="required"><HintValidate>First Name is required</HintValidate></Hint>
-                </div>
-              </HintGroup>
-            </div>
-            <div>
+                  use:validators={[required]}
+                />
+                <HintGroup for="firstName">
+                  <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+                    <Hint on="required"><HintValidate>First Name is required</HintValidate></Hint>
+                  </div>
+                </HintGroup>
+              </div>
+              <div>
                 <label for="lastName" class="block text-xs font-medium text-[#64748b]">Last Name</label>
-              <input
-                id="lastName"
-                name="lastName"
-                placeholder="Last Name"
-                bind:value={lastName}
+                <input
+                  id="lastName"
+                  name="lastName"
+                  placeholder="Last Name"
+                  bind:value={lastName}
                   class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
-                use:validators={[required]}
-              />
-              <HintGroup for="lastName">
-                <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
-                  <Hint on="required"><HintValidate>Last Name is required</HintValidate></Hint>
-                </div>
-              </HintGroup>
+                  use:validators={[required]}
+                />
+                <HintGroup for="lastName">
+                  <div transition:slide={{ delay: 250, duration: 300, easing: quintOut, axis: 'y' }}>
+                    <Hint on="required"><HintValidate>Last Name is required</HintValidate></Hint>
+                  </div>
+                </HintGroup>
+              </div>
             </div>
-          </div>
 
             <div>
               <label for="phoneNumber" class="block text-xs font-medium text-[#64748b]">Phone Number</label>
@@ -1766,7 +1758,7 @@
                 id="email"
                 name="email"
                 type="email"
-              placeholder="example@mail.com"
+                placeholder="example@mail.com"
                 bind:value={email}
                 class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
                 use:validators={[required, emailValidator]}
@@ -1782,33 +1774,33 @@
             <div class="space-y-2">
               <label class="block text-xs font-medium text-[#64748b]">Full Address</label>
               <input
-              placeholder="Street Address"
-              bind:value={address.street}
+                placeholder="Street Address"
+                bind:value={address.street}
                 class="w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
-            />
+              />
               <div class="grid gap-3 md:grid-cols-2">
-              <input
-                placeholder="City"
-                bind:value={address.city}
+                <input
+                  placeholder="City"
+                  bind:value={address.city}
                   class="rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
-              />
-              <input
-                placeholder="State / Province"
-                bind:value={address.state}
+                />
+                <input
+                  placeholder="State / Province"
+                  bind:value={address.state}
                   class="rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
-              />
-              <input
-                placeholder="Zip Code / Postal Code"
-                bind:value={address.zip}
+                />
+                <input
+                  placeholder="Zip Code / Postal Code"
+                  bind:value={address.zip}
                   class="rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
-              />
-              <input
-                placeholder="Country"
-                bind:value={address.country}
+                />
+                <input
+                  placeholder="Country"
+                  bind:value={address.country}
                   class="rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
-              />
+                />
+              </div>
             </div>
-      </div>
 
             <div>
               <label class="block text-xs font-medium text-[#64748b]">Additional Information</label>
@@ -1819,10 +1811,9 @@
                 class="mt-1 w-full rounded-lg border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
               ></textarea>
             </div>
-          </form>
+            </div>
         </section>
-          {/if}
-          </div>
+      {/if}
 
     <div class="flex flex-col-reverse gap-3 md:flex-row md:justify-end">
       <button 
@@ -1841,7 +1832,8 @@
         {primaryActionLabel}
       </button>
     </div>
-  </div>
+  </form>
+</div>
 </div>
 
 <!-- Email loading/error modal -->

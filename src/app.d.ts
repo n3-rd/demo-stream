@@ -2,40 +2,7 @@
 /// <reference types="vite/client" />
 /// <reference types="svelte" />
 
-interface Locals {
-    pb: {
-        authStore: {
-            isValid: boolean;
-            model: {
-                id: string;
-                username?: string;
-                email?: string;
-                company_name?: string;
-                first_name?: string;
-                last_name?: string;
-                name?: string;
-            };
-        };
-        collection: (name: string) => {
-            create: (data: Record<string, any>) => Promise<any>;
-            getFirstListItem: (query: string) => Promise<any>;
-            getFullList: (options?: {
-                filter?: string;
-                expand?: string;
-                sort?: string;
-            }) => Promise<any[]>;
-            getOne: (id: string, options?: {
-                expand?: string;
-            }) => Promise<any>;
-            update: (id: string, data: Record<string, any>) => Promise<any>;
-        };
-    };
-    user?: {
-        id: string;
-        email?: string;
-        name?: string;
-    } | null;
-}
+
 
 interface ImportMetaEnv {
     readonly VITE_BUNNY_ACCESS_KEY: string;

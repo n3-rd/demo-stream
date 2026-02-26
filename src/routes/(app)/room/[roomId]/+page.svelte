@@ -583,7 +583,7 @@ function initializeWebRTC() {
             });
         } catch (fallbackError) {
             console.error('Fallback initialization failed:', fallbackError);
-            toast.error('Failed to initialize WebRTC. Please check your connection and try again.');
+            console.error('Failed to initialize WebRTC. Please check your connection and try again.');
         }
     }
 }
@@ -1193,14 +1193,14 @@ function handleWebRTCError(error: string, message: string) {
                 setTimeout(initWithRetry, 1000);
             } catch (recoveryError) {
                 console.error("Recovery attempt failed:", recoveryError);
-                toast.error("Stream recovery failed. Please refresh the page.");
+                console.error("Stream recovery failed. Please refresh the page.");
             }
             break;
         case "WebSocketNotConnected":
-            toast.error("Connection to media server failed. Please check your internet connection and try again.");
+            console.error("Connection to media server failed. Please check your internet connection and try again.");
             break;
         case "UserMediaError":
-            toast.error("Cannot access camera or microphone. Please check your device permissions.");
+            console.error("Cannot access camera or microphone. Please check your device permissions.");
             break;
         case "notSetRemoteDescription":
             // Specific handling for remote description error
@@ -1209,7 +1209,7 @@ function handleWebRTCError(error: string, message: string) {
             if (webrtcInitAttempts < MAX_WEBRTC_INIT_ATTEMPTS) {
                 setTimeout(initWithRetry, 1000);
             } else {
-                toast.error("Persistent WebRTC connection issues. Please refresh the page.");
+                console.error("Persistent WebRTC connection issues. Please refresh the page.");
             }
             break;
         case "no_stream_exist":
@@ -1221,7 +1221,7 @@ function handleWebRTCError(error: string, message: string) {
             break;
         default:
             console.error("Unhandled WebRTC Error:", error, message);
-            toast.error("An unexpected WebRTC error occurred. Please try again.");
+            console.error("An unexpected WebRTC error occurred. Please try again.");
     }
 }
 
@@ -1603,7 +1603,7 @@ function turnOnCamera() {
         })
         .catch(err => {
             console.error("Error reacquiring camera:", err);
-            toast.error("Could not access camera. Please check your device permissions.");
+            console.error("Could not access camera. Please check your device permissions.");
         });
     }, 1000); // Increased timeout to ensure previous stream is fully stopped
 }

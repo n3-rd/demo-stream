@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
-    import { UsersRound, ShareIcon } from "lucide-svelte";
+    import { UsersRound, ShareIcon, AlertTriangle } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
     import type { ComponentType } from "svelte";
     import * as Sheet from "$lib/components/ui/sheet";
@@ -36,6 +36,10 @@
     export let hostContentItems: any[] = [];
     export let repContentItems: any[] = [];
     export let participants: any[] = [];
+    /** 'granted' | 'denied' | 'prompt' | 'unknown' */
+    export let micPermission: string = 'unknown';
+    /** 'granted' | 'denied' | 'prompt' | 'unknown' */
+    export let cameraPermission: string = 'unknown';
     const dispatch = createEventDispatcher();
 
     type StateSnapshot = Record<string, boolean>;
@@ -404,17 +408,33 @@
             <!-- Primary controls -->
             <div class="flex gap-3">
                 {#each primaryControls as control (control.key)}
-                    <button
-                        class="flex justify-center items-center rounded-full bg-[#707172] h-14 w-14 hover:bg-white hover:text-black"
-                        class:is-muted={control.type === "toggle" && control.activeClass === "is-muted" && getStateValue(control.stateKey)}
-                        class:is-off={control.type === "toggle" && control.activeClass === "is-off" && getStateValue(control.stateKey)}
-                        aria-pressed={control.type === "toggle" ? getStateValue(control.stateKey) : undefined}
-                        aria-label={getAltText(control)}
-                        title={control.label}
-                        on:click={() => handlePrimary(control)}
-                    >
-                        <img src={control.icon} alt={getAltText(control)} class="icon h-11 w-11" />
-                    </button>
+                    {@const permBlocked = (control.key === 'microphone' && micPermission === 'denied') || (control.key === 'camera' && cameraPermission === 'denied')}
+                    <div class="relative">
+                        <button
+                            class="flex justify-center items-center rounded-full h-14 w-14 hover:bg-white hover:text-black"
+                            class:bg-red-700={permBlocked}
+                            class:bg-[#707172]={!permBlocked}
+                            class:is-muted={!permBlocked && control.type === "toggle" && control.activeClass === "is-muted" && getStateValue(control.stateKey)}
+                            class:is-off={!permBlocked && control.type === "toggle" && control.activeClass === "is-off" && getStateValue(control.stateKey)}
+                            aria-pressed={control.type === "toggle" ? getStateValue(control.stateKey) : undefined}
+                            aria-label={permBlocked ? `${control.label} (blocked — tap to request access)` : getAltText(control)}
+                            title={permBlocked ? 'Permission blocked — tap to request access' : control.label}
+                            on:click={() => {
+                                if (permBlocked) {
+                                    dispatch(control.key === 'microphone' ? 'requestMicPermission' : 'requestCameraPermission');
+                                } else {
+                                    handlePrimary(control);
+                                }
+                            }}
+                        >
+                            <img src={control.icon} alt={getAltText(control)} class="icon h-11 w-11" />
+                        </button>
+                        {#if permBlocked}
+                            <span class="mobile-permission-badge" title="Permission denied">
+                                <AlertTriangle size={10} color="#fff" />
+                            </span>
+                        {/if}
+                    </div>
                 {/each}
             </div>
 
@@ -587,6 +607,20 @@
     :global(button[data-melt-dialog-close]),
     :global(button[data-melt-sheet-close]) {
         display: none!important;
+    }
+
+    .mobile-permission-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 18px;
+        height: 18px;
+        background-color: #f59e0b;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
     }
     
 </style>

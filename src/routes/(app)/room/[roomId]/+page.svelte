@@ -10,7 +10,8 @@ import {
     page
 } from "$app/stores";
 import {
-    onMount
+    onMount,
+    onDestroy
 } from "svelte";
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
@@ -71,6 +72,10 @@ let playReconnected = false;
 let isNoStreamExist = false;
 let scheduleOpen = false;
 let shareURL = $page.url.href;
+
+// Permission state: 'granted' | 'denied' | 'prompt' | 'unknown'
+let micPermission: string = 'unknown';
+let cameraPermission: string = 'unknown';
 
 // Add video state management
 let videoPlayer;
@@ -471,13 +476,16 @@ onMount(() => {
       }
     }
     
-    // Initialize WebRTC only if meeting is available
-    if (meetingStatus.canJoin) {
-      // Initialize WebRTC if we have a name or are a representative
-      if (isAuthenticated || $anonymousUser || data?.representativeName || isRepresentative) {
-        initializeWebRTC();
-      }
-    }
+    // Check mic/camera permissions first so we know if we should fallback to data channel only
+    checkPermissions().then(() => {
+        // Initialize WebRTC only if meeting is available
+        if (meetingStatus.canJoin) {
+            // Initialize WebRTC if we have a name or are a representative
+            if (isAuthenticated || $anonymousUser || data?.representativeName || isRepresentative) {
+                initializeWebRTC();
+            }
+        }
+    });
     
     // Ensure panels are closed initially
     setTimeout(() => {
@@ -516,7 +524,7 @@ function initializeWebRTC() {
         const supportsMedia = !!(navigator && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function');
         
         // If media is not supported, force data channel only mode
-        const forceDcOnly = !supportsMedia || dcOnly;
+        let forceDcOnly = !supportsMedia || dcOnly;
         inDataChannelOnlyMode = forceDcOnly;
         
         // Check if this is a representative by URL param or other means
@@ -527,7 +535,26 @@ function initializeWebRTC() {
             { video: false, audio: false } : 
             mediaConstraints;
             
-        // Force video for representatives
+        // Final permission check before requesting media
+        if (!forceDcOnly) {
+            const isMicDenied = micPermission === 'denied';
+            const isCamDenied = cameraPermission === 'denied';
+            const isRepReq = isRep || $page.url.searchParams.get('repid') !== null;
+            
+            // If mic is denied, and we need it, we must force data channel only
+            // If we're a rep and camera is denied, we also fallback
+            if (isMicDenied || (isRepReq && isCamDenied)) {
+                console.warn('Permissions denied, falling back to data-channel only mode');
+                forceDcOnly = true;
+                inDataChannelOnlyMode = true;
+                actualMediaConstraints = { video: false, audio: false };
+                toast.warning("Media permissions blocked. Sync and chat will work, but you won't be seen or heard.", {
+                    description: "Please check your browser settings and click the warning icon to try again."
+                });
+            }
+        }
+
+        // Force video for representatives if not in DC-only mode
         if (isRep && !forceDcOnly) {
             actualMediaConstraints = {
                 ...actualMediaConstraints,
@@ -1200,6 +1227,13 @@ function handleWebRTCError(error: string, message: string) {
             break;
         case "UserMediaError":
             console.error("Cannot access camera or microphone. Please check your device permissions.");
+            // Update permission states so the UI shows warning indicators
+            micPermission = 'denied';
+            cameraPermission = 'denied';
+            
+            // Re-initialize in data-channel only mode so sync still works
+            console.warn("Media error detected. Re-initializing in data-channel-only mode to preserve sync/chat.");
+            setTimeout(initializeWebRTC, 1000);
             break;
         case "notSetRemoteDescription":
             // Specific handling for remote description error
@@ -1497,27 +1531,116 @@ function handlePlayStarted() {
     isPlaying = true;
 }
 
+// ─── Permission utilities ────────────────────────────────────────────────────
+
+/**
+ * Query the browser Permissions API for mic and camera state.
+ * Falls back gracefully on browsers that don't support it.
+ */
+// Cleanup handlers for permission change listeners
+let cleanupPermissionListeners: (() => void) | null = null;
+
+async function checkPermissions() {
+    if (typeof navigator === 'undefined' || !navigator.permissions) return;
+    try {
+        const [micResult, camResult] = await Promise.all([
+            navigator.permissions.query({ name: 'microphone' as PermissionName }),
+            navigator.permissions.query({ name: 'camera' as PermissionName })
+        ]);
+        micPermission = micResult.state;
+        cameraPermission = camResult.state;
+
+        // Watch for live changes (user may change browser settings while in room)
+        const onMicChange = () => { micPermission = micResult.state; };
+        const onCamChange = () => { cameraPermission = camResult.state; };
+        micResult.addEventListener('change', onMicChange);
+        camResult.addEventListener('change', onCamChange);
+
+        // Store cleanup so onDestroy can remove the listeners
+        cleanupPermissionListeners = () => {
+            micResult.removeEventListener('change', onMicChange);
+            camResult.removeEventListener('change', onCamChange);
+        };
+    } catch (e) {
+        // Permissions API not available (e.g. Firefox < 88 for camera)
+        console.warn('Permissions API not fully supported:', e);
+    }
+}
+
+/**
+ * Trigger the browser's default microphone permission prompt.
+ * If the user grants access, also restart the WebRTC adaptor so audio works.
+ */
+async function requestMicPermission() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        // Permission granted – update state and stop the temporary stream
+        stream.getTracks().forEach(t => t.stop());
+        micPermission = 'granted';
+        // Re-initialise WebRTC so the new permission takes effect
+        if (!webRTCAdaptor) {
+            initializeWebRTC();
+        }
+    } catch (err) {
+        console.warn('Mic permission request rejected:', err);
+        micPermission = 'denied';
+    }
+}
+
+/**
+ * Trigger the browser's default camera permission prompt.
+ */
+async function requestCameraPermission() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+        stream.getTracks().forEach(t => t.stop());
+        cameraPermission = 'granted';
+        if (!webRTCAdaptor) {
+            initializeWebRTC();
+        }
+    } catch (err) {
+        console.warn('Camera permission request rejected:', err);
+        cameraPermission = 'denied';
+    }
+}
+
+// ─── End permission utilities ─────────────────────────────────────────────────
+
 function muteLocalMic() {
-    if (webRTCAdaptor && webRTCAdaptor.localStream) {
+    if (!webRTCAdaptor) return;
+    // Also directly disable the track when a local stream is available; the
+    // adaptor call below handles the peer-connection side regardless.
+    if (webRTCAdaptor.localStream) {
         const audioTrack = webRTCAdaptor.localStream.getAudioTracks()[0];
         if (audioTrack) {
             audioTrack.enabled = false;
             console.log('Muted local mic');
         }
     }
-    webRTCAdaptor.muteLocalMic();
+    try {
+        webRTCAdaptor.muteLocalMic();
+    } catch (e) {
+        console.warn('muteLocalMic error:', e);
+    }
     isMicMuted = true;
 }
 
 function unmuteLocalMic() {
-    if (webRTCAdaptor && webRTCAdaptor.localStream) {
+    if (!webRTCAdaptor) return;
+    // Also directly re-enable the track when a local stream is available; the
+    // adaptor call below handles the peer-connection side regardless.
+    if (webRTCAdaptor.localStream) {
         const audioTrack = webRTCAdaptor.localStream.getAudioTracks()[0];
         if (audioTrack) {
             audioTrack.enabled = true;
             console.log('Unmuted local mic');
         }
     }
-    webRTCAdaptor.unmuteLocalMic();
+    try {
+        webRTCAdaptor.unmuteLocalMic();
+    } catch (e) {
+        console.warn('unmuteLocalMic error:', e);
+    }
     isMicMuted = false;
 }
 
@@ -2741,6 +2864,13 @@ onMount(() => {
     }, 2000);
 });
 
+onDestroy(() => {
+    if (cleanupPermissionListeners) {
+        cleanupPermissionListeners();
+        cleanupPermissionListeners = null;
+    }
+});
+
 // Track the currently selected video
 let selectedVideo = null;
 
@@ -3140,11 +3270,15 @@ let selectedVideo = null;
                 hostContentItems={room?.expand?.host_content || []}
                 repContentItems={room?.expand?.representative_content || []}
                 participants={meetingParticipants}
+                {micPermission}
+                {cameraPermission}
                 on:leaveRoom={leaveRoom}
                 on:toggleMicrophone={toggleMicrophone}
                 on:toggleCamera={toggleCamera}
                 on:togglePanel={handlePanelToggle}
                 on:videoSelect={handleVideoSelect}
+                on:requestMicPermission={requestMicPermission}
+                on:requestCameraPermission={requestCameraPermission}
             />
 
             <MobileTopBar
@@ -3184,6 +3318,10 @@ let selectedVideo = null;
                         {videoVolume}
                         on:toggleVideoMute={toggleVideoMute}
                         on:volumeChange={handleVolumeChange}
+                        {micPermission}
+                        {cameraPermission}
+                        on:requestMicPermission={requestMicPermission}
+                        on:requestCameraPermission={requestCameraPermission}
                     />
             </div>
         </div>

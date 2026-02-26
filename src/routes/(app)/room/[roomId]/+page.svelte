@@ -83,6 +83,12 @@ let isVideoPlaying = false;
 let currentVideoTime = 0;
 let isVideoMuted = false;
 
+// Flag to prevent store subscription from interfering during media_state_response handling
+let isSyncingFromStateResponse = false;
+
+// Pending sync state for when videoPlayer isn't available yet (e.g., joiner with no video element)
+let pendingSyncState: { currentTime: number; isPlaying: boolean } | null = null;
+
 // Live mode from data channel (rep GO LIVE = composited stream full-screen)
 let isRepLive = false;
 let liveCameraMode: string | null = null;
@@ -815,42 +821,56 @@ function handleWebRTCCallback(info: string, obj: any) {
 
                                     // Only clear and reload media if something actually changed
                                     if (anyMediaChanging) {
+                                        // Set flag to prevent store subscription from interfering
+                                        isSyncingFromStateResponse = true;
                                         currentVideoUrl.set('');
                                         currentPdfUrl.set('');
                                         currentDocxUrl.set('');
                                         currentImageUrl.set('');
                                     }
+
+                                    // Update play state early so store subscription sees the correct value
+                                    playVideoStore.set(state.isPlaying || false);
                                 
                                     // Update video state
                                     if (state.videoUrl) {
                                         if (videoUrlChanging) {
                                             currentVideoUrl.set(state.videoUrl);
                                             if (videoPlayer) {
-                                                videoPlayer.src = state.videoUrl;
-                                            
-                                                // Handle play state differently based on capabilities
-                                                if (inDataChannelOnlyMode) {
-                                                    if (state.isPlaying) {
+                                                // Wait for video metadata to load before seeking to the correct time.
+                                                // Setting currentTime before metadata is loaded is silently ignored,
+                                                // which causes joiners to start at 0:00 instead of the controller's position.
+                                                const targetTime = state.currentTime || 0;
+                                                const shouldPlay = state.isPlaying;
+                                                const onMetadataLoaded = () => {
+                                                    clearTimeout(syncSafetyTimeout);
+                                                    videoPlayer.currentTime = targetTime;
+                                                    if (shouldPlay) {
                                                         videoPlayer.play().catch(e => {
-                                                            console.warn('Auto-play blocked in data-channel-only mode:', e);
-                                                            const playOnClick = () => {
-                                                                videoPlayer.play().catch(err => console.error('Play on click failed:', err));
-                                                                document.removeEventListener('click', playOnClick);
-                                                            };
-                                                            document.addEventListener('click', playOnClick, { once: true });
+                                                            console.warn('Auto-play blocked after metadata load:', e);
+                                                            if (inDataChannelOnlyMode) {
+                                                                const playOnClick = () => {
+                                                                    videoPlayer.play().catch(err => console.error('Play on click failed:', err));
+                                                                    document.removeEventListener('click', playOnClick);
+                                                                };
+                                                                document.addEventListener('click', playOnClick, { once: true });
+                                                            }
                                                         });
                                                     } else {
                                                         videoPlayer.pause();
                                                     }
-                                                } else {
-                                                    if (state.isPlaying) {
-                                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                                    } else {
-                                                        videoPlayer.pause();
-                                                    }
-                                                }
-                                            
-                                                videoPlayer.currentTime = state.currentTime || 0;
+                                                    isSyncingFromStateResponse = false;
+                                                };
+                                                videoPlayer.addEventListener('loadedmetadata', onMetadataLoaded, { once: true });
+                                                videoPlayer.src = state.videoUrl;
+                                                videoPlayer.load();
+                                                // Safety timeout: clear the flag if metadata never loads (e.g., network error)
+                                                const syncSafetyTimeout = setTimeout(() => { isSyncingFromStateResponse = false; }, 15000);
+                                            } else {
+                                                // videoPlayer doesn't exist yet (element not in DOM).
+                                                // Store the sync state so it can be applied once the player mounts.
+                                                pendingSyncState = { currentTime: state.currentTime || 0, isPlaying: state.isPlaying };
+                                                isSyncingFromStateResponse = false;
                                             }
                                         } else if (videoPlayer) {
                                             // Same URL — just sync time and play state without reloading
@@ -863,7 +883,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                                             } else if (!state.isPlaying && !videoPlayer.paused) {
                                                 videoPlayer.pause();
                                             }
+                                            isSyncingFromStateResponse = false;
+                                        } else {
+                                            isSyncingFromStateResponse = false;
                                         }
+                                    } else {
+                                        isSyncingFromStateResponse = false;
                                     }
                                 
                                     // Update PDF state
@@ -888,9 +913,6 @@ function handleWebRTCCallback(info: string, obj: any) {
                                     if (state.syncSource) {
                                         syncSource = state.syncSource;
                                     }
-                            
-                                    // Update play state
-                                    playVideoStore.set(state.isPlaying || false);
 
                                     // Live mode (for late joiners)
                                     if (state.isLive !== undefined) {
@@ -1859,6 +1881,8 @@ function toggleDevLiveMode() {
 // Update the video state change handler
 function handleVideoStateChange() {
     if (!videoPlayer) return;
+    // Skip state change events during initial sync to prevent overriding seek position
+    if (isSyncingFromStateResponse) return;
     
     const isCurrentController = (syncSource === 'host' && isHost) || 
                               (syncSource === 'representative' && isRepresentative);
@@ -1917,6 +1941,24 @@ $: if (videoPlayer) {
             lastUpdate = now;
         }
     };
+
+    // Apply pending sync state from media_state_response if videoPlayer just mounted
+    if (pendingSyncState) {
+        const { currentTime: targetTime, isPlaying: shouldPlay } = pendingSyncState;
+        pendingSyncState = null;
+        const onMetadataLoaded = () => {
+            videoPlayer.currentTime = targetTime;
+            if (shouldPlay) {
+                videoPlayer.play().catch(e => console.warn('Auto-play blocked (pending sync):', e));
+            }
+        };
+        // If metadata is already loaded (readyState >= HAVE_METADATA), apply immediately; otherwise wait
+        if (videoPlayer.readyState >= 1) {
+            onMetadataLoaded();
+        } else {
+            videoPlayer.addEventListener('loadedmetadata', onMetadataLoaded, { once: true });
+        }
+    }
     
     // Don't automatically pause the video on initialization
     // This was causing the video to pause after play
@@ -2509,6 +2551,12 @@ let unsubscribe;
 onMount(() => {
     console.log('Setting up store subscription');
     unsubscribe = currentVideoUrl.subscribe(value => {
+        // Skip if the media_state_response handler is driving the video load —
+        // it manages src, currentTime, and play/pause itself via loadedmetadata.
+        if (isSyncingFromStateResponse) {
+            return;
+        }
+
         console.log('Store value changed:', {
             newValue: value,
             videoPlayer: videoPlayer,

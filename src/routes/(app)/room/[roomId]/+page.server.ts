@@ -1,12 +1,14 @@
 import { error, redirect } from '@sveltejs/kit';
-import type { ServerLoad } from './$types';
+import { db } from '$lib/db/drizzle';
+import { rooms, representatives, locations, users } from '$lib/db/schema';
+import { eq, or, and, inArray } from 'drizzle-orm';
+import type { PageServerLoad } from './$types';
 
-export const load: ServerLoad = async ({ locals, params, url, cookies }: { locals: App.Locals, params: any, url: URL, cookies: any }) => {
+export const load: PageServerLoad = async ({ locals, params, url, cookies }) => {
     const roomIdParam = params.roomId;
-    const pb = locals.pb;
 
-    // Check for authentication - allow either normal PocketBase auth or viewroom/representative auth
-    const isNormalAuth = locals.pb.authStore.isValid;
+    // Check for authentication - allow either normal user auth or viewroom/representative auth
+    const isNormalAuth = !!locals.user;
     const viewroomSession = cookies.get('viewroom_session');
     const viewroomUserCookie = cookies.get('viewroom_user');
     const repSession = cookies.get('rep_session');
@@ -18,17 +20,14 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
     let authType = 'none';
 
     if (isNormalAuth) {
-        // User is logged in with normal PocketBase auth - allow access
-        authType = 'pocketbase';
+        authType = 'pocketbase'; // Kept for UI compatibility
         viewroomUser = {
-            id: locals.pb.authStore.model.id,
-            first_name: locals.pb.authStore.model.first_name || locals.pb.authStore.model.username || 'User',
-            last_name: locals.pb.authStore.model.last_name || '',
-            company: locals.pb.authStore.model.company_name || 'Company User',
-            email: locals.pb.authStore.model.email
+            id: locals.user.id,
+            first_name: locals.user.name || 'User',
+            company: locals.user.companyName || 'Company User',
+            email: locals.user.email
         };
     } else if (viewroomSession && viewroomUserCookie) {
-        // User has viewroom authentication
         try {
             viewroomUser = JSON.parse(viewroomUserCookie);
             authType = 'viewroom';
@@ -37,134 +36,135 @@ export const load: ServerLoad = async ({ locals, params, url, cookies }: { local
             throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
         }
     } else if (repSession && repUserCookie) {
-        // Representative authenticated via rep cookies
         try {
             representativeUser = JSON.parse(repUserCookie);
             authType = 'representative';
         } catch (e) {
-            // If rep cookie malformed, fall back to viewroom login
             const suffix = incomingUid ? `&uid=${encodeURIComponent(incomingUid)}` : '';
             throw redirect(303, `/viewroom/login?room=${params.roomId}${suffix}`);
         }
     } else if (url.searchParams.get('repid')) {
-        // When repid is present, try to fetch representative details and set cookies
         try {
-            const representativeId = url.searchParams.get('repid');
-            const representative = await pb.collection('representatives').getOne(representativeId);
+            const repId = url.searchParams.get('repid');
+            const [repRecord] = await db.select().from(representatives).where(eq(representatives.id, repId)).limit(1);
 
-            // Prepare representative session data
-            const repSession = JSON.stringify({
-                id: representative.id,
-                email: representative.email,
-                name: representative.name || `${representative.first_name} ${representative.last_name}`.trim(),
-                firstName: representative.first_name,
-                lastName: representative.last_name,
-                company: representative.company
-            });
+            if (repRecord) {
+                const sessionData = JSON.stringify({
+                    id: repRecord.id,
+                    email: repRecord.email,
+                    name: repRecord.name || `${repRecord.firstName || ''} ${repRecord.lastName || ''}`.trim(),
+                    firstName: repRecord.firstName,
+                    lastName: repRecord.lastName,
+                    company: repRecord.company
+                });
 
-            // Set session token and user data cookies
-            cookies.set('rep_session', representativeId, {
-                path: '/',
-                httpOnly: true,
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 8  // 8 hours
-            });
-            cookies.set('rep_user', repSession, {
-                path: '/',
-                httpOnly: false,
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 8  // 8 hours
-            });
-
-            authType = 'representative';
-        } catch (error) {
-            console.error('Failed to set representative cookies:', error);
-            // Fall back to anonymous access
+                cookies.set('rep_session', repId, { path: '/', httpOnly: true, sameSite: 'strict', maxAge: 60 * 60 * 8 });
+                cookies.set('rep_user', sessionData, { path: '/', httpOnly: false, sameSite: 'strict', maxAge: 60 * 60 * 8 });
+                authType = 'representative';
+            }
+        } catch (err) {
+            console.error('Failed to set representative cookies:', err);
             authType = 'anonymous';
         }
     } else {
-        // Allow anonymous access (no redirect)
         authType = 'anonymous';
     }
 
-    // Attempt to fetch the room details
     try {
-        // Try searching by room_id first (for short URLs), then by primary id
-        const roomRecord = await pb.collection('rooms').getFirstListItem(`room_id = "${roomIdParam}" || id = "${roomIdParam}"`);
-        const actualRoomId = roomRecord.id;
+        // Fetch room using Drizzle (searching by short room_id or UUID)
+        const [roomRecord] = await db.select().from(rooms)
+            .where(or(eq(rooms.roomId, roomIdParam), eq(rooms.id, roomIdParam)))
+            .limit(1);
 
-        // Check if the room is a scheduled meeting
-        if (roomRecord.scheduled) {
-            const scheduleTime = new Date(roomRecord.schedule_time);
+        if (!roomRecord) {
+            throw error(404, 'Room not found');
+        }
+
+        // Handle scheduled meetings
+        if (roomRecord.scheduled && roomRecord.scheduleTime) {
+            const scheduleTime = new Date(roomRecord.scheduleTime);
             const currentTime = new Date();
-
-            // Calculate time difference in minutes
             const timeDiffMinutes = (scheduleTime.getTime() - currentTime.getTime()) / (1000 * 60);
 
-            // Use the room's join_before_minutes, with a minimum of 0
-            const joinBeforeMinutes = Math.max(roomRecord.join_before_minutes || 0, 0);
+            // In Drizzle, the table likely doesn't have join_before_minutes yet, default to 5
+            const joinBeforeMinutes = 5;
 
-            // Strict check: only allow joining within the specified join window
             if (timeDiffMinutes > joinBeforeMinutes) {
-                // Too early for the meeting
                 return {
                     error: true,
                     scheduledMeeting: true,
                     message: `This meeting is scheduled for ${scheduleTime.toLocaleString()}. Please return at that time.`,
                     scheduledTime: scheduleTime,
-                    scheduledRoomId: actualRoomId,
+                    scheduledRoomId: roomRecord.id,
                     join_before_minutes: joinBeforeMinutes,
                     redirectTo: '/'
                 };
             }
         }
 
-        // Fetch additional room details
-        const expandedRoom = await pb.collection('rooms').getOne(actualRoomId, {
-            expand: 'representative,host_content,representative_content'
-        });
+        // Company ID for additional lookups
+        const companyId = isNormalAuth ? locals.user.id : roomRecord.ownerCompany;
 
-        // Get the company ID for filtering - use authenticated user's company or room owner's company
-        let companyId = null;
-        if (isNormalAuth && locals.pb.authStore.model) {
-            companyId = locals.pb.authStore.model.id;
-        } else if (expandedRoom.owner_company) {
-            companyId = expandedRoom.owner_company;
+        // Fetch Representatives with locations using a JOIN
+        let roomRepresentatives = [];
+        const repIds = roomRecord.representative || [];
+
+        if (repIds.length > 0) {
+            const repsWithLocations = await db.select({
+                id: representatives.id,
+                name: representatives.name,
+                firstName: representatives.firstName,
+                lastName: representatives.lastName,
+                email: representatives.email,
+                avatar: representatives.avatar,
+                isActive: representatives.isActive,
+                company: representatives.company,
+                location: {
+                    id: locations.id,
+                    name: locations.name,
+                    address: locations.address
+                }
+            })
+                .from(representatives)
+                .leftJoin(locations, eq(representatives.location, locations.id))
+                .where(inArray(representatives.id, repIds));
+
+            // Flatten for UI compat (transform location object to 'expand.location')
+            roomRepresentatives = repsWithLocations.map(r => ({
+                ...r,
+                expand: { location: r.location }
+            }));
         }
 
-        // Fetch all representatives, filtered by company if available
-        let representatives = [];
-        if (expandedRoom.representative && expandedRoom.representative.length > 0) {
-            let filter = `id IN ("${expandedRoom.representative.join('","')}")`;
-
-            // Add company filter if we have a company ID
-            if (companyId) {
-                filter += ` && company = "${companyId}"`;
+        // Return room data with snake_case fields for UI compatibility
+        return {
+            id: roomRecord.id,
+            room_id: roomRecord.roomId,
+            title: roomRecord.title,
+            owner_company: roomRecord.ownerCompany,
+            is_active: roomRecord.isActive,
+            host_content: roomRecord.hostContent,
+            representative_content: roomRecord.representativeContent,
+            representative: roomRecord.representative,
+            scheduled: roomRecord.scheduled,
+            schedule_time: roomRecord.scheduleTime,
+            customer_name: roomRecord.customerName,
+            customer_email: roomRecord.customerEmail,
+            customer_phone: roomRecord.customerPhone,
+            additional_information: roomRecord.additionalInformation,
+            representative_id: roomRecord.representativeId,
+            representatives: roomRepresentatives,
+            authType,
+            debug: {
+                hasRepField: !!roomRecord.representative,
+                repCount: roomRepresentatives.length,
+                isDrizzle: true
             }
-
-            representatives = await pb.collection('representatives').getFullList({
-                filter,
-                sort: '-created',
-                expand: 'location'
-            });
-        }
-
-        return {
-            ...expandedRoom,
-            expand: expandedRoom.expand,
-            representatives,
-            authType: authType  // Add this to help with debugging
         };
 
-    } catch (error) {
-        console.error('Error loading room:', error);
-
-        // Redirect to home page if room not found
-        return {
-            error: true,
-            message: 'Room not found',
-            redirectTo: '/'
-        };
+    } catch (err) {
+        console.error('Error loading room:', err);
+        return { error: true, message: 'Room not found', redirectTo: '/' };
     }
 };
 

@@ -54,7 +54,8 @@
   let selectedLocation = '';
   let imagePreviewUrl = '';
   let hasImage = false;
-  
+  let saving = false;
+
   function handleLocationChange(e: any) {
     selectedLocation = e?.value || '';
     // Force form validation update
@@ -100,7 +101,9 @@
   <div class="flex-1 overflow-auto mt-[6rem]">
     <div class="p-6">
       <form method="POST" enctype="multipart/form-data" class="space-y-6" use:form use:enhance={() => {
+        saving = true;
         return async ({ result }) => {
+          try {
           if (!$form.valid) {
             toast.error('Please fix the validation errors');
             return;
@@ -118,6 +121,9 @@
               : 'Failed to add representative';
             toast.error(errorMessage);
           }
+          } finally {
+            saving = false;
+          }
         };
       }}>
         <div class="flex justify-between items-center mb-6 bg-white py-7 px-11">
@@ -132,9 +138,9 @@
             <Button 
               type="submit" 
               class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white"
-              disabled={!$form.valid}
+              disabled={!$form.valid || saving}
             >
-              Save and Add
+              {saving ? 'Saving...' : 'Save and Add'}
             </Button>
           </div>
         </div>

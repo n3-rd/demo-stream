@@ -48,31 +48,44 @@ interface ImportMeta {
 }
 
 declare module '$env/static/public' {
-	export const PUBLIC_DAILY_API_KEY: string;
-	export const PUBLIC_POCKETBASE_INSTANCE: string;
-	export const PUBLIC_BREVO_API_KEY: string;
-	export const PUBLIC_APP_URL: string;
-	export const PUBLIC_SMTP_FROM: string;
-	export const PUBLIC_SMTP_HOST: string;
-	export const PUBLIC_SMTP_PORT: string;
-	export const PUBLIC_SMTP_SECURE: string;
-	export const PUBLIC_SMTP_USER: string;
-	export const PUBLIC_SMTP_PASS: string;
+    export const PUBLIC_DAILY_API_KEY: string;
+    export const PUBLIC_POCKETBASE_INSTANCE: string;
+    export const PUBLIC_BREVO_API_KEY: string;
+    export const PUBLIC_APP_URL: string;
+    export const PUBLIC_SMTP_FROM: string;
+    export const PUBLIC_SMTP_HOST: string;
+    export const PUBLIC_SMTP_PORT: string;
+    export const PUBLIC_SMTP_SECURE: string;
+    export const PUBLIC_SMTP_USER: string;
+    export const PUBLIC_SMTP_PASS: string;
 }
 
 declare global {
-	namespace App {
-		// interface Error {}
-		// interface Locals {}
-		// interface PageData {}
-		// interface PageState {}
-		interface Platform {}
-		interface PrivateEnv {}
-		interface PublicEnv {
-			PUBLIC_BREVO_API_KEY: string;
-			PUBLIC_APP_URL: string;
-		}
-	}
+    interface User {
+        id: string;
+        email: string;
+        name?: string;
+        companyName?: string;
+        companyLogo?: string;
+    }
+
+    namespace App {
+        // interface Error {}
+        interface Locals {
+            pb: any;
+            user: User | null;
+            userid: string;
+            session?: string;
+        }
+        // interface PageData {}
+        // interface PageState {}
+        interface Platform { }
+        interface PrivateEnv { }
+        interface PublicEnv {
+            PUBLIC_BREVO_API_KEY: string;
+            PUBLIC_APP_URL: string;
+        }
+    }
 }
 
-export {};
+export { };

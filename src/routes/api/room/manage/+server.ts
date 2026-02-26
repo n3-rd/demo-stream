@@ -1,4 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { db } from '$lib/db/drizzle';
+import { rooms } from '$lib/db/schema';
 
 function generateShortId(length = 10): string {
     const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -10,11 +12,12 @@ function generateShortId(length = 10): string {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-    if (!locals.pb?.authStore.isValid) {
-        return new Response(JSON.stringify({
+    // Check authentication via locals.user (populated from session in hooks)
+    if (!locals.user) {
+        return json({
             success: false,
             message: 'Unauthorized'
-        }), { status: 401 });
+        }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -24,45 +27,42 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     // Get the arrays from the form data
     const hostContent = formData.get('host_content[]')?.toString().split(',').filter(Boolean) || [];
     const repContent = formData.get('representative_content[]')?.toString().split(',').filter(Boolean) || [];
-    const representatives = formData.get('representative[]')?.toString().split(',').filter(Boolean) || [];
-
-    console.log('Host content:', hostContent);
-    console.log('Representative content:', repContent);
-    console.log('Representatives:', representatives);
+    const representative = formData.get('representative[]')?.toString().split(',').filter(Boolean) || [];
 
     if (!title) {
-        return new Response(JSON.stringify({
+        return json({
             success: false,
             error: 'Title is required'
-        }), { status: 400 });
+        }, { status: 400 });
     }
 
     try {
         const shortId = generateShortId(10);
-        const data = {
-            room_id: shortId,
+
+        // Use Drizzle to insert the new room record
+        const [roomRecord] = await db.insert(rooms).values({
+            roomId: shortId,
             title,
-            is_active: isActive,
-            host_content: hostContent,
-            representative_content: repContent,
-            representative: representatives,
-            owner_company: locals.pb.authStore.model.id
-        };
+            isActive,
+            hostContent,
+            representativeContent: repContent,
+            representative,
+            ownerCompany: locals.user.id
+        }).returning();
 
-        console.log('Creating room with data:', data);
+        console.log('Created room successfully with Drizzle:', roomRecord);
 
-        const record = await locals.pb.collection('rooms').create(data);
-        console.log('Created room:', record);
-
-        return new Response(JSON.stringify({
+        return json({
             success: true,
-            room: record
-        }), { status: 200 });
-    } catch (err) {
-        console.error('Error creating room:', err);
-        return new Response(JSON.stringify({
+            room: roomRecord
+        }, { status: 200 });
+
+    } catch (err: any) {
+        console.error('Error creating room with Drizzle:', err);
+        return json({
             success: false,
-            error: 'Failed to create room'
-        }), { status: 500 });
+            error: 'Failed to create room',
+            message: err.message
+        }, { status: 500 });
     }
-}; 
+};

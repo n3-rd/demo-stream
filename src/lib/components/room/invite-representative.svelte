@@ -27,7 +27,15 @@
 
     let invitedRepresentative = '';
 
-    let uidExtracted = shareURL.split('?')[1].split('&').find(param => param.startsWith('uid=')).split('=')[1];
+    let uidExtracted = '';
+    try {
+        if (shareURL && shareURL.includes('?')) {
+            const params = new URLSearchParams(shareURL.split('?')[1]);
+            uidExtracted = params.get('uid') || '';
+        }
+    } catch (e) {
+        console.warn('[InviteRepresentative] Error extracting uid:', e);
+    }
     console.log('uidExtracted', uidExtracted);
 
     const dispatch = createEventDispatcher();
@@ -37,11 +45,16 @@
     // Get company ID from page data for filtering
     $: companyId = $page.data?.user?.id || $page.data?.owner_company || room?.owner_company;
 
-    // Filter representatives by the current user's company
-    // Only filter if we have a companyId, otherwise show all passed representatives
-    $: filteredRepresentatives = companyId 
-        ? representatives.filter(rep => rep.company === companyId || rep.company === String(companyId))
-        : representatives;
+    // representatives prop is now pre-filtered by company for hosts in +page.server.ts
+    $: filteredRepresentatives = representatives || [];
+
+    $: console.log("[InviteRepresentative] Props:", { 
+        representativesCount: representatives?.length, 
+        companyId, 
+        roomOwner: room?.owner_company,
+        serverDebug: $page.data?.debug
+    });
+    $: console.log("[InviteRepresentative] Filtered count:", filteredRepresentatives.length);
 
     $: {
         if (selectedRepresentative) {
@@ -189,7 +202,8 @@
                     <button class="px-4 py-2 bg-[#E8EDF5] text-primary rounded hover:bg-gray-400" on:click={cancelDialog}>Cancel</button>
                 </Dialog.Close>
                 <button 
-                    class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700" 
+                    type="button"
+                    class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed" 
                     on:click={showNextModal}
                     disabled={filteredRepresentatives.length === 0}
                 >

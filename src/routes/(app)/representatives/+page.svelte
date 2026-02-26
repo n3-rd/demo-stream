@@ -32,7 +32,8 @@
 
     export let data;
     console.log(data);
-    $: ({ representatives, locations, rooms = [] } = data || {});
+$: ({ representatives = [], locations, rooms = [] } = data || {});
+    $: noRepsAndNoLocations = (!representatives || representatives.length === 0) && (!locations || locations.length === 0);
 
     let showAddDialog = false;
     let editingRep: any = null;
@@ -112,14 +113,27 @@
         <div class="p-6">
             <div class="flex justify-between items-center mb-6 bg-white rounded-lg p-4">
                 <h1 class="text-2xl  font-medium text-[#737373]">Representatives</h1>
+                {#if !noRepsAndNoLocations}
                 <Button 
                     class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white "
                     href="/representatives/new"
                 >
                     Add Representative
                 </Button>
+                {/if}
             </div>
 
+            {#if noRepsAndNoLocations}
+                <div class="bg-white rounded-lg p-8 text-center">
+                    <p class="text-[#737373] text-[14px] mb-4">You need at least one location before you can add representatives.</p>
+                    <Button
+                        class="bg-[#4B77BE] hover:bg-[#4B77BE]/90 text-white"
+                        href="/locations"
+                    >
+                        Create a location first
+                    </Button>
+                </div>
+            {:else}
             <div class="rounded-lg ">
                 <!-- Table Header -->
                 <div class="grid grid-cols-[80px_1fr_1fr_1fr_1fr_100px] gap-4 p-4 border-b text-sm  text-[#737373] bg-white rounded-lg mb-5 font-bold">
@@ -299,6 +313,7 @@
                     </div>
                 {/each}
             </div>
+            {/if}
         </div>
     </div>
 </div>

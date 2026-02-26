@@ -801,83 +801,103 @@ function handleWebRTCCallback(info: string, obj: any) {
                         
                         // Handle media state response
                         if (messageBody.eventType === 'media_state_response') {
-                                                            const state = JSON.parse(messageBody.messageBody);
+                                // Skip if we're the controller — we sent this response and already have the correct state
+                                const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
+                                if (!isController) {
+                                    const state = JSON.parse(messageBody.messageBody);
                                 
-                                // First clear all media to avoid conflicts
-                                currentVideoUrl.set('');
-                                currentPdfUrl.set('');
-                                currentDocxUrl.set('');
-                                currentImageUrl.set('');
+                                    // Check which media URLs are actually changing to avoid unnecessary reloads
+                                    const videoUrlChanging = (state.videoUrl || '') !== $currentVideoUrl;
+                                    const pdfUrlChanging = (state.pdfUrl || '') !== $currentPdfUrl;
+                                    const docxUrlChanging = (state.docxUrl || '') !== $currentDocxUrl;
+                                    const imageUrlChanging = (state.imageUrl || '') !== $currentImageUrl;
+                                    const anyMediaChanging = videoUrlChanging || pdfUrlChanging || docxUrlChanging || imageUrlChanging;
+
+                                    // Only clear and reload media if something actually changed
+                                    if (anyMediaChanging) {
+                                        currentVideoUrl.set('');
+                                        currentPdfUrl.set('');
+                                        currentDocxUrl.set('');
+                                        currentImageUrl.set('');
+                                    }
                                 
-                                // Update video state
-                                if (state.videoUrl) {
-                                    currentVideoUrl.set(state.videoUrl);
-                                    if (videoPlayer) {
-                                        videoPlayer.src = state.videoUrl;
-                                        
-                                        // Handle play state differently based on capabilities
-                                        if (inDataChannelOnlyMode) {
-                                            // In data-channel-only mode, we can't rely on autoplay
-                                            // so we need to manually control the video
-                                            if (state.isPlaying) {
-                                                // Use a user interaction event handler to play later
-                                                const playPromise = videoPlayer.play().catch(e => {
-                                                    console.warn('Auto-play blocked in data-channel-only mode:', e);
-                                                    // Set up a one-time click handler to play on user interaction
-                                                    const playOnClick = () => {
-                                                        videoPlayer.play().catch(err => console.error('Play on click failed:', err));
-                                                        document.removeEventListener('click', playOnClick);
-                                                    };
-                                                    document.addEventListener('click', playOnClick, { once: true });
-                                                });
-                                            } else {
-                                                videoPlayer.pause();
+                                    // Update video state
+                                    if (state.videoUrl) {
+                                        if (videoUrlChanging) {
+                                            currentVideoUrl.set(state.videoUrl);
+                                            if (videoPlayer) {
+                                                videoPlayer.src = state.videoUrl;
+                                            
+                                                // Handle play state differently based on capabilities
+                                                if (inDataChannelOnlyMode) {
+                                                    if (state.isPlaying) {
+                                                        videoPlayer.play().catch(e => {
+                                                            console.warn('Auto-play blocked in data-channel-only mode:', e);
+                                                            const playOnClick = () => {
+                                                                videoPlayer.play().catch(err => console.error('Play on click failed:', err));
+                                                                document.removeEventListener('click', playOnClick);
+                                                            };
+                                                            document.addEventListener('click', playOnClick, { once: true });
+                                                        });
+                                                    } else {
+                                                        videoPlayer.pause();
+                                                    }
+                                                } else {
+                                                    if (state.isPlaying) {
+                                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                                    } else {
+                                                        videoPlayer.pause();
+                                                    }
+                                                }
+                                            
+                                                videoPlayer.currentTime = state.currentTime || 0;
                                             }
-                                        } else {
-                                            // Normal mode with full capabilities
-                                            if (state.isPlaying) {
+                                        } else if (videoPlayer) {
+                                            // Same URL — just sync time and play state without reloading
+                                            const timeDiff = Math.abs((state.currentTime || 0) - (videoPlayer.currentTime || 0));
+                                            if (timeDiff >= 2.0) {
+                                                videoPlayer.currentTime = state.currentTime || 0;
+                                            }
+                                            if (state.isPlaying && videoPlayer.paused) {
                                                 videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                            } else {
+                                            } else if (!state.isPlaying && !videoPlayer.paused) {
                                                 videoPlayer.pause();
                                             }
                                         }
-                                        
-                                        // Set the current time
-                                        videoPlayer.currentTime = state.currentTime || 0;
+                                    }
+                                
+                                    // Update PDF state
+                                    if (state.pdfUrl) {
+                                        currentPdfUrl.set(state.pdfUrl);
+                                        pdfScrollPosition.set(state.pdfScrollPosition || 0);
+                                    }
+                            
+                                    // Update DOCX state
+                                    if (state.docxUrl) {
+                                        currentDocxUrl.set(state.docxUrl);
+                                        docxScrollPosition.set(state.docxScrollPosition || 0);
+                                    }
+                            
+                                    // Update image state
+                                    if (state.imageUrl) {
+                                        currentImageUrl.set(state.imageUrl);
+                                        imageZoomLevel.set(state.imageZoomLevel || 1);
+                                    }
+                            
+                                    // Update sync source
+                                    if (state.syncSource) {
+                                        syncSource = state.syncSource;
+                                    }
+                            
+                                    // Update play state
+                                    playVideoStore.set(state.isPlaying || false);
+
+                                    // Live mode (for late joiners)
+                                    if (state.isLive !== undefined) {
+                                        isRepLive = state.isLive;
+                                        liveCameraMode = state.cameraMode || null;
                                     }
                                 }
-                                
-                                // Update PDF state
-                            if (state.pdfUrl) {
-                                currentPdfUrl.set(state.pdfUrl);
-                                pdfScrollPosition.set(state.pdfScrollPosition || 0);
-                            }
-                            
-                            // Update DOCX state
-                            if (state.docxUrl) {
-                                currentDocxUrl.set(state.docxUrl);
-                                docxScrollPosition.set(state.docxScrollPosition || 0);
-                            }
-                            
-                            // Update image state
-                            if (state.imageUrl) {
-                                currentImageUrl.set(state.imageUrl);
-                                imageZoomLevel.set(state.imageZoomLevel || 1);
-                            }
-                            
-                            // Update sync source
-                            if (state.syncSource) {
-                                syncSource = state.syncSource;
-                            }
-                            
-                            // Update play state
-                            playVideoStore.set(state.isPlaying || false);
-
-                            // Live mode (for late joiners)
-                            if (state.isLive !== undefined) {
-                                isRepLive = state.isLive;
-                                liveCameraMode = state.cameraMode || null;
-                            }
                         }
                         
                         // Handle media URL updates

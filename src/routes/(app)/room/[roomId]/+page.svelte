@@ -3236,7 +3236,7 @@ let selectedVideo = null;
                                 </Button>
                             </div>
                             <div class="h-full">
-                                <Chat roomId={roomName} name={name} userId={publishStreamId} {userRole} />
+                                <Chat roomId={roomName} name={name} userId={publishStreamId} {userRole} roomName={baseRoomName} />
                             </div>
                         </div>
                     </div>

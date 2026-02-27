@@ -12,6 +12,7 @@
     export let roomId: string;
     export let name: string | null = null;
     export let userId: string | null = null;
+    export let roomName: string | null = null;
     export let variant: 'default' | 'mobile' = 'default';
     export let showClose = false;
     export let userRole: 'host' | 'guest' | 'representative' = 'guest';
@@ -23,6 +24,7 @@
     let messages = [];
     let aiMessages = [];
     let activeTab = 'chat'; // 'chat' or 'ai'
+    let aiLoading = false;
 
     // Poll chatMessages store every second
     let interval;
@@ -79,12 +81,13 @@
 
             newText = '';
 
+            aiLoading = true;
             fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ messages: currentMessages })
+                body: JSON.stringify({ messages: currentMessages, roomId, roomName })
             })
             .then(response => response.json())
             .then(data => {
@@ -96,7 +99,8 @@
                     timestamp: Date.now() + 1
                 };
                 aiMessages = [...aiMessages, aiResponse];
-            });
+            })
+            .finally(() => { aiLoading = false; });
         }
     };
 
@@ -230,6 +234,21 @@
                     </div>
                 </div>
             {/each}
+            {#if aiLoading}
+                <div class="flex gap-4">
+                    <div
+                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+                        style={`background:${getAvatarColor('AI Chatbot')}`}
+                    >
+                        {getInitials('AI Chatbot')}
+                    </div>
+                    <div class="flex-1 flex items-center gap-1 py-2 text-[#798892]">
+                        <span class="ai-typing-dot"></span>
+                        <span class="ai-typing-dot"></span>
+                        <span class="ai-typing-dot"></span>
+                    </div>
+                </div>
+            {/if}
         </div>
         <form
             class="border-t border-[#d6dce1] px-5 py-4"
@@ -245,7 +264,7 @@
                 <button
                     type="submit"
                     class="flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#6d7c86] hover:text-[#3b4a56] disabled:opacity-40"
-                    disabled={!newText.trim()}
+                    disabled={!newText.trim() || aiLoading}
                 >
                     <img src={send} alt="Send message" class="h-4 w-4" />
                 </button>
@@ -368,6 +387,18 @@
                     {/if}
                 </div>
             {/each}
+            {#if aiLoading}
+                <div class="flex gap-3 mb-3">
+                    <div class="w-[40px] h-[40px] rounded-full bg-[#47484B] flex items-center justify-center shrink-0">
+                        <span class="text-white font-medium">{getInitials('AI Chatbot')}</span>
+                    </div>
+                    <div class="max-w-[80%] bg-[#7b7b7b] text-white rounded-lg p-3 text-sm flex items-center gap-1 min-h-[44px]">
+                        <span class="ai-typing-dot"></span>
+                        <span class="ai-typing-dot"></span>
+                        <span class="ai-typing-dot"></span>
+                    </div>
+                </div>
+            {/if}
         </div>
         <div class="p-4 border-t border-[#47484B]">
             <div class="flex items-center gap-2 bg-[#47484B] rounded-full px-4 py-2">
@@ -384,8 +415,8 @@
                 />
                 <button 
                     on:click={sendNewMessage}
-                    class="text-white hover:bg-gray-700 rounded-full p-2 transition-colors duration-200 ease-in-out"
-                    disabled={!newText.trim()}
+                    class="text-white hover:bg-gray-700 rounded-full p-2 transition-colors duration-200 ease-in-out disabled:opacity-40"
+                    disabled={!newText.trim() || aiLoading}
                 >
                     <SendHorizontal size={20} />
                 </button>
@@ -396,6 +427,20 @@
 {/if}
 
 <style>
+    .ai-typing-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.6;
+        animation: ai-typing-bounce 1.4s ease-in-out infinite both;
+    }
+    .ai-typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .ai-typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes ai-typing-bounce {
+        0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+        40% { transform: scale(1.2); opacity: 1; }
+    }
     .shadow-pulse-red {
         box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7);
     }

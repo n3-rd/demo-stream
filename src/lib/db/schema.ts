@@ -63,6 +63,7 @@ export const aiAssistants = pgTable('ai_assistants', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull(),
   viewroomConnections: text('viewrooom_connections').array(),
+  systemPrompt: text('system_prompt'),
   engagements: jsonb('engagements'),
   trainingFiles: text('training_files').array(),
   status: boolean('status').default(true),

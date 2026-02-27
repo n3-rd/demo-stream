@@ -316,26 +316,21 @@
         <form
             method="POST"
             on:submit|preventDefault={async (e) => {
-                const formData = new FormData(e.target);
-                
-                // Add selectedViewrooms to the form data 
-                selectedViewrooms.forEach(id => {
-                    formData.append('viewrooom_connections', id);
-                });
-                
+                const form = e.target;
+                if (!(form instanceof HTMLFormElement)) return;
+                const formData = new FormData(form);
+                formData.getAll('viewrooom_connections').forEach(() => formData.delete('viewrooom_connections'));
+                [...new Set(selectedViewrooms)].filter(Boolean).forEach((id) => formData.append('viewrooom_connections', id));
                 try {
-                    const response = await fetch('/api/ai-assistants', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
+                    const response = await fetch('/api/ai-assistants', { method: 'POST', body: formData });
                     const result = await response.json();
-                    
                     if (result.success) {
                         showAddDialog = false;
                         newAssistantName = '';
                         selectedViewrooms = [];
                         selectedFiles = null;
+                        const fileInput = form.querySelector('input[name="training_files"]');
+                        if (fileInput && fileInput instanceof HTMLInputElement) fileInput.value = '';
                         toast.success('AI assistant created successfully');
                     } else {
                         toast.error(result.message || 'Failed to create AI assistant');
@@ -344,7 +339,6 @@
                     console.error('Error:', error);
                     toast.error('Failed to create AI assistant');
                 } finally {
-                    // Always invalidate to refresh the data
                     await invalidateAll();
                 }
             }}
@@ -430,11 +424,6 @@
                             </div>
                         </Select.Content>
                     </Select.Root>
-                    
-                    <!-- Hidden inputs for selected viewrooms -->
-                    {#each selectedViewrooms as viewroomId}
-                        <input type="hidden" name="viewrooom_connections" value={viewroomId} />
-                    {/each}
                 </div>
                 
                 <div class="space-y-1">

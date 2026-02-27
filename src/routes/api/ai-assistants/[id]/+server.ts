@@ -1,37 +1,44 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 
 export const PUT: RequestHandler = async ({ request, locals, params }) => {
-    if (!locals.pb?.authStore.isValid) {
-        return new Response(JSON.stringify({
-            success: false,
-            message: 'Unauthorized'
-        }), { status: 401 });
+    if (!(locals as any).pb?.authStore.isValid) {
+        return json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await request.formData();
     const assistantId = params.id;
     
     try {
-        const data = {
-            name: formData.get('name') as string,
-            description: formData.get('description') as string,
-            type: formData.get('type') as string,
-            configuration: formData.get('configuration') as string,
-            is_active: formData.get('is_active') === 'true'
-        };
+        const existingAssistant = await (locals as any).pb.collection('ai_assistants').getOne(assistantId);
 
-        const assistant = await locals.pb.collection('ai_assistants').update(assistantId, data);
+        const updateData: Record<string, any> = {};
+        const viewroomIds = formData.getAll('viewrooom_connections').filter((v): v is string => typeof v === 'string');
+        const trainingFiles = formData.getAll('training_files').filter((v): v is File => v instanceof File);
+
+        for (const [key, value] of formData.entries()) {
+            if (key === 'viewrooom_connections' || key === 'training_files') continue;
+            updateData[key] = value;
+        }
+        if (formData.has('viewrooom_connections')) updateData['viewrooom_connections'] = viewroomIds;
+        if (formData.has('training_files')) updateData['training_files'] = trainingFiles;
+
+        const sanitizedExisting: Record<string, any> = { ...existingAssistant };
+        if (Array.isArray(sanitizedExisting.viewrooom_connections) && sanitizedExisting.viewrooom_connections.length > 0) {
+            const first = sanitizedExisting.viewrooom_connections[0];
+            if (typeof first === 'object' && first !== null && 'id' in first) {
+                sanitizedExisting.viewrooom_connections = sanitizedExisting.viewrooom_connections.map((c: any) => c?.id ?? c);
+            }
+        }
+
+        const finalData = { ...sanitizedExisting, ...updateData };
+
+        const assistant = await (locals as any).pb.collection('ai_assistants').update(assistantId, finalData);
         
-        return new Response(JSON.stringify({
-            success: true,
-            assistant: assistant
-        }), { status: 200 });
+        return json({ success: true, assistant });
+
     } catch (error) {
         console.error('Error updating AI assistant:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            message: 'Failed to update AI assistant'
-        }), { status: 500 });
+        return json({ success: false, message: 'Failed to update AI assistant' }, { status: 500 });
     }
 };
 

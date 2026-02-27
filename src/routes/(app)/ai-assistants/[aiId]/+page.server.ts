@@ -2,10 +2,11 @@ import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { pb } from '$lib/pocketbase';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
     try {
         const aiId = params.aiId;
-        
+        const user = (locals as any).pb.authStore.model;
+
         if (!aiId) {
             throw error(404, 'AI Assistant not found');
         }
@@ -15,10 +16,11 @@ export const load: PageServerLoad = async ({ params }) => {
             expand: 'viewrooom_connections'
         });
         
-        // Fetch all viewrooms for the connection dropdown
+        // Fetch viewrooms for the current user's company
         const viewrooms = await pb.collection('rooms').getFullList({
             sort: 'title',
-            fields: 'id,title' // Only fetch necessary fields
+            fields: 'id,title',
+            filter: `owner_company = "${user.id}"`
         });
         
         // Create a map of viewroom IDs to names for displaying connections

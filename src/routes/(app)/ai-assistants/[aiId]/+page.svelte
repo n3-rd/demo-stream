@@ -25,38 +25,41 @@
 
     let fileInput: HTMLInputElement;
     let showConnectViewroomDialog = false;
-    let selectedViewrooms = aiAssistant.viewrooom_connections || [];
+    /** Always string[] (viewroom IDs). Normalize from expanded PB relation or raw array. */
+    let selectedViewrooms: string[] = normalizeViewroomIds(aiAssistant.viewrooom_connections);
+
+    $: if (showConnectViewroomDialog) {
+        selectedViewrooms = normalizeViewroomIds(aiAssistant.viewrooom_connections);
+    }
+
+    function normalizeViewroomIds(conn: unknown): string[] {
+        if (!conn || !Array.isArray(conn)) return [];
+        return conn.map((c) => (typeof c === 'string' ? c : (c as { id: string })?.id)).filter(Boolean);
+    }
     let showArchiveDialog = false;
 
     function handleFileUpload() {
-        if (fileInput.files && fileInput.files.length > 0) {
-            const formData = new FormData();
-            formData.append('id', aiAssistant.id);
-            
-            for (let i = 0; i < fileInput.files.length; i++) {
-                formData.append('training_files', fileInput.files[i]);
+        if (fileInput.files) {
+            for (const file of fileInput.files) {
+                submitFileUpload(file);
             }
-            
-            submitFileUpload(formData);
         }
     }
     
-    async function submitFileUpload(formData) {
+    async function submitFileUpload(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
         try {
-            const response = await fetch(`?/uploadFiles`, {
+            const response = await fetch(`/api/ai-assistants/${aiAssistant.id}/upload-training-file`, {
                 method: 'POST',
                 body: formData
             });
             
             const result = await response.json();
-            console.log('File upload result:', result);
             
-            // Handle various success response formats
-            if (result.success || 
-                result.type === 'success' || 
-                (typeof result.data === 'string' && result.data.includes('success'))) {
+            if (result.success) {
                 toast.success('File uploaded successfully');
-                invalidateAll();
             } else {
                 toast.error(result.message || 'Failed to upload file');
             }
@@ -64,8 +67,7 @@
             console.error('Error uploading file:', err);
             toast.error('Failed to upload file');
         } finally {
-            // Always invalidate to refresh the data
-             invalidateAll();
+            invalidateAll();
         }
     }
 </script>
@@ -153,11 +155,11 @@
                 </div>
                 
                 <div class="bg-white rounded-[8px] p-4">
-                    {#if !aiAssistant.viewrooom_connections || aiAssistant.viewrooom_connections.length === 0}
+                    {#if normalizeViewroomIds(aiAssistant.viewrooom_connections).length === 0}
                         <div class="text-gray-500 italic">No ViewRoom connections</div>
                     {:else}
                         <div class="flex flex-wrap gap-2">
-                            {#each aiAssistant.viewrooom_connections as connectionId}
+                            {#each normalizeViewroomIds(aiAssistant.viewrooom_connections) as connectionId}
                                 {#if data.viewroomMap && data.viewroomMap[connectionId]}
                                     <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
                                         {data.viewroomMap[connectionId]}
@@ -322,49 +324,26 @@
     <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
         <form
             method="POST"
-            on:submit|preventDefault={async (e) => {
-                const formData = new FormData(e.target);
-                
-                // Clear any existing entries first
-                const entries = Array.from(formData.entries());
-                for (const [key] of entries) {
-                    if (key === 'viewrooom_connections') {
-                        formData.delete(key);
-                    }
-                }
-                
-                // Add all selected viewrooms explicitly
-                selectedViewrooms.forEach(id => {
-                    formData.append('viewrooom_connections', id);
-                });
-                
-                try {
-                    const response = await fetch(`/api/ai-assistants/${aiAssistant.id}`, {
-                        method: 'PUT',
-                        body: formData
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
+            action="?/updateViewrooms"
+            use:enhance={() => {
+                return async ({ result, update }) => {
+                    await update();
+                    if (result.type === 'success') {
                         showConnectViewroomDialog = false;
                         toast.success('ViewRoom connections updated successfully');
-                        invalidateAll();
-                    } else {
-                        toast.error(result.message || 'Failed to update ViewRoom connections');
+                        invalidateAll(); // This is the key to refreshing the data
+                    } else if (result.type === 'failure') {
+                        toast.error(result.data?.message || 'Failed to update connections');
                     }
-                } catch (error) {
-                    console.error('Error in updateViewrooms:', error);
-                    toast.error('Failed to update ViewRoom connections');
-                } finally {
-                    await invalidateAll();
-                }
+                };
             }}
         >
+            <input type="hidden" name="id" value={aiAssistant.id} />
+            {#each selectedViewrooms as viewroomId}
+                <input type="hidden" name="viewrooom_connections" value={viewroomId} />
+            {/each}
             <div class="space-y-4">
                 <h2 class="text-lg font-semibold text-[#808080]">Manage ViewRoom Connections</h2>
-                
-                <input type="hidden" name="id" value={aiAssistant.id} />
                 
                 <div class="space-y-1">
                     <div class="text-sm text-[#808080]">ViewRoom Connections</div>
@@ -425,18 +404,12 @@
                                                     </svg>
                                                 {/if}
                                             </label>
-                                        </div>
-                                    </div>
-                                {/each}
+                                </div>
+                            </div>
+                        {/each}
                             </div>
                         </Select.Content>
                     </Select.Root>
-                    
-                    <!-- Add individual hidden inputs for each viewroom -->
-                    {#each selectedViewrooms as viewroomId}
-                        <input type="hidden" name="viewrooom_connections" value={viewroomId} />
-                    {/each}
-                </div>
                 
                 <div class="flex justify-end pt-1">
                     <button 

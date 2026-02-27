@@ -3302,6 +3302,7 @@ let selectedVideo = null;
                 {room}
                 roomName={roomName}
                 roomId={roomName}
+                baseRoomName={baseRoomName}
                 showInviteRepresentative={isHost}
                 chatUserId={publishStreamId}
                 chatName={name}

@@ -10,10 +10,10 @@
     import InviteRepresentative from "../room/invite-representative.svelte";
     import ScheduleMeeting from "../room/schedule-meeting.svelte";
     import CreateQuote from "../room/create-quote.svelte";
-    import MobileChatSheet from "$lib/components/layout/mobile-chat-sheet.svelte";
-    import MobileParticipantsSheet from "$lib/components/layout/mobile-participants-sheet.svelte";
-    import MobileQuoteSheet from "$lib/components/layout/mobile-quote-sheet.svelte";
-    import MobileNotesSheet from "$lib/components/layout/mobile-notes-sheet.svelte";
+    const MobileChatSheet = import('$lib/components/layout/mobile-chat-sheet.svelte');
+    const MobileParticipantsSheet = import("$lib/components/layout/mobile-participants-sheet.svelte");
+    const MobileQuoteSheet = import("$lib/components/layout/mobile-quote-sheet.svelte");
+    const MobileNotesSheet = import("$lib/components/layout/mobile-notes-sheet.svelte");
 	import Separator from "../ui/separator/separator.svelte";
 
 
@@ -31,6 +31,8 @@
     export let room: any;
     export let roomName = "";
     export let roomId = "";
+    /** Base room name for AI context (viewroom lookup). Same as desktop Chat roomName. */
+    export let baseRoomName = "";
     /** When false, hide "Speak to Representative" (e.g. host from embed). */
     export let showInviteRepresentative = true;
     export let chatName: string | null = null;
@@ -375,13 +377,16 @@
             side="bottom"
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
-            <MobileChatSheet
-                roomId={roomId || roomName}
-                chatName={chatName}
-                userId={chatUserId}
-                {userRole}
-                on:close={closeSheets}
-            />
+            {#await MobileChatSheet then MobileChatSheet}
+                <svelte:component this={MobileChatSheet.default}
+                    roomId={roomId || roomName}
+                    roomName={baseRoomName}
+                    chatName={chatName}
+                    userId={chatUserId}
+                    {userRole}
+                    on:close={closeSheets}
+                />
+            {/await}
         </Sheet.Content>
     </Sheet.Root>
     <Sheet.Root bind:open={participantsSheetOpen}>
@@ -389,14 +394,16 @@
             side="bottom"
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
-            <MobileParticipantsSheet
-                {participants}
-                {isHost}
-                currentUserName={chatName ?? ""}
-                localStreamId={chatUserId}
-                shareURL={joinURL}
-                on:close={closeSheets}
-            />
+            {#await MobileParticipantsSheet then MobileParticipantsSheet}
+                <svelte:component this={MobileParticipantsSheet.default}
+                    {participants}
+                    {isHost}
+                    currentUserName={chatName ?? ""}
+                    localStreamId={chatUserId}
+                    shareURL={joinURL}
+                    on:close={closeSheets}
+                />
+            {/await}
         </Sheet.Content>
     </Sheet.Root>
     <Sheet.Root bind:open={quoteSheetOpen}>
@@ -404,7 +411,9 @@
             side="bottom"
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
-            <MobileQuoteSheet on:close={closeSheets} />
+            {#await MobileQuoteSheet then MobileQuoteSheet}
+                <svelte:component this={MobileQuoteSheet.default} on:close={closeSheets} />
+            {/await}
         </Sheet.Content>
     </Sheet.Root>
     <!-- <Sheet.Root bind:open={notesSheetOpen}>
@@ -412,7 +421,9 @@
             side="bottom"
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
-            <MobileNotesSheet on:close={closeSheets} on:send={handleSendNotes} />
+            {#await MobileNotesSheet then MobileNotesSheet}
+                <svelte:component this={MobileNotesSheet.default} on:close={closeSheets} on:send={handleSendNotes} />
+            {/await}
         </Sheet.Content>
     </Sheet.Root> -->
     <div
@@ -547,7 +558,7 @@
                                                 <Dialog.Content class={entry.contentClass}>
                                                     {#if entry.content === "share"}
                                                         <Share shareURL={joinURL} representative={false} />
-                                                    {:else if entry.content === "inviteRepresentative"}
+.                                                   {:else if entry.content === "inviteRepresentative"}
                                                         <InviteRepresentative
                                                             shareURL={joinURL}
                                                             representatives={videoRepresentatives}

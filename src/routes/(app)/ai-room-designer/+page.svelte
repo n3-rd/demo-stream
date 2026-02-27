@@ -395,15 +395,15 @@
 <div class="flex h-screen bg-[#eceef3]">
     <Sidenav activePage="ai-room-designer" />
     
-    <div class="flex-1 p-6 mt-[6rem]">
+    <div class="flex-1 p-4 sm:p-6 mt-[6rem]">
         <div class="mx-auto space-y-6">
             <!-- Header -->
-            <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
-                <h1 class="text-[24px] font-bold leading-[118%] text-[#808080]">AI Room Designer</h1>
+            <div class="bg-white rounded-[8px] min-h-[69px] flex flex-col gap-3 py-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-0">
+                <h1 class="text-lg font-bold leading-[118%] text-[#808080] sm:text-[24px] min-w-0">AI Room Designer</h1>
                 <Button 
                     type="submit" 
                     form="designForm"
-                    class="w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-semibold text-[16px] text-white"
+                    class="w-full sm:w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-semibold text-[16px] text-white flex-shrink-0"
                 >
                     Upload
                 </Button>

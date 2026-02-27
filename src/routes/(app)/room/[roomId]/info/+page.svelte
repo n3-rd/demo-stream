@@ -308,11 +308,11 @@
     <Sidenav activePage="rooms" />
     
     <div class="flex-1 overflow-y-auto pb-6">
-        <div class="mx-auto p-6 space-y-6 mt-[6rem]">
+        <div class="mx-auto p-4 sm:p-6 space-y-6 mt-[6rem]">
             <!-- Header -->
-            <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
-                <h1 class="font-['Poppins'] text-[24px] font-bold leading-[118%] text-[#808080]">{room?.title || ''}</h1>
-                <div class="flex items-center gap-4">
+            <div class="bg-white rounded-[8px] min-h-[69px] flex flex-col gap-3 py-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-0">
+                <h1 class="font-['Poppins'] text-lg font-bold leading-[118%] text-[#808080] sm:text-[24px] min-w-0 break-words">{room?.title || ''}</h1>
+                <div class="flex flex-wrap gap-2 sm:gap-4 flex-shrink-0">
                     <Button 
                         variant="outline" 
                         class="h-[39px] rounded-[3px] font-semibold text-[16px]"

@@ -211,12 +211,12 @@
 <div class="flex bg-[#eceef3]">
     <Sidenav activePage="content-library" />
     
-    <div class="flex-1 overflow-auto p-6 mt-[6rem]">
+    <div class="flex-1 overflow-auto p-4 sm:p-6 mt-[6rem]">
         <div class=" mx-auto space-y-6">
             <!-- Header -->
-            <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
-                <h1 class=" text-[24px] font-bold leading-[118%] text-[#808080]">Edit Content</h1>
-                <div class="flex gap-4">
+            <div class="bg-white rounded-[8px] min-h-[69px] flex flex-col gap-3 py-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-0">
+                <h1 class="text-lg font-bold leading-[118%] text-[#808080] sm:text-[24px] min-w-0">Edit Content</h1>
+                <div class="flex flex-wrap gap-2 sm:gap-4 flex-shrink-0">
                     <Button 
                         type="button"
                         variant="destructive"

@@ -76,3 +76,8 @@
     @apply bg-background text-foreground overflow-x-hidden;
   }
 }
+
+/* Allow flex-1 content to shrink on narrow viewports (sidebar + content layout) */
+.flex > .flex-1 {
+  min-width: 0;
+}

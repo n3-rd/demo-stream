@@ -91,17 +91,17 @@
 <div class="flex h-screen bg-[#eceef3]">
     <Sidenav activePage="ai-assistants" />
     
-    <div class="flex-1 overflow-auto p-6 mt-[6rem]">
+    <div class="flex-1 overflow-auto p-4 sm:p-6 mt-[6rem]">
         <div class="mx-auto space-y-6">
             <!-- Header with AI Assistant name and Add to Knowledge Base button -->
-            <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
-                <div class="flex items-center gap-3">
-                    <h1 class="text-[24px] font-bold leading-[118%] text-[#808080] font-['Poppins']">{aiAssistant.name}</h1>
-                    <span class={`px-2 py-1 text-xs rounded-full ${aiAssistant.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            <div class="bg-white rounded-[8px] min-h-[69px] flex flex-col gap-3 py-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-0">
+                <div class="flex flex-wrap items-center gap-2 gap-y-3 min-w-0">
+                    <h1 class="text-lg font-bold leading-[118%] text-[#808080] font-['Poppins'] sm:text-[24px] break-words">{aiAssistant.name}</h1>
+                    <span class={`px-2 py-1 text-xs rounded-full flex-shrink-0 ${aiAssistant.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {aiAssistant.status ? 'Active' : 'Archived'}
                     </span>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2 flex-shrink-0">
                     {#if aiAssistant.status}
                         <Button 
                             class="bg-gray-200 text-gray-700 h-[39px] rounded-[3px] font-semibold text-[16px] flex items-center gap-2"
@@ -152,7 +152,7 @@
             
             <!-- ViewRoom Connections -->
             <div class="space-y-2">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <h2 class="text-lg font-semibold text-[#737373] ml-2 font-['Poppins']">ViewRoom Connections</h2>
                     <Button 
                         variant="outline" 

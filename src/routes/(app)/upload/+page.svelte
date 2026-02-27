@@ -287,16 +287,16 @@
 <div class="flex h-screen bg-[#eceef3]">
     <Sidenav activePage="content-library" />
     
-    <div class="flex-1 p-6 mt-[6rem]">
+    <div class="flex-1 p-4 sm:p-6 mt-[6rem]">
         <div class=" mx-auto space-y-6">
             <!-- Header -->
-            <div class="bg-white rounded-[8px] h-[69px] flex items-center justify-between px-6">
-                <h1 class=" text-[24px] font-bold leading-[118%] text-[#808080]">Upload Content</h1>
+            <div class="bg-white rounded-[8px] min-h-[69px] flex flex-col gap-3 py-4 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-0">
+                <h1 class="text-lg font-bold leading-[118%] text-[#808080] sm:text-[24px] min-w-0">Upload Content</h1>
                 <Button 
                     type="submit" 
                     form="uploadForm"
                     disabled={isUploading} 
-                    class="w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-semibold text-[16px] text-white flex items-center justify-center"
+                    class="w-full sm:w-[85px] h-[39px] bg-[#577AB7] rounded-[3px] font-semibold text-[16px] text-white flex items-center justify-center flex-shrink-0"
                 >
                     {#if isUploading}
                         <Loader2 class="mr-2 h-4 w-4 animate-spin" />

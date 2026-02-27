@@ -31,6 +31,8 @@
     export let room: any;
     export let roomName = "";
     export let roomId = "";
+    /** When false, hide "Speak to Representative" (e.g. host from embed). */
+    export let showInviteRepresentative = true;
     export let chatName: string | null = null;
     export let chatUserId: string | null = null;
     export let hostContentItems: any[] = [];
@@ -213,6 +215,10 @@
         //     panelId: "quotePanel"
         // }
     ];
+
+    $: visibleSheetEntries = showInviteRepresentative
+        ? sheetEntries
+        : sheetEntries.filter((e) => e.key !== "representative");
 
     const destructiveControl: { icon: string; label: string } = {
         icon: "/icons/new-icons/hangup.png",
@@ -460,7 +466,7 @@
                     </Sheet.Trigger>
                     <Sheet.Content side="bottom" class="bg-bgdefault p-6 text-white rounded-t-2xl [&>button]:hidden">
                         <div class="grid grid-cols-3 gap-y-4">
-                            {#each sheetEntries as entry (entry.key)}
+                            {#each visibleSheetEntries as entry (entry.key)}
                                 <div class="flex flex-col gap-2">
                                     {#if entry.type === "panel"}
                                         <Button

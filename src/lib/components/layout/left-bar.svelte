@@ -17,6 +17,8 @@
 	import CreateQuote from "../room/create-quote.svelte";
     const dispatch = createEventDispatcher();
     export let shareURL;
+    /** When false, hide the "Invite representative" button (e.g. host from embed). */
+    export let showInviteRepresentative = true;
     
     // Add state variables for each dialog
     let representativeDialogOpen = false;
@@ -52,6 +54,7 @@
     >
       <img src="/icons/icon-question.svg" alt="virtual-assistant" class="w-7 h-7"/>
     </Button>
+    {#if showInviteRepresentative}
     <Dialog.Root bind:open={representativeDialogOpen}>
         <Dialog.Trigger>
             <Button
@@ -76,6 +79,7 @@
             />
         </Dialog.Content>
     </Dialog.Root>
+    {/if}
     <!-- <Dialog.Root bind:open={scheduleOpen} class="max-w-[80vw]">
         <Dialog.Trigger>
             <Button

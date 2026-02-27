@@ -1,4 +1,4 @@
-/// <reference types="@sveltejs/kit/amp" />
+
 <script lang="ts">
 	import { dev } from '$app/environment';
 import {
@@ -190,9 +190,12 @@ $: {
     // Determine if user is host (owner of the room or anonymous host from embed)
     isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
                        $page.url.searchParams.get('anonymous') === 'true';
-    isHost = room ? (user?.id === room.owner_company) || 
+    const urlHostUserId = $page.url.searchParams.get('hostUserId') || '';
+    const isRoomOwner = !!(user?.id && room?.owner_company && user.id === room.owner_company);
+    isHost = room ? isRoomOwner || 
              isAnonymousHost || 
-             (room.host && room.host.includes($page.url.searchParams.get('hostUserId') || '')) : false;
+             (room.host && urlHostUserId && room.host.includes(urlHostUserId) &&
+              (user?.id === urlHostUserId || isAnonymousHost)) : false;
     
     // Set showGreetingPopup based on isAnonymousHost
     showGreetingPopup = isAnonymousHost;
@@ -3045,6 +3048,7 @@ let selectedVideo = null;
                         {scheduleOpen} 
                         availableRepresentatives={availableRepresentatives}
                         room={room}
+                        showInviteRepresentative={isHost || isRepresentative}
                         on:closeSchedule={handleScheduleClose} 
                     />
                 </div>
@@ -3298,6 +3302,7 @@ let selectedVideo = null;
                 {room}
                 roomName={roomName}
                 roomId={roomName}
+                showInviteRepresentative={isHost}
                 chatUserId={publishStreamId}
                 chatName={name}
                 hostContentItems={room?.expand?.host_content || []}

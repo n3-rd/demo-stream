@@ -1,6 +1,9 @@
 import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { pb } from '$lib/pocketbase';
+import { db } from '$lib/db/drizzle';
+import { contentLibrary } from '$lib/db/schema';
+import { inArray } from 'drizzle-orm';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
     try {
@@ -15,6 +18,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         const aiAssistant = await pb.collection('ai_assistants').getOne(aiId, {
             expand: 'viewrooom_connections'
         });
+        
+        // Resolve training file IDs to content_library records (title, type) for display
+        const trainingFileIds = Array.isArray(aiAssistant.training_files) ? aiAssistant.training_files : [];
+        let trainingFilesResolved: { id: string; title: string; type: string }[] = [];
+        if (trainingFileIds.length > 0) {
+            const records = await db.select({ id: contentLibrary.id, title: contentLibrary.title, type: contentLibrary.type })
+                .from(contentLibrary)
+                .where(inArray(contentLibrary.id, trainingFileIds));
+            const idToRecord = new Map(records.map((r) => [r.id, r]));
+            trainingFilesResolved = trainingFileIds.map((id: string) => idToRecord.get(id)).filter(Boolean) as { id: string; title: string; type: string }[];
+        }
         
         // Fetch viewrooms for the current user's company
         const viewrooms = await pb.collection('rooms').getFullList({
@@ -31,6 +45,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         
         return {
             aiAssistant,
+            trainingFilesResolved,
             viewrooms,
             viewroomMap
         };

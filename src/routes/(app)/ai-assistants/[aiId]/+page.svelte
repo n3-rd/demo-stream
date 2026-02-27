@@ -7,13 +7,20 @@
     import { toast } from "svelte-sonner";
     import { page } from '$app/stores';
     import { invalidateAll } from "$app/navigation";
-    import { Upload, Link2, Archive, RotateCcw, Trash2 } from 'lucide-svelte';
+    import { Upload, Link2, Archive, RotateCcw, Trash2, Loader2 } from 'lucide-svelte';
     import * as Tabs from "$lib/components/ui/tabs";
     import * as Dialog from "$lib/components/ui/dialog";
     import * as Select from "$lib/components/ui/select";
 
     export let data;
-    const { aiAssistant, viewrooms } = data;
+    const { aiAssistant, viewrooms, trainingFilesResolved = [] } = data;
+
+    function formatFileType(type: string): string {
+        if (!type) return '—';
+        if (type.includes('pdf')) return 'PDF';
+        if (type.includes('wordprocessingml') || type.includes('msword')) return 'DOCX';
+        return type.split('/').pop()?.toUpperCase() ?? type;
+    }
 
     function formatDate(date: string) {
         return new Date(date).toLocaleDateString('en-US', {
@@ -24,6 +31,7 @@
     }
 
     let fileInput: HTMLInputElement;
+    let uploading = false;
     let showConnectViewroomDialog = false;
     /** Always string[] (viewroom IDs). Normalize from expanded PB relation or raw array. */
     let selectedViewrooms: string[] = normalizeViewroomIds(aiAssistant.viewrooom_connections);
@@ -39,14 +47,21 @@
     let showArchiveDialog = false;
 
     function handleFileUpload() {
-        if (fileInput.files) {
-            for (const file of fileInput.files) {
-                submitFileUpload(file);
-            }
+        if (fileInput?.files?.length) {
+            (async () => {
+                uploading = true;
+                try {
+                    for (const file of fileInput.files) {
+                        await submitFileUpload(file);
+                    }
+                } finally {
+                    uploading = false;
+                }
+            })();
         }
     }
     
-    async function submitFileUpload(file) {
+    async function submitFileUpload(file: File) {
         const formData = new FormData();
         formData.append('file', file);
 
@@ -60,6 +75,7 @@
             
             if (result.success) {
                 toast.success('File uploaded successfully');
+                await invalidateAll();
             } else {
                 toast.error(result.message || 'Failed to upload file');
             }
@@ -67,7 +83,7 @@
             console.error('Error uploading file:', err);
             toast.error('Failed to upload file');
         } finally {
-            invalidateAll();
+            await invalidateAll();
         }
     }
 </script>
@@ -131,12 +147,6 @@
                             </Button>
                         </form>
                     {/if}
-                    <Button 
-                        class="bg-[#577AB7] h-[39px] rounded-[3px] font-semibold text-[16px] text-white px-6"
-                        on:click={() => showConnectViewroomDialog = true}
-                    >
-                        Add to Knowledge Base
-                    </Button>
                 </div>
             </div>
             
@@ -191,19 +201,19 @@
                         </div>
                     </div>
 
-                    <!-- Table Rows - Files from training_files -->
-                    {#if aiAssistant.training_files && aiAssistant.training_files.length > 0}
-                        {#each aiAssistant.training_files as file, index}
+                    <!-- Table Rows - Files from trainingFilesResolved -->
+                    {#if trainingFilesResolved && trainingFilesResolved.length > 0}
+                        {#each trainingFilesResolved as file, index}
                             <div class="bg-white h-[64px] flex items-center px-6 border-t border-gray-100">
                                 <div class="grid grid-cols-4 w-full gap-4">
                                     <div class="text-[16px] font-normal text-[#808080] flex items-center font-['Poppins']">
                                         {formatDate(aiAssistant.updated)}
                                     </div>
                                     <div class="text-[16px] font-normal text-[#808080] flex items-center font-['Poppins']">
-                                        {file}
+                                        {file.title}
                                     </div>
                                     <div class="text-[16px] font-normal text-[#808080] flex items-center font-['Poppins']">
-                                        {file.split('.').pop().toUpperCase()}
+                                        {formatFileType(file.type)}
                                     </div>
                                     <div class="flex items-center">
                                         <form
@@ -261,15 +271,22 @@
                             on:change={handleFileUpload}
                             multiple
                             accept=".pdf,.docx,.doc"
+                            disabled={uploading}
                         />
                         <Button 
                             variant="outline" 
                             class="w-full h-16 border-dashed border-2"
-                            on:click={() => fileInput.click()}
+                            on:click={() => !uploading && fileInput?.click()}
+                            disabled={uploading}
                         >
                             <div class="flex flex-col items-center justify-center">
-                                <Upload class="h-5 w-5 mb-1 text-gray-500" />
-                                <div class="text-sm text-gray-600">Upload Training Files (PDF, Word)</div>
+                                {#if uploading}
+                                    <Loader2 class="h-5 w-5 mb-1 text-gray-500 animate-spin" />
+                                    <div class="text-sm text-gray-600">Uploading...</div>
+                                {:else}
+                                    <Upload class="h-5 w-5 mb-1 text-gray-500" />
+                                    <div class="text-sm text-gray-600">Upload Training Files (PDF, Word)</div>
+                                {/if}
                             </div>
                         </Button>
                     </div>

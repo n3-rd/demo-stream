@@ -11,6 +11,7 @@ import Share from '$lib/components/room/share.svelte';
   export let name: string;
   export let localStreamId: string = "";
   export let users: any[] = []; // Provide a default empty array
+  export let activeSpeaker: string | null = null;
   const pageName = $page.url.pathname.split('/').pop().split('-').pop();
   // Create a clean URL without query parameters
   const joinURL = new URL($page.url.href).origin + new URL($page.url.href).pathname;
@@ -67,6 +68,12 @@ import Share from '$lib/components/room/share.svelte';
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+  }
+
+  function isSpeaking(participant: any): boolean {
+    if (!activeSpeaker) return false;
+    const streamId = typeof participant === 'string' ? participant : participant?.streamId;
+    return !!streamId && streamId === activeSpeaker;
   }
 </script>
 
@@ -139,6 +146,11 @@ import Share from '$lib/components/room/share.svelte';
               {/if}
             </span>
           </div>
+          {#if isSpeaking(participant)}
+            <span class="ml-auto speaking-indicator" title="Speaking">
+              <AudioLines size={18} color="#4ade80" />
+            </span>
+          {/if}
         </div>
       {/each}
     </div>

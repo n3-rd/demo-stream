@@ -118,33 +118,30 @@ export const GET: RequestHandler = async ({ url }) => {
     const representativeId = url.searchParams.get('representative_id');
     const date = url.searchParams.get('date');
 
-    let query = db.select().from(schema.rooms).where(eq(schema.rooms.scheduled, true));
+    const conditions = [eq(schema.rooms.scheduled, true)];
 
     if (roomId) {
-      query = query.where(eq(schema.rooms.roomId, roomId));
+      conditions.push(eq(schema.rooms.roomId, roomId));
     }
 
     if (representativeId) {
-      // Note: This is a simplified check since representative is stored as text array
-      // In production, you might want to use a proper join table
-      query = query.where(eq(schema.rooms.representative, [representativeId]));
+      conditions.push(eq(schema.rooms.representativeId, representativeId));
     }
 
     if (date) {
       const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
+      startOfDay.setUTCHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+      endOfDay.setUTCHours(23, 59, 59, 999);
       
-      query = query.where(
-        and(
-          gte(schema.rooms.scheduleTime, startOfDay),
-          lte(schema.rooms.scheduleTime, endOfDay)
-        )
-      );
+      conditions.push(gte(schema.rooms.scheduleTime, startOfDay));
+      conditions.push(lte(schema.rooms.scheduleTime, endOfDay));
     }
 
-    const scheduledRoomsList = await query;
+    const scheduledRoomsList = await db
+      .select()
+      .from(schema.rooms)
+      .where(conditions.length === 1 ? conditions[0] : and(...conditions));
     
     return json({
       success: true,

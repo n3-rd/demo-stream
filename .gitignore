@@ -12,3 +12,4 @@ node_modules
 *.mdc
 PHONE_VERIFICATION_FLOW.md
 logs/*
+vite.config.js.timestamp-*.mjs

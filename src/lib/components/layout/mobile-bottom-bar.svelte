@@ -570,7 +570,7 @@
                                                 <Dialog.Content class={entry.contentClass}>
                                                     {#if entry.content === "share"}
                                                         <Share shareURL={joinURL} representative={false} />
-.                                                   {:else if entry.content === "inviteRepresentative"}
+                                                    {:else if entry.content === "inviteRepresentative"}
                                                         <InviteRepresentative
                                                             shareURL={joinURL}
                                                             representatives={videoRepresentatives}
@@ -630,15 +630,12 @@
 
     .primary-toggle-btn.primary-toggle-muted .primary-toggle-icon,
     .primary-toggle-btn.primary-toggle-off .primary-toggle-icon {
-        filter: grayscale(1);
-        opacity: 0.7;
+        opacity: 0.9;
     }
 
     .primary-toggle-btn.primary-toggle-muted,
     .primary-toggle-btn.primary-toggle-off {
-        border: 2px solid rgba(255, 255, 255, 0.85);
-        background-color: #3d3d3d !important;
-        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+        background-color: #dc2626 !important;
     }
     :global(button[data-melt-dialog-close]),
     :global(button[data-melt-sheet-close]) {

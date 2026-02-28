@@ -23,10 +23,6 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
 	import NameInputModal from '$lib/components/name-input-modal.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
-    import { Button } from '$lib/components/ui/button';
-    import { MessageSquareDashed, PlayCircle, UsersRound, X } from 'lucide-svelte';
-	import Participants from '$lib/call/Participants.svelte';
-	import Chat from '$lib/call/Chat.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
     import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
     import {PUBLIC_POCKETBASE_INSTANCE} from '$env/static/public';
@@ -38,6 +34,10 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import GreetingPopup from '$lib/call/GreetingPopup.svelte';
     import DocxViewer from '$lib/components/room/DocxViewer.svelte';
     import ImageViewer from '$lib/components/room/ImageViewer.svelte';
+	import ScheduledMeetingOverlay from '$lib/call/ScheduledMeetingOverlay.svelte';
+	import ChatPanel from '$lib/call/ChatPanel.svelte';
+	import ParticipantsPanel from '$lib/call/ParticipantsPanel.svelte';
+	import SyncSourceControls from '$lib/call/SyncSourceControls.svelte';
 	import { toast } from 'svelte-sonner';
 	import { getRepInfo } from '$lib/utils.js';
     import { normalizeContent } from '$lib/utils/content';
@@ -165,25 +165,6 @@ $: {
     selfIncludedParticipantCount = meetingParticipants.length > 0 ? 
         meetingParticipants.length : 1; // Always show at least 1 participant (yourself)
 }
-
-function calculateTimeRemaining(scheduledTime) {
-    const now = new Date();
-    const diff = scheduledTime.getTime() - now.getTime();
-    
-    if (diff <= 0) return "Now";
-    
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    
-    if (days > 0) {
-      return `${days} day${days > 1 ? 's' : ''} ${hours % 24} hr${hours % 24 !== 1 ? 's' : ''}`;
-    } else if (hours > 0) {
-      return `${hours} hour${hours > 1 ? 's' : ''} ${minutes % 60} min${minutes % 60 !== 1 ? 's' : ''}`;
-    } else {
-      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    }
-  }
 
 let isRepresentative = false;
 $: {
@@ -2889,49 +2870,6 @@ function getMeetingStatus(data) {
   return { canJoin, isPast, minutesLeft, joinBeforeMinutes };
 }
 
-// Helper function to generate an ICS calendar file
-function generateCalendarInvite(scheduledRoom) {
-  const startTime = new Date(scheduledRoom.schedule_time);
-  const endTime = new Date(startTime.getTime() + (scheduledRoom.meeting_duration || 60) * 60 * 1000);
-  
-  return `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//ViewRoom//Calendar//EN
-CALSCALE:GREGORIAN
-METHOD:REQUEST
-BEGIN:VEVENT
-DTSTART:${formatDateForICS(startTime)}
-DTEND:${formatDateForICS(endTime)}
-SUMMARY:${scheduledRoom.title || "Scheduled Meeting"}
-DESCRIPTION:Join this meeting at ${window.location.href}
-LOCATION:Online
-STATUS:CONFIRMED
-SEQUENCE:0
-BEGIN:VALARM
-TRIGGER:-PT15M
-ACTION:DISPLAY
-DESCRIPTION:Reminder
-END:VALARM
-END:VEVENT
-END:VCALENDAR`;
-}
-
-// Helper to format date for ICS
-function formatDateForICS(date) {
-  return date.toISOString().replace(/-|:|\.\d+/g, '');
-}
-
-// Helper to download ICS file
-function downloadICS(content, filename) {
-  const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 // Check if we need to redirect
 if (data.redirectTo) {
 
@@ -3030,115 +2968,12 @@ let selectedVideo = null;
 
 
 {#if isScheduledMeeting && !meetingStatus.canJoin}
-  <div class="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 text-center">
-      <h2 class="text-2xl font-bold mb-6 text-red-600">Meeting Not Available</h2>
-      
-      <div class="mb-6">
-        <p class="text-lg mb-4">This meeting is scheduled for:</p>
-        <p class="text-xl font-semibold text-gray-800">
-          {scheduledMeetingTime.toLocaleString()}
-        </p>
-      </div>
-      
-      {#if meetingStatus.isPast}
-        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p class="text-red-800">
-            This meeting has already taken place and is no longer available.
-          </p>
-        </div>
-      {:else}
-        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p class="text-yellow-800">
-            {#if meetingStatus.joinBeforeMinutes === 0}
-              You can only join this meeting at the exact scheduled time.
-            {:else}
-              You can join this meeting {meetingStatus.joinBeforeMinutes} minute{meetingStatus.joinBeforeMinutes !== 1 ? 's' : ''} before the scheduled start time.
-            {/if}
-          </p>
-        </div>
-        
-        <div class="mb-6">
-          <p class="text-sm text-gray-500">Time remaining:</p>
-          <p class="text-2xl font-bold text-gray-800">
-            {calculateTimeRemaining(scheduledMeetingTime)}
-          </p>
-        </div>
-      {/if}
-      
-      <button 
-        class="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-        on:click={() => {
-          // Redirect to home page
-          window.location.href = '/';
-        }}
-      >
-        Return to Home
-      </button>
-    </div>
-  </div>
-{/if}
-
-{#if isScheduledMeeting && !meetingStatus.canJoin}
-  <div class="flex flex-col items-center justify-center h-screen bg-[#eceef3] p-6 text-center">
-    <div class="bg-white p-8 rounded-lg shadow-lg max-w-md">
-      <h2 class="text-xl font-semibold mb-4" class:text-red-600={meetingStatus.isPast} class:text-yellow-600={!meetingStatus.canJoin && !meetingStatus.isPast} class:text-green-600={meetingStatus.canJoin && !meetingStatus.isPast}>
-        {meetingStatus.isPast ? 'Meeting Has Ended' : (meetingStatus.canJoin ? 'Waiting Room Open' : 'Meeting Not Available Yet')}
-      </h2>
-      <p class="mb-4">This meeting is scheduled and {meetingStatus.isPast ? 'has already taken place' : 'is not yet available'}.</p>
-      
-      <div class="mb-6">
-        <p class="text-sm font-medium">Scheduled For:</p>
-        <p class="text-lg">{scheduledMeetingTime.toLocaleString()}</p>
-      </div>
-      
-      {#if meetingStatus.isPast}
-        <div class="mb-6 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p class="text-red-800">
-            This meeting has already taken place and is no longer available.
-          </p>
-        </div>
-      {:else if !meetingStatus.canJoin}
-        <div class="mb-6">
-          <p class="text-sm text-gray-500">Time remaining:</p>
-          <p class="text-2xl font-bold">
-            {calculateTimeRemaining(scheduledMeetingTime)}
-          </p>
-        </div>
-        
-        <div class="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p class="text-yellow-800">
-            {#if meetingStatus.joinBeforeMinutes === 0}
-              You'll be able to join this meeting when it starts.
-            {:else}
-              You'll be able to join the waiting room {meetingStatus.joinBeforeMinutes} minute{meetingStatus.joinBeforeMinutes !== 1 ? 's' : ''} before the scheduled start time.
-            {/if}
-          </p>
-        </div>
-        
-        <button 
-          class="w-full py-2 mb-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-          on:click={() => {
-            const icsContent = generateCalendarInvite({
-              schedule_time: scheduledMeetingTime,
-              title: data?.scheduledRoom?.title || data?.title || 'Scheduled Meeting',
-              id: data?.scheduledRoom?.id || data?.id || 'meeting'
-            });
-            downloadICS(icsContent, `meeting-invite.ics`);
-          }}
-        >
-          Add to Calendar
-        </button>
-      {/if}
-      
-      <button 
-        class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80"
-        on:click={() => window.location.href = '/'}
-      >
-        Return to Home
-      </button>
-    </div>
-  </div>
+    <ScheduledMeetingOverlay
+        {scheduledMeetingTime}
+        {meetingStatus}
+        meetingTitle={data?.scheduledRoom?.title || data?.title || 'Scheduled Meeting'}
+        meetingDuration={data?.scheduledRoom?.meeting_duration || data?.meeting_duration || 60}
+    />
 {:else if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName && !isRepresentative}
   <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
@@ -3238,33 +3073,14 @@ let selectedVideo = null;
                             selfName={repSelfName}
                             on:representativesUpdate={handleRepresentativesUpdate}
                         />
-                        {#if isHost || isRepresentative}
-                            <div class="absolute top-1 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
-                                <Button
-                                    variant={syncSource === 'host' ? 'default' : 'secondary'}
-                                    size="sm"
-                                    on:click={() => updateSyncSource('host')}
-                                >
-                                    Host Ctrl
-                                </Button>
-                                <Button
-                                    variant={syncSource === 'representative' ? 'default' : 'secondary'}
-                                    size="sm"
-                                    on:click={() => updateSyncSource('representative')}
-                                >
-                                    Rep Ctrl
-                                </Button>
-                                {#if dev}
-                                    <Button
-                                        variant={isRepLive ? 'destructive' : 'secondary'}
-                                        size="sm"
-                                        on:click={toggleDevLiveMode}
-                                    >
-                                        {isRepLive ? '⏹ Stop Live' : '🔴 Sim Go Live'}
-                                    </Button>
-                                {/if}
-                            </div>
-                        {/if}
+                        <SyncSourceControls
+                            {syncSource}
+                            {isRepLive}
+                            {isHost}
+                            {isRepresentative}
+                            on:syncSourceChange={(e) => updateSyncSource(e.detail.source)}
+                            on:toggleDevLiveMode={toggleDevLiveMode}
+                        />
                         
                         <!-- Main content (hidden when rep is LIVE or dual-camera back is showing) -->
                         <div class="dual-camera-content-wrap" class:hidden={isRepLive || representativeStreams.isLive}>
@@ -3343,48 +3159,26 @@ let selectedVideo = null;
                     </div>
 
                     <!-- Chat Panel -->
-                    <div 
-                        class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
-                        id="chatPanel"
-                        style="transform: translateX(100%)"
-                    >
-                        <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
-                            <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
-                                <div class="text-white text-lg font-semibold">Chat message</div>
-                                <Button variant="ghost" size="icon" on:click={() => togglePanel("chatPanel")}>
-                                    <X scale={1.3} color="#fff" />
-                                </Button>
-                            </div>
-                            <div class="h-full">
-                                <Chat roomId={roomName} name={name} userId={publishStreamId} {userRole} roomName={baseRoomName} />
-                            </div>
-                        </div>
-                    </div>
+                    <ChatPanel
+                        roomId={roomName}
+                        {name}
+                        {publishStreamId}
+                        {userRole}
+                        {baseRoomName}
+                        on:togglePanel={handlePanelToggle}
+                    />
 
                     <!-- Participants Panel -->
-                    <div 
-                        class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
-                        id="participantsPanel"
-                        style="transform: translateX(100%)"
-                    >
-                        <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
-                            <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
-                                <div class="text-white text-lg font-semibold">Participants</div>
-                                <Button variant="ghost" size="icon" on:click={() => togglePanel("participantsPanel")}>
-                                    <X scale={1.3} color="#fff" />
-                                </Button>
-                            </div>
-                            <Participants 
-                                participants={meetingParticipants} 
-                                isHost={isHost} 
-                                name={name} 
-                                users={users} 
-                                shareURL={shareURL} 
-                                localStreamId={publishStreamId}
-                                activeSpeaker={activeSpeakerStreamId}
-                            />
-                        </div>
-                    </div>
+                    <ParticipantsPanel
+                        {meetingParticipants}
+                        {isHost}
+                        {name}
+                        {users}
+                        {shareURL}
+                        {publishStreamId}
+                        {activeSpeakerStreamId}
+                        on:togglePanel={handlePanelToggle}
+                    />
                 </div>
 
                 <!-- Right sidebar controls -->

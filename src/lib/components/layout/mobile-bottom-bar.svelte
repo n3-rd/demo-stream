@@ -35,6 +35,8 @@
     export let baseRoomName = "";
     /** When false, hide "Speak to Representative" (e.g. host from embed). */
     export let showInviteRepresentative = true;
+    /** When false, hide "Invite People" share (e.g. anonymous users). */
+    export let showInvitePeople = true;
     export let chatName: string | null = null;
     export let chatUserId: string | null = null;
     export let hostContentItems: any[] = [];
@@ -218,9 +220,16 @@
         // }
     ];
 
-    $: visibleSheetEntries = showInviteRepresentative
-        ? sheetEntries
-        : sheetEntries.filter((e) => e.key !== "representative");
+    $: visibleSheetEntries = sheetEntries.filter(
+        (e) =>
+            (e.key !== "representative" || showInviteRepresentative) &&
+            (e.key !== "share" || showInvitePeople)
+    );
+
+    /** Primary controls: hide camera for non-reps. */
+    $: visiblePrimaryControls = isRepresentative
+        ? primaryControls
+        : primaryControls.filter((c) => c.key !== "camera");
 
     const destructiveControl: { icon: string; label: string } = {
         icon: "/icons/new-icons/hangup.png",
@@ -398,6 +407,7 @@
                 <svelte:component this={MobileParticipantsSheet.default}
                     {participants}
                     {isHost}
+                    {showInvitePeople}
                     currentUserName={chatName ?? ""}
                     localStreamId={chatUserId}
                     shareURL={joinURL}
@@ -435,15 +445,17 @@
         <div class="flex justify-between items-center">
             <!-- Primary controls -->
             <div class="flex gap-3">
-                {#each primaryControls as control (control.key)}
+                {#each visiblePrimaryControls as control (control.key)}
                     {@const permBlocked = (control.key === 'microphone' && micPermission === 'denied') || (control.key === 'camera' && cameraPermission === 'denied')}
+                    {@const isMuted = !permBlocked && control.type === "toggle" && control.activeClass === "is-muted" && getStateValue(control.stateKey)}
+                    {@const isOff = !permBlocked && control.type === "toggle" && control.activeClass === "is-off" && getStateValue(control.stateKey)}
                     <div class="relative">
                         <button
-                            class="flex justify-center items-center rounded-full h-14 w-14 hover:bg-white hover:text-black"
+                            class="flex justify-center items-center rounded-full h-14 w-14 hover:bg-white hover:text-black primary-toggle-btn"
                             class:bg-red-700={permBlocked}
-                            class:bg-[#707172]={!permBlocked}
-                            class:is-muted={!permBlocked && control.type === "toggle" && control.activeClass === "is-muted" && getStateValue(control.stateKey)}
-                            class:is-off={!permBlocked && control.type === "toggle" && control.activeClass === "is-off" && getStateValue(control.stateKey)}
+                            class:bg-[#707172]={!permBlocked && !isMuted && !isOff}
+                            class:primary-toggle-muted={isMuted}
+                            class:primary-toggle-off={isOff}
                             aria-pressed={control.type === "toggle" ? getStateValue(control.stateKey) : undefined}
                             aria-label={permBlocked ? `${control.label} (blocked — tap to request access)` : getAltText(control)}
                             title={permBlocked ? 'Permission blocked — tap to request access' : control.label}
@@ -455,7 +467,7 @@
                                 }
                             }}
                         >
-                            <img src={control.icon} alt={getAltText(control)} class="icon h-11 w-11" />
+                            <img src={control.icon} alt={getAltText(control)} class="icon h-11 w-11 primary-toggle-icon" />
                         </button>
                         {#if permBlocked}
                             <span class="mobile-permission-badge" title="Permission denied">
@@ -616,21 +628,17 @@
         object-fit: contain;
     }
 
-    :global(.bottom-bar-icon) {
-        width: 38px;
-        height: 38px;
-        object-fit: contain;
-    }
-
-    button.is-muted .icon,
-    button.is-off .icon {
+    .primary-toggle-btn.primary-toggle-muted .primary-toggle-icon,
+    .primary-toggle-btn.primary-toggle-off .primary-toggle-icon {
         filter: grayscale(1);
-        opacity: 0.65;
+        opacity: 0.7;
     }
 
-    button.is-muted,
-    button.is-off {
-        border: 1px solid rgba(255, 255, 255, 0.45);
+    .primary-toggle-btn.primary-toggle-muted,
+    .primary-toggle-btn.primary-toggle-off {
+        border: 2px solid rgba(255, 255, 255, 0.85);
+        background-color: #3d3d3d !important;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
     }
     :global(button[data-melt-dialog-close]),
     :global(button[data-melt-sheet-close]) {

@@ -2625,7 +2625,7 @@ let selectedVideo = null;
                         {scheduleOpen} 
                         availableRepresentatives={availableRepresentatives}
                         room={room}
-                        showInviteRepresentative={isHost || isRepresentative}
+                showInviteRepresentative={(isHost || isRepresentative) && (isAuthenticated || isAnonymousHost)}
                         on:closeSchedule={handleScheduleClose} 
                     />
                 </div>
@@ -2801,6 +2801,7 @@ let selectedVideo = null;
                         {name}
                         {users}
                         {shareURL}
+                        showInvitePeople={(isHost || isRepresentative) && (isAuthenticated || isAnonymousHost)}
                         {publishStreamId}
                         {activeSpeakerStreamId}
                         on:togglePanel={handlePanelToggle}
@@ -2826,7 +2827,7 @@ let selectedVideo = null;
             </div>
 
             <!-- Mobile Bottom Bar -->
-            <MobileBottomBar 
+            <MobileBottomBar
                 roomIdentityName={room?.title || 'Meeting Room'}
                 videoRepresentatives={representatives}
                 scheduleOpen={scheduleOpen}
@@ -2840,7 +2841,8 @@ let selectedVideo = null;
                 roomName={roomName}
                 roomId={roomName}
                 baseRoomName={baseRoomName}
-                showInviteRepresentative={isHost}
+                showInviteRepresentative={(isHost || isRepresentative) && (isAuthenticated || isAnonymousHost)}
+                showInvitePeople={(isHost || isRepresentative) && (isAuthenticated || isAnonymousHost)}
                 chatUserId={publishStreamId}
                 chatName={name}
                 hostContentItems={room?.expand?.host_content || []}

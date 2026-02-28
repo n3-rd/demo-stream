@@ -7,6 +7,8 @@
 
     export let participants: any[] = [];
     export let isHost = false;
+    /** When false, hide "Invite people" (e.g. anonymous users). */
+    export let showInvitePeople = true;
     export let currentUserName: string | null = null;
     export let localStreamId: string | null = null;
     export let shareURL = "";
@@ -102,7 +104,7 @@
                 <div class="text-sm text-white/70">In room ({participants.length})</div>
             </div>
         </div>
-        {#if isHost}
+        {#if isHost && showInvitePeople}
             <Dialog.Root bind:open={inviteDialogOpen}>
                 <Dialog.Trigger>
                     <Button

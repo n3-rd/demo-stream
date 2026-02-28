@@ -11,6 +11,8 @@
     export let shareURL: string;
     export let publishStreamId: string;
     export let activeSpeakerStreamId: string | null;
+    /** When false, hide "Invite people" (e.g. anonymous users). */
+    export let showInvitePeople = true;
 
     const dispatch = createEventDispatcher();
 </script>
@@ -33,6 +35,7 @@
             {name}
             {users}
             {shareURL}
+            {showInvitePeople}
             localStreamId={publishStreamId}
             activeSpeaker={activeSpeakerStreamId}
         />

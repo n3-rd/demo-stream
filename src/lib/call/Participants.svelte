@@ -12,6 +12,8 @@ import Share from '$lib/components/room/share.svelte';
   export let localStreamId: string = "";
   export let users: any[] = []; // Provide a default empty array
   export let activeSpeaker: string | null = null;
+  /** When false, hide "Invite people" (e.g. anonymous users). */
+  export let showInvitePeople = true;
   const pageName = $page.url.pathname.split('/').pop().split('-').pop();
   // Create a clean URL without query parameters
   const joinURL = new URL($page.url.href).origin + new URL($page.url.href).pathname;
@@ -83,8 +85,8 @@ import Share from '$lib/components/room/share.svelte';
     <h2 class="font-medium text-base leading-6 text-white">Participants</h2>
   </div>
 
-  <!-- Invite People Button (only for host) -->
-  {#if isHost}
+  <!-- Invite People Button (only for host when allowed) -->
+  {#if isHost && showInvitePeople}
     <div class="p-4">
       <Dialog.Root>
         <Dialog.Trigger>

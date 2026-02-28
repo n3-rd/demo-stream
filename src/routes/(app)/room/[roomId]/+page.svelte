@@ -23,10 +23,6 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
 	import NameInputModal from '$lib/components/name-input-modal.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
-    import { Button } from '$lib/components/ui/button';
-    import { MessageSquareDashed, PlayCircle, UsersRound, X } from 'lucide-svelte';
-	import Participants from '$lib/call/Participants.svelte';
-	import Chat from '$lib/call/Chat.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
     import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
     import {PUBLIC_POCKETBASE_INSTANCE} from '$env/static/public';
@@ -38,11 +34,21 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import GreetingPopup from '$lib/call/GreetingPopup.svelte';
     import DocxViewer from '$lib/components/room/DocxViewer.svelte';
     import ImageViewer from '$lib/components/room/ImageViewer.svelte';
+	import ScheduledMeetingOverlay from '$lib/call/ScheduledMeetingOverlay.svelte';
+	import ChatPanel from '$lib/call/ChatPanel.svelte';
+	import ParticipantsPanel from '$lib/call/ParticipantsPanel.svelte';
+	import SyncSourceControls from '$lib/call/SyncSourceControls.svelte';
 	import { toast } from 'svelte-sonner';
 	import { getRepInfo } from '$lib/utils.js';
     import { normalizeContent } from '$lib/utils/content';
 	import { Img } from 'svelte-email';
 	import MobileTopBar from '$lib/components/layout/mobile-top-bar.svelte';
+	import { parseStreamId, sanitizeStreamName, formatDisplayName, getCleanDisplayName, generateRandomString, getRepresentativeCookieName } from '$lib/stream/streamUtils';
+	import { getWebSocketURL } from '$lib/stream/websocket';
+	import { getMeetingStatus, isWithinOneHour } from '$lib/stream/meetingStatus';
+	import { determineFileType } from '$lib/stream/mediaUtils';
+	import { AudioManager } from '$lib/stream/audioManager';
+	import { checkPermissions as checkBrowserPermissions, requestMicPermission as browserRequestMic, requestCameraPermission as browserRequestCamera } from '$lib/stream/permissions';
 
 interface VideoElement extends HTMLVideoElement {
     srcObject: MediaStream;
@@ -166,25 +172,6 @@ $: {
         meetingParticipants.length : 1; // Always show at least 1 participant (yourself)
 }
 
-function calculateTimeRemaining(scheduledTime) {
-    const now = new Date();
-    const diff = scheduledTime.getTime() - now.getTime();
-    
-    if (diff <= 0) return "Now";
-    
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    
-    if (days > 0) {
-      return `${days} day${days > 1 ? 's' : ''} ${hours % 24} hr${hours % 24 !== 1 ? 's' : ''}`;
-    } else if (hours > 0) {
-      return `${hours} hour${hours > 1 ? 's' : ''} ${minutes % 60} min${minutes % 60 !== 1 ? 's' : ''}`;
-    } else {
-      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    }
-  }
-
 let isRepresentative = false;
 $: {
     // Determine if user is host (owner of the room or anonymous host from embed)
@@ -234,32 +221,6 @@ let representativeStreams: {
 /** Stream IDs currently shown in dual-camera layout (so RepresentativeIndicator can hide them) */
 let dualCameraStreamIds: string[] = [];
 
-function parseStreamId(streamId: string): {
-	uniqueId: string;
-	odooRepId: string | null;
-	cameraType: string;
-	isBackCamera: boolean;
-	isFrontCamera: boolean;
-} {
-	const match = streamId.match(/^(.+)-(.+)_(front|back)$/);
-	if (match) {
-		return {
-			uniqueId: match[1],
-			odooRepId: match[2],
-			cameraType: match[3],
-			isBackCamera: match[3] === 'back',
-			isFrontCamera: match[3] === 'front'
-		};
-	}
-	return {
-		uniqueId: streamId,
-		odooRepId: null,
-		cameraType: 'unknown',
-		isBackCamera: false,
-		isFrontCamera: false
-	};
-}
-
 // Stream configuration
 let publishStreamId = null;
 let showNameModal = !isAuthenticated;
@@ -295,27 +256,6 @@ let videoVolume = 1.0; // Add this with your other state variables
 
 // Add state for available representatives
 let availableRepresentatives = [...representatives];
-
-// Helper to read representative name from cookie
-function getRepresentativeCookieName(): string {
-    try {
-        const entry = document.cookie.split('; ').find(c => c.startsWith('rep_user='));
-        if (!entry) return '';
-        const json = decodeURIComponent(entry.split('=')[1] || '');
-        const rep = JSON.parse(json);
-        
-        // Prioritize full name construction from firstName and lastName
-        if (rep?.firstName && rep?.lastName) {
-            return `${rep.firstName} ${rep.lastName}`.trim();
-        }
-        
-        // Fallback to name field
-        return (rep?.name || rep?.firstName || rep?.lastName || '').toString();
-    } catch { 
-        console.error('Failed to parse representative cookie');
-        return ''; 
-    }
-}
 
 // Keep a self name for indicator suppression
 let repSelfName = '';
@@ -354,57 +294,6 @@ $: indicatorParticipants = (() => {
 	if (isRepLive) return []; // back/composited in big view only
 	return meetingParticipants.filter((p: any) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''));
 })();
-
-function getWebSocketURL() {
-    const raw = (PUBLIC_ANT_MEDIA_URL || '').trim();
-    try {
-        // Build a URL object regardless of whether protocol is provided
-        const hasProto = /^https?:\/\//i.test(raw) || /^wss?:\/\//i.test(raw);
-        const base = hasProto ? raw : `${location.protocol === 'https:' ? 'https://' : 'http://'}${raw}`;
-        const u = new URL(base);
-
-        // Normalize pathname: drop trailing /websocket if present; ensure no trailing slash
-        let appPath = (u.pathname || '').replace(/\/+$/, '');
-        if (/\/websocket$/i.test(appPath)) {
-            appPath = appPath.replace(/\/websocket$/i, '');
-        }
-        if (appPath === '' || appPath === '/') {
-            appPath = '/WebRTCAppEE';
-        }
-
-        // Decide protocol
-        const secure = u.protocol === 'https:' || u.protocol === 'wss:' || location.protocol === 'https:' || u.host.includes(':5443');
-        const wsProto = secure ? 'wss' : 'ws';
-
-        return `${wsProto}://${u.host}${appPath}/websocket`;
-    } catch {
-        // Fallback to previous behavior with extra sanitization
-        let cleaned = raw.replace(/^wss?:\/\//i, '').replace(/^https?:\/\//i, '');
-        cleaned = cleaned.replace(/[?#].*$/, '').replace(/\/+$|^\/+/, '');
-        const host = cleaned.split('/')[0];
-        const secure = host.includes(':5443') || location.protocol === 'https:';
-        const wsProto = secure ? 'wss' : 'ws';
-        return `${wsProto}://${host}/WebRTCAppEE/websocket`;
-    }
-}
-
-// Update the isWithinOneHour function for more reliable comparison
-function isWithinOneHour(scheduledTime) {
-  if (!scheduledTime) return false;
-  
-  // Make sure we're working with Date objects
-  const scheduleDate = scheduledTime instanceof Date ? scheduledTime : new Date(scheduledTime);
-  const now = new Date();
-  
-  // Calculate time difference in milliseconds
-  const timeDiff = scheduleDate.getTime() - now.getTime();
-  
-  // Convert to minutes (60,000 milliseconds in a minute)
-  const minutesLeft = Math.floor(timeDiff / 60000);
-  
-  
-  return minutesLeft <= 60;
-}
 
 onMount(() => {
     // Generate a unique session ID if 'uid' isn't already in the URL
@@ -589,7 +478,7 @@ function initializeWebRTC() {
         
         // Initialize WebRTC with more robust configuration
         webRTCAdaptor = new WebRTCAdaptor({
-            websocket_url: getWebSocketURL(),
+            websocket_url: getWebSocketURL(PUBLIC_ANT_MEDIA_URL),
             mediaConstraints: actualMediaConstraints,
             localVideoId: "localVideo",
             isPlayMode: playOnly,
@@ -621,7 +510,7 @@ function initializeWebRTC() {
         // Attempt fallback to data channel only mode
         try {
             webRTCAdaptor = new WebRTCAdaptor({
-                websocket_url: getWebSocketURL(),
+                websocket_url: getWebSocketURL(PUBLIC_ANT_MEDIA_URL),
                 mediaConstraints: { video: false, audio: false },
                 localVideoId: "localVideo",
                 isPlayMode: true,
@@ -1316,26 +1205,6 @@ function handleWebRTCError(error: string, message: string) {
     }
 }
 
-function sanitizeStreamName(name: string): string {
-    if (!name) return '';
-    // First decode any URL encoded characters
-    const decodedName = decodeURIComponent(name);
-    // Then replace any spaces or special characters with underscores
-    return decodedName.replace(/[^a-zA-Z0-9-]/g, '_');
-}
-
-function formatDisplayName(name: string, isRepresentative = false): string {
-    if (!name) return 'Unknown User';
-    const formattedName = name.trim();
-    return isRepresentative ? `${formattedName}_representative` : formattedName;
-}
-
-// Helper function to get clean display name for UI (without _representative suffix)
-function getCleanDisplayName(name: string): string {
-    if (!name) return 'Unknown User';
-    return name.replace(/_+representative$/i, '').trim();
-}
-
 import { isCurrentUserMessage, extractAndNormalizeName, getInitials } from '$lib/utils/chat';
 
 // can't use await at top-level in Svelte component scripts, so use an async IIFE if you want to log this
@@ -1543,16 +1412,6 @@ function leaveRoom() {
 
 }
 
-// Helper functions
-function generateRandomString(length: number): string {
-    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
-}
-
 setInterval(() => {
     // Pass uid parameter to getStreamInfo to get the correct streamId
     if (uniqueSessionId) {
@@ -1591,74 +1450,27 @@ function handlePlayStarted() {
 
 // ─── Permission utilities ────────────────────────────────────────────────────
 
-/**
- * Query the browser Permissions API for mic and camera state.
- * Falls back gracefully on browsers that don't support it.
- */
 // Cleanup handlers for permission change listeners
 let cleanupPermissionListeners: (() => void) | null = null;
 
 async function checkPermissions() {
-    if (typeof navigator === 'undefined' || !navigator.permissions) return;
-    try {
-        const [micResult, camResult] = await Promise.all([
-            navigator.permissions.query({ name: 'microphone' as PermissionName }),
-            navigator.permissions.query({ name: 'camera' as PermissionName })
-        ]);
-        micPermission = micResult.state;
-        cameraPermission = camResult.state;
-
-        // Watch for live changes (user may change browser settings while in room)
-        const onMicChange = () => { micPermission = micResult.state; };
-        const onCamChange = () => { cameraPermission = camResult.state; };
-        micResult.addEventListener('change', onMicChange);
-        camResult.addEventListener('change', onCamChange);
-
-        // Store cleanup so onDestroy can remove the listeners
-        cleanupPermissionListeners = () => {
-            micResult.removeEventListener('change', onMicChange);
-            camResult.removeEventListener('change', onCamChange);
-        };
-    } catch (e) {
-        // Permissions API not available (e.g. Firefox < 88 for camera)
-        console.warn('Permissions API not fully supported:', e);
-    }
+    cleanupPermissionListeners = await checkBrowserPermissions(
+        (state) => { micPermission = state; },
+        (state) => { cameraPermission = state; }
+    );
 }
 
-/**
- * Trigger the browser's default microphone permission prompt.
- * If the user grants access, also restart the WebRTC adaptor so audio works.
- */
 async function requestMicPermission() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        // Permission granted – update state and stop the temporary stream
-        stream.getTracks().forEach(t => t.stop());
-        micPermission = 'granted';
-        // Re-initialise WebRTC so the new permission takes effect
-        if (!webRTCAdaptor) {
-            initializeWebRTC();
-        }
-    } catch (err) {
-        console.warn('Mic permission request rejected:', err);
-        micPermission = 'denied';
+    micPermission = await browserRequestMic();
+    if (micPermission === 'granted' && !webRTCAdaptor) {
+        initializeWebRTC();
     }
 }
 
-/**
- * Trigger the browser's default camera permission prompt.
- */
 async function requestCameraPermission() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-        stream.getTracks().forEach(t => t.stop());
-        cameraPermission = 'granted';
-        if (!webRTCAdaptor) {
-            initializeWebRTC();
-        }
-    } catch (err) {
-        console.warn('Camera permission request rejected:', err);
-        cameraPermission = 'denied';
+    cameraPermission = await browserRequestCamera();
+    if (cameraPermission === 'granted' && !webRTCAdaptor) {
+        initializeWebRTC();
     }
 }
 
@@ -2205,38 +2017,11 @@ function playVideo(obj) {
 
 
 function createRemoteAudio(trackLabel: string) {
-    // Create a container for audio elements if it doesn't exist
-    let playersContainer = document.getElementById("players");
-    if (!playersContainer) {
-        playersContainer = document.createElement("div");
-        playersContainer.id = "players";
-        playersContainer.className = "hidden";
-        document.body.appendChild(playersContainer);
-    }
-
-    const player = document.createElement("div");
-    player.id = "player" + trackLabel;
-
-    const audio = document.createElement("audio");
-    audio.id = "remoteAudio" + trackLabel;
-    audio.autoplay = true;
-    audio.setAttribute('playsinline', 'true');  // Use setAttribute instead of direct property
-    audio.controls = false;  // Hide controls since we manage it through UI
-
-    player.appendChild(audio);
-    playersContainer.appendChild(player);
-
-    // Short delay lets the audio element finish connecting to the DOM before
-    // createMediaElementSource() is called; avoids "already connected" errors.
-    setTimeout(() => monitorAudioLevel(trackLabel), 200);
+    audioManager.createRemoteAudio(trackLabel);
 }
 
 function removeRemoteAudio(trackLabel: string) {
-    cleanupAudioMonitor(trackLabel);
-    const player = document.getElementById("player" + trackLabel);
-    if (player) {
-        player.remove();
-    }
+    audioManager.removeRemoteAudio(trackLabel);
 }
 
 // Update the video URL reactive statement with more detailed logging
@@ -2251,25 +2036,6 @@ $: {
         currentStoreSubscribedValue: $currentVideoUrl,
         PUBLIC_POCKETBASE_INSTANCE
     });
-    
-    // if (room?.expand?.selected_video) {
-    //     const selectedVideo = room.expand.selected_video;
-    //     const newVideoUrl = selectedVideo.file ? 
-    //         `${PUBLIC_POCKETBASE_INSTANCE}/api/files/${selectedVideo.collectionId}/${selectedVideo.id}/${selectedVideo.file}` : '';
-    //     console.log('Setting video URL from room data:', {
-    //         oldUrl: $currentVideoUrl,
-    //         newUrl: newVideoUrl,
-    //         selectedVideo,
-    //         storeValue: currentVideoUrl,
-    //         PUBLIC_POCKETBASE_INSTANCE
-    //     });
-    //     currentVideoUrl.set(newVideoUrl);
-    //     console.log('Video URL updated from room data:', $currentVideoUrl);
-    // } else {
-    //     console.log('No selected video in room data, clearing URL');
-    //     currentVideoUrl.set('');
-    //     console.log('Video URL cleared from room data:', $currentVideoUrl);
-    // }
 }
 
 // Add timestamp for throttling
@@ -2277,83 +2043,14 @@ let lastUpdate = 0;
 
 // Active speaker detection
 let activeSpeakerStreamId: string | null = null;
-let audioAnalysers = new Map<string, AnalyserNode>();
-let sharedAudioContext: AudioContext | null = null;
-let speakerPollInterval: ReturnType<typeof setInterval> | null = null;
-
-function getOrCreateAudioContext(): AudioContext | null {
-    if (sharedAudioContext) return sharedAudioContext;
-    try {
-        sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        return sharedAudioContext;
-    } catch {
-        return null;
-    }
-}
-
-function monitorAudioLevel(trackLabel: string) {
-    if (audioAnalysers.has(trackLabel)) return;
-    const audioEl = document.getElementById('remoteAudio' + trackLabel) as HTMLAudioElement | null;
-    if (!audioEl) return;
-    const ctx = getOrCreateAudioContext();
-    if (!ctx) return;
-    try {
-        const source = ctx.createMediaElementSource(audioEl);
-        const analyser = ctx.createAnalyser();
-        // fftSize=128 gives 64 frequency bins: compact for CPU efficiency while still
-        // detecting voice presence. Smaller = faster processing, less frequency detail.
-        analyser.fftSize = 128;
-        // smoothingTimeConstant=0.5 balances responsiveness vs stability:
-        // 0 = instant, 1 = very smooth/slow; 0.5 reacts quickly but avoids flickering.
-        analyser.smoothingTimeConstant = 0.5;
-        source.connect(analyser);
-        source.connect(ctx.destination);
-        audioAnalysers.set(trackLabel, analyser);
-    } catch (e) {
-        console.warn('Cannot set up audio analyser for', trackLabel, e);
-    }
-}
-
-function cleanupAudioMonitor(trackLabel: string) {
-    audioAnalysers.delete(trackLabel);
-}
+const audioManager = new AudioManager();
 
 function startSpeakerDetection() {
-    if (speakerPollInterval) return;
-    const dataArray = new Uint8Array(64);
-    speakerPollInterval = setInterval(() => {
-        if (audioAnalysers.size === 0) return;
-        let loudest: string | null = null;
-        // Threshold = 3 out of ~128 max RMS (~2.3% of full scale).
-        // Values below this are treated as silence to avoid ambient noise false-positives.
-        let loudestLevel = 3;
-        audioAnalysers.forEach((analyser, label) => {
-            analyser.getByteTimeDomainData(dataArray);
-            let sumSq = 0;
-            for (let i = 0; i < dataArray.length; i++) {
-                const v = (dataArray[i] as number) - 128;
-                sumSq += v * v;
-            }
-            const rms = Math.sqrt(sumSq / dataArray.length);
-            if (rms > loudestLevel) {
-                loudestLevel = rms;
-                loudest = label;
-            }
-        });
-        activeSpeakerStreamId = loudest;
-    }, 200);
+    audioManager.startSpeakerDetection((id) => { activeSpeakerStreamId = id; });
 }
 
 function stopSpeakerDetection() {
-    if (speakerPollInterval) {
-        clearInterval(speakerPollInterval);
-        speakerPollInterval = null;
-    }
-    audioAnalysers.clear();
-    if (sharedAudioContext) {
-        sharedAudioContext.close().catch(() => {});
-        sharedAudioContext = null;
-    }
+    audioManager.stopSpeakerDetection();
 }
 
 // Initialize WebRTC client with room name from URL params
@@ -2411,7 +2108,7 @@ $: {
     
     // If we have a representative name, set it as the anonymous user with proper formatting
     if (data.representativeName && !$anonymousUser && !isAnonymousMode) {
-        anonymousUser.set(formatUserName(data.representativeName, true));
+        anonymousUser.set(formatDisplayName(data.representativeName, true));
         // Initialize WebRTC after setting the name
         if (webRTCAdaptor === null) {
             initializeWebRTC();
@@ -2450,14 +2147,6 @@ function handleNameSubmitted(event) {
     anonymousUser.set(submittedName);
     // Initialize WebRTC after name is set
     initializeWebRTC();
-}
-
-// Add function to format user name based on type
-function formatUserName(name: string, isRepresentative = false) {
-    if (isRepresentative) {
-        return `${name}_representative`;
-    }
-    return name;
 }
 
 function handleChatMessage(messageBody) {
@@ -2523,37 +2212,6 @@ function handleVideoSelect(event) {
     // Set the selected video from the event detail
     selectedVideo = event.detail;
     
-    // Determine the most accurate file type
-    const determineFileType = (item) => {
-        // Prioritize specific type checks
-        const type = (item.type || '').toLowerCase();
-        const fileKind = (item.fileKind || '').toLowerCase();
-        
-        // Explicit type mappings
-        const typeMap = {
-            'video': 'video',
-            'pdf': 'pdf',
-            'document': 'docx',
-            'image': 'image'
-        };
-
-        // Check type first
-        if (typeMap[type]) return typeMap[type];
-        
-        // Check fileKind next
-        if (typeMap[fileKind]) return typeMap[fileKind];
-        
-        // File extension fallback
-        const fileName = item.file || '';
-        if (fileName.toLowerCase().endsWith('.pdf')) return 'pdf';
-        if (fileName.toLowerCase().endsWith('.docx') || fileName.toLowerCase().endsWith('.doc')) return 'docx';
-        if (fileName.toLowerCase().endsWith('.mp4') || fileName.toLowerCase().endsWith('.avi') || fileName.toLowerCase().endsWith('.mov')) return 'video';
-        if (fileName.toLowerCase().endsWith('.jpg') || fileName.toLowerCase().endsWith('.png') || fileName.toLowerCase().endsWith('.jpeg') || fileName.toLowerCase().endsWith('.gif')) return 'image';
-        
-        // Default fallback
-        return 'unknown';
-    };
-
     const fileType = determineFileType(selectedVideo);
     
     // Clear all media stores first
@@ -2838,100 +2496,6 @@ function initWithRetry() {
     }
 }
 
-// Improved getMeetingStatus function that always returns minutesLeft
-function getMeetingStatus(data) {
-  // If no data, meeting is available now (not scheduled)
-  if (!data) return { canJoin: true, isPast: false, joinBeforeMinutes: 0, minutesLeft: 0 };
-  
-  // Extract the scheduled room data from the nested structure
-  const scheduledRoom = data.scheduledRoom || data;
-  
-  // Get schedule time from the correct location
-  const scheduleTime = scheduledRoom?.schedule_time || scheduledRoom?.scheduledTime;
-  if (!scheduleTime) return { canJoin: true, isPast: false, joinBeforeMinutes: 0, minutesLeft: 0 };
-  
-  // Make sure we're working with Date objects
-  const scheduleDate = scheduleTime instanceof Date ? scheduleTime : new Date(scheduleTime);
-  const now = new Date();
-  
-  // Calculate time difference in milliseconds
-  const timeDiff = scheduleDate.getTime() - now.getTime();
-  
-  // Convert to minutes
-  const minutesLeft = Math.floor(timeDiff / 60000);
-  
-  // If negative, meeting has passed
-  const isPast = minutesLeft < 0;
-  
-  // Get the join_before_minutes from the scheduled room data or default to 0
-  const joinBeforeMinutes = Math.max(scheduledRoom?.join_before_minutes ?? 0, 0);
-  
-  // Can join ONLY if:
-  // 1. Meeting is not in the past
-  // 2. Current time is within the allowed join window (joinBeforeMinutes)
-  // 3. Explicitly check that minutes left is less than or equal to join window
-  // 4. Ensure join window is exactly 0 if not specified
-  const canJoin = !isPast && 
-                  minutesLeft <= joinBeforeMinutes && 
-                  minutesLeft >= 0 &&
-                  (joinBeforeMinutes > 0 || minutesLeft === 0);
-  
-  console.log('Meeting status check:', {
-    now: now.toISOString(),
-    scheduledTime: scheduleDate.toISOString(),
-    timeDiff,
-    minutesLeft,
-    joinBeforeMinutes,
-    isPast,
-    canJoin
-  });
-  
-  return { canJoin, isPast, minutesLeft, joinBeforeMinutes };
-}
-
-// Helper function to generate an ICS calendar file
-function generateCalendarInvite(scheduledRoom) {
-  const startTime = new Date(scheduledRoom.schedule_time);
-  const endTime = new Date(startTime.getTime() + (scheduledRoom.meeting_duration || 60) * 60 * 1000);
-  
-  return `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//ViewRoom//Calendar//EN
-CALSCALE:GREGORIAN
-METHOD:REQUEST
-BEGIN:VEVENT
-DTSTART:${formatDateForICS(startTime)}
-DTEND:${formatDateForICS(endTime)}
-SUMMARY:${scheduledRoom.title || "Scheduled Meeting"}
-DESCRIPTION:Join this meeting at ${window.location.href}
-LOCATION:Online
-STATUS:CONFIRMED
-SEQUENCE:0
-BEGIN:VALARM
-TRIGGER:-PT15M
-ACTION:DISPLAY
-DESCRIPTION:Reminder
-END:VALARM
-END:VEVENT
-END:VCALENDAR`;
-}
-
-// Helper to format date for ICS
-function formatDateForICS(date) {
-  return date.toISOString().replace(/-|:|\.\d+/g, '');
-}
-
-// Helper to download ICS file
-function downloadICS(content, filename) {
-  const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 // Check if we need to redirect
 if (data.redirectTo) {
 
@@ -3030,115 +2594,12 @@ let selectedVideo = null;
 
 
 {#if isScheduledMeeting && !meetingStatus.canJoin}
-  <div class="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg shadow-2xl max-w-md w-full p-8 text-center">
-      <h2 class="text-2xl font-bold mb-6 text-red-600">Meeting Not Available</h2>
-      
-      <div class="mb-6">
-        <p class="text-lg mb-4">This meeting is scheduled for:</p>
-        <p class="text-xl font-semibold text-gray-800">
-          {scheduledMeetingTime.toLocaleString()}
-        </p>
-      </div>
-      
-      {#if meetingStatus.isPast}
-        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p class="text-red-800">
-            This meeting has already taken place and is no longer available.
-          </p>
-        </div>
-      {:else}
-        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p class="text-yellow-800">
-            {#if meetingStatus.joinBeforeMinutes === 0}
-              You can only join this meeting at the exact scheduled time.
-            {:else}
-              You can join this meeting {meetingStatus.joinBeforeMinutes} minute{meetingStatus.joinBeforeMinutes !== 1 ? 's' : ''} before the scheduled start time.
-            {/if}
-          </p>
-        </div>
-        
-        <div class="mb-6">
-          <p class="text-sm text-gray-500">Time remaining:</p>
-          <p class="text-2xl font-bold text-gray-800">
-            {calculateTimeRemaining(scheduledMeetingTime)}
-          </p>
-        </div>
-      {/if}
-      
-      <button 
-        class="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-        on:click={() => {
-          // Redirect to home page
-          window.location.href = '/';
-        }}
-      >
-        Return to Home
-      </button>
-    </div>
-  </div>
-{/if}
-
-{#if isScheduledMeeting && !meetingStatus.canJoin}
-  <div class="flex flex-col items-center justify-center h-screen bg-[#eceef3] p-6 text-center">
-    <div class="bg-white p-8 rounded-lg shadow-lg max-w-md">
-      <h2 class="text-xl font-semibold mb-4" class:text-red-600={meetingStatus.isPast} class:text-yellow-600={!meetingStatus.canJoin && !meetingStatus.isPast} class:text-green-600={meetingStatus.canJoin && !meetingStatus.isPast}>
-        {meetingStatus.isPast ? 'Meeting Has Ended' : (meetingStatus.canJoin ? 'Waiting Room Open' : 'Meeting Not Available Yet')}
-      </h2>
-      <p class="mb-4">This meeting is scheduled and {meetingStatus.isPast ? 'has already taken place' : 'is not yet available'}.</p>
-      
-      <div class="mb-6">
-        <p class="text-sm font-medium">Scheduled For:</p>
-        <p class="text-lg">{scheduledMeetingTime.toLocaleString()}</p>
-      </div>
-      
-      {#if meetingStatus.isPast}
-        <div class="mb-6 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p class="text-red-800">
-            This meeting has already taken place and is no longer available.
-          </p>
-        </div>
-      {:else if !meetingStatus.canJoin}
-        <div class="mb-6">
-          <p class="text-sm text-gray-500">Time remaining:</p>
-          <p class="text-2xl font-bold">
-            {calculateTimeRemaining(scheduledMeetingTime)}
-          </p>
-        </div>
-        
-        <div class="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p class="text-yellow-800">
-            {#if meetingStatus.joinBeforeMinutes === 0}
-              You'll be able to join this meeting when it starts.
-            {:else}
-              You'll be able to join the waiting room {meetingStatus.joinBeforeMinutes} minute{meetingStatus.joinBeforeMinutes !== 1 ? 's' : ''} before the scheduled start time.
-            {/if}
-          </p>
-        </div>
-        
-        <button 
-          class="w-full py-2 mb-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-          on:click={() => {
-            const icsContent = generateCalendarInvite({
-              schedule_time: scheduledMeetingTime,
-              title: data?.scheduledRoom?.title || data?.title || 'Scheduled Meeting',
-              id: data?.scheduledRoom?.id || data?.id || 'meeting'
-            });
-            downloadICS(icsContent, `meeting-invite.ics`);
-          }}
-        >
-          Add to Calendar
-        </button>
-      {/if}
-      
-      <button 
-        class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80"
-        on:click={() => window.location.href = '/'}
-      >
-        Return to Home
-      </button>
-    </div>
-  </div>
+    <ScheduledMeetingOverlay
+        {scheduledMeetingTime}
+        {meetingStatus}
+        meetingTitle={data?.scheduledRoom?.title || data?.title || 'Scheduled Meeting'}
+        meetingDuration={data?.scheduledRoom?.meeting_duration || data?.meeting_duration || 60}
+    />
 {:else if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName && !isRepresentative}
   <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
@@ -3238,33 +2699,14 @@ let selectedVideo = null;
                             selfName={repSelfName}
                             on:representativesUpdate={handleRepresentativesUpdate}
                         />
-                        {#if isHost || isRepresentative}
-                            <div class="absolute top-1 right-4 z-[32] flex gap-2 bg-black/50 p-2 rounded">
-                                <Button
-                                    variant={syncSource === 'host' ? 'default' : 'secondary'}
-                                    size="sm"
-                                    on:click={() => updateSyncSource('host')}
-                                >
-                                    Host Ctrl
-                                </Button>
-                                <Button
-                                    variant={syncSource === 'representative' ? 'default' : 'secondary'}
-                                    size="sm"
-                                    on:click={() => updateSyncSource('representative')}
-                                >
-                                    Rep Ctrl
-                                </Button>
-                                {#if dev}
-                                    <Button
-                                        variant={isRepLive ? 'destructive' : 'secondary'}
-                                        size="sm"
-                                        on:click={toggleDevLiveMode}
-                                    >
-                                        {isRepLive ? '⏹ Stop Live' : '🔴 Sim Go Live'}
-                                    </Button>
-                                {/if}
-                            </div>
-                        {/if}
+                        <SyncSourceControls
+                            {syncSource}
+                            {isRepLive}
+                            {isHost}
+                            {isRepresentative}
+                            on:syncSourceChange={(e) => updateSyncSource(e.detail.source)}
+                            on:toggleDevLiveMode={toggleDevLiveMode}
+                        />
                         
                         <!-- Main content (hidden when rep is LIVE or dual-camera back is showing) -->
                         <div class="dual-camera-content-wrap" class:hidden={isRepLive || representativeStreams.isLive}>
@@ -3343,48 +2785,26 @@ let selectedVideo = null;
                     </div>
 
                     <!-- Chat Panel -->
-                    <div 
-                        class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
-                        id="chatPanel"
-                        style="transform: translateX(100%)"
-                    >
-                        <div class="flex justify-between items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
-                            <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
-                                <div class="text-white text-lg font-semibold">Chat message</div>
-                                <Button variant="ghost" size="icon" on:click={() => togglePanel("chatPanel")}>
-                                    <X scale={1.3} color="#fff" />
-                                </Button>
-                            </div>
-                            <div class="h-full">
-                                <Chat roomId={roomName} name={name} userId={publishStreamId} {userRole} roomName={baseRoomName} />
-                            </div>
-                        </div>
-                    </div>
+                    <ChatPanel
+                        roomId={roomName}
+                        {name}
+                        {publishStreamId}
+                        {userRole}
+                        {baseRoomName}
+                        on:togglePanel={handlePanelToggle}
+                    />
 
                     <!-- Participants Panel -->
-                    <div 
-                        class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out" 
-                        id="participantsPanel"
-                        style="transform: translateX(100%)"
-                    >
-                        <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
-                            <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
-                                <div class="text-white text-lg font-semibold">Participants</div>
-                                <Button variant="ghost" size="icon" on:click={() => togglePanel("participantsPanel")}>
-                                    <X scale={1.3} color="#fff" />
-                                </Button>
-                            </div>
-                            <Participants 
-                                participants={meetingParticipants} 
-                                isHost={isHost} 
-                                name={name} 
-                                users={users} 
-                                shareURL={shareURL} 
-                                localStreamId={publishStreamId}
-                                activeSpeaker={activeSpeakerStreamId}
-                            />
-                        </div>
-                    </div>
+                    <ParticipantsPanel
+                        {meetingParticipants}
+                        {isHost}
+                        {name}
+                        {users}
+                        {shareURL}
+                        {publishStreamId}
+                        {activeSpeakerStreamId}
+                        on:togglePanel={handlePanelToggle}
+                    />
                 </div>
 
                 <!-- Right sidebar controls -->

@@ -283,6 +283,14 @@ let syncSource = 'host';
 // Add this variable with other state variables
 let inDataChannelOnlyMode = false;
 
+// Low-end device detection: reduce quality/bandwidth on constrained hardware
+const isLowEndDevice = (() => {
+    if (typeof navigator === 'undefined') return false;
+    const cores = navigator.hardwareConcurrency ?? 4;
+    const mem = (navigator as any).deviceMemory ?? 4;
+    return cores <= 2 || mem <= 1;
+})();
+
 let videoVolume = 1.0; // Add this with your other state variables
 
 // Add state for available representatives
@@ -569,9 +577,13 @@ function initializeWebRTC() {
 
         // Force video for representatives if not in DC-only mode
         if (isRep && !forceDcOnly) {
+            // On low-end devices, use reduced video resolution to save CPU/bandwidth
+            const videoConstraint = isLowEndDevice
+                ? { width: { max: 640 }, height: { max: 360 }, frameRate: { max: 15 } }
+                : true;
             actualMediaConstraints = {
                 ...actualMediaConstraints,
-                video: true
+                video: videoConstraint
             };
         }
         
@@ -590,7 +602,7 @@ function initializeWebRTC() {
             callbackError: (error, message) => {
                 handleWebRTCError(error, message);
             },
-            bandwidth: 900,
+            bandwidth: isLowEndDevice ? 300 : 900,
             publishMode: "camera",
             audioBandwidth: 56,
             micGainNode: 1.0,
@@ -1141,14 +1153,19 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 if (!isCurrentController && videoPlayer) {
                                     
                                     
-                                    // Improved sync strategy for variable networks:
-                                    // - Hard seek only if desync >= 5s
-                                    // - For 0.5s <= desync < 5s, drift via temporary playbackRate nudge
-                                    const timeDiffSigned = (syncData.currentTime ?? 0) - (videoPlayer.currentTime ?? 0);
+                                    // Improved sync strategy with network-latency compensation:
+                                    // - Compute target time by accounting for message round-trip latency
+                                    // - Hard seek only if desync >= 3s
+                                    // - For 0.3s <= desync < 3s, drift via temporary playbackRate nudge
+                                    const latencySeconds = syncData.sendTimestamp
+                                        ? (Date.now() - syncData.sendTimestamp) / 1000
+                                        : 0;
+                                    const targetTime = (syncData.currentTime ?? 0) + (syncData.isPlaying ? latencySeconds : 0);
+                                    const timeDiffSigned = targetTime - (videoPlayer.currentTime ?? 0);
                                     const timeDiff = Math.abs(timeDiffSigned);
-                                    if (timeDiff >= 5.0) {
-                                        videoPlayer.currentTime = syncData.currentTime;
-                                    } else if (timeDiff >= 0.5) {
+                                    if (timeDiff >= 3.0) {
+                                        videoPlayer.currentTime = targetTime;
+                                    } else if (timeDiff >= 0.3) {
                                         const originalRate = videoPlayer.playbackRate || 1.0;
                                         const nudgeRate = timeDiffSigned > 0 ? Math.min(1.25, originalRate + 0.05) : Math.max(0.75, originalRate - 0.05);
                                         videoPlayer.playbackRate = nudgeRate;
@@ -1182,6 +1199,14 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 }
                             } catch (error) {
                                 console.error('Error handling sync source change:', error);
+                            }
+                            break;
+                        case 'active_speaker':
+                            try {
+                                const speakerData = JSON.parse(messageBody.messageBody);
+                                activeSpeakerStreamId = speakerData.streamId ?? null;
+                            } catch (error) {
+                                console.error('Error handling active_speaker:', error);
                             }
                             break;
                     }
@@ -1904,6 +1929,7 @@ function handleVideoStateChange() {
             messageBody: JSON.stringify({
                 currentTime: videoPlayer.currentTime,
                 isPlaying: isPlaying,
+                sendTimestamp: Date.now(),
                 syncSource,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative
@@ -1926,9 +1952,9 @@ function handleVideoStateChange() {
 // Update video player initialization
 $: if (videoPlayer) {
     videoPlayer.ontimeupdate = () => {
-        // Only sync every second to avoid flooding
+        // Sync every 500ms for tighter video synchronization
         const now = Date.now();
-        if (now - lastUpdate > 1000) {
+        if (now - lastUpdate > 500) {
             handleVideoStateChange();
             lastUpdate = now;
         }
@@ -2199,9 +2225,14 @@ function createRemoteAudio(trackLabel: string) {
 
     player.appendChild(audio);
     playersContainer.appendChild(player);
+
+    // Short delay lets the audio element finish connecting to the DOM before
+    // createMediaElementSource() is called; avoids "already connected" errors.
+    setTimeout(() => monitorAudioLevel(trackLabel), 200);
 }
 
 function removeRemoteAudio(trackLabel: string) {
+    cleanupAudioMonitor(trackLabel);
     const player = document.getElementById("player" + trackLabel);
     if (player) {
         player.remove();
@@ -2243,6 +2274,87 @@ $: {
 
 // Add timestamp for throttling
 let lastUpdate = 0;
+
+// Active speaker detection
+let activeSpeakerStreamId: string | null = null;
+let audioAnalysers = new Map<string, AnalyserNode>();
+let sharedAudioContext: AudioContext | null = null;
+let speakerPollInterval: ReturnType<typeof setInterval> | null = null;
+
+function getOrCreateAudioContext(): AudioContext | null {
+    if (sharedAudioContext) return sharedAudioContext;
+    try {
+        sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        return sharedAudioContext;
+    } catch {
+        return null;
+    }
+}
+
+function monitorAudioLevel(trackLabel: string) {
+    if (audioAnalysers.has(trackLabel)) return;
+    const audioEl = document.getElementById('remoteAudio' + trackLabel) as HTMLAudioElement | null;
+    if (!audioEl) return;
+    const ctx = getOrCreateAudioContext();
+    if (!ctx) return;
+    try {
+        const source = ctx.createMediaElementSource(audioEl);
+        const analyser = ctx.createAnalyser();
+        // fftSize=128 gives 64 frequency bins: compact for CPU efficiency while still
+        // detecting voice presence. Smaller = faster processing, less frequency detail.
+        analyser.fftSize = 128;
+        // smoothingTimeConstant=0.5 balances responsiveness vs stability:
+        // 0 = instant, 1 = very smooth/slow; 0.5 reacts quickly but avoids flickering.
+        analyser.smoothingTimeConstant = 0.5;
+        source.connect(analyser);
+        source.connect(ctx.destination);
+        audioAnalysers.set(trackLabel, analyser);
+    } catch (e) {
+        console.warn('Cannot set up audio analyser for', trackLabel, e);
+    }
+}
+
+function cleanupAudioMonitor(trackLabel: string) {
+    audioAnalysers.delete(trackLabel);
+}
+
+function startSpeakerDetection() {
+    if (speakerPollInterval) return;
+    const dataArray = new Uint8Array(64);
+    speakerPollInterval = setInterval(() => {
+        if (audioAnalysers.size === 0) return;
+        let loudest: string | null = null;
+        // Threshold = 3 out of ~128 max RMS (~2.3% of full scale).
+        // Values below this are treated as silence to avoid ambient noise false-positives.
+        let loudestLevel = 3;
+        audioAnalysers.forEach((analyser, label) => {
+            analyser.getByteTimeDomainData(dataArray);
+            let sumSq = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = (dataArray[i] as number) - 128;
+                sumSq += v * v;
+            }
+            const rms = Math.sqrt(sumSq / dataArray.length);
+            if (rms > loudestLevel) {
+                loudestLevel = rms;
+                loudest = label;
+            }
+        });
+        activeSpeakerStreamId = loudest;
+    }, 200);
+}
+
+function stopSpeakerDetection() {
+    if (speakerPollInterval) {
+        clearInterval(speakerPollInterval);
+        speakerPollInterval = null;
+    }
+    audioAnalysers.clear();
+    if (sharedAudioContext) {
+        sharedAudioContext.close().catch(() => {});
+        sharedAudioContext = null;
+    }
+}
 
 // Initialize WebRTC client with room name from URL params
 const streamId = `${$page.params.roomId}`;
@@ -2898,6 +3010,9 @@ onMount(() => {
             ensureMediaSelection();
         }
     }, 2000);
+
+    // Start active speaker detection
+    startSpeakerDetection();
 });
 
 onDestroy(() => {
@@ -2905,6 +3020,7 @@ onDestroy(() => {
         cleanupPermissionListeners();
         cleanupPermissionListeners = null;
     }
+    stopSpeakerDetection();
 });
 
 // Track the currently selected video
@@ -3265,6 +3381,7 @@ let selectedVideo = null;
                                 users={users} 
                                 shareURL={shareURL} 
                                 localStreamId={publishStreamId}
+                                activeSpeaker={activeSpeakerStreamId}
                             />
                         </div>
                     </div>

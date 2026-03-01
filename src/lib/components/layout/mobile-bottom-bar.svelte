@@ -1,6 +1,7 @@
 <script lang="ts">
     import { run } from 'svelte/legacy';
 
+    import { fly, fade } from 'svelte/transition';
     import { Button } from "$lib/components/ui/button";
     import { UsersRound, ShareIcon, AlertTriangle, Mic, MicOff, CameraIcon, CameraOffIcon } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
@@ -419,10 +420,22 @@
             />
         </Sheet.Content>
     </Sheet.Root>
-    <Sheet.Root bind:open={chatSheetOpen}>
-        <Sheet.Content
-            side="bottom"
-            class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
+    {#if chatSheetOpen}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-50 bg-black/50 lg:hidden"
+            transition:fade={{ duration: 150 }}
+            onmousedown={closeSheets}
+            ontouchstart={closeSheets}
+        ></div>
+        <div
+            role="dialog"
+            aria-modal="true"
+            class="fixed inset-x-0 bottom-0 z-50 bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden shadow-lg"
+            transition:fly={{ y: 300, duration: 300 }}
+            onmousedown={(e) => e.stopPropagation()}
+            ontouchstart={(e) => e.stopPropagation()}
+            onkeydown={(e) => { if (e.key === 'Escape') closeSheets(); }}
         >
             {#await MobileChatSheet then MobileChatSheet}
                 <MobileChatSheet.default
@@ -434,8 +447,8 @@
                     onclose={closeSheets}
                 />
             {/await}
-        </Sheet.Content>
-    </Sheet.Root>
+        </div>
+    {/if}
     <Sheet.Root bind:open={participantsSheetOpen}>
         <Sheet.Content
             side="bottom"

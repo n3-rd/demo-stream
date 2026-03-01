@@ -1,90 +1,122 @@
-# SvelteKit + Daily call object (custom) video call demo
+# SvelteKit + Ant Media video call demo
 
-This project demonstrates how to build a custom video call with Daily's custom [call object](https://docs.staging.daily.co/call-object) mode using [SvelteKit](https://kit.svelte.dev/).
-
-_Note: This demo has not been optimized for large calls. Please review our [large meeting guide](https://docs.daily.co/guides/how-daily-works/scaling-applications-to-support-large-calls) for more information or [contact us](https://www.daily.co/contact/support) for help getting your app production-ready._
+This project demonstrates a custom video call and viewroom experience using [SvelteKit](https://kit.svelte.dev/), [Ant Media Server](https://antmedia.io/) (WebRTC), and real-time sync (chat, media, zoom/pan).
 
 <img src="home.png" alt="Demo home screen" style="max-width:600px;">
 <img src="in-call.png" alt="Demo in-call view with one participant" style="max-width:600px;">
+
 ---
 
-## Getting set up with Daily
+## Getting set up
 
-To use this demo, you will need a Daily room to join. You can either add your Daily API to your local environment or you can manually create a room through the Daily dashboard.
+### Prerequisites
 
-In either case, you will first need to [create a Daily account](https://dashboard.daily.co/signup). Once you have an account and are logged into the [Daily dashboard](https://dashboard.daily.co), do one of the following.
+- [Node.js](https://nodejs.org/) (v18+)
+- [pnpm](https://pnpm.io/) (`npm i -g pnpm`)
 
-### 1. Add your Daily API key to your local environment
-
-Clone this repo and rename `env.example` to `.env.local`
-
-Add your Daily API key, which can be found on the Daily [dashboard developers page](https://dashboard.daily.co/developers). You will also need to add your Daily domain name, found in the top left corner of the dashboard.
-
-```
-VITE_DAILY_API_KEY=<-your-api-key->
-VITE_DAILY_DOMAIN=<-your-daily-domain->
-```
-
-Next, follow the local development instructions below.
-
-### 2. Manually creating a Daily room
-
-Alternatively, you can [create a new Daily room](https://dashboard.daily.co/rooms/create) through the dashboard and enter the room URL in the app's form.
-
-The room URL will be in the following format:
-
-`https://<your-daily-domain>.daily.co/<room-name>`
-
-## Local development
-
-After cloning this repo, run the following commands from the project's root directory.
+### 1. Clone and install
 
 ```bash
-npm i
-npm run dev
+git clone <repo-url>
+cd demo-stream
+pnpm install
 ```
 
-Visit `http://localhost:5173` to view the app locally.
+### 2. Environment variables
+
+Create `.env` (or `.env.local`) in the project root. Required for full functionality:
+
+```bash
+# Ant Media Server (WebRTC)
+PUBLIC_ANT_MEDIA_URL=wss://your-antmedia-host.com
+
+# Optional: email, SMS, storage
+PUBLIC_SMTP_FROM=
+PUBLIC_BREVO_SENDER_EMAIL=
+BREVO_API_KEY=
+PUBLIC_POCKETBASE_INSTANCE=
+```
+
+### 3. Run locally
+
+```bash
+pnpm run dev
+```
+
+Open **http://localhost:3001** (or the port shown in the terminal).
+
+---
+
+## Tutorial
+
+Follow these steps to try the app end-to-end.
+
+### Step 1: Sign in or continue as guest
+
+- Go to the app home page.
+- **Log in** (if you have an account) or **continue as guest** to access rooms and the viewroom dashboard.
+
+### Step 2: Create or open a room
+
+- From the app home or dashboard, **create a new room** or open an existing one.
+- You’ll land on the room page with video, chat, and content panels.
+
+### Step 3: Join the call
+
+- Allow camera and microphone when the browser prompts.
+- Your video and name appear in the participants list.
+- Use the in-call controls to **mute/unmute** and **turn camera on/off**.
+
+### Step 4: Use chat and participants
+
+- Open the **Chat** panel (sidebar) to send messages to everyone in the room.
+- Open the **Participants** panel to see who’s in the call and invite links.
+
+### Step 5: Share and control content
+
+- Use the **media/content selector** to choose a PDF, image, or document to share.
+- As the **controller** (host or current presenter):
+  - **Zoom**: use the +/- buttons or Ctrl/Cmd + scroll on the image viewer.
+  - **Pan**: click and drag on the shared image (drag works even when the cursor leaves the viewer).
+- Other participants see the same zoom and pan in sync.
+
+### Step 6: Representatives and viewroom
+
+- Join as a **representative** (or open the representative flow) to use rep-specific content and controls.
+- Use **ViewRoom** (viewroom login/dashboard) for the customer-facing view and scheduled meetings.
+
+### Step 7: Leave and rejoin
+
+- Click **Leave** to exit the call. You can rejoin the same room via the room URL or from the dashboard.
+- Room URLs can be shared so others can join the same call.
 
 ---
 
 ## Demo features
 
-- Creates new Daily rooms via the app UI
-- Accepts existing room URLs
-- Supports multi-participant video calls
-- Chat messaging
-  - Chat messages are saved in currently saved in local state. Persistent chat history functionality can be added but is not currently included.
-- Local device controls
-- In-call screen sharing (max. 1 screen)
+- Create and join rooms with WebRTC (Ant Media)
+- Multi-participant video and audio
+- Real-time chat (in-memory; optional persistence can be added)
+- Content sharing: PDF, images, DOCX with zoom/pan sync
+- Local device controls (mic, camera)
+- Host vs representative roles and viewroom flow
+- Scheduled meetings and viewroom dashboard
 
-## Daily API interactions
+## Tech stack
 
-This demo uses the following Daily methods:
+- **Frontend:** SvelteKit, Svelte 5, Tailwind CSS
+- **Real-time:** Ant Media WebRTC, WebSocket messaging for chat and media sync
+- **Optional:** Brevo (email), Drizzle + PostgreSQL
 
-- [createCallObject()](https://docs.daily.co/reference/daily-js/factory-methods/create-call-object)
-- [join()](https://docs.daily.co/reference/daily-js/instance-methods/join)
-- [participants()](https://docs.daily.co/reference/daily-js/instance-methods/participants)
-- [localVideo()](https://docs.daily.co/reference/daily-js/instance-methods/local-video)
-- [localAudio()](https://docs.daily.co/reference/daily-js/instance-methods/local-audio)
-- [setLocalVideo()](https://docs.daily.co/reference/daily-js/instance-methods/set-local-video)
-- [setLocalAudio()](https://docs.daily.co/reference/daily-js/instance-methods/set-local-audio)
-- [startScreenShare()](https://docs.daily.co/reference/daily-js/instance-methods/start-screen-share)
-- [stopScreenShare()](https://docs.daily.co/reference/daily-js/instance-methods/stop-screen-share)
-- [leave()](https://docs.daily.co/reference/daily-js/instance-methods/leave)
-- [destroy()](https://docs.daily.co/reference/daily-js/instance-methods/destroy)
-- [supportedBrowser()](https://docs.daily.co/reference/daily-js/static-methods/supported-browser#main)
+## Scripts
 
-And the following Daily events:
-
-- [joining-meeting](https://docs.daily.co/reference/daily-js/events/meeting-events#joining-meeting)
-- [joined-meeting](https://docs.daily.co/reference/daily-js/events/meeting-events#joined-meeting)
-- [participant-joined](https://docs.daily.co/reference/daily-js/events/participant-events#participant-joined)
-- [participant-updated](https://docs.daily.co/reference/daily-js/events/participant-events#participant-updated)
-- [participant-left](https://docs.daily.co/reference/daily-js/events/participant-events#participant-left)
-- [error](https://docs.daily.co/reference/daily-js/events/meeting-events#error)
-- [camera-error](https://docs.daily.co/reference/daily-js/events/meeting-events#camera-error)
-- [app-message](https://docs.daily.co/reference/daily-js/events/participant-events#app-message)
+| Command           | Description                    |
+|-------------------|--------------------------------|
+| `pnpm run dev`    | Start dev server (port 3001)   |
+| `pnpm run build`  | Production build               |
+| `pnpm run preview`| Preview production build       |
+| `pnpm run lint`   | Lint and format check          |
+| `pnpm run format` | Format with Prettier           |
 
 ---
 
@@ -93,7 +125,7 @@ And the following Daily events:
 Before creating a production version of your app, install an [adapter](https://kit.svelte.dev/docs#adapters) for your target environment. Then:
 
 ```bash
-npm run build
+pnpm run build
 ```
 
-> You can preview the built app with `npm run preview`, regardless of whether you installed an adapter. This should _not_ be used to serve your app in production.
+> You can preview the built app with `pnpm run preview`. Do not use it to serve the app in production.

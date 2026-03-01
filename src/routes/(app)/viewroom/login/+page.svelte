@@ -8,7 +8,6 @@
   import { goto } from '$app/navigation';
   import { Loader2, Mail, Phone, Cloud, Building2 } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import { page } from '$app/state';
   import { formatToE164, sanitizePhoneInput, isE164 } from '$lib/helpers/phone';
   
   let step: 'login' | 'verify' = $state('login');

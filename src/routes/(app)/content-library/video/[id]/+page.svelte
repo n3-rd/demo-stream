@@ -1,7 +1,6 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
     import { Card } from "$lib/components/ui/card";
-    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
     import { goto } from "$app/navigation";
     import { Share2, ArrowLeft } from "lucide-svelte";
     import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "$lib/components/ui/dialog";

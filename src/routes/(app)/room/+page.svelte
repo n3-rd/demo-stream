@@ -10,7 +10,6 @@
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
     import { enhance } from '$app/forms';
     import { MoreHorizontal } from 'lucide-svelte';
-    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
     import Sidenav from '$lib/components/layout/sidenav.svelte';
@@ -131,12 +130,12 @@
     async function toggleContentActive(roomId, contentId, isHost, currentStatus) {
         try {
             // Get current room data
-            const roomResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${roomId}`);
+            const roomResponse = await fetch(`/api/room/${roomId}/info`);
             if (!roomResponse.ok) {
                 throw new Error('Failed to fetch room data');
             }
             
-            const roomData = await roomResponse.json();
+            const { room: roomData } = await roomResponse.json();
             
             // Create a new room_content record or update existing one
             const contentField = isHost ? 'host_content_active' : 'representative_content_active';
@@ -150,7 +149,7 @@
             roomData[contentField][contentId] = !currentStatus;
             
             // Update the room
-            const updateResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${roomId}`, {
+            const updateResponse = await fetch(`/api/room/${roomId}/info`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -492,7 +491,7 @@
                                   <span class="inline-flex items-center gap-1">
                                     {#if representatives.find(r => r.id === repId)?.avatar}
                                       <img 
-                                        src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${repId}/${representatives.find(r => r.id === repId)?.avatar}`}
+                                        src={`/api/files/representatives/${repId}/${representatives.find(r => r.id === repId)?.avatar}`}
                                         alt="Avatar"
                                         class="w-4 h-4 object-cover rounded-full"
                                       />
@@ -522,7 +521,7 @@
                                         <div class="flex items-center gap-2">
                                             {#if rep.avatar}
                                                 <img 
-                                                    src={`${PUBLIC_POCKETBASE_INSTANCE}api/files/representatives/${rep.id}/${rep.avatar}`}
+                                                    src={`/api/files/representatives/${rep.id}/${rep.avatar}`}
                                                     alt={rep.name}
                                                     class="w-8 h-8 rounded-full object-cover"
                                                 />

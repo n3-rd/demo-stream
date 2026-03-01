@@ -3,7 +3,6 @@
 
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from "$lib/components/ui/dialog";
-  import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
   import { goto } from '$app/navigation';
   import { enhance } from '$app/forms';
   import { toast } from 'svelte-sonner';

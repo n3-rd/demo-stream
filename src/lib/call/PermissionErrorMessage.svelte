@@ -14,7 +14,7 @@
 		<p>Update your browser device permissions to join call.</p>
 		<button onclick={tryAgain}>Try again</button>
 		<a
-			href="https://help.daily.co/en/articles/2528184-unblock-camera-mic-access-on-a-computer"
+			href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia"
 			rel="noreferrer noopener"
 			target="_blank"
 		>

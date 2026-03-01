@@ -1,37 +1,26 @@
 <script>
 	import logo from './assets/logo.svg';
 	import svelteLogo from './assets/svelte-logo.svg';
-	import githubLogo from './assets/github.svg';
 	import newTab from './assets/newtab.svg';
 </script>
 
 <header>
 	<div class="wrapper ">
 		<div class="corner left">
-			<a href="https://daily.co" target="_blank" rel="noreferrer noopenner">
-				<img src={logo} alt="Daily" />
-			</a>
+			<img src={logo} alt="App" />
 			<img src={svelteLogo} alt="Svelte logo" />
-			<span>Call object Svelte demo</span>
+			<span>Viewroom</span>
 		</div>
 
 		<div class="corner right">
 			<a
-				href="https://docs.daily.co/reference/daily-js"
+				href="https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API"
 				class="buttonish"
 				target="_blank"
-				rel="noreferrer noopenner"
+				rel="noreferrer noopener"
 			>
-				<span>API docs</span>
-				<img src={newTab} class="small" alt="Daily docs" />
-			</a>
-			<a
-				href="https://github.com/daily-demos/svelte-call-object"
-				target="_blank"
-				class="plain-link"
-				rel="noreferrer noopenner"
-			>
-				<img src={githubLogo} alt="Daily demos Github" />
+				<span>WebRTC docs</span>
+				<img src={newTab} class="small" alt="Docs" />
 			</a>
 		</div>
 	</div>

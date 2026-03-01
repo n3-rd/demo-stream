@@ -1,6 +1,5 @@
 <script>
 	import { onMount } from 'svelte';
-	import daily from '@daily-co/daily-js';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import camOnIcon from './assets/vid_on.svg';
@@ -23,7 +22,7 @@
 
 	onMount(() => {
 		if (browser) {
-			browserSupport = daily?.supportedBrowser();
+			browserSupport = { supportsScreenShare: typeof navigator?.mediaDevices?.getDisplayMedia === 'function' };
 		}
 		setLocalDevices();
 	});

@@ -15,7 +15,6 @@ interface ImportMeta {
 }
 
 declare module '$env/static/public' {
-    export const PUBLIC_POCKETBASE_INSTANCE: string;
     export const PUBLIC_APP_URL: string;
     export const PUBLIC_SMTP_FROM: string;
 }

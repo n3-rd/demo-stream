@@ -10,7 +10,6 @@
     import { Loader2 } from "lucide-svelte";
     import { onMount } from "svelte";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
-    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
     import * as Switch from "$lib/components/ui/switch";
 

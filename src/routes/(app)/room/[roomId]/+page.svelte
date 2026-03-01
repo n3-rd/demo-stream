@@ -27,7 +27,6 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import RepresentativeIndicator from '$lib/components/room/representative-indicator.svelte';
 	import { chatMessages } from '$lib/stores/chatMessages';
     import MobileBottomBar from '$lib/components/layout/mobile-bottom-bar.svelte';
-    import {PUBLIC_POCKETBASE_INSTANCE} from '$env/static/public';
     import MediaSelector from '$lib/components/room/MediaSelector.svelte';
     import {
         playVideoStore
@@ -2532,8 +2531,7 @@ run(() => {
         hasSelectedVideo: !!room?.expand?.selected_video,
         selectedVideo: room?.expand?.selected_video,
         currentStoreValue: currentVideoUrl,
-        currentStoreSubscribedValue: $currentVideoUrl,
-        PUBLIC_POCKETBASE_INSTANCE
+        currentStoreSubscribedValue: $currentVideoUrl
     });
 });
 // Reactive declarations with immediate logging

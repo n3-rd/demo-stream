@@ -32,9 +32,6 @@ importers:
       '@capacitor/ios':
         specifier: ^6.1.2
         version: 6.1.2(@capacitor/core@6.1.2)
-      '@daily-co/daily-js':
-        specifier: 0.72.1
-        version: 0.72.1
       '@fontsource/fira-mono':
         specifier: ^4.5.10
         version: 4.5.10
@@ -435,10 +432,6 @@ packages:
     resolution: {integrity: sha512-HaeW68KisBd/7TmavzPDlL2bpoDK5AjR2ZYrqU4TlGwM88GtQfvduBCAlSCj20X0w/4+rWMkseD9dAAkacjiyQ==}
     peerDependencies:
       '@capacitor/core': ^6.1.0
-
-  '@daily-co/daily-js@0.72.1':
-    resolution: {integrity: sha512-4dw24cmH8tRBDFe/mqjpM6ZV1s07aSoPMtsVXlEB6ZLD/Apd5GB4x1URDidG45iPDs8/4P8iDHR6RtMjKht4Ig==}
-    engines: {node: '>=10.0.0'}
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
@@ -1314,42 +1307,6 @@ packages:
 
   '@selderee/plugin-htmlparser2@0.11.0':
     resolution: {integrity: sha512-P33hHGdldxGabLFjPPpaTxVolMrzrcegejx+0GxjrIb9Zv48D8yAIA/QTDR2dFl7Uz7urX8aX6+5bCZslr+gWQ==}
-
-  '@sentry-internal/feedback@7.119.2':
-    resolution: {integrity: sha512-bnR1yJWVBZfXGx675nMXE8hCXsxluCBfIFy9GQT8PTN/urxpoS9cGz+5F7MA7Xe3Q06/7TT0Mz3fcDvjkqTu3Q==}
-    engines: {node: '>=12'}
-
-  '@sentry-internal/replay-canvas@7.119.2':
-    resolution: {integrity: sha512-Lqo8IFyeKkdOrOGRqm9jCEqeBl8kINe5+c2VqULpkO/I6ql6ISwPSYnmG6yL8cCVIaT1893CLog/pS4FxCv8/Q==}
-    engines: {node: '>=12'}
-
-  '@sentry-internal/tracing@7.119.2':
-    resolution: {integrity: sha512-V2W+STWrafyGJhQv3ulMFXYDwWHiU6wHQAQBShsHVACiFaDrJ2kPRet38FKv4dMLlLlP2xN+ss2e5zv3tYlTiQ==}
-    engines: {node: '>=8'}
-
-  '@sentry/browser@7.119.2':
-    resolution: {integrity: sha512-Wb2RzCsJBTNCmS9KPmbVyV5GGzFXjFdUThAN9xlnN5GgemMBwdQjGu/tRYr8yJAVsRb0EOFH8IuJBNKKNnO49g==}
-    engines: {node: '>=8'}
-
-  '@sentry/core@7.119.2':
-    resolution: {integrity: sha512-hQr3d2yWq/2lMvoyBPOwXw1IHqTrCjOsU1vYKhAa6w9vGbJZFGhKGGE2KEi/92c3gqGn+gW/PC7cV6waCTDuVA==}
-    engines: {node: '>=8'}
-
-  '@sentry/integrations@7.119.2':
-    resolution: {integrity: sha512-dCuXKvbUE3gXVVa696SYMjlhSP6CxpMH/gl4Jk26naEB8Xjsn98z/hqEoXLg6Nab73rjR9c/9AdKqBbwVMHyrQ==}
-    engines: {node: '>=8'}
-
-  '@sentry/replay@7.119.2':
-    resolution: {integrity: sha512-nHDsBt0mlJXTWAHjzQdCzDbhV2fv8B62PPB5mu5SpI+G5h+ir3r5lR0lZZrMT8eurVowb/HnLXAs+XYVug3blg==}
-    engines: {node: '>=12'}
-
-  '@sentry/types@7.119.2':
-    resolution: {integrity: sha512-ydq1tWsdG7QW+yFaTp0gFaowMLNVikIqM70wxWNK+u98QzKnVY/3XTixxNLsUtnAB4Y+isAzFhrc6Vb5GFdFeg==}
-    engines: {node: '>=8'}
-
-  '@sentry/utils@7.119.2':
-    resolution: {integrity: sha512-TLdUCvcNgzKP0r9YD7tgCL1PEUp42TObISridsPJ5rhpVGQJvpr+Six0zIkfDUxerLYWZoK8QMm9KgFlPLNQzA==}
-    engines: {node: '>=8'}
 
   '@sideway/address@4.1.5':
     resolution: {integrity: sha512-IqO/DUQHUkPeixNQ8n0JA6102hT9CmaljNTPmQ1u8MEhBo/R4Q8eKLN/vGZxuebwOroDB4cbpjheD4+/sKFK4Q==}
@@ -5095,14 +5052,6 @@ snapshots:
     dependencies:
       '@capacitor/core': 6.1.2
 
-  '@daily-co/daily-js@0.72.1':
-    dependencies:
-      '@babel/runtime': 7.25.7
-      '@sentry/browser': 7.119.2
-      bowser: 2.11.0
-      dequal: 2.0.3
-      events: 3.3.0
-
   '@drizzle-team/brocli@0.10.2': {}
 
   '@epic-web/invariant@1.0.0': {}
@@ -5896,61 +5845,6 @@ snapshots:
     dependencies:
       domhandler: 5.0.3
       selderee: 0.11.0
-
-  '@sentry-internal/feedback@7.119.2':
-    dependencies:
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-
-  '@sentry-internal/replay-canvas@7.119.2':
-    dependencies:
-      '@sentry/core': 7.119.2
-      '@sentry/replay': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-
-  '@sentry-internal/tracing@7.119.2':
-    dependencies:
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-
-  '@sentry/browser@7.119.2':
-    dependencies:
-      '@sentry-internal/feedback': 7.119.2
-      '@sentry-internal/replay-canvas': 7.119.2
-      '@sentry-internal/tracing': 7.119.2
-      '@sentry/core': 7.119.2
-      '@sentry/integrations': 7.119.2
-      '@sentry/replay': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-
-  '@sentry/core@7.119.2':
-    dependencies:
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-
-  '@sentry/integrations@7.119.2':
-    dependencies:
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-      localforage: 1.10.0
-
-  '@sentry/replay@7.119.2':
-    dependencies:
-      '@sentry-internal/tracing': 7.119.2
-      '@sentry/core': 7.119.2
-      '@sentry/types': 7.119.2
-      '@sentry/utils': 7.119.2
-
-  '@sentry/types@7.119.2': {}
-
-  '@sentry/utils@7.119.2':
-    dependencies:
-      '@sentry/types': 7.119.2
 
   '@sideway/address@4.1.5':
     dependencies:
@@ -7368,7 +7262,8 @@ snapshots:
   event-target-shim@5.0.1:
     optional: true
 
-  events@3.3.0: {}
+  events@3.3.0:
+    optional: true
 
   extend-shallow@2.0.1:
     dependencies:

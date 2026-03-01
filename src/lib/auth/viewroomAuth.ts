@@ -1,5 +1,6 @@
 import { pb } from '$lib/pocketbase';
-import { PUBLIC_BREVO_API_KEY, PUBLIC_SMTP_FROM } from '$env/static/public';
+import { BREVO_API_KEY } from '$env/static/private';
+import { PUBLIC_SMTP_FROM } from '$env/static/public';
 import crypto from 'crypto';
 import { telnyxSMS } from '$lib/services/telnyx';
 
@@ -204,7 +205,7 @@ async function sendEmailVerificationCode(email: string, code: string, loginName:
     method: 'POST',
     headers: {
       'accept': 'application/json',
-      'api-key': PUBLIC_BREVO_API_KEY,
+      'api-key': BREVO_API_KEY,
       'content-type': 'application/json'
     },
     body: JSON.stringify(emailData)

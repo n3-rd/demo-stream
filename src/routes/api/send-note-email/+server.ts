@@ -1,16 +1,17 @@
 import nodemailer from 'nodemailer';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { PUBLIC_SMTP_HOST, PUBLIC_SMTP_PORT, PUBLIC_SMTP_SECURE, PUBLIC_SMTP_USER, PUBLIC_SMTP_PASS, PUBLIC_SMTP_FROM } from '$env/static/public';
+import { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS } from '$env/static/private';
+import { PUBLIC_SMTP_FROM } from '$env/static/public';
 
 // Reuse the same email transporter configuration
 const transporter = nodemailer.createTransport({
-  host: PUBLIC_SMTP_HOST || 'smtp.example.com',
-  port: parseInt(PUBLIC_SMTP_PORT || '587'),
-  secure: PUBLIC_SMTP_SECURE === 'true',
+  host: SMTP_HOST || 'smtp.example.com',
+  port: parseInt(SMTP_PORT || '587'),
+  secure: SMTP_SECURE === 'true',
   auth: {
-    user: PUBLIC_SMTP_USER || 'user@example.com',
-    pass: PUBLIC_SMTP_PASS || 'password'
+    user: SMTP_USER || 'user@example.com',
+    pass: SMTP_PASS || 'password'
   }
 });
 

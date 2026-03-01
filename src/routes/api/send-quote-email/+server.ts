@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { PUBLIC_BREVO_API_KEY, PUBLIC_SMTP_FROM } from '$env/static/public';
+import { BREVO_API_KEY } from '$env/static/private';
+import { PUBLIC_SMTP_FROM } from '$env/static/public';
 
 
 // Get environment variables - fix the import error
-let BREVO_API_KEY = PUBLIC_BREVO_API_KEY;
 let SMTP_FROM = PUBLIC_SMTP_FROM;
 
 

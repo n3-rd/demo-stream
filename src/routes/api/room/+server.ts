@@ -1,5 +1,5 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { PUBLIC_DAILY_API_KEY } from '$env/static/public';
+import { DAILY_API_KEY } from '$env/static/private';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
     if (!locals.pb.authStore.isValid) {
@@ -25,7 +25,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const res = await fetch('https://api.daily.co/v1/rooms', {
             method: 'POST',
             headers: {
-                Authorization: `Bearer ${PUBLIC_DAILY_API_KEY}`,
+                Authorization: `Bearer ${DAILY_API_KEY}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(options)

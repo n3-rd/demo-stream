@@ -15,7 +15,6 @@
   import { quintOut } from 'svelte/easing';
 	import { toast } from "svelte-sonner";
   import { onMount } from 'svelte';
-  import { PUBLIC_SMTP_FROM, PUBLIC_BREVO_API_KEY } from '$env/static/public';
   import { page } from '$app/stores';
   
   interface Props {
@@ -790,54 +789,18 @@
       }
     };
     
-    // Prepare email payload for Brevo API
-    const emailPayload = {
-      sender: {
-        name: emailData.repName || "Meeting Scheduler",
-        email: PUBLIC_SMTP_FROM
-      },
-      to: [
-        {
-          email: emailData.customerEmail,
-          name: emailData.customerName
-        }
-      ],
-      cc: [
-        {
-          email: emailData.repEmail,
-          name: emailData.repName
-        }
-      ],
-      subject: `Appointment Confirmation: ${emailData.appointmentTitle || 'Meeting Scheduled'}`,
-      htmlContent: `
-        <html>
-          <body>
-            <h2>Appointment Confirmation</h2>
-            <p>Dear ${emailData.customerName},</p>
-            <p>Your appointment has been scheduled with ${emailData.repName}.</p>
-            <p>Date: ${emailData.bookingDate}</p>
-            <p>Time: ${emailData.bookingTime}</p>
-            <p>Room Link: <a href="${emailData.roomUrl}">${emailData.roomUrl}</a></p>
-            <p>Additional Information: ${emailData.additionalInformation || 'None'}</p>
-          </body>
-        </html>
-      `,
-      tags: ["appointment", "booking"]
-    };
-    
-    // Show loading state and try to send email again
+    // Use the server-side email endpoint to avoid exposing API keys client-side
     showEmailConfirmModal = false;
     isEmailSending = true;
     
     try {
-      const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const resp = await fetch('/api/send-brevo-email', {
         method: 'POST',
         headers: {
           accept: 'application/json',
-          'api-key': PUBLIC_BREVO_API_KEY,
           'content-type': 'application/json'
         },
-        body: JSON.stringify(emailPayload)
+        body: JSON.stringify(emailData)
       });
       
       const responseText = await resp.text();
@@ -1041,50 +1004,14 @@
       try {
         console.log('schedule console: Attempt', attempt + 1, 'sending email');
         
-        // Prepare email payload for Brevo API
-        const emailPayload = {
-          sender: {
-            name: data.repName || "Meeting Scheduler",
-            email: PUBLIC_SMTP_FROM
-          },
-          to: [
-            {
-              email: data.customerEmail,
-              name: data.customerName
-            }
-          ],
-          cc: [
-            {
-              email: data.repEmail,
-              name: data.repName
-            }
-          ],
-          subject: `Appointment Confirmation: ${data.appointmentTitle || 'Meeting Scheduled'}`,
-          htmlContent: `
-            <html>
-              <body>
-                <h2>Appointment Confirmation</h2>
-                <p>Dear ${data.customerName},</p>
-                <p>Your appointment has been scheduled with ${data.repName}.</p>
-                <p>Date: ${data.bookingDate}</p>
-                <p>Time: ${data.bookingTime}</p>
-                <p>Room Link: <a href="${data.roomUrl}">${data.roomUrl}</a></p>
-                <p>Additional Information: ${data.additionalInformation || 'None'}</p>
-              </body>
-            </html>
-          `,
-          tags: ["appointment", "booking"]
-        };
-        
-        // Use the Brevo API endpoint directly
-        const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+        // Use the server-side email endpoint to avoid exposing API keys client-side
+        const resp = await fetch('/api/send-brevo-email', {
           method: 'POST',
           headers: {
             accept: 'application/json',
-            'api-key': PUBLIC_BREVO_API_KEY,
             'content-type': 'application/json'
           },
-          body: JSON.stringify(emailPayload)
+          body: JSON.stringify(data)
         });
         
         // Get the full response text first to ensure we can handle any response format

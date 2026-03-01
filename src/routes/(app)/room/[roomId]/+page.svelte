@@ -19,7 +19,7 @@ import {
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
-	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition, currentDocxUrl, docxScrollPosition, currentImageUrl, imageZoomLevel } from '$lib/callStores';
+	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition, pdfZoomLevel, currentDocxUrl, docxScrollPosition, docxZoomLevel, currentImageUrl, imageZoomLevel, imagePanX, imagePanY } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
@@ -611,8 +611,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                                         docxUrl: $currentDocxUrl,
                                         imageUrl: $currentImageUrl,
                                         imageZoomLevel: $imageZoomLevel,
+                                        imagePanX: $imagePanX,
+                                        imagePanY: $imagePanY,
                                         pdfScrollPosition: $pdfScrollPosition,
+                                        pdfZoomLevel: $pdfZoomLevel,
                                         docxScrollPosition: $docxScrollPosition,
+                                        docxZoomLevel: $docxZoomLevel,
                                         isPlaying: $playVideoStore,
                                         currentTime: videoPlayer?.currentTime || 0,
                                         syncSource,
@@ -706,12 +710,20 @@ function handleWebRTCCallback(info: string, obj: any) {
                                     if (state.docxUrl) {
                                         currentDocxUrl.set(state.docxUrl);
                                         docxScrollPosition.set(state.docxScrollPosition || 0);
+                                        docxZoomLevel.set(state.docxZoomLevel || 1);
                                     }
                             
                                     // Update image state
                                     if (state.imageUrl) {
                                         currentImageUrl.set(state.imageUrl);
                                         imageZoomLevel.set(state.imageZoomLevel || 1);
+                                        imagePanX.set(state.imagePanX || 0);
+                                        imagePanY.set(state.imagePanY || 0);
+                                    }
+
+                                    // Update PDF zoom
+                                    if (state.pdfZoomLevel !== undefined) {
+                                        pdfZoomLevel.set(state.pdfZoomLevel || 1);
                                     }
                             
                                     // Update sync source
@@ -829,13 +841,14 @@ function handleWebRTCCallback(info: string, obj: any) {
                         else if (messageBody.eventType === 'pdf_zoom_sync' && messageBody.messageBody) {
                             const zoomData = JSON.parse(messageBody.messageBody);
                             if (zoomData.scale !== undefined) {
-                                // Update the PDF URL with the new scale parameter
-                                currentPdfUrl.update(url => {
-                                    if (!url) return url;
-                                    const urlObj = new URL(url);
-                                    urlObj.searchParams.set('scale', zoomData.scale.toString());
-                                    return urlObj.toString();
-                                });
+                                pdfZoomLevel.set(zoomData.scale);
+                            }
+                        }
+                        // Handle DOCX zoom sync
+                        else if (messageBody.eventType === 'docx_zoom_sync' && messageBody.messageBody) {
+                            const zoomData = JSON.parse(messageBody.messageBody);
+                            if (zoomData.scale !== undefined) {
+                                docxZoomLevel.set(zoomData.scale);
                             }
                         }
                         // Handle DOCX URL updates
@@ -869,6 +882,10 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 currentVideoUrl.set('');
                                 currentPdfUrl.set('');
                                 currentDocxUrl.set('');
+                                // Reset image transform for new image
+                                imageZoomLevel.set(1);
+                                imagePanX.set(0);
+                                imagePanY.set(0);
                                 // Then set the new image URL
                                 currentImageUrl.set(imageUpdateData.fileUrl);
                             }
@@ -878,6 +895,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                             const zoomData = JSON.parse(messageBody.messageBody);
                             if (zoomData.zoomLevel !== undefined) {
                                 imageZoomLevel.set(zoomData.zoomLevel);
+                            }
+                            if (zoomData.translateX !== undefined) {
+                                imagePanX.set(zoomData.translateX);
+                            }
+                            if (zoomData.translateY !== undefined) {
+                                imagePanY.set(zoomData.translateY);
                             }
                         }
                         // Handle camera state updates
@@ -1089,6 +1112,10 @@ function handleWebRTCError(error: string, message: string) {
             console.error("Connection to media server failed. Please check your internet connection and try again.");
             break;
         case "UserMediaError":
+        case "NotAllowedError":      // Browser permission denied (DOMException name)
+        case "OverconstrainedError": // Device constraints cannot be satisfied
+        case "NotFoundError":        // No mic/camera device found
+        case "SecurityError":        // Media blocked by browser security policy
             console.error("Cannot access camera or microphone. Please check your device permissions.");
             // Update permission states so the UI shows warning indicators
             micPermission = 'denied';
@@ -1116,8 +1143,23 @@ function handleWebRTCError(error: string, message: string) {
             // Don't show error toast for this expected case
             break;
         default:
-            console.error("Unhandled WebRTC Error:", error, message);
-            console.error("An unexpected WebRTC error occurred. Please try again.");
+            // Catch permission/media errors that come through with unexpected error codes
+            if (
+                error?.includes?.('NotAllowed') ||
+                error?.includes?.('Permission') ||
+                error?.includes?.('NotFound') ||
+                error?.includes?.('Overconstrained') ||
+                message?.includes?.('Permission denied') ||
+                message?.includes?.('NotAllowedError')
+            ) {
+                console.warn('Permission-related WebRTC error detected, falling back to data-channel-only mode:', error, message);
+                micPermission = 'denied';
+                cameraPermission = 'denied';
+                setTimeout(initializeWebRTC, 1000);
+            } else {
+                console.error("Unhandled WebRTC Error:", error, message);
+                console.error("An unexpected WebRTC error occurred. Please try again.");
+            }
     }
 }
 
@@ -1379,14 +1421,14 @@ async function checkPermissions() {
 
 async function requestMicPermission() {
     micPermission = await browserRequestMic();
-    if (micPermission === 'granted' && !webRTCAdaptor) {
+    if (micPermission === 'granted' && (!webRTCAdaptor || inDataChannelOnlyMode)) {
         initializeWebRTC();
     }
 }
 
 async function requestCameraPermission() {
     cameraPermission = await browserRequestCamera();
-    if (cameraPermission === 'granted' && !webRTCAdaptor) {
+    if (cameraPermission === 'granted' && (!webRTCAdaptor || inDataChannelOnlyMode)) {
         initializeWebRTC();
     }
 }

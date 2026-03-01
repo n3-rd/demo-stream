@@ -3,8 +3,10 @@
 
     import { onMount, createEventDispatcher, tick } from 'svelte';
     import * as mammoth from 'mammoth';
-    import { currentDocxUrl, docxScrollPosition } from '$lib/callStores';
+    import { currentDocxUrl, docxScrollPosition, docxZoomLevel } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
+    import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-svelte';
+    import { Button } from '$lib/components/ui/button';
 
     interface Props {
         roomName: string;
@@ -30,6 +32,56 @@
     let isScrolling = $state(false);
     let scrollTimeoutId: ReturnType<typeof setTimeout>;
     let scrollDebounceId: ReturnType<typeof setTimeout>;
+
+    // Zoom state
+    let zoomScale = $state(1.0);
+    const ZOOM_STEP = 0.1;
+    const ZOOM_MIN = 0.5;
+    const ZOOM_MAX = 3.0;
+
+    function handleZoomIn() {
+        if (!isController) return;
+        const newScale = Math.min(zoomScale + ZOOM_STEP, ZOOM_MAX);
+        applyZoomScale(newScale);
+        broadcastZoom(newScale);
+    }
+
+    function handleZoomOut() {
+        if (!isController) return;
+        const newScale = Math.max(zoomScale - ZOOM_STEP, ZOOM_MIN);
+        applyZoomScale(newScale);
+        broadcastZoom(newScale);
+    }
+
+    function handleZoomReset() {
+        if (!isController) return;
+        applyZoomScale(1.0);
+        broadcastZoom(1.0);
+    }
+
+    function applyZoomScale(newScale: number) {
+        zoomScale = newScale;
+        docxZoomLevel.set(newScale);
+        if (docxContent) {
+            docxContent.style.fontSize = `${newScale}em`;
+        }
+    }
+
+    function broadcastZoom(newScale: number) {
+        try {
+            sendMessage(
+                roomName,
+                Date.now(),
+                JSON.stringify({
+                    eventType: 'docx_zoom_sync',
+                    messageBody: JSON.stringify({ scale: newScale })
+                }),
+                roomName
+            );
+        } catch (err) {
+            console.error('Error broadcasting docx zoom:', err);
+        }
+    }
 
     function handleScroll(event) {
         if (!isController) {
@@ -178,6 +230,11 @@
                 previousScrollTop = 0;
                 docxScrollPosition.set(0);
             }
+
+            // Re-apply current zoom after content is replaced
+            if (docxContent) {
+                docxContent.style.fontSize = `${zoomScale}em`;
+            }
             
         } catch (err) {
             console.error('Error loading DOCX:', err);
@@ -226,10 +283,40 @@
             }
         }
     });
+    // Watch for zoom changes from controller (non-controllers)
+    run(() => {
+        if (!isController && $docxZoomLevel !== zoomScale) {
+            zoomScale = $docxZoomLevel;
+            if (docxContent) {
+                docxContent.style.fontSize = `${zoomScale}em`;
+            }
+        }
+    });
 </script>
 
+<div class="flex flex-col h-full">
+    <!-- Zoom toolbar (controller only) -->
+    {#if isController}
+        <div class="flex items-center justify-center gap-2 p-2 bg-gray-100 border-b shrink-0">
+            <Button variant="outline" size="icon" on:click={handleZoomOut} disabled={zoomScale <= ZOOM_MIN}>
+                <ZoomOut class="h-4 w-4" />
+            </Button>
+            <span class="min-w-[4rem] text-center text-sm">{Math.round(zoomScale * 100)}%</span>
+            <Button variant="outline" size="icon" on:click={handleZoomIn} disabled={zoomScale >= ZOOM_MAX}>
+                <ZoomIn class="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" on:click={handleZoomReset} disabled={zoomScale === 1}>
+                <RotateCcw class="h-4 w-4" />
+            </Button>
+        </div>
+    {:else if htmlContent}
+        <div class="flex items-center justify-center gap-2 p-2 bg-gray-50 border-b text-sm text-gray-500 shrink-0">
+            Zoom controlled by presenter · {Math.round(zoomScale * 100)}%
+        </div>
+    {/if}
+
 <div 
-    class="docx-container w-full h-full bg-white overflow-y-auto relative"
+    class="docx-container w-full flex-1 bg-white overflow-y-auto relative"
     bind:this={docxContainer}
     onscroll={handleScroll}
 >
@@ -264,11 +351,11 @@
      
     {/if}
 </div>
+</div>
 
 <style>
     .docx-container {
-        position: absolute;
-        inset: 0;
+        position: relative;
     }
     
     :global(.docx-content) {

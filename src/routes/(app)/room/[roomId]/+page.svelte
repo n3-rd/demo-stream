@@ -1112,6 +1112,10 @@ function handleWebRTCError(error: string, message: string) {
             console.error("Connection to media server failed. Please check your internet connection and try again.");
             break;
         case "UserMediaError":
+        case "NotAllowedError":      // Browser permission denied (DOMException name)
+        case "OverconstrainedError": // Device constraints cannot be satisfied
+        case "NotFoundError":        // No mic/camera device found
+        case "SecurityError":        // Media blocked by browser security policy
             console.error("Cannot access camera or microphone. Please check your device permissions.");
             // Update permission states so the UI shows warning indicators
             micPermission = 'denied';
@@ -1139,8 +1143,23 @@ function handleWebRTCError(error: string, message: string) {
             // Don't show error toast for this expected case
             break;
         default:
-            console.error("Unhandled WebRTC Error:", error, message);
-            console.error("An unexpected WebRTC error occurred. Please try again.");
+            // Catch permission/media errors that come through with unexpected error codes
+            if (
+                error?.includes?.('NotAllowed') ||
+                error?.includes?.('Permission') ||
+                error?.includes?.('NotFound') ||
+                error?.includes?.('Overconstrained') ||
+                message?.includes?.('Permission denied') ||
+                message?.includes?.('NotAllowedError')
+            ) {
+                console.warn('Permission-related WebRTC error detected, falling back to data-channel-only mode:', error, message);
+                micPermission = 'denied';
+                cameraPermission = 'denied';
+                setTimeout(initializeWebRTC, 1000);
+            } else {
+                console.error("Unhandled WebRTC Error:", error, message);
+                console.error("An unexpected WebRTC error occurred. Please try again.");
+            }
     }
 }
 

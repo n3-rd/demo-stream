@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
-    import { UsersRound, ShareIcon, AlertTriangle } from "lucide-svelte";
+    import { UsersRound, ShareIcon, AlertTriangle, Mic, MicOff, CameraIcon, CameraOffIcon } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
     import type { ComponentType } from "svelte";
     import * as Sheet from "$lib/components/ui/sheet";
@@ -467,7 +467,21 @@
                                 }
                             }}
                         >
-                            <img src={control.icon} alt={getAltText(control)} class="icon h-11 w-11 primary-toggle-icon" />
+                            {#if control.key === 'microphone'}
+                                {#if permBlocked || isMuted}
+                                    <MicOff color="#fff" size={28} />
+                                {:else}
+                                    <Mic color="#fff" size={28} />
+                                {/if}
+                            {:else if control.key === 'camera'}
+                                {#if permBlocked || isOff}
+                                    <CameraOffIcon color="#fff" size={28} />
+                                {:else}
+                                    <CameraIcon color="#fff" size={28} />
+                                {/if}
+                            {:else}
+                                <img src={control.icon} alt={getAltText(control)} class="icon h-11 w-11 primary-toggle-icon" />
+                            {/if}
                         </button>
                         {#if permBlocked}
                             <span class="mobile-permission-badge" title="Permission denied">
@@ -570,7 +584,7 @@
                                                 <Dialog.Content class={entry.contentClass}>
                                                     {#if entry.content === "share"}
                                                         <Share shareURL={joinURL} representative={false} />
-.                                                   {:else if entry.content === "inviteRepresentative"}
+                                                    {:else if entry.content === "inviteRepresentative"}
                                                         <InviteRepresentative
                                                             shareURL={joinURL}
                                                             representatives={videoRepresentatives}
@@ -630,15 +644,12 @@
 
     .primary-toggle-btn.primary-toggle-muted .primary-toggle-icon,
     .primary-toggle-btn.primary-toggle-off .primary-toggle-icon {
-        filter: grayscale(1);
-        opacity: 0.7;
+        opacity: 0.9;
     }
 
     .primary-toggle-btn.primary-toggle-muted,
     .primary-toggle-btn.primary-toggle-off {
-        border: 2px solid rgba(255, 255, 255, 0.85);
-        background-color: #3d3d3d !important;
-        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+        background-color: #dc2626 !important;
     }
     :global(button[data-melt-dialog-close]),
     :global(button[data-melt-sheet-close]) {

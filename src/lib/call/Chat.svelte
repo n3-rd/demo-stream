@@ -3,6 +3,7 @@
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
     import { chatMessages } from '$lib/stores/chatMessages';
+    import { aiMessages } from '$lib/stores/aiMessages';
     import send from './assets/send.svg';
     import { SendHorizontal, X } from 'lucide-svelte';
     import { sendMessage } from '$lib/helpers/sendMessage';
@@ -22,7 +23,6 @@
     let newText = '';
     let chatIsOpen = false;
     let messages = [];
-    let aiMessages = [];
     let activeTab = 'chat'; // 'chat' or 'ai'
     let aiLoading = false;
 
@@ -69,15 +69,15 @@
                 content: newText
             };
 
-            const currentMessages = [...aiMessages.map(msg => ({ role: msg.senderId === 'ai-bot' ? 'assistant' : 'user', content: msg.text })), userMessage];
+            const currentMessages = [...$aiMessages.map(msg => ({ role: msg.senderId === 'ai-bot' ? 'assistant' : 'user', content: msg.text })), userMessage];
 
-            aiMessages = [...aiMessages, {
+            aiMessages.update(msgs => [...msgs, {
                 name: name || $anonymousUser || 'User',
                 senderId: userId,
                 text: newText,
                 eventType: 'chat_message',
                 timestamp: Date.now()
-            }];
+            }]);
 
             newText = '';
 
@@ -98,7 +98,7 @@
                     eventType: 'chat_message',
                     timestamp: Date.now() + 1
                 };
-                aiMessages = [...aiMessages, aiResponse];
+                aiMessages.update(msgs => [...msgs, aiResponse]);
             })
             .finally(() => { aiLoading = false; });
         }
@@ -211,7 +211,7 @@
         {:else}
         <!-- AI Chatbot -->
         <div class="flex-1 min-h-0 overflow-y-auto px-5 py-6 space-y-6 max-h-[40vh]">
-            {#each aiMessages as message, index (message.timestamp ?? `${message.name}-${index}`)}
+            {#each $aiMessages as message, index (message.timestamp ?? `${message.name}-${index}`)}
                 <div class="flex gap-4">
                     <div
                         class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
@@ -355,7 +355,7 @@
         {:else}
         <!-- AI Chatbot -->
         <div class="flex-grow flex flex-col gap-4 p-4 overflow-y-auto">
-            {#each aiMessages as message, index (message.timestamp ?? `${message.name}-${index}`)}
+            {#each $aiMessages as message, index (message.timestamp ?? `${message.name}-${index}`)}
                 <div 
                     transition:slide={{ easing: quintOut }} 
                     class="flex gap-3 mb-3"

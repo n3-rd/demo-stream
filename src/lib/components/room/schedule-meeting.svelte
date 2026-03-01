@@ -92,8 +92,8 @@
     selectedMonth = value.month;
     selectedYear = value.year;
     
-    // Convert to date object for the scheduling
-    selectedDate = new Date(Date.UTC(selectedYear, selectedMonth - 1, selectedDay));
+    // Convert to date object for the scheduling (local midnight to avoid timezone day-of-week shifts)
+    selectedDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
     
   }
 

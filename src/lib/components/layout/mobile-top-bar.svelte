@@ -5,7 +5,7 @@
     export let roomIdentityName: string;
     export let roomLink: string;
 </script>
-<div class="absolute inset-x-0 top-0 py-3 w-full md:hidden flex items-center justify-between gap-3 px-2">
+<div class="absolute inset-x-0 top-0 py-3 w-full lg:hidden flex items-center justify-between gap-3 px-2">
     <Button
         class="flex-1 min-w-0 rounded bg-bgdefault-light text-white shadow-l flex items-center justify-center px-3 py-2 max-w-40 pointer-events-none"
     >

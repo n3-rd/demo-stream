@@ -7,14 +7,14 @@
     import { toast } from 'svelte-sonner';
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 
-    export let data;
+    let { data } = $props();
     const { user, video } = data;
 
-    let loading = false;
+    let loading = $state(false);
     let embedCode = '';
     let roomUrl = '';
-    let anonymousUserId: string | null = null;
-    let form: HTMLFormElement;
+    let anonymousUserId: string | null = $state(null);
+    let form: HTMLFormElement = $state();
     
 
     function sanitizeStreamName(name: string): string {
@@ -52,7 +52,7 @@
                     id="anonymousUserId"
                     name="anonymousUserId" 
                     bind:value={anonymousUserId}
-                    on:keydown={handleKeydown}
+                    onkeydown={handleKeydown}
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     placeholder="Your name"
                 />

@@ -1,5 +1,7 @@
 
 <script lang="ts">
+  import { run } from 'svelte/legacy';
+
 	import { dev } from '$app/environment';
 import {
     PUBLIC_ANT_MEDIA_URL
@@ -58,43 +60,42 @@ interface AudioElement extends HTMLAudioElement {
     srcObject: MediaStream;
 }
 
-export let data;
 
 
 // State management
-let webRTCAdaptor: any;
-let urlRepresentativeName: string = '';
-let anonymousUserId: string = '';
-let hostUserId: string = '';
+let webRTCAdaptor: any = $state();
+let urlRepresentativeName: string = $state('');
+let anonymousUserId: string = $state('');
+let hostUserId: string = $state('');
 let isPlaying = false;
 let isDataChannelOpen = false;
-let isMicMuted = false;
-let isCameraOff = false;
+let isMicMuted = $state(false);
+let isCameraOff = $state(false);
 let allParticipants = {};
-let meetingParticipants = [];
+let meetingParticipants = $state([]);
 let isReconnectionInProgress = false;
 let reconnecting = false;
 let publishReconnected = false;
 let playReconnected = false;
 let isNoStreamExist = false;
-let scheduleOpen = false;
-let shareURL = $page.url.href;
+let scheduleOpen = $state(false);
+let shareURL = $state($page.url.href);
 
 // Permission state: 'granted' | 'denied' | 'prompt' | 'unknown'
-let micPermission: string = 'unknown';
-let cameraPermission: string = 'unknown';
+let micPermission: string = $state('unknown');
+let cameraPermission: string = $state('unknown');
 
 // Add video state management
-let videoPlayer;
+let videoPlayer = $state();
 let isVideoPlaying = false;
 let currentVideoTime = 0;
-let isVideoMuted = false;
-let userRole: 'host' | 'guest' | 'representative' = 'guest';
-let hasVideoPlayed = false;
+let isVideoMuted = $state(false);
+let userRole: 'host' | 'guest' | 'representative' = $state('guest');
+let hasVideoPlayed = $state(false);
 
 // Live mode from data channel (rep GO LIVE = composited stream full-screen)
-let isRepLive = false;
-let liveCameraMode: string | null = null;
+let isRepLive = $state(false);
+let liveCameraMode: string | null = $state(null);
 
 // Room data
 
@@ -102,42 +103,21 @@ let liveCameraMode: string | null = null;
 const baseRoomName = $page.url.pathname.split("/").pop().split("&")[0];
 
 // Near the top with other state variables
-let uniqueSessionId = '';
+let uniqueSessionId = $state('');
 
-// Room data
-$: roomName = uniqueSessionId ? `${baseRoomName}-${uniqueSessionId}` : baseRoomName;
 const user = data?.user;
 const viewroomUser = data?.viewroomUser;
 const isAuthenticated = !!user || !!viewroomUser;
 const viewroomDisplayName = viewroomUser ? [viewroomUser.first_name, viewroomUser.last_name].filter(Boolean).join(' ').trim() || viewroomUser.email : '';
 // Construct proper display name based on user type
 // Prioritize anonymous user ID if anonymous mode is active (reactive to URL changes)
-let name = '';
-$: {
-    const isAnonymousMode = $page.url.searchParams.get('anonymous') === 'true';
-    const urlAnonymousUserId = $page.url.searchParams.get('anonymousUserId') || '';
-    
-    if (isAnonymousMode && urlAnonymousUserId) {
-        // Use anonymous user ID from URL params when in anonymous mode
-        name = urlAnonymousUserId;
-    } else if (user && !isAnonymousMode) {
-        name = user?.company_name || '';
-    } else if (viewroomUser && !isAnonymousMode) {
-        name = viewroomDisplayName;
-    } else if (data?.representativeName) {
-        // Use the representative name from server data
-        name = data.representativeName;
-    } else {
-        // Will be set later when representative info is available
-        name = '';
-    }
-}
+let name = $state('');
 const representatives = data?.representatives || [];
 const users = data?.users || [];
-let isAnonymousHost = false;
-let isHost = false;
+let isAnonymousHost = $state(false);
+let isHost = $state(false);
 const host = $page.url.pathname.split("/").pop().split("-").pop();
-let showGreetingPopup = false;
+let showGreetingPopup = $state(false);
 
 // Fix room data structure - data is the room object directly from server
 const room = data?.id ? data : null;
@@ -154,54 +134,19 @@ let joinAttempts = 0;
 const MAX_JOIN_ATTEMPTS = 3;
 
 // Add this near the top of your script with other variable declarations
-let isScheduledMeeting = false;
-let meetingStatus = { canJoin: true, isPast: false, joinBeforeMinutes: 60, minutesLeft: 0 };
-let scheduledMeetingTime = null;
+let isScheduledMeeting = $state(false);
+let meetingStatus = $state({ canJoin: true, isPast: false, joinBeforeMinutes: 60, minutesLeft: 0 });
+let scheduledMeetingTime = $state(null);
 
 // Add near the top with other state variables
-let participantsPanelOpen = false;
-let chatPanelOpen = false;
+let participantsPanelOpen = $state(false);
+let chatPanelOpen = $state(false);
 
 // Add with the other state variables
-let selfIncludedParticipantCount = 1; // Start with at least 1 (yourself)
+let selfIncludedParticipantCount = $state(1); // Start with at least 1 (yourself)
 
-// Update the count when participants change
-$: {
-    // Calculate participant count including yourself
-    selfIncludedParticipantCount = meetingParticipants.length > 0 ? 
-        meetingParticipants.length : 1; // Always show at least 1 participant (yourself)
-}
 
-let isRepresentative = false;
-$: {
-    // Determine if user is host (owner of the room or anonymous host from embed)
-    isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
-                       $page.url.searchParams.get('anonymous') === 'true';
-    const urlHostUserId = $page.url.searchParams.get('hostUserId') || '';
-    const isRoomOwner = !!(user?.id && room?.owner_company && user.id === room.owner_company);
-    isHost = room ? isRoomOwner || 
-             isAnonymousHost || 
-             (room.host && urlHostUserId && room.host.includes(urlHostUserId) &&
-              (user?.id === urlHostUserId || isAnonymousHost)) : false;
-    
-    // Set showGreetingPopup based on isAnonymousHost
-    showGreetingPopup = isAnonymousHost;
-    
-    // Determine if user is a representative - repid URL param is the primary indicator
-    const urlRepId = $page.url.searchParams.get('repid');
-    isRepresentative = (urlRepId !== null && urlRepId !== '') || 
-                      !!data?.representativeName ||
-                      representatives?.some(rep => rep.id === (user?.id || viewroomUser?.id)) || false;
-    
-    if (isHost) {
-        userRole = 'host';
-    } else if (isRepresentative) {
-        userRole = 'representative';
-    } else {
-        userRole = 'guest';
-    }
-
-}
+let isRepresentative = $state(false);
 
 // Add videoElements map declaration at the top with other state variables
 let videoElements = new Map();
@@ -212,34 +157,37 @@ let representativeStreams: {
 	front: { streamId: string | null; mediaStream: MediaStream | null; playing: boolean };
 	back: { streamId: string | null; mediaStream: MediaStream | null; playing: boolean };
 	isLive: boolean;
-} = {
+} = $state({
 	odooRepId: null,
 	front: { streamId: null, mediaStream: null, playing: false },
 	back: { streamId: null, mediaStream: null, playing: false },
 	isLive: false
-};
+});
 /** Stream IDs currently shown in dual-camera layout (so RepresentativeIndicator can hide them) */
-let dualCameraStreamIds: string[] = [];
+let dualCameraStreamIds: string[] = $state([]);
 
 // Stream configuration
-let publishStreamId = null;
+let publishStreamId = $state(null);
 let showNameModal = !isAuthenticated;
 const streamName = room?.title;
 const dcOnly = false;
 const playOnly = false;
 
-// Update media constraints
-const mediaConstraints = {
-    video: isRepresentative || $page.url.searchParams.get('repid') !== null, // Video enabled by default for representatives
+// Update media constraints (initial value avoids capturing isRepresentative; $effect keeps it in sync)
+let mediaConstraints = $state({
+    video: false,
     audio: {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true
     }
-};
+});
+$effect(() => {
+    mediaConstraints.video = isRepresentative || $page.url.searchParams.get('repid') !== null;
+});
 
 // Add near the top with other state variables
-let syncSource = 'host';
+let syncSource = $state('host');
 
 // Add this variable with other state variables
 let inDataChannelOnlyMode = false;
@@ -252,48 +200,16 @@ const isLowEndDevice = (() => {
     return cores <= 2 || mem <= 1;
 })();
 
-let videoVolume = 1.0; // Add this with your other state variables
+let videoVolume = $state(1.0); // Add this with your other state variables
 
 // Add state for available representatives
-let availableRepresentatives = [...representatives];
+let availableRepresentatives = $state([...representatives]);
 
 // Keep a self name for indicator suppression
-let repSelfName = '';
+let repSelfName = $state('');
 
-// Find the rep's regular stream ID for live mode (when no _back stream exists)
-$: liveRepStreamId = (() => {
-	if (representativeStreams.back.streamId) return null;
-	for (const p of meetingParticipants) {
-		const sid = typeof p === 'string' ? p : p?.streamId;
-		const isRep = typeof p === 'string'
-			? /_representative$/i.test((p.split('-').pop() || ''))
-			: (p?.isRepresentative || /_representative$/i.test(p?.name || ''));
-		if (isRep && sid && !dualCameraStreamIds.includes(sid)) return sid;
-	}
-	return null;
-})();
 
-// Find rep display name from meetingParticipants for indicator label
-$: liveRepName = (() => {
-	for (const p of meetingParticipants) {
-		if (typeof p === 'string') {
-			if (/_representative$/i.test(p.split('-').pop() || ''))
-				return (p.split('-').pop() || '').replace(/_representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
-		} else if (p?.isRepresentative || /_representative$/i.test(p?.name || '')) {
-			return (p.name || '').replace(/_representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
-		}
-	}
-	return 'Representative';
-})();
 
-// PIP (selfie/front) only in rep indicator. Normal stream (back) only in big view.
-$: indicatorParticipants = (() => {
-	if (representativeStreams.front.streamId) {
-		return [{ streamId: representativeStreams.front.streamId, name: liveRepName + '_representative', isRepresentative: true }];
-	}
-	if (isRepLive) return []; // back/composited in big view only
-	return meetingParticipants.filter((p: any) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''));
-})();
 
 onMount(() => {
     // Generate a unique session ID if 'uid' isn't already in the URL
@@ -1206,6 +1122,7 @@ function handleWebRTCError(error: string, message: string) {
 }
 
 import { isCurrentUserMessage, extractAndNormalizeName, getInitials } from '$lib/utils/chat';
+  let { data } = $props();
 
 // can't use await at top-level in Svelte component scripts, so use an async IIFE if you want to log this
 // (async () => {
@@ -1761,20 +1678,6 @@ function handleVideoStateChange() {
     }
 }
 
-// Update video player initialization
-$: if (videoPlayer) {
-    videoPlayer.ontimeupdate = () => {
-        // Sync every 500ms for tighter video synchronization
-        const now = Date.now();
-        if (now - lastUpdate > 500) {
-            handleVideoStateChange();
-            lastUpdate = now;
-        }
-    };
-    
-    // Don't automatically pause the video on initialization
-    // This was causing the video to pause after play
-}
 
 const handleScheduleClose = () => {
     scheduleOpen = false;
@@ -2024,25 +1927,12 @@ function removeRemoteAudio(trackLabel: string) {
     audioManager.removeRemoteAudio(trackLabel);
 }
 
-// Update the video URL reactive statement with more detailed logging
-$: {
-    console.log('Room data reactive statement triggered:', {
-        hasRoom: !!room,
-        roomData: room,
-        hasExpand: !!room?.expand,
-        hasSelectedVideo: !!room?.expand?.selected_video,
-        selectedVideo: room?.expand?.selected_video,
-        currentStoreValue: currentVideoUrl,
-        currentStoreSubscribedValue: $currentVideoUrl,
-        PUBLIC_POCKETBASE_INSTANCE
-    });
-}
 
 // Add timestamp for throttling
-let lastUpdate = 0;
+let lastUpdate = $state(0);
 
 // Active speaker detection
-let activeSpeakerStreamId: string | null = null;
+let activeSpeakerStreamId: string | null = $state(null);
 const audioManager = new AudioManager();
 
 function startSpeakerDetection() {
@@ -2056,89 +1946,6 @@ function stopSpeakerDetection() {
 // Initialize WebRTC client with room name from URL params
 const streamId = `${$page.params.roomId}`;
 
-// Reactive declarations with immediate logging
-$: {
-    urlRepresentativeName = data.representativeName || '';
-    anonymousUserId = $anonymousUser;
-    hostUserId = $page.url.searchParams.get('hostUserId');
-    
-    // Clean up URL parameters to prevent double-encoding
-    const searchParams = $page.url.searchParams;
-    const cleanParams = new URLSearchParams();
-    
-    // Carefully transfer parameters
-    if (searchParams.get('repid')) {
-        cleanParams.set('repid', searchParams.get('repid'));
-    }
-    if (searchParams.get('uid')) {
-        cleanParams.set('uid', searchParams.get('uid'));
-    }
-    if (searchParams.get('isHost')) {
-        cleanParams.set('isHost', searchParams.get('isHost'));
-    }
-    if (searchParams.get('anonymous')) {
-        cleanParams.set('anonymous', searchParams.get('anonymous'));
-    }
-    if (searchParams.get('hostUserId')) {
-        cleanParams.set('hostUserId', searchParams.get('hostUserId'));
-    }
-    if (searchParams.get('anonymousUserId')) {
-        cleanParams.set('anonymousUserId', searchParams.get('anonymousUserId'));
-    }
-    
-    // Update URL if parameters are not clean
-    if (cleanParams.toString() !== searchParams.toString()) {
-        history.replaceState(
-            null, 
-            '', 
-            `${$page.url.pathname}?${cleanParams.toString()}`
-        );
-    }
-    
-    // If anonymous mode is active, prioritize anonymousUserId from URL over authenticated user
-    const isAnonymousMode = searchParams.get('anonymous') === 'true';
-    const urlAnonymousUserId = searchParams.get('anonymousUserId');
-    if (isAnonymousMode && urlAnonymousUserId) {
-        // Always update anonymousUser store when in anonymous mode to ensure it matches URL param
-        if ($anonymousUser !== urlAnonymousUserId) {
-            anonymousUser.set(urlAnonymousUserId);
-        }
-        // Name will be updated by the reactive declaration above
-    }
-    
-    // If we have a representative name, set it as the anonymous user with proper formatting
-    if (data.representativeName && !$anonymousUser && !isAnonymousMode) {
-        anonymousUser.set(formatDisplayName(data.representativeName, true));
-        // Initialize WebRTC after setting the name
-        if (webRTCAdaptor === null) {
-            initializeWebRTC();
-        }
-    }
-    
-    // Compute representative self name from server data or cookie
-    if (isRepresentative && !data.representativeName) {
-        repSelfName = getRepresentativeCookieName();
-        // Also update the name for chat purposes if not already set
-        if (!name && repSelfName) {
-            name = repSelfName;
-        }
-    } else if (data.representativeName) {
-        repSelfName = data.representativeName;
-        // Also update the name for chat purposes if not already set
-        if (!name) {
-            name = data.representativeName;
-        }
-    }
-    
-    // Debug logging
-    console.log('URL Params updated:', {
-        urlRepresentativeName,
-        anonymousUserId,
-        hostUserId,
-        rawUrl: $page.url.toString(),
-        searchParams: Object.fromEntries($page.url.searchParams)
-    });
-}
 
 function handleNameSubmitted(event) {
     const submittedName = event.detail;
@@ -2414,10 +2221,6 @@ function handleVolumeChange(event) {
     }
 }
 
-// Add this to ensure volume is set when video player is initialized
-$: if (videoPlayer) {
-    videoPlayer.volume = videoVolume;
-}
 
 // Handle representative updates
 function handleRepresentativesUpdate(event) {
@@ -2425,25 +2228,6 @@ function handleRepresentativesUpdate(event) {
     console.log('Available representatives updated:', availableRepresentatives);
 }
 
-// Update the shareURL reactive declaration to ensure it's always up-to-date:
-$: {
-    // Only update if uniqueSessionId is set and different from what's in the URL
-    if (uniqueSessionId) {
-        try {
-            const shareUrlObj = new URL(window.location.href);
-            const currentUrlUid = shareUrlObj.searchParams.get('uid');
-            
-            // Only update if the uid is different or missing
-            if (currentUrlUid !== uniqueSessionId) {
-                shareUrlObj.searchParams.set('uid', uniqueSessionId);
-                shareURL = shareUrlObj.toString();
-                console.log('Updated share URL:', shareURL);
-            }
-        } catch (error) {
-            console.error('Error updating share URL:', error);
-        }
-    }
-}
 
 function joinRoomWithRetry() {
     // Check meeting status before attempting to join, but don't show toast
@@ -2497,21 +2281,24 @@ function initWithRetry() {
 }
 
 // Check if we need to redirect
-if (data.redirectTo) {
-
-    setTimeout(() => {
-        window.location.href = data.redirectTo;
-    }, 4000);
-}
+$effect(() => {
+    if (data?.redirectTo) {
+        setTimeout(() => {
+            window.location.href = data.redirectTo;
+        }, 4000);
+    }
+});
 
 // Check if this is a scheduled meeting
-console.log('Room data on mount:', data);
+$effect(() => {
+    if (dev) console.log('Room data on mount:', data);
+});
 
 // Add a reference to the MediaSelector
 let mediaSelectorRef;
 
 // Remove previous references
-let mediaSelectorComponent;
+let mediaSelectorComponent = $state();
 
 // Add a function to automatically select first host content
 function autoSelectFirstHostContent() {
@@ -2588,8 +2375,233 @@ onDestroy(() => {
 });
 
 // Track the currently selected video
-let selectedVideo = null;
+let selectedVideo = $state(null);
 
+// Room data
+let roomName = $derived(uniqueSessionId ? `${baseRoomName}-${uniqueSessionId}` : baseRoomName);
+run(() => {
+    const isAnonymousMode = $page.url.searchParams.get('anonymous') === 'true';
+    const urlAnonymousUserId = $page.url.searchParams.get('anonymousUserId') || '';
+    
+    if (isAnonymousMode && urlAnonymousUserId) {
+        // Use anonymous user ID from URL params when in anonymous mode
+        name = urlAnonymousUserId;
+    } else if (user && !isAnonymousMode) {
+        name = user?.company_name || '';
+    } else if (viewroomUser && !isAnonymousMode) {
+        name = viewroomDisplayName;
+    } else if (data?.representativeName) {
+        // Use the representative name from server data
+        name = data.representativeName;
+    } else {
+        // Will be set later when representative info is available
+        name = '';
+    }
+});
+// Update the count when participants change
+run(() => {
+    // Calculate participant count including yourself
+    selfIncludedParticipantCount = meetingParticipants.length > 0 ? 
+        meetingParticipants.length : 1; // Always show at least 1 participant (yourself)
+});
+run(() => {
+    // Determine if user is host (owner of the room or anonymous host from embed)
+    isAnonymousHost = $page.url.searchParams.get('isHost') === 'true' && 
+                       $page.url.searchParams.get('anonymous') === 'true';
+    const urlHostUserId = $page.url.searchParams.get('hostUserId') || '';
+    const isRoomOwner = !!(user?.id && room?.owner_company && user.id === room.owner_company);
+    isHost = room ? isRoomOwner || 
+             isAnonymousHost || 
+             (room.host && urlHostUserId && room.host.includes(urlHostUserId) &&
+              (user?.id === urlHostUserId || isAnonymousHost)) : false;
+    
+    // Set showGreetingPopup based on isAnonymousHost
+    showGreetingPopup = isAnonymousHost;
+    
+    // Determine if user is a representative - repid URL param is the primary indicator
+    const urlRepId = $page.url.searchParams.get('repid');
+    isRepresentative = (urlRepId !== null && urlRepId !== '') || 
+                      !!data?.representativeName ||
+                      representatives?.some(rep => rep.id === (user?.id || viewroomUser?.id)) || false;
+    
+    if (isHost) {
+        userRole = 'host';
+    } else if (isRepresentative) {
+        userRole = 'representative';
+    } else {
+        userRole = 'guest';
+    }
+
+});
+// Find the rep's regular stream ID for live mode (when no _back stream exists)
+let liveRepStreamId = $derived((() => {
+	if (representativeStreams.back.streamId) return null;
+	for (const p of meetingParticipants) {
+		const sid = typeof p === 'string' ? p : p?.streamId;
+		const isRep = typeof p === 'string'
+			? /_representative$/i.test((p.split('-').pop() || ''))
+			: (p?.isRepresentative || /_representative$/i.test(p?.name || ''));
+		if (isRep && sid && !dualCameraStreamIds.includes(sid)) return sid;
+	}
+	return null;
+})());
+// Find rep display name from meetingParticipants for indicator label
+let liveRepName = $derived((() => {
+	for (const p of meetingParticipants) {
+		if (typeof p === 'string') {
+			if (/_representative$/i.test(p.split('-').pop() || ''))
+				return (p.split('-').pop() || '').replace(/_representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
+		} else if (p?.isRepresentative || /_representative$/i.test(p?.name || '')) {
+			return (p.name || '').replace(/_representative$/i, '').replace(/_/g, ' ').trim() || 'Representative';
+		}
+	}
+	return 'Representative';
+})());
+// PIP (selfie/front) only in rep indicator. Normal stream (back) only in big view.
+let indicatorParticipants = $derived((() => {
+	if (representativeStreams.front.streamId) {
+		return [{ streamId: representativeStreams.front.streamId, name: liveRepName + '_representative', isRepresentative: true }];
+	}
+	if (isRepLive) return []; // back/composited in big view only
+	return meetingParticipants.filter((p: any) => !dualCameraStreamIds.includes(typeof p === 'string' ? p : p?.streamId || ''));
+})());
+// Update video player initialization
+run(() => {
+    if (videoPlayer) {
+      videoPlayer.ontimeupdate = () => {
+          // Sync every 500ms for tighter video synchronization
+          const now = Date.now();
+          if (now - lastUpdate > 500) {
+              handleVideoStateChange();
+              lastUpdate = now;
+          }
+      };
+      
+      // Don't automatically pause the video on initialization
+      // This was causing the video to pause after play
+  }
+  });
+// Update the video URL reactive statement with more detailed logging
+run(() => {
+    console.log('Room data reactive statement triggered:', {
+        hasRoom: !!room,
+        roomData: room,
+        hasExpand: !!room?.expand,
+        hasSelectedVideo: !!room?.expand?.selected_video,
+        selectedVideo: room?.expand?.selected_video,
+        currentStoreValue: currentVideoUrl,
+        currentStoreSubscribedValue: $currentVideoUrl,
+        PUBLIC_POCKETBASE_INSTANCE
+    });
+});
+// Reactive declarations with immediate logging
+run(() => {
+    urlRepresentativeName = data.representativeName || '';
+    anonymousUserId = $anonymousUser;
+    hostUserId = $page.url.searchParams.get('hostUserId');
+    
+    // Clean up URL parameters to prevent double-encoding
+    const searchParams = $page.url.searchParams;
+    const cleanParams = new URLSearchParams();
+    
+    // Carefully transfer parameters
+    if (searchParams.get('repid')) {
+        cleanParams.set('repid', searchParams.get('repid'));
+    }
+    if (searchParams.get('uid')) {
+        cleanParams.set('uid', searchParams.get('uid'));
+    }
+    if (searchParams.get('isHost')) {
+        cleanParams.set('isHost', searchParams.get('isHost'));
+    }
+    if (searchParams.get('anonymous')) {
+        cleanParams.set('anonymous', searchParams.get('anonymous'));
+    }
+    if (searchParams.get('hostUserId')) {
+        cleanParams.set('hostUserId', searchParams.get('hostUserId'));
+    }
+    if (searchParams.get('anonymousUserId')) {
+        cleanParams.set('anonymousUserId', searchParams.get('anonymousUserId'));
+    }
+    
+    // Update URL if parameters are not clean
+    if (cleanParams.toString() !== searchParams.toString()) {
+        history.replaceState(
+            null, 
+            '', 
+            `${$page.url.pathname}?${cleanParams.toString()}`
+        );
+    }
+    
+    // If anonymous mode is active, prioritize anonymousUserId from URL over authenticated user
+    const isAnonymousMode = searchParams.get('anonymous') === 'true';
+    const urlAnonymousUserId = searchParams.get('anonymousUserId');
+    if (isAnonymousMode && urlAnonymousUserId) {
+        // Always update anonymousUser store when in anonymous mode to ensure it matches URL param
+        if ($anonymousUser !== urlAnonymousUserId) {
+            anonymousUser.set(urlAnonymousUserId);
+        }
+        // Name will be updated by the reactive declaration above
+    }
+    
+    // If we have a representative name, set it as the anonymous user with proper formatting
+    if (data.representativeName && !$anonymousUser && !isAnonymousMode) {
+        anonymousUser.set(formatDisplayName(data.representativeName, true));
+        // Initialize WebRTC after setting the name
+        if (webRTCAdaptor === null) {
+            initializeWebRTC();
+        }
+    }
+    
+    // Compute representative self name from server data or cookie
+    if (isRepresentative && !data.representativeName) {
+        repSelfName = getRepresentativeCookieName();
+        // Also update the name for chat purposes if not already set
+        if (!name && repSelfName) {
+            name = repSelfName;
+        }
+    } else if (data.representativeName) {
+        repSelfName = data.representativeName;
+        // Also update the name for chat purposes if not already set
+        if (!name) {
+            name = data.representativeName;
+        }
+    }
+    
+    // Debug logging
+    console.log('URL Params updated:', {
+        urlRepresentativeName,
+        anonymousUserId,
+        hostUserId,
+        rawUrl: $page.url.toString(),
+        searchParams: Object.fromEntries($page.url.searchParams)
+    });
+});
+// Add this to ensure volume is set when video player is initialized
+run(() => {
+    if (videoPlayer) {
+      videoPlayer.volume = videoVolume;
+  }
+  });
+// Update the shareURL reactive declaration to ensure it's always up-to-date:
+run(() => {
+    // Only update if uniqueSessionId is set and different from what's in the URL
+    if (uniqueSessionId) {
+        try {
+            const shareUrlObj = new URL(window.location.href);
+            const currentUrlUid = shareUrlObj.searchParams.get('uid');
+            
+            // Only update if the uid is different or missing
+            if (currentUrlUid !== uniqueSessionId) {
+                shareUrlObj.searchParams.set('uid', uniqueSessionId);
+                shareURL = shareUrlObj.toString();
+                console.log('Updated share URL:', shareURL);
+            }
+        } catch (error) {
+            console.error('Error updating share URL:', error);
+        }
+    }
+});
 </script>
 
 
@@ -2725,7 +2737,7 @@ let selectedVideo = null;
                                     <img src="https://placehold.co/600x400?text=No+Thumbnail" alt="" class="absolute w-full h-full object-cover">
                                 {/if}
                                 <div class="play-button absolute inset-0 flex items-center justify-center">
-                                    <button on:click={() => videoPlayer.play()}>
+                                    <button onclick={() => videoPlayer.play()}>
                                        <img src="/icons/play.svg" alt="" class="h-28 w-28 object-cover hover:scale-110 transition-all duration-300">
                                     </button>
                                 </div>
@@ -2736,9 +2748,9 @@ let selectedVideo = null;
                                     controls={true}
                                     src={$currentVideoUrl}
                                     bind:this={videoPlayer}
-                                    on:play={handleVideoStateChange}
-                                    on:pause={handleVideoStateChange}
-                                    on:seeking={handleVideoStateChange}
+                                    onplay={handleVideoStateChange}
+                                    onpause={handleVideoStateChange}
+                                    onseeking={handleVideoStateChange}
                                     muted={isVideoMuted}
                                     loop
                                     preload="metadata"
@@ -2916,23 +2928,6 @@ let selectedVideo = null;
 {/if}
 
 <style>
-.conference-room {
-    padding: 20px;
-}
-
-.controls {
-    margin-top: 20px;
-}
-
-.button-group {
-    margin-bottom: 15px;
-}
-
-.media-controls {
-    display: flex;
-    gap: 10px;
-}
-
 .video-container {
     width: 100%;
     height: 100%;
@@ -3091,29 +3086,6 @@ let selectedVideo = null;
 }
 .dual-camera-content-wrap.hidden {
     display: none;
-}
-
-.panel {
-    transition: all 0.3s ease-in-out;
-}
-
-@media (max-width: 1024px) {
-    .panel {
-        transform: translateX(100%);
-    }
-    .panel[style*="width: 100%"] {
-        transform: translateX(0);
-    }
-}
-
-.hover\:bg-red-700:hover {
-    background-color: #b91c1c;
-}
-.hover\:bg-white:hover {
-    background-color: #ffffff;
-}
-.hover\:text-black:hover {
-    color: #000000
 }
 
 @media (max-width: 1024px) {

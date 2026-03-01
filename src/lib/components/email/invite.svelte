@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { Button, Hr, Html, Text, Heading, Container, Link } from 'svelte-email';
 
-	export let name:string;
-    export let url:string;
+    interface Props {
+        name: string;
+        url: string;
+    }
+
+    let { name, url }: Props = $props();
 </script>
 
 <Html lang="en">

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { run, preventDefault } from 'svelte/legacy';
+
   import { ArrowLeft, Clock, MapPin, Globe } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import * as Card from "$lib/components/ui/card";
@@ -16,86 +18,53 @@
   import { PUBLIC_SMTP_FROM, PUBLIC_BREVO_API_KEY } from '$env/static/public';
   import { page } from '$app/stores';
   
-  export let userId = null;
-  export let availableRepresentatives = [];
-  export let roomData = null; // Optional room data to filter representatives
+  interface Props {
+    userId?: any;
+    availableRepresentatives?: any;
+    roomData?: any; // Optional room data to filter representatives
+  }
 
-  // Get company ID from page data for filtering
-  $: companyId = $page.data?.user?.id || $page.data?.owner_company || roomData?.owner_company;
+  let { userId = null, availableRepresentatives = [], roomData = null }: Props = $props();
 
-  // Filter representatives by the current user's company
-  // Only filter if we have a companyId, otherwise show all passed representatives
-  $: filteredRepresentatives = companyId 
-      ? availableRepresentatives.filter(rep => rep.company === companyId || rep.company === String(companyId))
-      : availableRepresentatives;
+
   
   const MEETING_DURATION = '30 minutes';
   const TIME_ZONE_LABEL = 'Eastern time - US & Canada';
   
-  $: hostDisplayName = roomData?.title ?? 'Name of Host';
-  $: repDisplayName = representativeDetails?.name 
-      ?? (typeof selectedRepresentative === 'object' && selectedRepresentative?.name)
-      ?? 'Select a representative';
-  $: representativeAvatarUrl = representativeDetails?.avatar
-      ? `/api/files/${representativeDetails.collectionId || 'representatives'}/${representativeDetails.id}/${representativeDetails.avatar}`
-      : null;
-  $: representativeLocation = representativeDetails?.expand?.location?.name
-      ?? representativeDetails?.location
-      ?? 'Location to be confirmed';
-  $: representativeAddress = representativeDetails?.expand?.location?.address
-      ?? representativeDetails?.address
-      ?? '';
   
-  $: selectedDateFormatted = selectedDate
-      ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-      : '';
 
-  let value = today(getLocalTimeZone());
+  let value = $state(today(getLocalTimeZone()));
   const dispatch = createEventDispatcher();
 
   // Form State
-  let firstName = '';
-  let lastName = '';
-  let phoneNumber = '';
-  let email = '';
-  let address = { street: '', city: '', state: '', zip: '', country: '' };
-  let selectedDay = value.day;
-  let selectedMonth = value.month;
-  let selectedYear = value.year;
+  let firstName = $state('');
+  let lastName = $state('');
+  let phoneNumber = $state('');
+  let email = $state('');
+  let address = $state({ street: '', city: '', state: '', zip: '', country: '' });
+  let selectedDay = $state(value.day);
+  let selectedMonth = $state(value.month);
+  let selectedYear = $state(value.year);
   let roomName = ''; // This will be used for the room name
   let roomNameError: string = '';
-  let selectedRepresentative = null;
-  let selectedDate = null;
-  let selectedTimeSlot = null;
-  let availableSlots = [];
-  let representativeDetails = null;
+  let selectedRepresentative = $state(null);
+  let selectedDate = $state(null);
+  let selectedTimeSlot = $state(null);
+  let availableSlots = $state([]);
+  let representativeDetails = $state(null);
   let formError = '';
   let activeTab = 'personal-info';
-  let selectedSlot = null;
+  let selectedSlot = $state(null);
   let calendarVisible = false;
   let appointmentTitle = '';
-  let additionalInformation = '';
+  let additionalInformation = $state('');
 
-  // Sync fullName with firstName + lastName 
-  $: fullName = `${firstName} ${lastName}`.trim();
   
-  // Sync phone with phoneNumber
-  $: phone = phoneNumber;
   
 
 
   const form = useForm();
 
-  // Reactive statement to update selectedDay, selectedMonth, and selectedYear when value changes
-  $: {
-    selectedDay = value.day;
-    selectedMonth = value.month;
-    selectedYear = value.year;
-    
-    // Convert to date object for the scheduling (local midnight to avoid timezone day-of-week shifts)
-    selectedDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
-    
-  }
 
   // Function to validate room name
   function validateRoomName(name: string): boolean {
@@ -112,35 +81,10 @@
     }
   }
 
-  // Reactive statement to check if all required fields are filled
-  $: isFormValid = firstName && lastName && phoneNumber && email && 
-                  selectedRepresentative && selectedDate && selectedTimeSlot;
 
-  let lastFetchedKey = ''; // rep id + date string to avoid clearing selection on re-runs
+  let lastFetchedKey = $state(''); // rep id + date string to avoid clearing selection on re-runs
 
-  // Reactive statement to update available time slots and disable unavailable slots
-  $: {
-    if (selectedRepresentative && selectedDate) {
-      const repId = typeof selectedRepresentative === 'object' && selectedRepresentative?.id != null
-        ? String(selectedRepresentative.id)
-        : '';
-      const dateKey = selectedDate.toISOString ? selectedDate.toISOString().slice(0, 10) : '';
-      const key = `${repId}-${dateKey}`;
-      if (key !== lastFetchedKey) {
-        lastFetchedKey = key;
-        selectedTimeSlot = null;
-        selectedSlot = null;
-        fetchAvailableSlots(selectedRepresentative, selectedDate);
-      }
-    }
-  }
 
-  // Reactive statement to fetch representative details when selection changes
-  $: {
-    if (selectedRepresentative) {
-      fetchRepresentativeDetails(selectedRepresentative);
-    }
-  }
 
   async function fetchRepresentativeDetails(rep) {
     if (!rep) return;
@@ -605,15 +549,15 @@
   }
 
   // Add these variables to your existing script section
-  let isEmailSending = false;
-  let showEmailConfirmModal = false;
-  let emailErrorMessage = '';
-  let pendingAppointmentData = null;
+  let isEmailSending = $state(false);
+  let showEmailConfirmModal = $state(false);
+  let emailErrorMessage = $state('');
+  let pendingAppointmentData = $state(null);
   let showAppointmentConfirmation = false;
   let appointmentDetails = null;
 
   // Add state for success confirmation dialog
-  let showSuccessConfirmation = false;
+  let showSuccessConfirmation = $state(false);
   let createdRoomId = '';
   let createdRoomUrl = '';
 
@@ -1458,17 +1402,6 @@
     return timeRange;
   }
 
-  // Reactive statement to properly sort and process time slots for display
-  $: processedSlots = [...availableSlots].sort((a, b) => {
-    const parseTime = (timeStr) => {
-      const [time, period] = timeStr.split(' ');
-      let [hours, minutes] = time.split(':').map(Number);
-      if (period === 'PM' && hours !== 12) hours += 12;
-      if (period === 'AM' && hours === 12) hours = 0;
-      return hours * 60 + (minutes || 0);
-    };
-    return parseTime(a.time) - parseTime(b.time);
-  });
 
   // Improved time slot selection logic
   function selectTimeSlot(slot) {
@@ -1496,23 +1429,10 @@
     }
   }
     
-  // Log the selection for debugging
-  $: if (selectedTimeSlot) {
-    console.log('Time slot selected:', {
-      selectedTimeSlot,
-      selectedSlot
-    });
-  }
 
-  let currentStep = 1;
+  let currentStep = $state(1);
 
-  $: canAdvance = currentStep === 1
-      ? Boolean(selectedRepresentative && selectedDate)
-      : currentStep === 2
-        ? Boolean(selectedTimeSlot)
-        : Boolean(isFormValid);
 
-  $: primaryActionLabel = currentStep === 3 ? 'Book an Appointment' : 'Continue';
 
   function handleBack() {
     if (currentStep === 1) {
@@ -1549,6 +1469,94 @@
   }
 
   async function confirmBooking() {}
+  // Get company ID from page data for filtering
+  let companyId = $derived($page.data?.user?.id || $page.data?.owner_company || roomData?.owner_company);
+  // Filter representatives by the current user's company
+  // Only filter if we have a companyId, otherwise show all passed representatives
+  let filteredRepresentatives = $derived(companyId 
+      ? availableRepresentatives.filter(rep => rep.company === companyId || rep.company === String(companyId))
+      : availableRepresentatives);
+  let hostDisplayName = $derived(roomData?.title ?? 'Name of Host');
+  let repDisplayName = $derived(representativeDetails?.name 
+      ?? (typeof selectedRepresentative === 'object' && selectedRepresentative?.name)
+      ?? 'Select a representative');
+  let representativeAvatarUrl = $derived(representativeDetails?.avatar
+      ? `/api/files/${representativeDetails.collectionId || 'representatives'}/${representativeDetails.id}/${representativeDetails.avatar}`
+      : null);
+  let representativeLocation = $derived(representativeDetails?.expand?.location?.name
+      ?? representativeDetails?.location
+      ?? 'Location to be confirmed');
+  let representativeAddress = $derived(representativeDetails?.expand?.location?.address
+      ?? representativeDetails?.address
+      ?? '');
+  // Reactive statement to update selectedDay, selectedMonth, and selectedYear when value changes
+  run(() => {
+    selectedDay = value.day;
+    selectedMonth = value.month;
+    selectedYear = value.year;
+    
+    // Convert to date object for the scheduling (local midnight to avoid timezone day-of-week shifts)
+    selectedDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
+    
+  });
+  let selectedDateFormatted = $derived(selectedDate
+      ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+      : '');
+  // Sync fullName with firstName + lastName 
+  let fullName = $derived(`${firstName} ${lastName}`.trim());
+  // Sync phone with phoneNumber
+  let phone = $derived(phoneNumber);
+  // Reactive statement to update available time slots and disable unavailable slots
+  run(() => {
+    if (selectedRepresentative && selectedDate) {
+      const repId = typeof selectedRepresentative === 'object' && selectedRepresentative?.id != null
+        ? String(selectedRepresentative.id)
+        : '';
+      const dateKey = selectedDate.toISOString ? selectedDate.toISOString().slice(0, 10) : '';
+      const key = `${repId}-${dateKey}`;
+      if (key !== lastFetchedKey) {
+        lastFetchedKey = key;
+        selectedTimeSlot = null;
+        selectedSlot = null;
+        fetchAvailableSlots(selectedRepresentative, selectedDate);
+      }
+    }
+  });
+  // Reactive statement to check if all required fields are filled
+  let isFormValid = $derived(firstName && lastName && phoneNumber && email && 
+                  selectedRepresentative && selectedDate && selectedTimeSlot);
+  // Reactive statement to fetch representative details when selection changes
+  run(() => {
+    if (selectedRepresentative) {
+      fetchRepresentativeDetails(selectedRepresentative);
+    }
+  });
+  // Reactive statement to properly sort and process time slots for display
+  let processedSlots = $derived([...availableSlots].sort((a, b) => {
+    const parseTime = (timeStr) => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + (minutes || 0);
+    };
+    return parseTime(a.time) - parseTime(b.time);
+  }));
+  // Log the selection for debugging
+  run(() => {
+    if (selectedTimeSlot) {
+      console.log('Time slot selected:', {
+        selectedTimeSlot,
+        selectedSlot
+      });
+    }
+  });
+  let canAdvance = $derived(currentStep === 1
+      ? Boolean(selectedRepresentative && selectedDate)
+      : currentStep === 2
+        ? Boolean(selectedTimeSlot)
+        : Boolean(isFormValid));
+  let primaryActionLabel = $derived(currentStep === 3 ? 'Book an Appointment' : 'Continue');
 </script>
 
 
@@ -1558,7 +1566,7 @@
       <button
         type="button"
         class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary shadow"
-        on:click={handleBack}
+        onclick={handleBack}
         aria-label="Go back"
       >
         <ArrowLeft size={18} />
@@ -1566,7 +1574,7 @@
       <h1 class="text-xl font-semibold text-white md:text-[#1f2933]">Book Appointment</h1>
       </div>
 
-    <form class="space-y-6" use:form on:submit|preventDefault={handleSubmit}>
+    <form class="space-y-6" use:form onsubmit={preventDefault(handleSubmit)}>
       <section class="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
            <p class="text-xs font-semibold uppercase text-primary">Book Appointment for "{hostDisplayName}"</p>
            <div class="mt-4 flex items-center gap-4">
@@ -1603,7 +1611,7 @@
                 bind:value={selectedRepresentative}
                 class="mt-2 w-full rounded-xl border border-[#d4dae7] bg-[#f8fafc] px-3 py-2 text-sm text-[#1f2933]"
                 use:validators={[required]}
-                on:change={() => {
+                onchange={() => {
                   if (selectedDate) {
                     fetchAvailableSlots(selectedRepresentative, selectedDate);
                   }
@@ -1683,7 +1691,7 @@
                   class:text-[#3f4c5a]={slot.available && !(selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time))}
                   class:hover:border-[#4B77BE]={slot.available && !(selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time))}
                   class:hover:bg-[#e7eeff]={slot.available && !(selectedTimeSlot === slot.id || (selectedSlot && selectedSlot.time === slot.time))}
-                  on:click={() => selectTimeSlot(slot)}
+                  onclick={() => selectTimeSlot(slot)}
                 >
                   {slot.time}
                 </button>
@@ -1818,14 +1826,14 @@
     <div class="flex flex-col-reverse gap-3 md:flex-row md:justify-end">
       <button 
         type="button"
-        on:click={handleCancel}
+        onclick={handleCancel}
         class="w-full rounded-xl border border-[#d4dae7] bg-white py-3 text-sm font-semibold text-[#4a5562] transition hover:bg-[#f1f3f9] md:w-auto md:px-6"
       >
         {currentStep === 1 ? 'Cancel' : 'Cancel booking'}
       </button>
       <button 
         type="button"
-        on:click={handleNextStep}
+        onclick={handleNextStep}
         class="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white transition hover:bg-[#2a4283] disabled:cursor-not-allowed disabled:bg-[#a7b4dd] md:w-auto md:px-6"
         disabled={!canAdvance}
       >
@@ -1861,7 +1869,7 @@
     <div class="flex justify-end space-x-3">
       <button 
         class="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 text-primary"
-        on:click={() => {
+        onclick={() => {
           showEmailConfirmModal = false;
           pendingAppointmentData = null;
         }}
@@ -1870,7 +1878,7 @@
       </button>
       <button 
         class="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 text-primary"
-        on:click={() => {
+        onclick={() => {
           showEmailConfirmModal = false;
           completeAppointmentWithoutEmail();
         }}
@@ -1879,7 +1887,7 @@
       </button>
       <button 
         class="px-4 py-2 text-sm bg-primary text-white rounded-md hover:bg-primary/80"
-        on:click={retryEmailSending}
+        onclick={retryEmailSending}
       >
         Retry Sending Email
       </button>
@@ -1904,7 +1912,7 @@
         <button 
         type="button"
         class="mt-6 w-full rounded-xl border border-[#d4dae7] py-3 text-sm font-semibold text-[#4a5562] transition hover:bg-[#f1f3f9]"
-          on:click={() => {
+          onclick={() => {
           showSuccessConfirmation = false;
             dispatch('close');
           }}

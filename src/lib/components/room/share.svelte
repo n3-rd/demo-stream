@@ -4,9 +4,13 @@
 	import { copyText } from '$lib/helpers/copyText';
 	import { toast } from 'svelte-sonner';
 
-    export let shareURL: string;
-    export let representative = false;
-    export let representativeId: string = '';
+    interface Props {
+        shareURL: string;
+        representative?: boolean;
+        representativeId?: string;
+    }
+
+    let { shareURL, representative = false, representativeId = '' }: Props = $props();
 
     function extractUid(url: string) {
         try {
@@ -126,7 +130,7 @@
             <button
                 type="button"
                 class="flex flex-col items-center gap-3 focus:outline-none"
-                on:click={option.action}
+                onclick={option.action}
             >
                 <span class="flex h-14 w-14 items-center justify-center rounded-full bg-[#f1f4fb] text-[#34509f] shadow-sm transition hover:-translate-y-0.5 hover:shadow">
                     <img src={option.icon} alt={option.label} class="h-7 w-7 object-contain" />

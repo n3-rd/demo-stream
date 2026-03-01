@@ -4,10 +4,19 @@
 
     const dispatch = createEventDispatcher();
 
-    export let title = '';
-    export let requirements = '';
-    export let steps = '';
-    export let keep = '';
+    interface Props {
+        title?: string;
+        requirements?: string;
+        steps?: string;
+        keep?: string;
+    }
+
+    let {
+        title = $bindable(''),
+        requirements = $bindable(''),
+        steps = $bindable(''),
+        keep = $bindable('')
+    }: Props = $props();
 
     function closeSheet() {
         dispatch("close");
@@ -26,7 +35,7 @@
             class="flex items-center justify-center text-white hover:opacity-80 transition-opacity"
             type="button"
             aria-label="Close notes"
-            on:click={closeSheet}
+            onclick={closeSheet}
         >
             <X size={24} class="text-white" />
         </button>
@@ -37,8 +46,9 @@
     <div class="flex-1 min-h-0 overflow-y-auto px-4 pb-4 space-y-4">
         <!-- Title Section -->
         <div class=" bg-bgdefault-light p-4">
-            <label class="block text-white text-sm font-medium mb-3">Title</label>
+            <label for="notes-title" class="block text-white text-sm font-medium mb-3">Title</label>
             <input
+                id="notes-title"
                 type="text"
                 placeholder="Take a note...."
                 bind:value={title}
@@ -48,8 +58,9 @@
 
         <!-- Requirements Section -->
         <div class=" bg-bgdefault-light p-4">
-            <label class="block text-white text-sm font-medium mb-3">Requirements</label>
+            <label for="notes-requirements" class="block text-white text-sm font-medium mb-3">Requirements</label>
             <textarea
+                id="notes-requirements"
                 placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
                 bind:value={requirements}
                 rows="4"
@@ -59,8 +70,9 @@
 
         <!-- Steps on how to Section -->
         <div class=" bg-bgdefault-light p-4">
-            <label class="block text-white text-sm font-medium mb-3">Steps on how to</label>
+            <label for="notes-steps" class="block text-white text-sm font-medium mb-3">Steps on how to</label>
             <textarea
+                id="notes-steps"
                 placeholder="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
                 bind:value={steps}
                 rows="4"
@@ -70,8 +82,9 @@
 
         <!-- Keep Section -->
         <div class=" bg-bgdefault-light p-4">
-            <label class="block text-white text-sm font-medium mb-3">Keep</label>
+            <label for="notes-keep" class="block text-white text-sm font-medium mb-3">Keep</label>
             <input
+                id="notes-keep"
                 type="text"
                 placeholder="Lorem ipsum dolor sit amet"
                 bind:value={keep}
@@ -84,7 +97,7 @@
     <div class="flex justify-end px-4 pb-6">
         <button
             type="button"
-            on:click={sendNotesToEmail}
+            onclick={sendNotesToEmail}
             class="flex items-center gap-1.5 text-white underline decoration-white underline-offset-2 hover:opacity-80 transition-opacity text-sm font-medium"
         >
             <span>Send notes to Email</span>

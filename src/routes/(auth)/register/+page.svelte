@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { preventDefault } from 'svelte/legacy';
+
 	import { Button } from '$lib/components/ui/button';
 	import { enhance } from '$app/forms';
 	import { useForm, HintGroup, Hint, validators, email, required, minLength, maxLength } from 'svelte-use-form';
@@ -15,7 +17,7 @@
 		return value === form.values.password ? null : { passwordMatch: true };
 	}
 
-	let loading = false;
+	let loading = $state(false);
 	let emailTaken = false;
 	let phoneTaken = false;
 
@@ -77,7 +79,7 @@
 
 			<form
 				method="POST"
-				on:submit|preventDefault={async (e) => {
+				onsubmit={preventDefault(async (e) => {
 					loading = true;
 					const formEl = e.currentTarget;
 					const formData = new FormData(formEl);
@@ -134,7 +136,7 @@
 						console.error('Registration error:', error);
 						toast.error('Error occurred while registering company');
 					}
-				}}
+				})}
 				class="space-y-4"
 			>
 				<!-- Company Name input -->
@@ -172,8 +174,8 @@
 							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 							required
 							use:validators={[required, minLength(10), maxLength(20)]}
-							on:input={onPhoneInput}
-							on:blur={onPhoneBlur}
+							oninput={onPhoneInput}
+							onblur={onPhoneBlur}
 						/>
 					</div>
 				</div>
@@ -210,7 +212,7 @@
 							class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 							required
 								use:validators={[required, email]}
-							on:blur={onEmailBlur}
+							onblur={onEmailBlur}
 						/>
 					</div>
 				</div>

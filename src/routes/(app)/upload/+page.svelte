@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
 
     import { Button } from "$lib/components/ui/button";
     import { Input } from "$lib/components/ui/input";
@@ -15,31 +17,31 @@
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
     import * as Switch from "$lib/components/ui/switch";
 
-    export let data;
+    let { data } = $props();
     const { user, representatives } = data;
     const form = useForm();
 
     let loading = false;
-    let selectedType = 'video';
+    let selectedType = $state('video');
     let selectedLibraryType: string | null = null;
-    let selectedFile: File | null = null;
-    let thumbnailFile: File | null = null;
-    let selectedRepresentatives: string[] = [];
-    let isUploading = false;
-    let uploadProgress = 0;
+    let selectedFile: File | null = $state(null);
+    let thumbnailFile: File | null = $state(null);
+    let selectedRepresentatives: string[] = $state([]);
+    let isUploading = $state(false);
+    let uploadProgress = $state(0);
     let uploadedChunks: Set<number> = new Set();
-    let thumbnailPreviewUrl: string | null = null;
-    let showLibraryDialog = false;
-    let filePreviewUrl: string | null = null;
+    let thumbnailPreviewUrl: string | null = $state(null);
+    let showLibraryDialog = $state(false);
+    let filePreviewUrl: string | null = $state(null);
     
     // Track touched state per field instead of globally
-    let touchedFields = {
+    let touchedFields = $state({
         title: false,
         description: false,
         file: false,
         thumbnail: false
-    };
-    let formSubmitAttempted = false;
+    });
+    let formSubmitAttempted = $state(false);
 
     const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
 
@@ -63,7 +65,7 @@
         word: '.doc,.docx'
     };
 
-    let isContentActive = true; // Default to active
+    let isContentActive = $state(true); // Default to active
 
     function handleFileChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -275,13 +277,13 @@
         }
     });
 
-    $: {
+    run(() => {
         // Update file preview when file changes
         if (selectedFile) {
             if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
             filePreviewUrl = getFilePreview();
         }
-    }
+    });
 </script>
 
 <div class="flex h-screen bg-[#eceef3]">
@@ -309,7 +311,7 @@
 
             <!-- Main Content -->
             <div class="bg-white rounded-[8px] p-8">
-                <form id="uploadForm" on:submit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8"
+                <form id="uploadForm" onsubmit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8"
                       novalidate>
                     <!-- Title -->
                     <div class="space-y-2">
@@ -320,7 +322,7 @@
                             name="title" 
                             required 
                             use:validators={[required]}
-                            on:blur={() => touchedFields.title = true}
+                            onblur={() => touchedFields.title = true}
                             class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 py-2 {(touchedFields.title || formSubmitAttempted) && $form.title && $form.title.errors?.required ? 'border-red-500' : ''}" 
                         />
                         {#if (touchedFields.title || formSubmitAttempted) && $form.title && $form.title.errors?.required}
@@ -339,7 +341,7 @@
                                         name="content_type" 
                                         value="image"
                                         checked={selectedType === 'image'}
-                                        on:change={() => handleTypeChange('image')}
+                                        onchange={() => handleTypeChange('image')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                         
                                     />
@@ -354,7 +356,7 @@
                                         name="content_type" 
                                         value="video"
                                         checked={selectedType === 'video'}
-                                        on:change={() => handleTypeChange('video')}
+                                        onchange={() => handleTypeChange('video')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'video' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
@@ -368,7 +370,7 @@
                                         name="content_type" 
                                         value="pdf"
                                         checked={selectedType === 'pdf'}
-                                        on:change={() => handleTypeChange('pdf')}
+                                        onchange={() => handleTypeChange('pdf')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'pdf' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
@@ -382,7 +384,7 @@
                                         name="content_type" 
                                         value="word"
                                         checked={selectedType === 'word'}
-                                        on:change={() => handleTypeChange('word')}
+                                        onchange={() => handleTypeChange('word')}
                                         class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                     />
                                     <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === 'word' ? 'ring-2 ring-[#577AB7]' : ''}"></div>
@@ -400,7 +402,7 @@
                                 id="description" 
                                 name="description" 
                                 use:validators={[required]}
-                                on:blur={() => touchedFields.description = true}
+                                onblur={() => touchedFields.description = true}
                                 class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {(touchedFields.description || formSubmitAttempted) && $form.description && $form.description.errors?.required ? 'border-red-500' : ''}" 
                             ></textarea>
                         </div>
@@ -440,7 +442,7 @@
                                     id="thumbnail" 
                                     name="thumbnail" 
                                     accept="image/*"
-                                    on:change={(e) => { handleThumbnailChange(e); }}
+                                    onchange={(e) => { handleThumbnailChange(e); }}
                                     required
                                     class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                 />
@@ -467,7 +469,7 @@
                                 <button
                                     type="button"
                                     class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                                    on:click={resetThumbnail}
+                                    onclick={resetThumbnail}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -521,7 +523,7 @@
                                         <button 
                                             type="button"
                                             class="text-[#577AB7] hover:text-[#3a5a9e]"
-                                            on:click={() => handleRepresentativeChange(repId)}
+                                            onclick={() => handleRepresentativeChange(repId)}
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />

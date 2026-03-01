@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run, stopPropagation, preventDefault } from 'svelte/legacy';
+
     import { Button } from '$lib/components/ui/button';
     import * as Dialog from "$lib/components/ui/dialog";
     import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
@@ -17,27 +19,29 @@
     import { Play, Pencil, Trash2 } from 'lucide-svelte';
     import * as Switch from "$lib/components/ui/switch";
 
-    export let data;
-    let showEmbed = false;
-    let showEditDialog = false;
-    let showDeleteDialog = false;
-    let contentToDelete = null;
+    let { data } = $props();
+    let showEmbed = $state(false);
+    let showEditDialog = $state(false);
+    let showDeleteDialog = $state(false);
+    let contentToDelete = $state(null);
     const form = useForm();
 
-    $: ({ room, hostContent = [], representativeContent = [], representatives = [], locations = [] } = data || {});
+    let { room, hostContent = [], representativeContent = [], representatives = [], locations = [] } = $derived(data || {});
 
-    let selectedVideo = room?.selected_video || '';
-    let selectedHostContent = room?.host_content || [];
-    let selectedRepContent = room?.representative_content || [];
-    let selectedRepresentatives = room?.representative || [];
+    let selectedVideo = $state(room?.selected_video || '');
+    let selectedHostContent = $state(room?.host_content || []);
+    let selectedRepContent = $state(room?.representative_content || []);
+    let selectedRepresentatives = $state(room?.representative || []);
 
     // Initialize selected values when room data changes
-    $: if (room && room.expand) {
-        selectedVideo = room.selected_video || '';
-        selectedHostContent = Array.isArray(room.host_content) ? room.host_content : [];
-        selectedRepContent = Array.isArray(room.representative_content) ? room.representative_content : [];
-        selectedRepresentatives = Array.isArray(room.representative) ? room.representative : [];
-    }
+    run(() => {
+        if (room && room.expand) {
+            selectedVideo = room.selected_video || '';
+            selectedHostContent = Array.isArray(room.host_content) ? room.host_content : [];
+            selectedRepContent = Array.isArray(room.representative_content) ? room.representative_content : [];
+            selectedRepresentatives = Array.isArray(room.representative) ? room.representative : [];
+        }
+    });
 
     function getThumbnailUrl(content: any) {
         if (!content?.thumbnail) return '';
@@ -377,7 +381,7 @@
                                 {/if}
                                 {#if content.type === 'video'}
                                     <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                                    on:click={() => playContent(content)}
+                                    onclick={() => playContent(content)}
                                     >
                                         <div class="w-[37.16px] h-[35.04px] bg-white rounded-full flex items-center justify-center shadow-md">
                                            <Play class="w-[17px] h-[27.53px] text-[#577AB7]" />
@@ -387,13 +391,13 @@
                                 <div class="absolute top-2 right-2 flex gap-2">
                                     <button 
                                         class="w-[21.23px] h-[19.11px] bg-[#577AB7] rounded-full flex items-center justify-center shadow-sm"
-                                        on:click|stopPropagation={() => goto(`/content-library/${content.id}/edit`)}
+                                        onclick={stopPropagation(() => goto(`/content-library/${content.id}/edit`))}
                                     >
                                         <Pencil class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
                                     </button>
                                     <button 
                                         class="w-[21.23px] h-[19.11px] bg-[#EB3223] rounded-full flex items-center justify-center shadow-sm"
-                                        on:click|stopPropagation={() => openDeleteDialog(content)}
+                                        onclick={stopPropagation(() => openDeleteDialog(content))}
                                     >
                                         <Trash2 class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
                                     </button>
@@ -430,7 +434,7 @@
                                 {/if}
                                 {#if content.type === 'video'}
                                     <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                                    on:click={() => playContent(content)}
+                                    onclick={() => playContent(content)}
                                     >
                                         <div class="w-[37.16px] h-[35.04px] bg-white rounded-full flex items-center justify-center shadow-md">
                                            <Play class="w-[17px] h-[27.53px] text-[#577AB7]" />
@@ -440,13 +444,13 @@
                                 <div class="absolute top-2 right-2 flex gap-2">
                                     <button 
                                         class="w-[21.23px] h-[19.11px] bg-[#577AB7] rounded-full flex items-center justify-center shadow-sm"
-                                        on:click|stopPropagation={() => goto(`/content-library/${content.id}/edit`)}
+                                        onclick={stopPropagation(() => goto(`/content-library/${content.id}/edit`))}
                                     >
                                         <Pencil class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
                                     </button>
                                     <button 
                                         class="w-[21.23px] h-[19.11px] bg-[#EB3223] rounded-full flex items-center justify-center shadow-sm"
-                                        on:click|stopPropagation={() => openDeleteDialog(content)}
+                                        onclick={stopPropagation(() => openDeleteDialog(content))}
                                     >
                                         <Trash2 class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
                                     </button>
@@ -481,7 +485,7 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <form method="POST" on:submit|preventDefault={(e) => onToggleActiveSubmit(e, content.id)}>
+                                        <form method="POST" onsubmit={preventDefault((e) => onToggleActiveSubmit(e, content.id))}>
                                             <input type="hidden" name="contentId" value={content.id} />
                                             <input type="hidden" name="active" value={!isContentActive(content.id)} />
                                             
@@ -500,7 +504,7 @@
                                     <td class="py-3 px-4 text-right flex justify-end">
                                         <button 
                                             class="w-[18.75px] h-[17.59px]  rounded-full flex items-center justify-center"
-                                            on:click={() => openDeleteDialog(content)}
+                                            onclick={() => openDeleteDialog(content)}
                                         >
                                             <img src="/icons/table-trash.svg" class="w-[21.5px] h-[18.73px] text-white" />
                                         </button>
@@ -532,7 +536,7 @@
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.title}</td>
                                     <td class="py-3 px-4 font-['Poppins'] text-[16px] font-normal text-[#808080]">{content.id}</td>
                                     <td class="py-3 px-4">
-                                        <form method="POST" on:submit|preventDefault={(e) => onToggleActiveSubmit(e, content.id)}>
+                                        <form method="POST" onsubmit={preventDefault((e) => onToggleActiveSubmit(e, content.id))}>
                                             <input type="hidden" name="contentId" value={content.id} />
                                             <input type="hidden" name="active" value={!isContentActive(content.id)} />
                                             
@@ -551,7 +555,7 @@
                                     <td class="py-3 px-4 text-right flex justify-end">
                                         <button 
                                             class="w-[18.75px] h-[17.59px]  rounded-full flex items-center justify-center"
-                                            on:click={() => openDeleteDialog(content)}
+                                            onclick={() => openDeleteDialog(content)}
                                             >
                                                 <img src="/icons/table-trash.svg" class="w-[21.5px] h-[18.73px] text-white" />
                                         </button>
@@ -593,7 +597,7 @@
             <Dialog.Header>
                 <Dialog.Title>Edit Room</Dialog.Title>
             </Dialog.Header>
-            <form method="POST" on:submit|preventDefault={onRoomEditSubmit}>
+            <form method="POST" onsubmit={preventDefault(onRoomEditSubmit)}>
                 <div class="space-y-4 py-4">
                     <div class="space-y-2">
                         <Label for="title">Title</Label>
@@ -686,7 +690,7 @@
                                                     id="representative_{rep.id}" 
                                                     value={rep.id}
                                                     class="hidden peer"
-                                                    on:change={(e) => handleRepCheckboxChange(e, rep.id)}
+                                                    onchange={(e) => handleRepCheckboxChange(e, rep.id)}
                                                     checked={selectedRepresentatives.includes(rep.id)}
                                                 />
                                                 <label 
@@ -763,7 +767,7 @@
                                                     id="host_{content.id}" 
                                                     value={content.id}
                                                     class="hidden peer"
-                                                    on:change={(e) => handleHostContentCheckboxChange(e, content.id)}
+                                                    onchange={(e) => handleHostContentCheckboxChange(e, content.id)}
                                                     checked={selectedHostContent.includes(content.id)}
                                                 />
                                                 <label 
@@ -840,7 +844,7 @@
                                                     id="rep_{content.id}" 
                                                     value={content.id}
                                                     class="hidden peer"
-                                                    on:change={(e) => handleRepContentCheckboxChange(e, content.id)}
+                                                    onchange={(e) => handleRepContentCheckboxChange(e, content.id)}
                                                     checked={selectedRepContent.includes(content.id)}
                                                 />
                                                 <label 

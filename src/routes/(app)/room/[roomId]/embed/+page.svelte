@@ -4,12 +4,12 @@
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
     import { Input } from '$lib/components/ui/input';   
-    export let data;
+    let { data } = $props();
     const { room } = data;
 
-    let anonymousUserId = '';
-    let loading = false;
-    let errors: { anonymousUserId?: string } = {};
+    let anonymousUserId = $state('');
+    let loading = $state(false);
+    let errors: { anonymousUserId?: string } = $state({});
 </script>
 
 <div class="container mx-auto mt-[1rem] p-8">

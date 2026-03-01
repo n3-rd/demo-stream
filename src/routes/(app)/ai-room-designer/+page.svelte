@@ -9,37 +9,37 @@
 	import { toast } from 'svelte-sonner';
 
     const form = useForm();
-    export let data;
+    let { data } = $props();
     let user = data.user;
     console.log(user)
-    let selectedFile: File | null = null;
-    let filePreviewUrl: string | null = null;
-    let customPrompt = '';
-    let touchedFields = {
+    let selectedFile: File | null = $state(null);
+    let filePreviewUrl: string | null = $state(null);
+    let customPrompt = $state('');
+    let touchedFields = $state({
         title: false,
         description: false,
         file: false,
         thumbnail: false
-    };
+    });
     let formSubmitAttempted = false;
     let thumbnailFile: File | null = null;
-    let uploading = false;
-    let generatedImage = null;
+    let uploading = $state(false);
+    let generatedImage = $state(null);
 
     // Add these variables for the content library modal
-    let showLibraryModal = false;
-    let libraryType = 'both'; // Default to both
-    let selectedRepresentatives: string[] = [];
-    let isSaving = false;
-    let saveSuccess = false;
-    let saveError = false;
+    let showLibraryModal = $state(false);
+    let libraryType = $state('both'); // Default to both
+    let selectedRepresentatives: string[] = $state([]);
+    let isSaving = $state(false);
+    let saveSuccess = $state(false);
+    let saveError = $state(false);
 
     // Add this for typed form elements
-    let titleInput: HTMLInputElement;
-    let descriptionTextarea: HTMLTextAreaElement;
+    let titleInput: HTMLInputElement = $state();
+    let descriptionTextarea: HTMLTextAreaElement = $state();
     
     // Add this to store representatives
-    let representatives: any[] = [];
+    let representatives: any[] = $state([]);
     
     // Fetch representatives on mount
     onMount(async () => {
@@ -87,8 +87,8 @@
         { value: 'japanese', label: 'Japanese' }
     ];
     
-    let selectedRoomType = roomTypes[0].value;
-    let selectedDesignStyle = designStyles[0].value;
+    let selectedRoomType = $state(roomTypes[0].value);
+    let selectedDesignStyle = $state(designStyles[0].value);
 
     function handleFileChange(event: Event) {
         const input = event.target as HTMLInputElement;
@@ -263,7 +263,7 @@
     }
 
     // Library selection dialog
-    let librarySelectOpen = false;
+    let librarySelectOpen = $state(false);
     let selectedLibraryType = '';
 
     // Function to open the library dialog
@@ -411,7 +411,7 @@
 
             <!-- Main Form -->
             <div class="bg-white rounded-[8px] p-8">
-                <form id="designForm" on:submit={handleSubmit} use:form class="space-y-8" novalidate>
+                <form id="designForm" onsubmit={handleSubmit} use:form class="space-y-8" novalidate>
                     <!-- Title -->
                     <div class="space-y-2">
                         <Label for="title" class="block text-[14px] font-medium text-[#737373]">Title</Label>
@@ -421,7 +421,7 @@
                             name="title" 
                             required 
                             use:validators={[required]}
-                            on:blur={() => touchedFields.title = true}
+                            onblur={() => touchedFields.title = true}
                             bind:this={titleInput}
                             class="w-full h-[38px] border border-[#9E9E9E] rounded-[5px] px-3 {(touchedFields.title || formSubmitAttempted) && $form.title?.errors?.required ? 'border-red-500' : ''}"
                         />
@@ -454,7 +454,7 @@
                             id="description" 
                             name="description" 
                             use:validators={[required]}
-                            on:blur={() => touchedFields.description = true}
+                            onblur={() => touchedFields.description = true}
                             bind:this={descriptionTextarea}
                             class="w-full h-[145px] border border-[#9E9E9E] rounded-[5px] resize-none px-3 py-2 {(touchedFields.description || formSubmitAttempted) && $form.description?.errors?.required ? 'border-red-500' : ''}" 
                         ></textarea>
@@ -487,7 +487,7 @@
                                 id="file" 
                                 name="file" 
                                 accept="image/*"
-                                on:change={handleFileChange}
+                                onchange={handleFileChange}
                                 class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                             />
                             <div class="w-full h-full border border-[#9E9E9E] rounded-[5px] flex items-center px-3 bg-white">
@@ -498,7 +498,7 @@
                     
                     <!-- Save to Viewroom Button -->
                     <button 
-                        on:click={saveToViewroom}
+                        onclick={saveToViewroom}
                         class="mt-auto p-2 text-center text-sm text-gray-700 hover:underline"
                     >
                         Save Image to Viewroom
@@ -592,7 +592,7 @@
                         
                         <!-- This is the simplified button to open the dialog -->
                         <button 
-                            on:click={openLibraryDialog}
+                            onclick={openLibraryDialog}
                             class="btn bg-primary text-white px-4 py-2 rounded-md ml-4"
                         >
                             Save to Content Library
@@ -698,14 +698,14 @@
             
             <div class="flex justify-end gap-3 mt-6">
                 <button 
-                    on:click={() => showLibraryModal = false}
+                    onclick={() => showLibraryModal = false}
                     class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
                 >
                     Cancel
                 </button>
                 
                 <button 
-                    on:click={handleSaveToLibrary}
+                    onclick={handleSaveToLibrary}
                     class="px-4 py-2 bg-primary text-white rounded hover:bg-primary/80"
                     disabled={isSaving}
                 >

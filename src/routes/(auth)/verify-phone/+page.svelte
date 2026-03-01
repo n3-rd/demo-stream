@@ -5,7 +5,7 @@
 	import { quintOut } from 'svelte/easing';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { dev } from '$app/environment';
 
@@ -13,16 +13,16 @@
 	let email = '';
 	let phone = '';
 	let companyName = '';
-	let verificationMode = 'phone';
-	let verificationCode = ['', '', '', '', '', ''];
-	let loading = false;
-	let resending = false;
+	let verificationMode = $state('phone');
+	let verificationCode = $state(['', '', '', '', '', '']);
+	let loading = $state(false);
+	let resending = $state(false);
 
 	onMount(() => {
-		email = $page.url.searchParams.get('email') || '';
-		phone = $page.url.searchParams.get('phone') || '';
-		companyName = $page.url.searchParams.get('company') || '';
-		verificationMode = $page.url.searchParams.get('mode') || 'phone';
+		email = page.url.searchParams.get('email') || '';
+		phone = page.url.searchParams.get('phone') || '';
+		companyName = page.url.searchParams.get('company') || '';
+		verificationMode = page.url.searchParams.get('mode') || 'phone';
 	});
 
 	// Handle code input with auto-focus
@@ -256,9 +256,9 @@
 						class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors"
 						maxlength="1"
 						pattern="[0-9]"
-						on:input={(e) => handleInput(e, i)}
-						on:keydown={(e) => handleKeydown(e, i)}
-						on:paste={handlePaste}
+						oninput={(e) => handleInput(e, i)}
+						onkeydown={(e) => handleKeydown(e, i)}
+						onpaste={handlePaste}
 						disabled={loading}
 					/>
 				{/each}
@@ -310,7 +310,7 @@
 				<div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-center">
 					<p class="text-xs text-yellow-700 mb-1">🚧 Development Mode</p>
 					<button
-						on:click={() => window.open('/dev/mock-sms', '_blank')}
+						onclick={() => window.open('/dev/mock-sms', '_blank')}
 						class="text-xs text-yellow-600 hover:text-yellow-800 underline"
 					>
 						📱 View Mock SMS Codes (No real SMS sent)
@@ -322,7 +322,7 @@
 		<!-- Back to Registration -->
 		<div class="mt-4 text-center">
 			<button
-				on:click={() => goto('/register')}
+				onclick={() => goto('/register')}
 				class="text-sm text-primary hover:text-blue-800 underline"
 			>
 				← Back to Registration

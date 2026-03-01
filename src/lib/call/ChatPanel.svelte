@@ -4,11 +4,21 @@
     import { X } from 'lucide-svelte';
     import Chat from '$lib/call/Chat.svelte';
 
-    export let roomId: string;
-    export let name: string;
-    export let publishStreamId: string;
-    export let userRole: 'host' | 'guest' | 'representative';
-    export let baseRoomName: string;
+    interface Props {
+        roomId: string;
+        name: string;
+        publishStreamId: string;
+        userRole: 'host' | 'guest' | 'representative';
+        baseRoomName: string;
+    }
+
+    let {
+        roomId,
+        name,
+        publishStreamId,
+        userRole,
+        baseRoomName
+    }: Props = $props();
 
     const dispatch = createEventDispatcher();
 </script>

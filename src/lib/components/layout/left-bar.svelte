@@ -1,10 +1,4 @@
 <script>
-    export let scheduleOpen;
-    export let joinURL;
-    export let videoRepresentatives;
-    export let userId;
-    export let availableRepresentatives = [];
-    export let room = null; // Add room data for filtering
     import { Button } from "$lib/components/ui/button";
     import { MessageCircleQuestion, ShareIcon } from "lucide-svelte";
     import * as Dialog from "$lib/components/ui/dialog";
@@ -16,16 +10,37 @@
 	import ScheduleMeeting from "../room/schedule-meeting.svelte";
 	import CreateQuote from "../room/create-quote.svelte";
     const dispatch = createEventDispatcher();
-    export let shareURL;
-    /** When false, hide the "Invite representative" button (e.g. host from embed). */
-    export let showInviteRepresentative = true;
+    
+    /**
+     * @typedef {Object} Props
+     * @property {any} scheduleOpen
+     * @property {any} joinURL
+     * @property {any} videoRepresentatives
+     * @property {any} userId
+     * @property {any} [availableRepresentatives]
+     * @property {any} [room] - Add room data for filtering
+     * @property {any} shareURL
+     * @property {boolean} [showInviteRepresentative] - When false, hide the "Invite representative" button (e.g. host from embed).
+     */
+
+    /** @type {Props} */
+    let {
+        scheduleOpen,
+        joinURL,
+        videoRepresentatives,
+        userId,
+        availableRepresentatives = [],
+        room = null,
+        shareURL,
+        showInviteRepresentative = true
+    } = $props();
     
     // Add state variables for each dialog
-    let representativeDialogOpen = false;
+    let representativeDialogOpen = $state(false);
     let quoteDialogOpen = false;
     
     // Calculate if scheduling should be enabled
-    $: canSchedule = availableRepresentatives.length > 0;
+    let canSchedule = $derived(availableRepresentatives.length > 0);
 </script>
 <div class="w-14 h-full bg-red flex flex-col gap-4">
     <!-- <Dialog.Root>

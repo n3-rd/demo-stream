@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import { Button } from "$lib/components/ui/button";
     import { UsersRound, ShareIcon, AlertTriangle, Mic, MicOff, CameraIcon, CameraOffIcon } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
@@ -17,37 +19,71 @@
 	import Separator from "../ui/separator/separator.svelte";
 
 
-    export let mobileSheetOpen = false;
-    export let roomIdentityName: string;
-    export let isMicMuted: boolean;
-    export let isCameraOff: boolean;
-    export let isScreenSharing = false;
-    export let joinURL: string;
-    export let scheduleOpen;
-    export let userId: string;
-    export let videoRepresentatives: string[];
-    export let isHost = false;
-    export let isRepresentative = false;
-    export let room: any;
-    export let roomName = "";
-    export let roomId = "";
-    /** Base room name for AI context (viewroom lookup). Same as desktop Chat roomName. */
-    export let baseRoomName = "";
-    /** When false, hide "Speak to Representative" (e.g. host from embed). */
-    export let showInviteRepresentative = true;
-    /** When false, hide "Invite People" share (e.g. anonymous users). */
-    export let showInvitePeople = true;
-    export let chatName: string | null = null;
-    export let chatUserId: string | null = null;
-    export let hostContentItems: any[] = [];
-    export let repContentItems: any[] = [];
-    export let participants: any[] = [];
-    /** 'granted' | 'denied' | 'prompt' | 'unknown' */
-    export let micPermission: string = 'unknown';
-    /** 'granted' | 'denied' | 'prompt' | 'unknown' */
-    export let cameraPermission: string = 'unknown';
-    let userRole: 'host' | 'guest' | 'representative' = 'guest';
-    $: {
+    
+    
+    
+    
+    
+    interface Props {
+        mobileSheetOpen?: boolean;
+        roomIdentityName: string;
+        isMicMuted: boolean;
+        isCameraOff: boolean;
+        isScreenSharing?: boolean;
+        joinURL: string;
+        scheduleOpen: any;
+        userId: string;
+        videoRepresentatives: string[];
+        isHost?: boolean;
+        isRepresentative?: boolean;
+        room: any;
+        roomName?: string;
+        roomId?: string;
+        /** Base room name for AI context (viewroom lookup). Same as desktop Chat roomName. */
+        baseRoomName?: string;
+        /** When false, hide "Speak to Representative" (e.g. host from embed). */
+        showInviteRepresentative?: boolean;
+        /** When false, hide "Invite People" share (e.g. anonymous users). */
+        showInvitePeople?: boolean;
+        chatName?: string | null;
+        chatUserId?: string | null;
+        hostContentItems?: any[];
+        repContentItems?: any[];
+        participants?: any[];
+        /** 'granted' | 'denied' | 'prompt' | 'unknown' */
+        micPermission?: string;
+        /** 'granted' | 'denied' | 'prompt' | 'unknown' */
+        cameraPermission?: string;
+    }
+
+    let {
+        mobileSheetOpen = $bindable(false),
+        roomIdentityName,
+        isMicMuted,
+        isCameraOff,
+        isScreenSharing = false,
+        joinURL,
+        scheduleOpen = $bindable(),
+        userId,
+        videoRepresentatives,
+        isHost = false,
+        isRepresentative = false,
+        room,
+        roomName = "",
+        roomId = "",
+        baseRoomName = "",
+        showInviteRepresentative = true,
+        showInvitePeople = true,
+        chatName = null,
+        chatUserId = null,
+        hostContentItems = [],
+        repContentItems = [],
+        participants = [],
+        micPermission = 'unknown',
+        cameraPermission = 'unknown'
+    }: Props = $props();
+    let userRole: 'host' | 'guest' | 'representative' = $state('guest');
+    run(() => {
         if (isHost) {
             userRole = 'host';
         } else if (isRepresentative) {
@@ -55,7 +91,7 @@
         } else {
             userRole = 'guest';
         }
-    }
+    });
     const dispatch = createEventDispatcher();
 
     type StateSnapshot = Record<string, boolean>;
@@ -220,23 +256,23 @@
         // }
     ];
 
-    $: visibleSheetEntries = sheetEntries.filter(
+    let visibleSheetEntries = $derived(sheetEntries.filter(
         (e) =>
             (e.key !== "representative" || showInviteRepresentative) &&
             (e.key !== "share" || showInvitePeople)
-    );
+    ));
 
     /** Primary controls: hide camera for non-reps. */
-    $: visiblePrimaryControls = isRepresentative
+    let visiblePrimaryControls = $derived(isRepresentative
         ? primaryControls
-        : primaryControls.filter((c) => c.key !== "camera");
+        : primaryControls.filter((c) => c.key !== "camera"));
 
     const destructiveControl: { icon: string; label: string } = {
         icon: "/icons/new-icons/hangup.png",
         label: "Leave call"
     };
 
-    let stateSnapshot: StateSnapshot = {};
+    let stateSnapshot: StateSnapshot = $state({});
 
     function getStateValue(key: keyof StateSnapshot) {
         return Boolean(stateSnapshot[key]);
@@ -304,19 +340,21 @@
         return icon.sizeClass ? `icon ${icon.sizeClass}` : "icon";
     }
 
-    $: stateSnapshot = {
-        isMicMuted,
-        isCameraOff
-    };
+    run(() => {
+        stateSnapshot = {
+            isMicMuted,
+            isCameraOff
+        };
+    });
 
     function togglePanel(id: string) {
         dispatch('togglePanel', { id });
     }
 
-    let contentSheetOpen = false;
-    let chatSheetOpen = false;
-    let participantsSheetOpen = false;
-    let quoteSheetOpen = false;
+    let contentSheetOpen = $state(false);
+    let chatSheetOpen = $state(false);
+    let participantsSheetOpen = $state(false);
+    let quoteSheetOpen = $state(false);
     let notesSheetOpen = false;
 
     function openSheet(sheet: "content" | "chat" | "participants" | "quote" | "notes") {
@@ -387,7 +425,7 @@
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
             {#await MobileChatSheet then MobileChatSheet}
-                <svelte:component this={MobileChatSheet.default}
+                <MobileChatSheet.default
                     roomId={roomId || roomName}
                     roomName={baseRoomName}
                     chatName={chatName}
@@ -404,7 +442,7 @@
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
             {#await MobileParticipantsSheet then MobileParticipantsSheet}
-                <svelte:component this={MobileParticipantsSheet.default}
+                <MobileParticipantsSheet.default
                     {participants}
                     {isHost}
                     {showInvitePeople}
@@ -422,7 +460,7 @@
             class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
         >
             {#await MobileQuoteSheet then MobileQuoteSheet}
-                <svelte:component this={MobileQuoteSheet.default} on:close={closeSheets} />
+                <MobileQuoteSheet.default on:close={closeSheets} />
             {/await}
         </Sheet.Content>
     </Sheet.Root>
@@ -459,7 +497,7 @@
                             aria-pressed={control.type === "toggle" ? getStateValue(control.stateKey) : undefined}
                             aria-label={permBlocked ? `${control.label} (blocked — tap to request access)` : getAltText(control)}
                             title={permBlocked ? 'Permission blocked — tap to request access' : control.label}
-                            on:click={() => {
+                            onclick={() => {
                                 if (permBlocked) {
                                     dispatch(control.key === 'microphone' ? 'requestMicPermission' : 'requestCameraPermission');
                                 } else {
@@ -522,7 +560,7 @@
                                                     class={getImageClasses(entry.icon)}
                                                 />
                                             {:else if entry.icon.type === "component"}
-                                                <svelte:component this={entry.icon.component} {...entry.icon.props} />
+                                                <entry.icon.component {...entry.icon.props} />
                                             {/if}
                                         </Button>
                                         <div class="text-center text-xs">{entry.label}</div>
@@ -538,7 +576,7 @@
                                                                 class={getImageClasses(entry.icon)}
                                                             />
                                                         {:else if entry.icon.type === "component"}
-                                                            <svelte:component this={entry.icon.component} {...entry.icon.props} />
+                                                            <entry.icon.component {...entry.icon.props} />
                                                         {/if}
                                                     </Button>
                                                     <div class="text-center text-xs">{entry.label}</div>
@@ -576,7 +614,7 @@
                                                                 class={getImageClasses(entry.icon)}
                                                             />
                                                         {:else if entry.icon.type === "component"}
-                                                            <svelte:component this={entry.icon.component} {...entry.icon.props} />
+                                                            <entry.icon.component {...entry.icon.props} />
                                                         {/if}
                                                     </Button>
                                                     <div class="text-center text-xs">{entry.label}</div>
@@ -606,7 +644,7 @@
                                         {/if}
                                     {:else if entry.type === "component"}
                                         <Button variant="ghost" size="icon" class="w-full">
-                                            <svelte:component this={entry.component} />
+                                            <entry.component />
                                         </Button>
                                         <div class="text-center text-xs">{entry.label}</div>
                                     {/if}

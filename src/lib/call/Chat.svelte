@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { preventDefault } from 'svelte/legacy';
+
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
@@ -10,21 +12,33 @@
 	import { anonymousUser } from '$lib/stores/anonymousUser';
     import { isCurrentUserMessage, extractAndNormalizeName, getInitials } from '$lib/utils/chat';
     
-    export let roomId: string;
-    export let name: string | null = null;
-    export let userId: string | null = null;
-    export let roomName: string | null = null;
-    export let variant: 'default' | 'mobile' = 'default';
-    export let showClose = false;
-    export let userRole: 'host' | 'guest' | 'representative' = 'guest';
+    interface Props {
+        roomId: string;
+        name?: string | null;
+        userId?: string | null;
+        roomName?: string | null;
+        variant?: 'default' | 'mobile';
+        showClose?: boolean;
+        userRole?: 'host' | 'guest' | 'representative';
+    }
+
+    let {
+        roomId,
+        name = null,
+        userId = null,
+        roomName = null,
+        variant = 'default',
+        showClose = false,
+        userRole = 'guest'
+    }: Props = $props();
 
     const dispatch = createEventDispatcher();
 
-    let newText = '';
+    let newText = $state('');
     let chatIsOpen = false;
-    let messages = [];
-    let activeTab = 'chat'; // 'chat' or 'ai'
-    let aiLoading = false;
+    let messages = $state([]);
+    let activeTab = $state('chat'); // 'chat' or 'ai'
+    let aiLoading = $state(false);
 
     // Poll chatMessages store every second
     let interval;
@@ -141,16 +155,16 @@
     <div class="flex h-full flex-col bg-white text-[#3b4a56] rounded-t-2xl">
         <div class="flex items-center justify-between px-5 py-4 border-b border-[#d6dce1] text-xs">
             <div class="flex gap-2">
-                <button class="px-2 py-1" on:click={() => activeTab = 'chat'} class:bg-black={activeTab === 'chat'} class:text-white={activeTab === 'chat'} class:text-black={activeTab !== 'chat'}>Chat with others</button>
+                <button class="px-2 py-1" onclick={() => activeTab = 'chat'} class:bg-black={activeTab === 'chat'} class:text-white={activeTab === 'chat'} class:text-black={activeTab !== 'chat'}>Chat with others</button>
                 {#if userRole !== 'representative'}
-                <button class="px-2 py-1" on:click={() => activeTab = 'ai'} class:bg-black={activeTab === 'ai'} class:text-white={activeTab === 'ai'} class:text-black={activeTab !== 'ai'}>AI Chatbot</button>
+                <button class="px-2 py-1" onclick={() => activeTab = 'ai'} class:bg-black={activeTab === 'ai'} class:text-white={activeTab === 'ai'} class:text-black={activeTab !== 'ai'}>AI Chatbot</button>
                 {/if}
             </div>
             {#if showClose}
                 <button
                     class="text-[#3b4a56] hover:text-[#1f2933] transition-colors"
                     type="button"
-                    on:click={handleClose}
+                    onclick={handleClose}
                 >
                     <X size={22} strokeWidth={2.5} />
                 </button>
@@ -190,7 +204,7 @@
         </div>
         <form
             class="border-t border-[#d6dce1] px-5 py-4"
-            on:submit|preventDefault={sendNewMessage}
+            onsubmit={preventDefault(sendNewMessage)}
         >
             <div class="flex items-center gap-3 rounded-2xl bg-[#f3f5f7] px-4 py-3">
                 <input
@@ -252,7 +266,7 @@
         </div>
         <form
             class="border-t border-[#d6dce1] px-5 py-4"
-            on:submit|preventDefault={sendNewMessage}
+            onsubmit={preventDefault(sendNewMessage)}
         >
             <div class="flex items-center gap-3 rounded-2xl bg-[#f3f5f7] px-4 py-3">
                 <input
@@ -277,9 +291,9 @@
         <!-- Chat Header -->
         <div class="w-full h-12 bg-[#202124] rounded-t-md flex items-center px-4 border-b border-[#47484B] text-xs">
             <div class="flex gap-2">
-                <button class="px-3 py-1" on:click={() => activeTab = 'chat'} class:bg-white={activeTab === 'chat'} class:text-black={activeTab === 'chat'} class:text-white={activeTab !== 'chat'}>Chat with others</button>
+                <button class="px-3 py-1" onclick={() => activeTab = 'chat'} class:bg-white={activeTab === 'chat'} class:text-black={activeTab === 'chat'} class:text-white={activeTab !== 'chat'}>Chat with others</button>
                 {#if userRole !== 'representative'}
-                <button class="px-3 py-1" on:click={() => activeTab = 'ai'} class:bg-white={activeTab === 'ai'} class:text-black={activeTab === 'ai'} class:text-white={activeTab !== 'ai'}>AI Chatbot</button>
+                <button class="px-3 py-1" onclick={() => activeTab = 'ai'} class:bg-white={activeTab === 'ai'} class:text-black={activeTab === 'ai'} class:text-white={activeTab !== 'ai'}>AI Chatbot</button>
                 {/if}
             </div>
         </div>
@@ -336,7 +350,7 @@
                     type="text" 
                     placeholder="Send a message" 
                     bind:value={newText} 
-                    on:keydown={(e) => {
+                    onkeydown={(e) => {
                         if (e.key === 'Enter') {
                             sendNewMessage();
                         }
@@ -344,7 +358,7 @@
                     class="flex-grow bg-transparent border-none outline-none text-white placeholder-gray-400 pr-2 w-[80%]" 
                 />
                 <button 
-                    on:click={sendNewMessage}
+                    onclick={sendNewMessage}
                     class="text-white hover:bg-gray-700 rounded-full p-2 transition-colors duration-200 ease-in-out"
                     disabled={!newText.trim()}
                 >
@@ -406,7 +420,7 @@
                     type="text" 
                     placeholder="Send a message" 
                     bind:value={newText} 
-                    on:keydown={(e) => {
+                    onkeydown={(e) => {
                         if (e.key === 'Enter') {
                             sendNewMessage();
                         }
@@ -414,7 +428,7 @@
                     class="flex-grow bg-transparent border-none outline-none text-white placeholder-gray-400 pr-2 w-[80%]" 
                 />
                 <button 
-                    on:click={sendNewMessage}
+                    onclick={sendNewMessage}
                     class="text-white hover:bg-gray-700 rounded-full p-2 transition-colors duration-200 ease-in-out disabled:opacity-40"
                     disabled={!newText.trim() || aiLoading}
                 >
@@ -440,9 +454,6 @@
     @keyframes ai-typing-bounce {
         0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
         40% { transform: scale(1.2); opacity: 1; }
-    }
-    .shadow-pulse-red {
-        box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7);
     }
     @keyframes pulse-red {
         0% {

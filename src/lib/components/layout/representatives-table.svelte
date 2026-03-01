@@ -1,4 +1,6 @@
 <script>
+    import { run } from 'svelte/legacy';
+
     import { Button } from '$lib/components/ui/button';
     import * as Dialog from "$lib/components/ui/dialog";
     import * as Table from "$lib/components/ui/table";
@@ -6,17 +8,16 @@
     import { invalidateAll } from '$app/navigation';
     import { toast } from 'svelte-sonner';
 
-    export let users;
-    export let superUser;
-    let representatives;
-    let nonRepresentatives;
+    let { users = $bindable(), superUser } = $props();
+    let representatives = $state();
+    let nonRepresentatives = $state();
     let addRepresentativeDialogOpen = false;
 
-    $: {
+    run(() => {
         users = users;
         representatives = users.filter(user => user.representative === true);
         nonRepresentatives = users.filter(user => user.representative !== true);
-    }
+    });
 
     async function toggleRepresentative(userId, makeRepresentative) {
         try {

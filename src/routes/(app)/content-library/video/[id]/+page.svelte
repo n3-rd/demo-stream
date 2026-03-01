@@ -9,11 +9,11 @@
     import { toast } from "svelte-sonner";
     import Sidenav from '$lib/components/layout/sidenav.svelte';
 
-    export let data;
+    let { data } = $props();
     const { video, representatives } = data;
 
-    let selectedRepresentatives = video.shared_with || [];
-    let showShareDialog = false;
+    let selectedRepresentatives = $state(video.shared_with || []);
+    let showShareDialog = $state(false);
 
     function handleRepresentativeChange(value: string) {
         const repId = value;

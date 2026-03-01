@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import * as Dialog from "$lib/components/ui/dialog";
     import { toast } from "svelte-sonner";
     import ScheduleMeeting from "./schedule-meeting.svelte";
@@ -10,24 +12,33 @@
     import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "$lib/components/ui/select";
     import { createEventDispatcher } from "svelte";
 
-    export let shareURL: string;
 
-    export let representatives: any[];
-    export let locations: any[] = [];
-    export let room = null; // Room data for filtering representatives
-    let showRepresentativeList = false;
-    let showInitialDialog = true;
+    interface Props {
+        shareURL: string;
+        representatives: any[];
+        locations?: any[];
+        room?: any; // Room data for filtering representatives
+    }
+
+    let {
+        shareURL,
+        representatives,
+        locations = [],
+        room = null
+    }: Props = $props();
+    let showRepresentativeList = $state(false);
+    let showInitialDialog = $state(true);
     let dialogOpen = false;
-    let selectedRepresentative: any = null;
-    let inviteStep: "select" | "share" | "success" = "select";
+    let selectedRepresentative: any = $state(null);
+    let inviteStep: "select" | "share" | "success" = $state("select");
     const joinURL = $page.url.href;
-    let isSendingInvite = false;
+    let isSendingInvite = $state(false);
     let sendViaEmail = true;
     let sendViaSMS = true;
 
-    let invitedRepresentative = '';
+    let invitedRepresentative = $state('');
 
-    let uidExtracted = '';
+    let uidExtracted = $state('');
     try {
         if (shareURL && shareURL.includes('?')) {
             const params = new URLSearchParams(shareURL.split('?')[1]);
@@ -43,24 +54,28 @@
     console.log("[InviteRepresentative] received representatives", representatives);
 
     // Get company ID from page data for filtering
-    $: companyId = $page.data?.user?.id || $page.data?.owner_company || room?.owner_company;
+    let companyId = $derived($page.data?.user?.id || $page.data?.owner_company || room?.owner_company);
 
     // representatives prop is now pre-filtered by company for hosts in +page.server.ts
-    $: filteredRepresentatives = representatives || [];
+    let filteredRepresentatives = $derived(representatives || []);
 
-    $: console.log("[InviteRepresentative] Props:", { 
-        representativesCount: representatives?.length, 
-        companyId, 
-        roomOwner: room?.owner_company,
-        serverDebug: $page.data?.debug
+    run(() => {
+        console.log("[InviteRepresentative] Props:", { 
+            representativesCount: representatives?.length, 
+            companyId, 
+            roomOwner: room?.owner_company,
+            serverDebug: $page.data?.debug
+        });
     });
-    $: console.log("[InviteRepresentative] Filtered count:", filteredRepresentatives.length);
+    run(() => {
+        console.log("[InviteRepresentative] Filtered count:", filteredRepresentatives.length);
+    });
 
-    $: {
+    run(() => {
         if (selectedRepresentative) {
             console.log('selectedRepresentative', selectedRepresentative);
         }
-    }
+    });
 
     function showNextModal() {
         showInitialDialog = false;
@@ -164,9 +179,9 @@
     }
 
     // Update the link display in the modal
-    $: inviteLink = selectedRepresentative 
+    let inviteLink = $derived(selectedRepresentative 
         ? `${$page.url.origin}/room/${$page.params.roomId}/representative?repid=${selectedRepresentative.id}&uid=${uidExtracted}` 
-        : '';
+        : '');
 </script>
 
 <!-- Comment out confirmation dialog -->
@@ -199,12 +214,12 @@
             </p>
             <div class="flex flex-col-reverse gap-2 md:flex-row justify-end md:space-x-4">
                 <Dialog.Close asChild>
-                    <button class="px-4 py-2 bg-[#E8EDF5] text-primary rounded hover:bg-gray-400" on:click={cancelDialog}>Cancel</button>
+                    <button class="px-4 py-2 bg-[#E8EDF5] text-primary rounded hover:bg-gray-400" onclick={cancelDialog}>Cancel</button>
                 </Dialog.Close>
                 <button 
                     type="button"
                     class="px-4 py-2 bg-primary text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed" 
-                    on:click={showNextModal}
+                    onclick={showNextModal}
                     disabled={filteredRepresentatives.length === 0}
                 >
                     Continue
@@ -223,7 +238,7 @@
                         <button
                             type="button"
                             class="text-gray-400 transition-colors hover:text-gray-600"
-                            on:click={cancelDialog}
+                            onclick={cancelDialog}
                         >
                             <X size={20} />
                         </button>
@@ -240,8 +255,8 @@
                             <button
                                 type="button"
                                 class="flex flex-col items-center gap-2 focus:outline-none"
-                                on:click={() => selectRepresentative(representative)}
-                                on:keydown={(e) => {
+                                onclick={() => selectRepresentative(representative)}
+                                onkeydown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') {
                                         selectRepresentative(representative);
                                     }
@@ -255,7 +270,7 @@
                                                 src={getAvatarUrl(representative)}
                                                 alt={`${representative.name}'s Avatar`}
                                                 class="h-full w-full object-cover"
-                                                on:error={handleAvatarError}
+                                                onerror={handleAvatarError}
                                                 loading="lazy"
                                             />
                                             <div class="hidden h-full w-full items-center justify-center bg-gradient-to-br from-[#6366f1] to-[#ec4899] text-lg font-semibold text-white">

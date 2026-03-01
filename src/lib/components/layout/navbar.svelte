@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run, preventDefault } from 'svelte/legacy';
+
     import { page } from '$app/stores';
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from '$lib/components/ui/button';
@@ -14,20 +16,24 @@
 	import { onMount } from 'svelte';
 	import { currentVideoUrl } from '$lib/callStores';
 
-    export let loggedIn = false;
-    export let user;
-    export let inRoom;
+    interface Props {
+        loggedIn?: boolean;
+        user: any;
+        inRoom: any;
+    }
+
+    let { loggedIn = false, user, inRoom }: Props = $props();
     let isMenuOpen = false;
     let pageRoute = $page;
     let isInMeeting: boolean;
     let representatives = [];
     let isJoinDialogOpen = false;
 
-    $: {
+    run(() => {
         console.log('route',pageRoute);
         console.log('currentVideoUrl', $currentVideoUrl);
         // isInMeeting = pageRoute.pathname.includes('room');
-    }
+    });
 
 
 
@@ -50,7 +56,7 @@
      
         <form
         method='POST'
-        on:submit|preventDefault={async (e) => {
+        onsubmit={preventDefault(async (e) => {
             const formData = new FormData(e.target);
             
             try {
@@ -71,7 +77,7 @@
                 console.error('Error:', error);
                 toast.error('Failed to create room');
             }
-        }}
+        })}
     >
     
     <Button class="bg-[#ECEFF3] text-primary hover:text-white" type="submit"

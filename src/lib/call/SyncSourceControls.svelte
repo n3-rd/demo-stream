@@ -3,10 +3,19 @@
     import { createEventDispatcher } from 'svelte';
     import { Button } from '$lib/components/ui/button';
 
-    export let syncSource: string;
-    export let isRepLive: boolean;
-    export let isHost: boolean;
-    export let isRepresentative: boolean;
+    interface Props {
+        syncSource: string;
+        isRepLive: boolean;
+        isHost: boolean;
+        isRepresentative: boolean;
+    }
+
+    let {
+        syncSource,
+        isRepLive,
+        isHost,
+        isRepresentative
+    }: Props = $props();
 
     const dispatch = createEventDispatcher();
 </script>

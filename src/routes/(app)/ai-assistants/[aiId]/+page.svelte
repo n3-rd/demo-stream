@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run, preventDefault } from 'svelte/legacy';
+
     import { Button } from "$lib/components/ui/button";
     import { Input } from "$lib/components/ui/input";
     import { Label } from "$lib/components/ui/label";
@@ -12,7 +14,7 @@
     import * as Dialog from "$lib/components/ui/dialog";
     import * as Select from "$lib/components/ui/select";
 
-    export let data;
+    let { data } = $props();
     const { aiAssistant, viewrooms, trainingFilesResolved = [] } = data;
 
     function formatFileType(type: string): string {
@@ -30,21 +32,18 @@
         });
     }
 
-    let fileInput: HTMLInputElement;
-    let uploading = false;
-    let showConnectViewroomDialog = false;
+    let fileInput: HTMLInputElement = $state();
+    let uploading = $state(false);
+    let showConnectViewroomDialog = $state(false);
     /** Always string[] (viewroom IDs). Normalize from expanded PB relation or raw array. */
-    let selectedViewrooms: string[] = normalizeViewroomIds(aiAssistant.viewrooom_connections);
+    let selectedViewrooms: string[] = $state(normalizeViewroomIds(aiAssistant.viewrooom_connections));
 
-    $: if (showConnectViewroomDialog) {
-        selectedViewrooms = normalizeViewroomIds(aiAssistant.viewrooom_connections);
-    }
 
     function normalizeViewroomIds(conn: unknown): string[] {
         if (!conn || !Array.isArray(conn)) return [];
         return conn.map((c) => (typeof c === 'string' ? c : (c as { id: string })?.id)).filter(Boolean);
     }
-    let showArchiveDialog = false;
+    let showArchiveDialog = $state(false);
 
     function handleFileUpload() {
         if (fileInput?.files?.length) {
@@ -86,6 +85,11 @@
             await invalidateAll();
         }
     }
+    run(() => {
+        if (showConnectViewroomDialog) {
+            selectedViewrooms = normalizeViewroomIds(aiAssistant.viewrooom_connections);
+        }
+    });
 </script>
 
 <div class="flex h-screen bg-[#eceef3]">
@@ -113,7 +117,7 @@
                     {:else}
                         <form
                             method="POST"
-                            on:submit|preventDefault={async (e) => {
+                            onsubmit={preventDefault(async (e) => {
                                 const formData = new FormData(e.target);
                                 
                                 try {
@@ -135,7 +139,7 @@
                                 } finally {
                                     await invalidateAll();
                                 }
-                            }}
+                            })}
                         >
                             <input type="hidden" name="status" value="true" />
                             <Button 
@@ -218,7 +222,7 @@
                                     <div class="flex items-center">
                                         <form
                                             method="POST"
-                                            on:submit|preventDefault={async (e) => {
+                                            onsubmit={preventDefault(async (e) => {
                                                 const formData = new FormData(e.target);
                                                 
                                                 try {
@@ -240,7 +244,7 @@
                                                 } finally {
                                                     await invalidateAll();
                                                 }
-                                            }}
+                                            })}
                                         >
                                             <input type="hidden" name="fileIndex" value={index} />
                                             <Button 
@@ -268,7 +272,7 @@
                             type="file" 
                             class="hidden" 
                             bind:this={fileInput}
-                            on:change={handleFileUpload}
+                            onchange={handleFileUpload}
                             multiple
                             accept=".pdf,.docx,.doc"
                             disabled={uploading}
@@ -401,7 +405,7 @@
                                                 id="viewroom_{viewroom.id}" 
                                                 value={viewroom.id}
                                                 class="hidden peer"
-                                                on:change={(e) => {
+                                                onchange={(e) => {
                                                     const checkbox = e.currentTarget;
                                                     if (checkbox.checked) {
                                                         selectedViewrooms = [...selectedViewrooms, viewroom.id];
@@ -432,7 +436,7 @@
                     <button 
                         type="button"
                         class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 text-sm rounded mr-2"
-                        on:click={() => showConnectViewroomDialog = false}
+                        onclick={() => showConnectViewroomDialog = false}
                     >
                         Cancel
                     </button>
@@ -453,7 +457,7 @@
     <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
         <form
             method="POST"
-            on:submit|preventDefault={async (e) => {
+            onsubmit={preventDefault(async (e) => {
                 const formData = new FormData(e.target);
                 
                 try {
@@ -477,7 +481,7 @@
                 } finally {
                     invalidateAll();
                 }
-            }}
+            })}
         >
             <div class="space-y-4">
                 <h2 class="text-lg font-semibold text-red-500">Archive AI Assistant</h2>
@@ -491,7 +495,7 @@
                     <button 
                         type="button"
                         class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 text-sm rounded mr-2"
-                        on:click={() => showArchiveDialog = false}
+                        onclick={() => showArchiveDialog = false}
                     >
                         Cancel
                     </button>

@@ -4,11 +4,11 @@
 	import { goto } from '$app/navigation';
   import { formatToE164, sanitizePhoneInput, isE164 } from '$lib/helpers/phone';
 
-	let loading = false;
-	let step: 'send' | 'verify' = 'send';
-	let email = '';
-	let phone = '';
-	let code = '';
+	let loading = $state(false);
+	let step: 'send' | 'verify' = $state('send');
+	let email = $state('');
+	let phone = $state('');
+	let code = $state('');
 
   function onPhoneInput(e: Event) {
     const input = e.target as HTMLInputElement;
@@ -100,7 +100,7 @@
 			</div>
 
 			{#if step === 'send'}
-			<form class="space-y-4 px-4 lg:px-0" on:submit={onSendCode}>
+			<form class="space-y-4 px-4 lg:px-0" onsubmit={onSendCode}>
 				<div class="flex gap-1 items-center h-11">
 					<div class="h-full w-[6px] bg-primary"></div>
 					<div class="w-full">
@@ -111,7 +111,7 @@
 				<div class="flex gap-1 items-center h-11">
 					<div class="h-full w-[6px] bg-primary"></div>
 					<div class="w-full">
-						<input id="phone" type="tel" bind:value={phone} inputmode="tel" autocomplete="tel" placeholder="+170********" class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" on:input={onPhoneInput} on:blur={onPhoneBlur} required />
+						<input id="phone" type="tel" bind:value={phone} inputmode="tel" autocomplete="tel" placeholder="+170********" class="w-full border border-input bg-background px-3 py-2 h-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" oninput={onPhoneInput} onblur={onPhoneBlur} required />
 					</div>
 				</div>
 
@@ -120,7 +120,7 @@
 				</Button>
 			</form>
 			{:else}
-			<form class="space-y-4 px-4 lg:px-0" on:submit={onVerify}>
+			<form class="space-y-4 px-4 lg:px-0" onsubmit={onVerify}>
 				<div class="flex gap-1 items-center h-11">
 					<div class="h-full w-[6px] bg-primary"></div>
 					<div class="w-full">
@@ -130,7 +130,7 @@
 				<Button type="submit" class="w-full bg-primary rounded-full text-white" disabled={loading}>
 					{#if loading}<span>Verifying...</span>{:else}<span>Verify & Sign In</span>{/if}
 				</Button>
-				<button type="button" class="w-full text-xs text-gray-600 underline" on:click={() => (step = 'send')}>Go back</button>
+				<button type="button" class="w-full text-xs text-gray-600 underline" onclick={() => (step = 'send')}>Go back</button>
 			</form>
 			{/if}
 

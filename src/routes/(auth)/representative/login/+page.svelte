@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { preventDefault } from 'svelte/legacy';
+
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -8,16 +10,16 @@
 	import { onMount } from 'svelte';
 	import { formatToE164, sanitizePhoneInput, isE164 } from '$lib/helpers/phone';
 
-	let step: 'login' | 'verify' = 'login';
-	let loading = false;
+	let step: 'login' | 'verify' = $state('login');
+	let loading = $state(false);
 	let roomId: string | null = null;
 	let uid = '';
 
 	// Form data
-	let email = '';
-	let mobileNumber = '';
-	let verificationCode = ['', '', '', '', ''];
-	let verificationType = '';
+	let email = $state('');
+	let mobileNumber = $state('');
+	let verificationCode = $state(['', '', '', '', '']);
+	let verificationType = $state('');
 
 	onMount(() => {
 		const urlParams = new URLSearchParams(window.location.search);
@@ -182,7 +184,7 @@
 	<div class="sm:mx-auto sm:w-full sm:max-w-md">
 		<div class="bg-white py-8 px-6 shadow-sm rounded-lg sm:px-10">
 			{#if step === 'login'}
-				<form on:submit|preventDefault={handleLogin} class="space-y-6">
+				<form onsubmit={preventDefault(handleLogin)} class="space-y-6">
 					<div>
 						<Label for="email" class="block text-sm font-medium text-gray-700 mb-2">EMAIL ADDRESS</Label>
 						<Input id="email" bind:value={email} type="email" placeholder="Enter your email" required disabled={loading} class="w-full px-3 py-3 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
@@ -209,7 +211,7 @@
 					</div>
 				</form>
 			{:else}
-				<form on:submit|preventDefault={handleVerification} class="space-y-6">
+				<form onsubmit={preventDefault(handleVerification)} class="space-y-6">
 					<div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
 						<div class="flex items-center justify-center mb-2">
 							{#if verificationType === 'sms'}
@@ -225,7 +227,7 @@
 						<Label class="block text-sm font-medium text-gray-700 mb-4 text-center">VERIFICATION CODE</Label>
 						<div class="flex justify-center gap-3 mb-4">
 							{#each Array(5) as _, i}
-								<input id={`code-${i}`} type="text" class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors" maxlength="1" pattern="[0-9]" on:input={(e) => handleCodeInput(e, i)} on:paste={handlePaste} />
+								<input id={`code-${i}`} type="text" class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors" maxlength="1" pattern="[0-9]" oninput={(e) => handleCodeInput(e, i)} onpaste={handlePaste} />
 							{/each}
 						</div>
 						<p class="text-xs text-gray-500 text-center">Enter the 5-digit code sent to your {verificationType === 'sms' ? 'mobile phone' : 'email'}</p>

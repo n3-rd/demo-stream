@@ -3,8 +3,12 @@
 	import { onMount, tick } from 'svelte';
 	import { createEventDispatcher } from 'svelte';
 
-	export let participants: any[] = [];
-	export let selfName: string = '';
+	interface Props {
+		participants?: any[];
+		selfName?: string;
+	}
+
+	let { participants = [], selfName = $bindable('') }: Props = $props();
 
 	const dispatch = createEventDispatcher();
 	const ASPECT = 9 / 16;
@@ -12,22 +16,21 @@
 	const MAX_W = 960;
 	const DEFAULT_W = 648;
 
-	let panelWidth = DEFAULT_W;
-	let posX = 0;
-	let posY = 0;
-	let ready = false;
+	let panelWidth = $state(DEFAULT_W);
+	let posX = $state(0);
+	let posY = $state(0);
+	let ready = $state(false);
 
-	let panelEl: HTMLElement;
+	let panelEl: HTMLElement = $state();
 	let parentEl: HTMLElement | null = null;
 
-	let dragging = false;
-	let resizing = false;
+	let dragging = $state(false);
+	let resizing = $state(false);
 	let dragOffsetX = 0;
 	let dragOffsetY = 0;
 	let resizeStartX = 0;
 	let resizeStartW = 0;
 
-	$: panelHeight = visibleRepresentatives.length * Math.round(panelWidth * ASPECT) + (visibleRepresentatives.length - 1) * 6 + 8;
 
 	function clampPos() {
 		if (!parentEl) return;
@@ -117,7 +120,6 @@
 		return normalizeName(getParticipantName(p)) !== normalizeName(selfName);
 	}
 
-	$: visibleRepresentatives = (participants || []).filter((p: any) => isRep(p) && shouldShow(p));
 
 	onMount(() => {
 		window.addEventListener('mousemove', onPointerMove);
@@ -151,15 +153,18 @@
 			return { destroy: () => ro.disconnect() };
 		}
 	}
+	let visibleRepresentatives = $derived((participants || []).filter((p: any) => isRep(p) && shouldShow(p)));
+	let panelHeight = $derived(visibleRepresentatives.length * Math.round(panelWidth * ASPECT) + (visibleRepresentatives.length - 1) * 6 + 8);
 </script>
 
 {#if visibleRepresentatives.length > 0}
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	class="rep-panel"
 	class:is-dragging={dragging}
 	class:is-resizing={resizing}
 	style="left:{posX}px;top:{posY}px;width:{panelWidth}px;opacity:{ready ? 1 : 0}"
-	on:mousedown={onDragStart}
+	onmousedown={onDragStart}
 	bind:this={panelEl}
 	use:initPosition
 	role="group"
@@ -176,8 +181,8 @@
 		</div>
 	{/each}
 
-	<!-- svelte-ignore a11y-no-static-element-interactions -->
-	<div class="resize-handle" on:mousedown={onResizeStart}>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="resize-handle" onmousedown={onResizeStart}>
 		<svg width="12" height="12" viewBox="0 0 12 12"><path d="M11 1v10H1" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.5" stroke-linecap="round"/><path d="M11 5v6H5" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5" stroke-linecap="round"/></svg>
 	</div>
 </div>

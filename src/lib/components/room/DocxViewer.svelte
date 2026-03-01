@@ -1,49 +1,33 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import { onMount, createEventDispatcher, tick } from 'svelte';
     import * as mammoth from 'mammoth';
     import { currentDocxUrl, docxScrollPosition } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
 
-    export let roomName: string;
-    export let isController: boolean;
+    interface Props {
+        roomName: string;
+        isController: boolean;
+    }
+
+    let { roomName, isController }: Props = $props();
 
     const dispatch = createEventDispatcher();
-    let docxContainer: HTMLDivElement;
-    let docxContent: HTMLDivElement;
-    let loading = false;
-    let error = '';
+    let docxContainer: HTMLDivElement = $state();
+    let docxContent: HTMLDivElement = $state();
+    let loading = $state(false);
+    let error = $state('');
     let lastScrollUpdate = 0;
     let loadedDocUrl = '';
-    let htmlContent = '';
+    let htmlContent = $state('');
     let isAtBottom = false;
     let previousScrollTop = 0;
     
-    // Reactive statement to handle DOCX URL changes
-    $: {
-        if ($currentDocxUrl) {
-            // Trigger document loading
-            loadDocx($currentDocxUrl);
-        }
-    }
 
-    // Watch for scroll position changes from other users
-    $: if (!isScrolling && docxContainer && $docxScrollPosition !== undefined && !isController) {
-        updateScrollPosition($docxScrollPosition);
-    }
 
-    // Watch for controller status changes
-    $: if (docxContainer) {
-        if (isController) {
-            docxContainer.style.overflowY = 'auto';
-            docxContainer.style.cursor = 'default';
-        } else {
-            // Make it clear visually that user can't scroll
-            docxContainer.style.overflowY = 'auto';
-            docxContainer.style.cursor = 'not-allowed';
-        }
-    }
 
-    let isScrolling = false;
+    let isScrolling = $state(false);
     let scrollTimeoutId: ReturnType<typeof setTimeout>;
     let scrollDebounceId: ReturnType<typeof setTimeout>;
 
@@ -216,12 +200,38 @@
             clearTimeout(scrollDebounceId);
         };
     });
+    // Reactive statement to handle DOCX URL changes
+    run(() => {
+        if ($currentDocxUrl) {
+            // Trigger document loading
+            loadDocx($currentDocxUrl);
+        }
+    });
+    // Watch for scroll position changes from other users
+    run(() => {
+        if (!isScrolling && docxContainer && $docxScrollPosition !== undefined && !isController) {
+            updateScrollPosition($docxScrollPosition);
+        }
+    });
+    // Watch for controller status changes
+    run(() => {
+        if (docxContainer) {
+            if (isController) {
+                docxContainer.style.overflowY = 'auto';
+                docxContainer.style.cursor = 'default';
+            } else {
+                // Make it clear visually that user can't scroll
+                docxContainer.style.overflowY = 'auto';
+                docxContainer.style.cursor = 'not-allowed';
+            }
+        }
+    });
 </script>
 
 <div 
     class="docx-container w-full h-full bg-white overflow-y-auto relative"
     bind:this={docxContainer}
-    on:scroll={handleScroll}
+    onscroll={handleScroll}
 >
     {#if loading}
         <div class="w-full h-full flex items-center justify-center">
@@ -232,7 +242,7 @@
             <div class="text-lg text-red-600">Error: {error}</div>
             <button 
                 class="px-4 py-2 bg-blue-600 text-white rounded"
-                on:click={() => loadDocx($currentDocxUrl)}
+                onclick={() => loadDocx($currentDocxUrl)}
             >
                 Try Again
             </button>
@@ -292,10 +302,5 @@
     :global(.docx-content td, .docx-content th) {
         border: 1px solid #ddd;
         padding: 8px;
-    }
-    
-    /* Add this to prevent direct user interaction when not controller */
-    .docx-container.viewer-only {
-        pointer-events: none;
     }
 </style>

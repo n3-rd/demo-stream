@@ -1,13 +1,15 @@
 <script>
+	import { run } from 'svelte/legacy';
+
 	import { onMount } from 'svelte';
 	import micOnIcon from './assets/mic_on.svg';
 	import micOffIcon from './assets/mic_off.svg';
 
-	export let participant;
-	let displayName;
-	$:{
+	let { participant } = $props();
+	let displayName = $state();
+	run(() => {
 		console.log('participant from placeholder',participant);
-	}
+	});
 
 	onMount(() => {
 		// Use saved name in local storage as fall back if local username isn't available

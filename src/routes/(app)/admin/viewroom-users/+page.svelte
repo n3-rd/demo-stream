@@ -10,28 +10,28 @@
   import { Plus, Trash2, Edit, Users, Mail, Building2, Phone, Loader2 } from 'lucide-svelte';
   import { onMount } from 'svelte';
   
-  export let data;
+  let { data } = $props();
   
-  let users = data?.users || [];
+  let users = $state(data?.users || []);
   let company = data?.company || { name: 'Your Company', id: '', email: '' };
   
-  let showAddDialog = false;
-  let showEditDialog = false;
-  let editingUser = null;
-  let loading = false;
+  let showAddDialog = $state(false);
+  let showEditDialog = $state(false);
+  let editingUser = $state(null);
+  let loading = $state(false);
   
   function displayName(u: any) {
     const name = [u?.first_name, u?.last_name].filter(Boolean).join(' ').trim();
     return name || u?.login_name || u?.email || 'User';
   }
   
-  let newUser = {
+  let newUser = $state({
     first_name: '',
     last_name: '',
     email: '',
     phone: '',
     is_active: true
-  };
+  });
   
   function resetNewUser() {
     newUser = {

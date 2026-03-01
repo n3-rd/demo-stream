@@ -1,18 +1,24 @@
 <script lang="ts">
+  import { preventDefault } from 'svelte/legacy';
+
     import { createEventDispatcher, onMount } from 'svelte';
     import { page } from '$app/stores';
 	import { toast } from 'svelte-sonner';
   
     const dispatch = createEventDispatcher();
     
-    export let isAuthenticated = false;
     
-    let name = '';
+    let name = $state('');
     let isRepresentative = $page.url.searchParams.get('representativeId') !== null;
     let anonymousUser = $page.url.searchParams.get('anonymousUserId') !== null;
     console.log('anonymousUser', anonymousUser);
-    let submitBtn: HTMLButtonElement;
-    export let roomName;
+    let submitBtn: HTMLButtonElement = $state();
+  interface Props {
+    isAuthenticated?: boolean;
+    roomName: any;
+  }
+
+  let { isAuthenticated = false, roomName }: Props = $props();
 
   
     function handleSubmit() {
@@ -49,7 +55,7 @@
             <div class="text-center">
                 <h2 class="text-2xl font-semibold text-gray-800 mb-2">Join {roomName}</h2>
                 <p class="text-gray-600 mb-6">Enter your name to join the video call</p>
-                <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+                <form onsubmit={preventDefault(handleSubmit)} class="space-y-6">
                     <div class="text-left">
                         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
                         <input 

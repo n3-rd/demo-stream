@@ -13,3 +13,4 @@ node_modules
 PHONE_VERIFICATION_FLOW.md
 logs/*
 vite.config.js.timestamp-*.mjs
+.vps.env

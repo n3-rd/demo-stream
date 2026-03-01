@@ -9,7 +9,7 @@
 
     let { roomIdentityName, roomLink }: Props = $props();
 </script>
-<div class="absolute inset-x-0 top-0 py-3 w-full lg:hidden flex items-center justify-between gap-3 px-2">
+<div class="absolute inset-x-0 top-0 py-3 w-full lg:hidden flex items-center justify-between gap-3 px-2 mobile-top-bar">
     <Button
         class="flex-1 min-w-0 rounded bg-bgdefault-light text-white shadow-l flex items-center justify-center px-3 py-2 max-w-40 pointer-events-none"
     >
@@ -32,3 +32,10 @@
 <span class="truncate text-sm font-semibold underline">{roomLink}</span>
 </Button>
 </div>
+
+<style>
+    /* Account for browser status bar / notch at the top on iOS/Android */
+    .mobile-top-bar {
+        padding-top: max(0.75rem, env(safe-area-inset-top, 0.75rem));
+    }
+</style>

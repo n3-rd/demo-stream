@@ -2405,6 +2405,16 @@ onMount(() => {
 
     // Start active speaker detection
     startSpeakerDetection();
+
+    // Resume AudioContext on first user interaction to ensure audio plays
+    // through loudspeaker on iOS/Android (browsers suspend AudioContext until gesture).
+    const resumeAudio = () => {
+        audioManager.resumeAudioContext();
+        document.removeEventListener('click', resumeAudio);
+        document.removeEventListener('touchstart', resumeAudio);
+    };
+    document.addEventListener('click', resumeAudio, { passive: true });
+    document.addEventListener('touchstart', resumeAudio, { passive: true });
 });
 
 onDestroy(() => {
@@ -2656,7 +2666,7 @@ run(() => {
   <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
     <!-- Always render meeting room in the background -->
-    <div class="h-screen min-w-full bg-bgdefault relative overflow-hidden">
+    <div class="min-w-full bg-bgdefault relative overflow-hidden" style="height: 100vh; height: 100dvh;">
         {#if showGreetingPopup}
             <GreetingPopup name={data?.representativeName} host={isHost} on:dismissed={handleGreetingDismissed} />
         {/if}

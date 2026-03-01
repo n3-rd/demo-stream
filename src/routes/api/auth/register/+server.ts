@@ -42,17 +42,17 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
             existingVerificationRecord = existingVerification.items[0] || null;
         } catch {}
 
-        // Same send pattern as passwordless/send-code: SMS first, then email via Brevo
+        // Send code via SMS (Telnyx) and email (Brevo)
         const sendCode = async (code: string): Promise<{ smsSent: boolean; emailSent: boolean }> => {
             let smsSent = false;
             let emailSent = false;
-            // 1. Send SMS (same as login)
+            // 1. Send SMS via Telnyx
             try {
                 smsSent = !!(await telnyxSMS.sendVerificationCode(formattedPhone, code, name));
             } catch (e) {
                 console.error('register sms send error', e);
             }
-            // 2. Send email via Brevo (same payload shape as login)
+            // 2. Send email via Brevo
             try {
                 if (BREVO_API_KEY && PUBLIC_SMTP_FROM) {
                     const emailPayload = {

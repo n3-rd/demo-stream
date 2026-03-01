@@ -88,27 +88,52 @@ export async function sendAdminPhoneVerification(
       });
     }
 
-    // Send SMS via Telnyx
-    const smsSent = await telnyxSMS.sendVerificationCode(
-      formattedPhone,
-      verificationCode,
-      request.company_name
-    );
+    // Send verification code via email (Brevo)
+    const emailPayload = {
+      sender: { name: "Viewroom.ca", email: PUBLIC_SMTP_FROM },
+      to: [{ email: request.email, name: request.company_name }],
+      subject: 'Your verification code',
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; text-align: center;">Account Verification</h2>
+          <p>Hello ${request.company_name},</p>
+          <p>Your verification code is:</p>
+          <div style="background: #f8f9fa; border: 2px solid #e9ecef; padding: 30px; text-align: center; font-size: 36px; font-weight: bold; letter-spacing: 8px; margin: 30px 0; border-radius: 8px; color: #495057;">
+            ${verificationCode}
+          </div>
+          <p><strong>This code expires in 10 minutes.</strong></p>
+          <p style="color: #6c757d; font-size: 14px;">If you didn't request this code, please ignore this email.</p>
+        </div>
+      `,
+      tags: ['registration', 'verification', 'email']
+    };
 
-    if (!smsSent) {
-      // If SMS failed, delete the verification record
+    const emailResp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(emailPayload)
+    });
+
+    if (!emailResp.ok) {
+      // If email failed, delete the verification record
       await pb.collection('admin_phone_verification').delete(verificationData.id).catch(() => {});
+      const text = await emailResp.text();
+      console.error('Brevo email error:', text);
       return {
         success: false,
         message: 'Failed to send verification code. Please try again.'
       };
     }
 
-    console.log(`📱 Phone verification sent for admin signup: ${request.email} -> ${formattedPhone}`);
+    console.log(`✉️ Email verification sent for admin signup: ${request.email}`);
 
     return {
       success: true,
-      message: `Verification code sent to ${formattedPhone.slice(-4)} digits. Please check your phone.`,
+      message: 'Verification code sent to your email.',
       verification_id: verificationData.id
     };
 

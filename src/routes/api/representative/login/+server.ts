@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		let smsSent = false;
 		let emailSent = false;
 
-		// Send SMS
+		// Send SMS via Telnyx
 		try {
 			smsSent = !!(await telnyxSMS.sendVerificationCode(normalizedPhone, code, companyName));
 		} catch (e) {

@@ -40,7 +40,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
     let smsSent = false;
     let emailSent = false;
 
-    // Send SMS to stored phone only
+    // Send SMS via Telnyx
     try {
       smsSent = !!(await telnyxSMS.sendVerificationCode(storedPhone, code, user.company_name || ''));
     } catch (e) {

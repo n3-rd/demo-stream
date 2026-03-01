@@ -66,15 +66,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			verification_type: 'email'
 		});
 
-		let smsSent = false;
 		let emailSent = false;
-
-		// Send SMS
-		try {
-			smsSent = !!(await telnyxSMS.sendVerificationCode(normalizedPhone, code, companyName));
-		} catch (e) {
-			console.error('representative sms send error', e);
-		}
 
 		// Send Email via Brevo
 		try {
@@ -110,16 +102,10 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			console.error('representative email send exception', e);
 		}
 
-		const verificationMessage = smsSent && emailSent 
-			? 'Verification code sent via SMS and Email' 
-			: smsSent 
-				? 'Verification code sent via SMS' 
-				: 'Verification code sent via Email';
-
 		return json({ 
 			success: true, 
-			message: verificationMessage, 
-			verification_type: smsSent && emailSent ? 'both' : smsSent ? 'sms' : 'email' 
+			message: 'Verification code sent via Email', 
+			verification_type: 'email' 
 		});
 	} catch (err: any) {
 		console.error('representative login error', err);

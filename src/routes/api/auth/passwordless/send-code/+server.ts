@@ -37,15 +37,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
       verification_type: 'sms'
     });
 
-    let smsSent = false;
     let emailSent = false;
-
-    // Send SMS to stored phone only
-    try {
-      smsSent = !!(await telnyxSMS.sendVerificationCode(storedPhone, code, user.company_name || ''));
-    } catch (e) {
-      console.error('passwordless sms send error', e);
-    }
 
     // Send Email via Brevo
     try {
@@ -79,9 +71,9 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
       console.error('passwordless email send exception', e);
     }
 
-    if (!smsSent && !emailSent) return json({ success: false, message: 'Failed to send code' }, { status: 500 });
+    if (!emailSent) return json({ success: false, message: 'Failed to send code' }, { status: 500 });
 
-    return json({ success: true, message: smsSent && emailSent ? 'Code sent via SMS and Email' : smsSent ? 'Code sent via SMS' : 'Code sent via Email' });
+    return json({ success: true, message: 'Code sent via Email' });
   } catch (err) {
     console.error('passwordless send-code error', err);
     return json({ success: false, message: 'Internal error' }, { status: 500 });

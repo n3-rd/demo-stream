@@ -42,17 +42,9 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
             existingVerificationRecord = existingVerification.items[0] || null;
         } catch {}
 
-        // Same send pattern as passwordless/send-code: SMS first, then email via Brevo
-        const sendCode = async (code: string): Promise<{ smsSent: boolean; emailSent: boolean }> => {
-            let smsSent = false;
+        // Send code via Brevo email only
+        const sendCode = async (code: string): Promise<{ emailSent: boolean }> => {
             let emailSent = false;
-            // 1. Send SMS (same as login)
-            try {
-                smsSent = !!(await telnyxSMS.sendVerificationCode(formattedPhone, code, name));
-            } catch (e) {
-                console.error('register sms send error', e);
-            }
-            // 2. Send email via Brevo (same payload shape as login)
             try {
                 if (BREVO_API_KEY && PUBLIC_SMTP_FROM) {
                     const emailPayload = {
@@ -84,7 +76,7 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
             } catch (e) {
                 console.error('register email send exception', e);
             }
-            return { smsSent, emailSent };
+            return { emailSent };
         };
 
         // If pending exists, generate a fresh code, update the record, and resend
@@ -99,10 +91,10 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
                 website: website || ''
             });
 
-            const { smsSent, emailSent } = await sendCode(freshCode);
+            const { emailSent } = await sendCode(freshCode);
 
-            if (!smsSent && !emailSent) {
-                return new Response(JSON.stringify({ type: 'failure', data: { message: 'Failed to send verification code via SMS and Email. Please try again.' } }), { status: 500 });
+            if (!emailSent) {
+                return new Response(JSON.stringify({ type: 'failure', data: { message: 'Failed to send verification code via Email. Please try again.' } }), { status: 500 });
             }
 
             return new Response(JSON.stringify({
@@ -114,8 +106,8 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
                     phone: formattedPhone,
                     company_name: name,
                     email_verification_sent: emailSent,
-                    sms_verification_sent: smsSent,
-                    message: smsSent && emailSent ? `Verification code sent to phone (ending ${formattedPhone.slice(-4)}) and email.` : emailSent ? 'Verification code sent to email.' : `Verification code sent to phone (ending ${formattedPhone.slice(-4)}).`
+                    sms_verification_sent: false,
+                    message: 'Verification code sent to email.'
                 }
             }), { status: 200 });
         }
@@ -140,11 +132,11 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
             website: website || ''
         });
 
-        const { smsSent, emailSent } = await sendCode(verificationCode);
+        const { emailSent } = await sendCode(verificationCode);
 
-        if (!smsSent && !emailSent) {
+        if (!emailSent) {
             await locals.pb.collection('admin_phone_verification').delete(verificationData.id).catch(() => {});
-            return new Response(JSON.stringify({ type: 'failure', data: { message: 'Failed to send verification code via SMS and Email. Please try again.' } }), { status: 500 });
+            return new Response(JSON.stringify({ type: 'failure', data: { message: 'Failed to send verification code via Email. Please try again.' } }), { status: 500 });
         }
 
         return new Response(JSON.stringify({
@@ -156,8 +148,8 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
                 phone: formattedPhone,
                 company_name: name,
                 email_verification_sent: emailSent,
-                sms_verification_sent: smsSent,
-                message: smsSent && emailSent ? `Verification code sent to phone (ending ${formattedPhone.slice(-4)}) and email.` : emailSent ? 'Verification code sent to email.' : `Verification code sent to phone (ending ${formattedPhone.slice(-4)}).`
+                sms_verification_sent: false,
+                message: 'Verification code sent to email.'
             }
         }), { status: 200 });
     } catch (error) {

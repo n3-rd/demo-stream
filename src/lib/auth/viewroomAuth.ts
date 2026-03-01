@@ -2,7 +2,6 @@ import { pb } from '$lib/pocketbase';
 import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
 import crypto from 'crypto';
-import { telnyxSMS } from '$lib/services/telnyx';
 
 export interface ViewroomLoginRequest {
   first_name: string;
@@ -100,18 +99,12 @@ export async function initiateViewroomLogin(request: ViewroomLoginRequest) {
     verification_type: verificationType
   });
   
-  // 8. Send verification code
-  if (verificationType === 'sms') {
-    await sendSMSVerificationCode(request.phone!, code);
-  } else {
-    await sendEmailVerificationCode(user.email, code, `${user.first_name} ${user.last_name}`);
-  }
+  // 8. Send verification code via email
+  await sendEmailVerificationCode(user.email, code, `${user.first_name} ${user.last_name}`);
   
   return {
     success: true,
-    message: verificationType === 'sms' 
-      ? `Verification code sent to phone ending in ${request.phone!.slice(-4)}`
-      : 'Verification code sent to your email',
+    message: 'Verification code sent to your email',
     verification_type: verificationType
   };
 }
@@ -217,13 +210,4 @@ async function sendEmailVerificationCode(email: string, code: string, loginName:
     throw new Error('Failed to send verification email');
   }
 }
-
-async function sendSMSVerificationCode(phone: string, code: string) {
-  const formattedPhone = telnyxSMS.formatPhoneNumber(phone);
-  const message = `Your viewroom access verification code is: ${code}. This code expires in 5 minutes.`;
-  
-  const success = await telnyxSMS.sendSMS(formattedPhone, message);
-  if (!success) {
-    throw new Error('Failed to send SMS verification code');
-  }
-} 
+ 

@@ -3,7 +3,6 @@
 
     import { Button } from '$lib/components/ui/button';
     import * as Dialog from "$lib/components/ui/dialog";
-    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
     import { goto } from '$app/navigation';
     import { enhance } from '$app/forms';
     import { toast } from 'svelte-sonner';
@@ -211,12 +210,12 @@
     async function toggleContentActive(contentId, isHost, currentStatus) {
         try {
             // Get current room data
-            const roomResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${room.id}`);
+            const roomResponse = await fetch(`/api/room/${room.id}/info`);
             if (!roomResponse.ok) {
                 throw new Error('Failed to fetch room data');
             }
             
-            const roomData = await roomResponse.json();
+            const { room: roomData } = await roomResponse.json();
             
             // Create a new room_content record or update existing one
             const contentField = isHost ? 'host_content_active' : 'representative_content_active';
@@ -230,7 +229,7 @@
             roomData[contentField][contentId] = !currentStatus;
             
             // Update the room
-            const updateResponse = await fetch(`${PUBLIC_POCKETBASE_INSTANCE}api/collections/rooms/records/${room.id}`, {
+            const updateResponse = await fetch(`/api/room/${room.id}/info`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

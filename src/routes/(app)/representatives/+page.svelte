@@ -3,7 +3,6 @@
 
 
     import { Button } from "$lib/components/ui/button";
-    import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
     import { Dialog, DialogContent, DialogHeader, DialogTitle } from "$lib/components/ui/dialog";
     import { Input } from "$lib/components/ui/input";
     import { Label } from "$lib/components/ui/label";
@@ -18,7 +17,6 @@
     import { quintOut } from 'svelte/easing';
     import HintValidate from '$lib/components/layout/hint-validate.svelte';
     import * as Select from "$lib/components/ui/select";
-    import PocketBase from 'pocketbase';
     import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '$lib/components/ui/alert-dialog';
     import { Trash2 } from 'lucide-svelte';
 
@@ -29,8 +27,6 @@
     interface SelectEvent {
         value: string;
     }
-
-    const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
 
     let { data } = $props();
     console.log(data);

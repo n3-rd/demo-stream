@@ -14,7 +14,7 @@
 	onMount(() => {
 		// Use saved name in local storage as fall back if local username isn't available
 		if (participant?.local) {
-			const savedName = localStorage.getItem('DAILY_SVELTE_NAME');
+			const savedName = localStorage.getItem('CALL_DISPLAY_NAME');
 			displayName = participant?.user_name || savedName || '';
 		} else {
 			displayName = participant?.user_name || '';

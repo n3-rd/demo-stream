@@ -1,4 +1,5 @@
-import { PUBLIC_TELNYX_API_KEY, PUBLIC_TELNYX_FROM_NUMBER, PUBLIC_SMS_MODE } from '$env/static/public';
+import { TELNYX_API_KEY, TELNYX_FROM_NUMBER } from '$env/static/private';
+import { PUBLIC_SMS_MODE } from '$env/static/public';
 
 import { dev } from '$app/environment';
 import { formatToE164, isE164 } from '$lib/helpers/phone';
@@ -31,8 +32,8 @@ export class TelnyxSMSService {
   private baseURL = 'https://api.telnyx.com/v2';
 
   constructor() {
-    this.apiKey = PUBLIC_TELNYX_API_KEY;
-    this.fromNumber = PUBLIC_TELNYX_FROM_NUMBER;
+    this.apiKey = TELNYX_API_KEY;
+    this.fromNumber = TELNYX_FROM_NUMBER;
 
     if (!dev && !this.apiKey) {
       throw new Error('TELNYX_API_KEY environment variable is required');

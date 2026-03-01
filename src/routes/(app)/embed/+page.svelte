@@ -5,7 +5,6 @@
 	import { currentVideoUrl } from '$lib/callStores';
     import { Button } from '$lib/components/ui/button';
     import { toast } from 'svelte-sonner';
-    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
 
     let { data } = $props();
     const { user, video } = data;

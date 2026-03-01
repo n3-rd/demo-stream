@@ -46,6 +46,16 @@ export async function GET({ params, locals, url }) {
       }, { status: 404 });
     }
 
+    let contentActiveState: Record<string, Record<string, boolean>> | null = null;
+    if (DATABASE_URL) {
+      try {
+        const [row] = await db.select({ contentActiveState: rooms.contentActiveState }).from(rooms).where(eq(rooms.id, roomId));
+        if (row?.contentActiveState && typeof row.contentActiveState === 'object') {
+          contentActiveState = row.contentActiveState as Record<string, Record<string, boolean>>;
+        }
+      } catch (_) {}
+    }
+
     const ownerCompany = room.expand?.owner_company;
     const basePath = url ? `${url.origin}/api/files/content_library` : '/api/files/content_library';
 
@@ -68,6 +78,8 @@ export async function GET({ params, locals, url }) {
         representative: room.representative ?? [],
         scheduled: room.scheduled ?? false,
         schedule_time: room.schedule_time ?? null,
+        host_content_active: contentActiveState?.host_content_active ?? {},
+        representative_content_active: contentActiveState?.representative_content_active ?? {},
         hostContentItems,
         representativeContentItems
       },
@@ -86,7 +98,30 @@ export async function GET({ params, locals, url }) {
       message: 'Failed to fetch room information'
     }, { status: 500 });
   }
-} 
+};
+
+export const PATCH: RequestHandler = async ({ request, params }) => {
+  const roomId = params.roomId;
+  if (!roomId) return json({ success: false, message: 'Room ID required' }, { status: 400 });
+  try {
+    const body = await request.json().catch(() => ({})) as Record<string, Record<string, boolean>>;
+    const host_content_active = body.host_content_active;
+    const representative_content_active = body.representative_content_active;
+    if (!host_content_active && !representative_content_active) {
+      return json({ success: false, message: 'No content active state provided' }, { status: 400 });
+    }
+    const [existing] = await db.select({ contentActiveState: rooms.contentActiveState }).from(rooms).where(eq(rooms.id, roomId));
+    const current = (existing?.contentActiveState as Record<string, Record<string, boolean>>) ?? {};
+    const next = { ...current };
+    if (host_content_active) next.host_content_active = host_content_active;
+    if (representative_content_active) next.representative_content_active = representative_content_active;
+    await db.update(rooms).set({ contentActiveState: next }).where(eq(rooms.id, roomId));
+    return json({ success: true });
+  } catch (e) {
+    console.error('PATCH room info:', e);
+    return json({ success: false, message: 'Failed to update' }, { status: 500 });
+  }
+};
 
 export const PUT: RequestHandler = async ({ request, locals, params }) => {
     // Optional auth via PB if available; skip hard failure if moving to Postgres-only

@@ -171,6 +171,7 @@ export const rooms = pgTable('rooms', {
   roomId: text('room_id'),
   additionalInformation: text('additional_information'),
   representativeId: uuid('representative_id').references(() => representatives.id),
+  contentActiveState: jsonb('content_active_state'),
 });
 
 export const uploadedVideos = pgTable('uploaded_videos', {

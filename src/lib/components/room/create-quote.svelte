@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
     import { enhance } from '$app/forms';
     import { createEventDispatcher } from 'svelte';
     import { toast } from 'svelte-sonner';
@@ -7,12 +6,10 @@
     import HintValidate from '$lib/components/layout/hint-validate.svelte';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
-    import { browser } from '$app/environment';
-    import PocketBase from 'pocketbase';
 	import { X } from 'lucide-svelte';
 
-    // Initialize PocketBase
-    const pb = browser ? new PocketBase(PUBLIC_POCKETBASE_INSTANCE) : null;
+    const dispatch = createEventDispatcher();
+    const form = useForm();
 
     // Form state
     let firstName = $state('');
@@ -21,12 +18,6 @@
     let emailAddress = $state('');
     let quoteRequest = $state('');
     let isSubmitting = $state(false);
-    
-    // Company owner's email for receiving quote requests
-    const OWNER_EMAIL = pb.authStore.model?.email;
-
-    const dispatch = createEventDispatcher();
-    const form = useForm();
 
     // Handle cancel button click
     function handleCancel() {
@@ -34,7 +25,7 @@
     }
     
     // Function to send email notifications
-    async function sendQuoteEmails(data, maxRetries = 2) {
+    async function sendQuoteEmails(data: { customerName: string; customerEmail: string; quoteDescription?: string; tags?: string[]; isCustomerConfirmation?: boolean }, ownerEmail: string | null, maxRetries = 2) {
         let attempt = 0;
         while (attempt < maxRetries) {
             try {
@@ -47,7 +38,7 @@
                     customerPhone: phone,
                     quoteDescription: data.quoteDescription || quoteRequest,
                     tags: data.tags || ['quote'],
-                    ownerEmail: OWNER_EMAIL,
+                    ownerEmail: ownerEmail ?? undefined,
                     isCustomerConfirmation: data.isCustomerConfirmation || false
                 };
                 
@@ -108,47 +99,26 @@
         return false;
     }
     
-    // Create quote in PocketBase
-    async function createQuoteRecord(quoteData) {
+    // Create quote via API
+    async function createQuoteRecord(quoteData: { first_name: string; last_name: string; phone: string; email: string; description: string }) {
         try {
-            if (!pb) {
-                console.error('PocketBase not initialized');
+            const response = await fetch('/api/quotes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    first_name: quoteData.first_name,
+                    last_name: quoteData.last_name,
+                    phone: quoteData.phone,
+                    email: quoteData.email,
+                    description: quoteData.description
+                })
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Quote API error:', result);
                 return null;
             }
-            
-            // Get the company ID from auth if available
-            let companyId = null;
-            try {
-                if (pb.authStore.model) {
-                    console.log('Company ID:', pb.authStore.model.id);
-                    companyId = pb.authStore.model.id;
-                }
-            } catch (e) {
-                console.warn('Could not get company ID:', e);
-            }
-            
-            // Prepare data for PocketBase
-            const pbData = {
-                first_name: quoteData.first_name,
-                last_name: quoteData.last_name,
-                phone: quoteData.phone,
-                email: quoteData.email,
-                description: quoteData.description,
-                to_company: companyId
-            };
-            
-            // Add company relation if we have a company ID
-            if (companyId) {
-                pbData.to_company = companyId;
-            }
-            
-            console.log('Creating quote record with data:', pbData);
-            
-            // Create the record
-            const record = await pb.collection('quotes').create(pbData);
-            console.log('Quote record created:', record);
-            
-            return record;
+            return { record: result.quote, ownerEmail: result.ownerEmail as string | null };
         } catch (error) {
             console.error('Error creating quote record:', error);
             return null;
@@ -176,14 +146,16 @@
                 description: quoteRequest
             };
             
-            // Create the quote record in PocketBase
-            const record = await createQuoteRecord(quoteData);
+            // Create the quote record via API
+            const result = await createQuoteRecord(quoteData);
             
-            if (!record) {
+            if (!result) {
                 toast.error('Error saving quote data. Please try again.');
                 isSubmitting = false;
                 return;
             }
+
+            const ownerEmail = result.ownerEmail;
             
             // Send emails if the record was created successfully
             const customerEmailSent = await sendQuoteEmails({
@@ -192,7 +164,7 @@
                 quoteDescription: quoteRequest,
                 tags: ['quote', 'customer_confirmation'],
                 isCustomerConfirmation: true
-            });
+            }, ownerEmail);
             
             const ownerEmailSent = await sendQuoteEmails({
                 customerName: `${firstName} ${lastName}`,
@@ -200,7 +172,7 @@
                 quoteDescription: quoteRequest,
                 tags: ['quote', 'internal_notification'],
                 isCustomerConfirmation: false
-            });
+            }, ownerEmail);
             
             // Show appropriate notifications
             toast.success('Quote request submitted successfully');

@@ -8,7 +8,6 @@
   import { toast } from "svelte-sonner";
   import * as Select from "$lib/components/ui/select";
   import { goto, invalidateAll } from "$app/navigation";
-  import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
   import { useForm, HintGroup, Hint, validators, required, email } from 'svelte-use-form';
   import { onMount } from 'svelte';
   

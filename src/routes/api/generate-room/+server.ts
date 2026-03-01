@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import Replicate from 'replicate';
-import { PUBLIC_REPLICATE_API_TOKEN } from '$env/static/public';
+import { REPLICATE_API_TOKEN } from '$env/static/private';
 
 export async function POST({ request }) {
     try {
@@ -16,7 +16,7 @@ export async function POST({ request }) {
         
         // Initialize Replicate client
         const replicate = new Replicate({
-            auth: PUBLIC_REPLICATE_API_TOKEN,
+        auth: REPLICATE_API_TOKEN,
         });
         
         // Create the prediction

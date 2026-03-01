@@ -1,55 +1,99 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { query } from '$lib/db';
+import { db } from '$lib/db/drizzle';
+import { contentLibrary } from '$lib/db/schema';
+
+function getContentType(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg';
+        case 'png':
+            return 'image/png';
+        case 'webp':
+            return 'image/webp';
+        default:
+            return 'image/png';
+    }
+}
+
+async function storeBlob(file: File): Promise<string> {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { rows } = await query<{ id: string }>(
+        `INSERT INTO file_blobs (filename, content_type, data) VALUES ($1, $2, $3) RETURNING id`,
+        [file.name, file.type || getContentType(file.name), buffer]
+    );
+    const id = rows[0]?.id;
+    if (!id) throw new Error('Failed to store file blob');
+    return id;
+}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
     if (!locals.pb?.authStore.isValid) {
-        return new Response(JSON.stringify({ success: false, message: 'Unauthorized' }), { status: 401 });
+        return json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = locals.pb.authStore.model as { id: string };
+    if (!user?.id) {
+        return json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
     const formData = await request.formData();
-    
     try {
         const title = formData.get('title')?.toString() || 'AI Room Design';
         const description = formData.get('description')?.toString() || '';
-        const originalFile = formData.get('original_file') as File;
-        const generatedFile = formData.get('generated_file') as File;
-        
-        if (!originalFile || !generatedFile) {
-            return new Response(JSON.stringify({ success: false, message: 'Both original and generated files are required' }), { status: 400 });
+        const originalFile = formData.get('original_file') as File | null;
+        const generatedFile = formData.get('generated_file') as File | null;
+
+        if (!originalFile?.size || !generatedFile?.size) {
+            return json(
+                { success: false, message: 'Both original and generated files are required' },
+                { status: 400 }
+            );
         }
 
-        const pb = locals.pb;
-        
-        // Create record for original image
-        const originalRecord = await pb.collection('content_library').create({
-            title: `${title} - Original`,
-            description: description,
-            type: 'image',
-            file: originalFile,
-            owner_company: pb.authStore.model.id,
-            active: true
-        });
+        const originalBlobId = await storeBlob(originalFile);
+        const generatedBlobId = await storeBlob(generatedFile);
 
-        // Create record for generated image
-        const generatedRecord = await pb.collection('content_library').create({
-            title: `${title} - Generated`,
-            description: description,
-            type: 'image',
-            file: generatedFile,
-            owner_company: pb.authStore.model.id,
-            active: true
-        });
+        const [originalRecord] = await db
+            .insert(contentLibrary)
+            .values({
+                title: `${title} - Original`,
+                description: description || null,
+                type: 'image',
+                file: originalBlobId,
+                ownerCompany: user.id,
+                active: true
+            })
+            .returning();
 
-        return new Response(JSON.stringify({ 
-            success: true, 
+        const [generatedRecord] = await db
+            .insert(contentLibrary)
+            .values({
+                title: `${title} - Generated`,
+                description: description || null,
+                type: 'image',
+                file: generatedBlobId,
+                ownerCompany: user.id,
+                active: true
+            })
+            .returning();
+
+        return json({
+            success: true,
             message: 'AI room design uploaded successfully',
-            originalId: originalRecord.id,
-            generatedId: generatedRecord.id
-        }), { status: 200 });
-    } catch (error) {
-        console.error('Error uploading AI room design:', error);
-        return new Response(JSON.stringify({ 
-            success: false, 
-            message: error instanceof Error ? error.message : 'Error uploading content'
-        }), { status: 500 });
+            originalId: originalRecord?.id,
+            generatedId: generatedRecord?.id
+        });
+    } catch (err) {
+        console.error('Error uploading AI room design:', err);
+        return json(
+            {
+                success: false,
+                message: err instanceof Error ? err.message : 'Error uploading content'
+            },
+            { status: 500 }
+        );
     }
-}; 
+};

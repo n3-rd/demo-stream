@@ -5,7 +5,7 @@
 	import { quintOut } from 'svelte/easing';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { dev } from '$app/environment';
 
@@ -19,10 +19,10 @@
 	let resending = $state(false);
 
 	onMount(() => {
-		email = page.url.searchParams.get('email') || '';
-		phone = page.url.searchParams.get('phone') || '';
-		companyName = page.url.searchParams.get('company') || '';
-		verificationMode = page.url.searchParams.get('mode') || 'phone';
+		email = $page.url.searchParams.get('email') || '';
+		phone = $page.url.searchParams.get('phone') || '';
+		companyName = $page.url.searchParams.get('company') || '';
+		verificationMode = $page.url.searchParams.get('mode') || 'phone';
 	});
 
 	// Handle code input with auto-focus

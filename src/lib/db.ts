@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
-import { PUBLIC_DATABASE_URL } from '$env/static/public';
+import { DATABASE_URL } from '$env/static/private';
 
-const connectionString = PUBLIC_DATABASE_URL;
+const connectionString = DATABASE_URL;
 
 export const dbPool = new Pool({ connectionString });
 

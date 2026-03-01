@@ -23,6 +23,17 @@ export class AudioManager {
         }
     }
 
+    /**
+     * Resume the AudioContext if it is suspended (required after a user gesture on iOS/Safari).
+     * Should be called once from a click/touchstart handler in the UI.
+     */
+    resumeAudioContext(): void {
+        const ctx = this.getOrCreateAudioContext();
+        if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch((e) => console.warn('AudioContext resume failed:', e));
+        }
+    }
+
     // ── Remote audio DOM elements ──────────────────────────────────────────────
 
     /** Create a hidden <audio> element for the given track and attach a level monitor. */
@@ -42,7 +53,15 @@ export class AudioManager {
         audio.id = `remoteAudio${trackLabel}`;
         audio.autoplay = true;
         audio.setAttribute('playsinline', 'true');
+        // Prevent iOS from treating this as an earpiece call stream
+        audio.setAttribute('x-webkit-airplay', 'deny');
         audio.controls = false;
+
+        // Route audio to default speaker output where setSinkId is supported (not iOS Safari).
+        // The empty string selects the system default output device (loudspeaker on mobile).
+        if (typeof (audio as any).setSinkId === 'function') {
+            (audio as any).setSinkId('').catch((e: unknown) => console.warn('setSinkId failed:', e));
+        }
 
         player.appendChild(audio);
         container.appendChild(player);

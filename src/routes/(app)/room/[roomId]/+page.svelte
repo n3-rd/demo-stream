@@ -39,7 +39,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import ChatPanel from '$lib/call/ChatPanel.svelte';
 	import ParticipantsPanel from '$lib/call/ParticipantsPanel.svelte';
 	import SyncSourceControls from '$lib/call/SyncSourceControls.svelte';
-	import { toast } from 'svelte-sonner';
+	import Loading from '$lib/call/Loading.svelte';
 	import { getRepInfo } from '$lib/utils.js';
     import { normalizeContent } from '$lib/utils/content';
 	import { Img } from 'svelte-email';
@@ -91,6 +91,7 @@ let currentVideoTime = 0;
 let isVideoMuted = $state(false);
 let userRole: 'host' | 'guest' | 'representative' = $state('guest');
 let hasVideoPlayed = $state(false);
+let joinerVideoReady = $state(false);
 
 // Live mode from data channel (rep GO LIVE = composited stream full-screen)
 let isRepLive = $state(false);
@@ -2158,6 +2159,11 @@ onMount(() => {
             playVideoStore.set(false);
         }
         
+        // Reset joiner loading state when URL changes
+        if (value) {
+            joinerVideoReady = false;
+        }
+        
         // If we have a video player and a URL, update it
         if (videoPlayer && value) {
             console.log('Updating video player source');
@@ -2405,6 +2411,16 @@ onMount(() => {
 
     // Start active speaker detection
     startSpeakerDetection();
+
+    // Resume AudioContext on first user interaction to ensure audio plays
+    // through loudspeaker on iOS/Android (browsers suspend AudioContext until gesture).
+    const resumeAudio = () => {
+        audioManager.resumeAudioContext();
+        document.removeEventListener('click', resumeAudio);
+        document.removeEventListener('touchstart', resumeAudio);
+    };
+    document.addEventListener('click', resumeAudio, { passive: true });
+    document.addEventListener('touchstart', resumeAudio, { passive: true });
 });
 
 onDestroy(() => {
@@ -2656,7 +2672,7 @@ run(() => {
   <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
 {:else}
     <!-- Always render meeting room in the background -->
-    <div class="h-screen min-w-full bg-bgdefault relative overflow-hidden">
+    <div class="min-w-full bg-bgdefault relative overflow-hidden" style="height: 100vh; height: 100dvh;">
         {#if showGreetingPopup}
             <GreetingPopup name={data?.representativeName} host={isHost} on:dismissed={handleGreetingDismissed} />
         {/if}
@@ -2799,18 +2815,26 @@ run(() => {
                                     Your browser does not support the video element.
                                 </video>
                             {:else}
-                                <video
-                                    class="w-full h-full object-contain absolute inset-0"
-                                    controls={false}
-                                    src={$currentVideoUrl}
-                                    bind:this={videoPlayer}
-                                    muted={isVideoMuted}
-                                    loop
-                                    preload="metadata"
-                                    crossorigin="anonymous"
-                                >
-                                    Your browser does not support the video element.
-                                </video>
+                                <div class="relative w-full h-full min-h-0">
+                                    <video
+                                        class="w-full h-full object-contain absolute inset-0"
+                                        controls={false}
+                                        src={$currentVideoUrl}
+                                        bind:this={videoPlayer}
+                                        muted={isVideoMuted}
+                                        loop
+                                        preload="metadata"
+                                        crossorigin="anonymous"
+                                        onplaying={() => joinerVideoReady = true}
+                                    >
+                                        Your browser does not support the video element.
+                                    </video>
+                                    {#if !joinerVideoReady}
+                                        <div class="absolute inset-0 bg-black flex items-center justify-center z-30">
+                                            <Loading />
+                                        </div>
+                                    {/if}
+                                </div>
                             {/if}
                         {:else if $currentImageUrl}
                             <ImageViewer

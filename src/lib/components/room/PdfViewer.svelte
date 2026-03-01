@@ -122,7 +122,12 @@
             const ratio = dist / lastPinchDist;
             const newScale = Math.min(Math.max(scale * ratio, ZOOM_MIN), ZOOM_MAX);
             scale = newScale;
-            // Defer heavy re-render until touch ends
+            // Apply immediate CSS transform for smooth visual feedback during pinch.
+            // The full re-render happens on touchend.
+            if (pdfContainer) {
+                pdfContainer.style.transform = `scale(${newScale / (lastRenderedScale ?? 1)})`;
+                pdfContainer.style.transformOrigin = 'top center';
+            }
             pdfZoomLevel.set(newScale);
         }
         lastPinchDist = dist;
@@ -132,14 +137,20 @@
         if (!isController || !isTouching) return;
         isTouching = false;
         lastPinchDist = 0;
-        // Re-render at final scale
+        // Reset CSS transform and do a full re-render at final scale
+        if (pdfContainer) {
+            pdfContainer.style.transform = '';
+            pdfContainer.style.transformOrigin = '';
+        }
         reloadPdf();
         broadcastZoom(scale);
     }
 
     async function reloadPdf() {
         if ($currentPdfUrl) {
+            if (pdfContainer) pdfContainer.classList.add('is-reloading');
             await loadPdf($currentPdfUrl);
+            if (pdfContainer) pdfContainer.classList.remove('is-reloading');
         }
     }
 
@@ -285,5 +296,11 @@
 <style>
     .pdf-container {
         scroll-behavior: smooth;
+    }
+
+    /* Brief opacity fade during re-render to reduce jarring flash effect on button zoom */
+    .pdf-container.is-reloading {
+        opacity: 0.7;
+        transition: opacity 0.15s ease;
     }
 </style>

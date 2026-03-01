@@ -475,7 +475,7 @@
         </Sheet.Content>
     </Sheet.Root> -->
     <div
-        class="lg:hidden fixed bottom-4 left-0 right-0 bg-[#5C5C5C] p-4 w-[94%] mx-auto rounded-2xl"
+        class="lg:hidden fixed left-0 right-0 bg-[#5C5C5C] p-4 w-[94%] mx-auto rounded-2xl mobile-bottom-bar"
         class:is-sharing={isScreenSharing}
         data-room={roomIdentityName}
     >
@@ -680,6 +680,13 @@
         object-fit: contain;
     }
 
+    /* Prevent double-tap zoom and reduce 300ms click delay on mobile */
+    button {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+    }
+
     .primary-toggle-btn.primary-toggle-muted .primary-toggle-icon,
     .primary-toggle-btn.primary-toggle-off .primary-toggle-icon {
         opacity: 0.9;
@@ -706,6 +713,12 @@
         align-items: center;
         justify-content: center;
         pointer-events: none;
+    }
+
+    /* Position bottom bar above safe area (browser navigation bar on iOS/Android) */
+    .mobile-bottom-bar {
+        bottom: 1rem;
+        bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
     }
     
 </style>

@@ -146,13 +146,18 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
 
         if (hostContentIds.length > 0) {
             expandedHostContent = await db.select().from(contentLibrary)
-                .where(inArray(contentLibrary.id, hostContentIds));
+                .where(and(inArray(contentLibrary.id, hostContentIds), eq(contentLibrary.active, true)));
         }
 
         if (repContentIds.length > 0) {
             expandedRepContent = await db.select().from(contentLibrary)
-                .where(inArray(contentLibrary.id, repContentIds));
+                .where(and(inArray(contentLibrary.id, repContentIds), eq(contentLibrary.active, true)));
         }
+
+        // Extract content active state for per-item active toggling in the room
+        const contentActiveState = (roomRecord.contentActiveState as Record<string, Record<string, boolean>> | null) ?? {};
+        const hostContentActive = contentActiveState.host_content_active ?? {};
+        const representativeContentActive = contentActiveState.representative_content_active ?? {};
 
         // Return room data with snake_case fields for UI compatibility
         return {
@@ -173,6 +178,8 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             additional_information: roomRecord.additionalInformation,
             representative_id: roomRecord.representativeId,
             representatives: roomRepresentatives,
+            host_content_active: hostContentActive,
+            representative_content_active: representativeContentActive,
             expand: {
                 representative: roomRepresentatives,
                 host_content: expandedHostContent.map((c: any) => ({

@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { stopPropagation, preventDefault } from 'svelte/legacy';
+
     import { Button } from "$lib/components/ui/button";
     import { MoreHorizontal, Upload, Link2, Eye, Archive, Trash2 } from 'lucide-svelte';
     import Sidenav from '$lib/components/layout/sidenav.svelte';
@@ -11,23 +13,20 @@
     import { toast } from "svelte-sonner";
     import { invalidateAll } from "$app/navigation";
 
-    export let data;
     
-    // Use data from the server
-    $: aiAssistants = data.aiAssistants || [];
 
-    let showAddDialog = false;
-    let showViewroomDialog = false;
-    let showEngagementDialog = false;
-    let showDeleteDialog = false;
-    let dialogTitle = '';
-    let contentToShow: any[] = [];
-    let newAssistantName = '';
-    let selectedViewrooms = [];
-    let selectedFiles: FileList | null = null;
-    let selectedAiId = '';
-    let selectedAiName = '';
-    let activeMenuId = '';
+    let showAddDialog = $state(false);
+    let showViewroomDialog = $state(false);
+    let showEngagementDialog = $state(false);
+    let showDeleteDialog = $state(false);
+    let dialogTitle = $state('');
+    let contentToShow: any[] = $state([]);
+    let newAssistantName = $state('');
+    let selectedViewrooms = $state([]);
+    let selectedFiles: FileList | null = $state(null);
+    let selectedAiId = $state('');
+    let selectedAiName = $state('');
+    let activeMenuId = $state('');
     
     function formatDate(date: string) {
         return new Date(date).toLocaleDateString('en-US', {
@@ -54,6 +53,7 @@
 
     // Add event listener when the component mounts
     import { onMount } from 'svelte';
+    let { data } = $props();
     onMount(() => {
         window.addEventListener('click', handleWindowClick);
         return () => {
@@ -150,6 +150,8 @@
         // Prevent default form submission
         event.preventDefault();
     }
+    // Use data from the server
+    let aiAssistants = $derived(data.aiAssistants || []);
 </script>
 
 <div class="flex h-screen bg-[#eceef3]">
@@ -205,7 +207,7 @@
                             <div class="flex items-center">
                                 <button 
                                     class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
-                                    on:click={() => showViewroomConnections(ai)}
+                                    onclick={() => showViewroomConnections(ai)}
                                 >
                                     show
                                 </button>
@@ -213,7 +215,7 @@
                             <div class="flex items-center">
                                 <button 
                                     class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
-                                    on:click={() => showEngagements(ai)}
+                                    onclick={() => showEngagements(ai)}
                                 >
                                     show
                                 </button>
@@ -221,7 +223,7 @@
                             <div class="flex items-center justify-end relative">
                                 <button 
                                     class="p-2 rounded-full hover:bg-gray-100 menu-trigger"
-                                    on:click|stopPropagation={() => toggleMenu(ai.id)}
+                                    onclick={stopPropagation(() => toggleMenu(ai.id))}
                                 >
                                     <MoreHorizontal class="h-4 w-4" />
                                 </button>
@@ -231,7 +233,7 @@
                                         <div class="space-y-1">
                                             <form
                                                 method="POST"
-                                                on:submit|preventDefault={async (e) => {
+                                                onsubmit={preventDefault(async (e) => {
                                                     const formData = new FormData(e.target);
                                                     
                                                     try {
@@ -253,7 +255,7 @@
                                                     } finally {
                                                         await invalidateAll();
                                                     }
-                                                }}
+                                                })}
                                             >
                                                 <input type="hidden" name="status" value="false" />
                                                 <button 
@@ -266,7 +268,7 @@
                                             </form>
                                             <form
                                                 method="POST"
-                                                on:submit|preventDefault={async (e) => {
+                                                onsubmit={preventDefault(async (e) => {
                                                     const formData = new FormData(e.target);
                                                     
                                                     try {
@@ -288,7 +290,7 @@
                                                     } finally {
                                                         await invalidateAll();
                                                     }
-                                                }}
+                                                })}
                                             >
                                                 <button
                                                     type="submit"
@@ -315,7 +317,7 @@
     <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
         <form
             method="POST"
-            on:submit|preventDefault={async (e) => {
+            onsubmit={preventDefault(async (e) => {
                 const form = e.target;
                 if (!(form instanceof HTMLFormElement)) return;
                 const formData = new FormData(form);
@@ -341,7 +343,7 @@
                 } finally {
                     await invalidateAll();
                 }
-            }}
+            })}
             enctype="multipart/form-data"
         >
             <div class="space-y-4">
@@ -398,7 +400,7 @@
                                                 id="viewroom_{viewroom.id}" 
                                                 value={viewroom.id}
                                                 class="hidden peer"
-                                                on:change={(e) => {
+                                                onchange={(e) => {
                                                     const checkbox = e.currentTarget;
                                                     if (checkbox.checked) {
                                                         selectedViewrooms = [...selectedViewrooms, viewroom.id];
@@ -445,7 +447,7 @@
                                 class="hidden"
                                 multiple
                                 accept=".pdf,.docx,.doc"
-                                on:change={handleFileChange}
+                                onchange={handleFileChange}
                             />
                         </label>
                     </div>
@@ -460,7 +462,7 @@
                     <button 
                         type="button"
                         class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-1 text-sm rounded mr-2"
-                        on:click={() => showAddDialog = false}
+                        onclick={() => showAddDialog = false}
                     >
                         Cancel
                     </button>
@@ -552,7 +554,7 @@
     <Dialog.Content class="max-w-md bg-white rounded-lg p-5 shadow-lg">
         <form
             method="POST"
-            on:submit|preventDefault={async (e) => {
+            onsubmit={preventDefault(async (e) => {
                 const formData = new FormData(e.target);
                 
                 try {
@@ -575,7 +577,7 @@
                 } finally {
                     await invalidateAll();
                 }
-            }}
+            })}
         >
             <div class="space-y-4">
                 <h2 class="text-lg font-semibold text-red-500">Delete AI Assistant</h2>

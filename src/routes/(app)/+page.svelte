@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { stopPropagation } from 'svelte/legacy';
+
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from "$lib/components/ui/dialog";
   import { PUBLIC_POCKETBASE_INSTANCE } from '$env/static/public';
@@ -35,21 +37,25 @@
     library_type?: string | string[];
   }
 
-  export let data: {
+  interface Props {
+    data: {
     room: Room;
     hostContent: ContentItem[];
     representativeContent: ContentItem[];
     contentLibrary: ContentItem[];
     user?: any;
   };
+  }
+
+  let { data }: Props = $props();
   
   let loading = true;
-  let { room, hostContent, representativeContent, contentLibrary, user } = data;
+  let { room, hostContent, representativeContent, contentLibrary, user } = $state(data);
 
   console.log(data);
 
   // Content library functionality
-  let selectedTab = 'host';
+  let selectedTab = $state('host');
   let contentTypes = ['video', 'pdf', 'document', 'image'];
   let contentTypeLabels = {
       'video': 'Videos',
@@ -61,18 +67,18 @@
   // Store references to carousel containers
   let carouselContainers = {};
   // Track scroll position for each carousel
-  let carouselScrollState = {};
+  let carouselScrollState = $state({});
   
   // Delete confirmation dialog
-  let showDeleteDialog = false;
-  let contentToDelete = null;
+  let showDeleteDialog = $state(false);
+  let contentToDelete = $state(null);
 
   function handleTabChange(tab: string) {
       selectedTab = tab;
   }
 
   // All content and grouping by type - mirror content-library filtering
-  $: allContent = (() => {
+  let allContent = $derived((() => {
       const byId = new Map<string, any>();
       (hostContent || []).forEach((item: any) => {
           byId.set(item.id, { ...item });
@@ -88,8 +94,8 @@
           }
       });
       return Array.from(byId.values());
-  })();
-  $: contentByType = contentTypes.map(type => ({
+  })());
+  let contentByType = $derived(contentTypes.map(type => ({
       type,
       label: contentTypeLabels[type],
       items: allContent.filter(item => {
@@ -98,7 +104,7 @@
               : item.library_type === 'representative' || (Array.isArray(item.library_type) && item.library_type.includes('representative'));
           return libraryTypeMatch && item.type === type;
       })
-  }));
+  })));
 
   function getIcon(type: string) {
       switch (type) {
@@ -263,13 +269,13 @@
               <div class="flex space-x-8">
                   <button 
                       class="text-[24px] leading-[118%] {selectedTab === 'host' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}"
-                      on:click={() => handleTabChange('host')}
+                      onclick={() => handleTabChange('host')}
                   >
                       Host Content
                   </button>
                   <button 
                       class="text-[24px] leading-[118%] {selectedTab === 'representative' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}"
-                      on:click={() => handleTabChange('representative')}
+                      onclick={() => handleTabChange('representative')}
                   >
                       Representative Content
                   </button>
@@ -307,7 +313,7 @@
                           {#if needsNavigation(contentGroup.type, contentGroup.items) && carouselScrollState[contentGroup.type]?.canScrollLeft}
                               <button 
                                   class="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center hover:bg-gray-100 border border-gray-100"
-                                  on:click={() => scrollCarousel(contentGroup.type, 'left')}
+                                  onclick={() => scrollCarousel(contentGroup.type, 'left')}
                               >
                               <img src="/icons/icon-carousel-back.svg" class="w-6 h-6 text-[#737373]" />
                               </button>
@@ -330,16 +336,16 @@
                                                       class="w-[217.66px] h-[128.22px] object-cover rounded-[1px]"
                                                   />
                                               {:else}
+                                                  {@const SvelteComponent = getIcon(item.type)}
                                                   <div class="w-[217.66px] h-[128.22px] bg-[#ECEFF3] rounded-[1px] flex items-center justify-center">
-                                                      <svelte:component 
-                                                          this={getIcon(item.type)} 
+                                                      <SvelteComponent 
                                                           class="w-12 h-12 text-[#666666]"
                                                       />
                                                   </div>
                                               {/if}
                                               {#if item.type === 'video'}
                                                   <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                                                  on:click={()=>{
+                                                  onclick={()=>{
                                                       handleContentClick(item);
                                                   }}
                                                   >
@@ -352,13 +358,13 @@
                                               <div class="absolute top-2 right-2 flex gap-2">
                                                   <button 
                                                       class="w-[21.23px] h-[19.11px] bg-[#577AB7] rounded-full flex items-center justify-center shadow-sm"
-                                                      on:click|stopPropagation={() => goto(`/content-library/${item.id}/edit`)}
+                                                      onclick={stopPropagation(() => goto(`/content-library/${item.id}/edit`))}
                                                   >
                                                       <Pencil class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
                                                   </button>
                                                   <button 
                                                       class="w-[21.23px] h-[19.11px] bg-[#EB3223] rounded-full flex items-center justify-center shadow-sm"
-                                                      on:click|stopPropagation={(e) => openDeleteDialog(item, e)}
+                                                      onclick={stopPropagation((e) => openDeleteDialog(item, e))}
                                                   >
                                                       <Trash2 class="w-[14.16px] h-[12.74px] text-[#ECEFF3]" />
                                                   </button>
@@ -377,7 +383,7 @@
                           {#if needsNavigation(contentGroup.type, contentGroup.items) && carouselScrollState[contentGroup.type]?.canScrollRight}
                               <button 
                                   class="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center hover:bg-gray-100 border border-gray-100"
-                                  on:click={() => scrollCarousel(contentGroup.type, 'right')}
+                                  onclick={() => scrollCarousel(contentGroup.type, 'right')}
                               >
                                   <img src="/icons/icon-carousel-front.svg" class="w-6 h-6 text-[#737373]" />
                               </button>
@@ -416,9 +422,9 @@
                           class="w-16 h-16 object-cover rounded"
                       />
                   {:else}
+                      {@const SvelteComponent_1 = getIcon(contentToDelete.type)}
                       <div class="w-16 h-16 bg-[#ECEFF3] rounded flex items-center justify-center">
-                          <svelte:component 
-                              this={getIcon(contentToDelete.type)} 
+                          <SvelteComponent_1 
                               class="w-8 h-8 text-[#666666]"
                           />
                       </div>

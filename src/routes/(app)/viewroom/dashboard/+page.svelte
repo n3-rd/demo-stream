@@ -7,9 +7,9 @@
   import { onMount } from 'svelte';
   const FILES_BASE = '/api/files';
   
-  export let data;
+  let { data } = $props();
   let { content = [] } = data;
-  let selectedTab = 'host';
+  let selectedTab = $state('host');
   let contentTypes = ['video', 'pdf', 'document', 'image'];
   let contentTypeLabels = {
     video: 'Videos',
@@ -19,7 +19,7 @@
   };
   
   // Group content by type for tabs
-  $: contentByType = contentTypes.map((type) => ({
+  let contentByType = $derived(contentTypes.map((type) => ({
     type,
     label: contentTypeLabels[type],
     items: content.filter((item) => {
@@ -29,7 +29,7 @@
           : item.library_type === 'representative' || (Array.isArray(item.library_type) && item.library_type.includes('representative'));
       return libraryTypeMatch && item.type === type;
     })
-  }));
+  })));
   
   function handleTabChange(tab: string) {
     selectedTab = tab;
@@ -43,7 +43,7 @@
     window.open(`${FILES_BASE}/content_library/${item.id}/${item.file}`, '_blank');
   }
   
-  let viewroomUser: any = null;
+  let viewroomUser: any = $state(null);
   
   onMount(() => {
     // Get user info from cookie
@@ -140,10 +140,10 @@
     <!-- Content view (same structure as content-library) -->
     <div class="bg-white rounded-[8px] p-4 mb-6 flex justify-between items-center">
       <div class="flex space-x-8">
-        <button class=" text-[24px] leading-[118%] {selectedTab === 'host' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}" on:click={() => handleTabChange('host')}>
+        <button class=" text-[24px] leading-[118%] {selectedTab === 'host' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}" onclick={() => handleTabChange('host')}>
           Host Content
         </button>
-        <button class=" text-[24px] leading-[118%] {selectedTab === 'representative' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}" on:click={() => handleTabChange('representative')}>
+        <button class=" text-[24px] leading-[118%] {selectedTab === 'representative' ? 'text-[#577AB7] font-bold' : 'text-[#737373]'}" onclick={() => handleTabChange('representative')}>
           Representative Content
         </button>
       </div>
@@ -162,8 +162,9 @@
                     {:else if item.type === 'image'}
                       <img src={`${FILES_BASE}/content_library/${item.id}/${item.file}`} alt={item.title} class="w-full aspect-video object-cover rounded" />
                     {:else}
+                      {@const SvelteComponent = getIcon(item.type)}
                       <div class="w-full aspect-video bg-[#ECEFF3] rounded flex items-center justify-center">
-                        <svelte:component this={getIcon(item.type)} class="w-12 h-12 text-[#666666]" />
+                        <SvelteComponent class="w-12 h-12 text-[#666666]" />
                       </div>
                     {/if}
                     <div class="absolute inset-0 flex items-center justify-center">

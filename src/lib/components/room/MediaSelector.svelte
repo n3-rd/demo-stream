@@ -1,32 +1,39 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import { createEventDispatcher, onMount } from 'svelte';
     import { currentVideoUrl, currentPdfUrl, currentDocxUrl, currentImageUrl } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { normalizeContent } from '$lib/utils/content';
 
-    export let isHost: boolean;
-    export let isRepresentative: boolean;
-    export let room: any;
-    export let roomName: string = '';
-    export let hostContentItems: any[] = [];
-    export let repContentItems: any[] = [];
+    interface Props {
+        isHost: boolean;
+        isRepresentative: boolean;
+        room: any;
+        roomName?: string;
+        hostContentItems?: any[];
+        repContentItems?: any[];
+    }
 
-
-    // Remove verbose logging
-    console.log("MediaSelector props:", {
+    let {
         isHost,
         isRepresentative,
         room,
-        roomName,
-        hostContentItems,
-        repContentItemsLength: repContentItems?.length || 0
-    });
-    console.log("is representative", isRepresentative);
-    console.log("hostContentItems", hostContentItems);
-    console.log("repContentItems", repContentItems);
+        roomName = '',
+        hostContentItems = [],
+        repContentItems = []
+    }: Props = $props();
 
     const dispatch = createEventDispatcher();
 
+    run(() => {
+        if (import.meta.env.DEV) {
+            console.log('MediaSelector props:', { isHost, isRepresentative, room, roomName, hostContentItems, repContentItemsLength: repContentItems?.length ?? 0 });
+            console.log('is representative', isRepresentative);
+            console.log('hostContentItems', hostContentItems);
+            console.log('repContentItems', repContentItems);
+        }
+    });
 
     // Check if content is active in the room
     function isContentActive(contentId: string, forHost: boolean) {
@@ -39,29 +46,29 @@
     }
 
     // Filter content based on role and active status
-    $: hostContent = normalizeContent(hostContentItems)
+    let hostContent = $derived(normalizeContent(hostContentItems)
         .filter(item => {
             const isIncluded = room?.host_content?.includes(item.id);
             return isIncluded;
         })
-        .filter(item => isContentActive(item.id, true));
+        .filter(item => isContentActive(item.id, true)));
         
-    $: repContent = normalizeContent(repContentItems)
+    let repContent = $derived(normalizeContent(repContentItems)
         .filter(item => {
             const isIncluded = room?.representative_content?.includes(item.id);
             return isIncluded;
         })
-        .filter(item => isContentActive(item.id, false));
+        .filter(item => isContentActive(item.id, false)));
 
-    $: {
+    run(() => {
         // Remove logging
         // console.log("hostContent", hostContent);
         // console.log("repContent", repContent);
-    }
+    });
 
     // Determine which content sections to show
-    $: showHostContent = isHost;
-    $: showRepContent = isRepresentative;
+    let showHostContent = $derived(isHost);
+    let showRepContent = $derived(isRepresentative);
 
     function handleMediaSelect(item) {
         // Determine file type based on database types
@@ -186,7 +193,7 @@
                         <div class="flex flex-col gap-3">
                             <button
                             class="relative aspect-video bg-black overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
-                            on:click={() => handleMediaSelect(item)}
+                            onclick={() => handleMediaSelect(item)}
                         >
                             {#if fileType === 'video'}
                                 {#if item.thumbnail}
@@ -251,7 +258,7 @@
                         {@const fileType = (item.type || 'unknown').toLowerCase()}
                         <button
                             class="relative aspect-video bg-black  overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
-                            on:click={() => handleMediaSelect(item)}
+                            onclick={() => handleMediaSelect(item)}
                         >
                             {#if fileType === 'video'}
                                 {#if item.thumbnail}
@@ -308,21 +315,3 @@
         <div class="text-center py-8 text-white">No content available for this room</div>
     {/if}
 </div>
-
-<style>
-    .content-selector {
-        @apply p-4;
-    }
-    
-    .loading, .error {
-        @apply text-center py-8 text-white;
-    }
-    
-    .error {
-        @apply text-red-500;
-    }
-
-    .content-section:empty {
-        @apply hidden;
-    }
-</style>

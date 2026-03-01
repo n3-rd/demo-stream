@@ -1,17 +1,32 @@
 <script>
-    export let roomIdentityName;
-    export let isMicMuted;
-    export let isCameraOff;
-    /** 'granted' | 'denied' | 'prompt' | 'unknown' */
-    export let micPermission = 'unknown';
-    /** 'granted' | 'denied' | 'prompt' | 'unknown' */
-    export let cameraPermission = 'unknown';
+    
+    
     import { Button } from "$lib/components/ui/button";
     import { Mic, MicOff, Settings, CameraOffIcon, CameraIcon, Monitor, Volume2, VolumeX, AlertTriangle } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
-    export let isScreenSharing = false;
-    export let isVideoMuted = false;
-    export let videoVolume = 1.0; // Default to 100%
+    /**
+     * @typedef {Object} Props
+     * @property {any} roomIdentityName
+     * @property {any} isMicMuted
+     * @property {any} isCameraOff
+     * @property {string} [micPermission] - 'granted' | 'denied' | 'prompt' | 'unknown'
+     * @property {string} [cameraPermission] - 'granted' | 'denied' | 'prompt' | 'unknown'
+     * @property {boolean} [isScreenSharing]
+     * @property {boolean} [isVideoMuted]
+     * @property {number} [videoVolume] - Default to 100%
+     */
+
+    /** @type {Props} */
+    let {
+        roomIdentityName,
+        isMicMuted,
+        isCameraOff,
+        micPermission = 'unknown',
+        cameraPermission = 'unknown',
+        isScreenSharing = false,
+        isVideoMuted = false,
+        videoVolume = $bindable(1.0)
+    } = $props();
     const dispatch = createEventDispatcher();
     
     function handleVolumeChange(event) {
@@ -19,8 +34,8 @@
         dispatch('volumeChange', { volume: newVolume });
     }
 
-    $: micBlocked = micPermission === 'denied';
-    $: cameraBlocked = cameraPermission === 'denied';
+    let micBlocked = $derived(micPermission === 'denied');
+    let cameraBlocked = $derived(cameraPermission === 'denied');
 </script>
  <!-- Bottom controls bar -->
  <div
@@ -37,7 +52,7 @@
              class:bg-red-700={micBlocked}
              class:bg-[#707172]={!micBlocked}
              title={micBlocked ? 'Microphone blocked — click to request access' : (isMicMuted ? 'Unmute microphone' : 'Mute microphone')}
-             on:click={() => micBlocked ? dispatch('requestMicPermission') : dispatch("toggleMicrophone")}
+             onclick={() => micBlocked ? dispatch('requestMicPermission') : dispatch("toggleMicrophone")}
          >
              {#if micBlocked}
                  <MicOff color="#fff" size={24} />
@@ -61,7 +76,7 @@
              class:bg-red-700={cameraBlocked}
              class:bg-[#707172]={!cameraBlocked}
              title={cameraBlocked ? 'Camera blocked — click to request access' : (isCameraOff ? 'Turn camera on' : 'Turn camera off')}
-             on:click={() => cameraBlocked ? dispatch('requestCameraPermission') : dispatch("toggleCamera")}
+             onclick={() => cameraBlocked ? dispatch('requestCameraPermission') : dispatch("toggleCamera")}
          >
              {#if cameraBlocked}
                  <CameraOffIcon color="#fff" size={24} />
@@ -80,7 +95,7 @@
 
      <button
          class="flex justify-center items-center rounded-full bg-[#707172] h-10 w-10 hover:bg-white hover:text-black"
-         on:click={() => dispatch("toggleVideoMute")}
+         onclick={() => dispatch("toggleVideoMute")}
          title={isVideoMuted ? 'Unmute video' : 'Mute video'}
      >
          {#if isVideoMuted}
@@ -100,7 +115,7 @@
              step="0.01" 
              bind:value={videoVolume}
              class="w-20 h-2 bg-white/20 rounded-lg appearance-none cursor-pointer"
-             on:input={handleVolumeChange}
+             oninput={handleVolumeChange}
          />
      </div>
 

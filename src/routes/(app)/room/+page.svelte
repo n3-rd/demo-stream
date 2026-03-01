@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { preventDefault } from 'svelte/legacy';
+
 
     import { page } from '$app/stores';
     import * as Dialog from '$lib/components/ui/dialog';
@@ -40,26 +42,26 @@
         label: string;
     }
 
-    export let data;
+    let { data } = $props();
     const form = useForm();
 
-    let showAddRoomDialog = false;
-    let selectedHostContent: string[] = [];
-    let selectedRepContent: string[] = [];
-    let selectedRepresentatives: string[] = [];
-    let embedRoomId = '';
-    let showEmbed = false;
-    let showContentDialog = false;
-    let contentToShow: any[] = [];
-    let dialogTitle = '';
+    let showAddRoomDialog = $state(false);
+    let selectedHostContent: string[] = $state([]);
+    let selectedRepContent: string[] = $state([]);
+    let selectedRepresentatives: string[] = $state([]);
+    let embedRoomId = $state('');
+    let showEmbed = $state(false);
+    let showContentDialog = $state(false);
+    let contentToShow: any[] = $state([]);
+    let dialogTitle = $state('');
 
-    $: ({ 
+    let { 
         rooms = [], 
         representatives = [], 
         hostContent = [], 
         repContent = [], 
         locations = [] 
-    } = data || {});
+    } = $derived(data || {});
 
     // Fix the undefined error by adding conditional initialization
     const room = data?.roomId && data.roomId.length > 0 ? data.roomId[0] : null;
@@ -379,7 +381,7 @@
                         
                         <button 
                             class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80"
-                            on:click={() => window.location.reload()}
+                            onclick={() => window.location.reload()}
                         >
                             Refresh Page
                         </button>
@@ -395,7 +397,7 @@
                             <div class="text-[16px] font-medium text-[#7798D2] flex items-center justify-center">
                                 <button 
                                     class="hover:underline"
-                                    on:click={() => goto(`/room/${room.id}/info`)}
+                                    onclick={() => goto(`/room/${room.id}/info`)}
                                 >
                                     {room.title}
                                 </button>
@@ -403,9 +405,9 @@
                             <div class="flex items-center justify-center">
                                 <div 
                                     class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
-                                    on:click={() => toggleRoomActive(room)}
+                                    onclick={() => toggleRoomActive(room)}
                                 >
-                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200" />
+                                    <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full {room.is_active ? 'bg-[#55D976] translate-x-[22px]' : 'bg-[#7C7C7C] translate-x-[3px]'} transition-all duration-200"></div>
                                 </div>
                             </div>
                             <div class="text-[16px] font-normal text-[#808080] flex items-center justify-center">
@@ -416,7 +418,7 @@
                             <div class="flex items-center justify-center">
                                 <button 
                                     class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
-                                    on:click={() => showHostContent(room.host_content)}
+                                    onclick={() => showHostContent(room.host_content)}
                                 >
                                     show
                                 </button>
@@ -424,7 +426,7 @@
                             <div class="flex items-center justify-center">
                                 <button 
                                     class="text-[16px] font-normal text-[#808080] flex items-center gap-2"
-                                    on:click={() => showRepContent(room.representative_content)}
+                                    onclick={() => showRepContent(room.representative_content)}
                                 >
                                     show
                                 </button>
@@ -432,7 +434,7 @@
                             <div class="flex items-center justify-center">
                                 <button 
                                     class="text-[16px] font-normal text-[#808080]"
-                                    on:click={() => showEmbedDialog(room.id)}
+                                    onclick={() => showEmbedDialog(room.id)}
                                 >
                                     show
                                 </button>
@@ -454,7 +456,7 @@
         <Dialog.Header>
             <Dialog.Title>Add New Room</Dialog.Title>
         </Dialog.Header>
-        <form method="POST" use:form on:submit|preventDefault={onSubmitCreateRoom}>
+        <form method="POST" use:form onsubmit={preventDefault(onSubmitCreateRoom)}>
             <div class="space-y-4 py-4">
                 <div class="space-y-2">
                     <Label for="title">Title</Label>
@@ -552,7 +554,7 @@
                                                 id="representative_{rep.id}" 
                                                 value={rep.id}
                                                 class="hidden peer"
-                                                on:change={(e) => handleRepCheckboxChange(e, rep.id)}
+                                                onchange={(e) => handleRepCheckboxChange(e, rep.id)}
                                                 checked={selectedRepresentatives.includes(rep.id)}
                                             />
                                             <label 
@@ -634,7 +636,7 @@
                                                 id="host_{content.id}" 
                                                 value={content.id}
                                                 class="hidden peer"
-                                                on:change={(e) => handleHostContentCheckboxChange(e, content.id)}
+                                                onchange={(e) => handleHostContentCheckboxChange(e, content.id)}
                                                 checked={selectedHostContent.includes(content.id)}
                                             />
                                             <label 
@@ -721,7 +723,7 @@
                                                 id="rep_{content.id}" 
                                                 value={content.id}
                                                 class="hidden peer"
-                                                on:change={(e) => handleRepContentCheckboxChange(e, content.id)}
+                                                onchange={(e) => handleRepContentCheckboxChange(e, content.id)}
                                                 checked={selectedRepContent.includes(content.id)}
                                             />
                                             <label 
@@ -810,7 +812,7 @@
                                     <span class="text-sm text-gray-500">Active</span>
                                     <div 
                                         class="relative w-[39px] h-[19.5px] bg-[#DDDDDD] rounded-full cursor-pointer"
-                                        on:click={() => {
+                                        onclick={() => {
                                             const roomId = rooms.find(room => 
                                                 (room.expand?.host_content?.some(c => c.id === content.id) || 
                                                 room.expand?.representative_content?.some(c => c.id === content.id))
@@ -836,9 +838,9 @@
                                                 }
                                                 return true;
                                             })()}
-                                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200" />
+                                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#55D976] translate-x-[22px] transition-all duration-200"></div>
                                             {:else}
-                                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#7C7C7C] translate-x-[3px] transition-all duration-200" />
+                                                <div class="absolute left-0 top-1/2 -translate-y-1/2 w-[13.5px] h-[13.5px] rounded-full bg-[#7C7C7C] translate-x-[3px] transition-all duration-200"></div>
                                             {/if}
                                         {/if}
                                     </div>

@@ -2,8 +2,8 @@
 	import { Toaster, toast } from 'svelte-sonner';
 	import '../../app.css';
 
-	export let data;
+	let { data, children } = $props();
 </script>
 
 <Toaster />
-<slot />
+{@render children?.()}

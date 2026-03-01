@@ -14,14 +14,12 @@
 	import { Clapperboard, Video, VideoOff, Mic, MicOff, Monitor } from 'lucide-svelte';
 
 
-	export let callObject;
-	export let screensList;
-	export let host;
-	let browserSupport;
-	let camOn;
-	let micOn;
+	let { callObject, screensList, host } = $props();
+	let browserSupport = $state();
+	let camOn = $state();
+	let micOn = $state();
 
-	$: disableScreenShare = screensList?.length > 0 && !screensList[0].local;
+	let disableScreenShare = $derived(screensList?.length > 0 && !screensList[0].local);
 
 	onMount(() => {
 		if (browser) {
@@ -76,7 +74,7 @@
 
 <div class="controls-container w-full hidden">
     <div class="devices flex gap-3 items-center">
-        <button on:click={toggleVideo}>
+        <button onclick={toggleVideo}>
             <!-- <img src={camOn ? camOnIcon : camOffIcon} alt="Toggle local video" /> -->
 			 {#if camOn}
 			 <Video	color="#fff"/>
@@ -84,7 +82,7 @@
 			 <VideoOff color="#fff"/>
 			 {/if}
         </button>
-        <button on:click={toggleAudio}>
+        <button onclick={toggleAudio}>
             <!-- <img src={micOn ? micOnIcon : micOffIcon} alt="Toggle local audio" color="#fff"/> -->
 			 {#if micOn}
 			 <Mic color="#fff"/>
@@ -93,14 +91,14 @@
 			 {/if}
         </button>
         {#if browserSupport?.supportsScreenShare}
-            <button on:click={toggleScreenShare} disabled={disableScreenShare}>
+            <button onclick={toggleScreenShare} disabled={disableScreenShare}>
                 <!-- <img src={screenIcon} alt="Toggle screen share" color="#fff"/> -->
 				<Monitor color="#fff"/>
             </button>
         {/if}
 		
         <button
-            on:click={() => {
+            onclick={() => {
                 togglePicker();
             }}
         >

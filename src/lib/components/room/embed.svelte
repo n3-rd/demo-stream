@@ -1,16 +1,20 @@
 <script lang="ts">
-    export let videoId: string;
     import { Input } from "$lib/components/ui/input";
 	import { ClipboardCopy } from 'lucide-svelte';
     import { copyText } from '$lib/helpers/copyText';
     import { toast } from 'svelte-sonner';
     import { Button } from "$lib/components/ui/button";
     import { page} from '$app/stores';
+    interface Props {
+        videoId: string;
+    }
 
-    let width = 1100;
-    let height = 700;
+    let { videoId }: Props = $props();
+
+    let width = $state(1100);
+    let height = $state(700);
     
-    $: embedCode = `<iframe src="${$page.url.origin}/room/${videoId}/embed" style="border: none; width: ${width}px; height: ${height}px;" allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read"></iframe>`;
+    let embedCode = $derived(`<iframe src="${$page.url.origin}/room/${videoId}/embed" style="border: none; width: ${width}px; height: ${height}px;" allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write; clipboard-read"></iframe>`);
     
     // $: scriptEmbedCode = `<script src="${window.location.origin}/embed.js" data-room-url="${roomUrl}" data-width="${width}" data-height="${height}"><\/script>`;
     

@@ -15,9 +15,9 @@
 		code: string;
 	}
 
-	let mockCodes: MockSMS[] = [];
-	let loading = false;
-	let autoRefresh = true;
+	let mockCodes: MockSMS[] = $state([]);
+	let loading = $state(false);
+	let autoRefresh = $state(true);
 	let refreshInterval: NodeJS.Timeout;
 
 	// Redirect if not in dev mode

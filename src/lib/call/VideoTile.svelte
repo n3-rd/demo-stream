@@ -1,4 +1,6 @@
 <script>
+    import { run } from 'svelte/legacy';
+
     import micOnIcon from './assets/mic_on.svg';
     import micOffIcon from './assets/mic_off.svg';
     import NoVideoPlaceholder from './NoVideoPlaceholder.svelte';
@@ -11,21 +13,35 @@
 	import { writable } from 'svelte/store';
 	import { activeSpeaker, currentVideoUrl } from '$lib/callStores';
 
-    export let participant;
-    export let callObject;
-    export let screen;
-    export let screensList;
-    export let host = false;
-    export let name;
-    export let roomId;
+    /**
+     * @typedef {Object} Props
+     * @property {any} participant
+     * @property {any} callObject
+     * @property {any} screen
+     * @property {any} screensList
+     * @property {boolean} [host]
+     * @property {any} name
+     * @property {any} roomId
+     */
+
+    /** @type {Props} */
+    let {
+        participant,
+        callObject,
+        screen,
+        screensList,
+        host = false,
+        name,
+        roomId
+    } = $props();
     
 
-    let videoTrackSet = false;
-    let videoSrc;
-    $: videoTrack = participant?.tracks?.video;
-    $: screenTrack = participant?.tracks?.screenVideo;
-    $: screenAudioTrack = participant?.tracks?.screenAudio;
-    $: {
+    let videoTrackSet = $state(false);
+    let videoSrc = $state();
+    let videoTrack = $derived(participant?.tracks?.video);
+    let screenTrack = $derived(participant?.tracks?.screenVideo);
+    let screenAudioTrack = $derived(participant?.tracks?.screenAudio);
+    run(() => {
         if (screenTrack?.state === 'playable' && !videoTrackSet) {
             videoSrc = new MediaStream([screenTrack.track]);
             videoTrackSet = true;
@@ -33,21 +49,21 @@
             videoSrc = new MediaStream([videoTrack.persistentTrack]);
             videoTrackSet = true;
         }
-    }
-    let videoUrl;
-    $: {
+    });
+    let videoUrl = $state();
+    run(() => {
         videoUrl = $currentVideoUrl;
         console.log('Video URL updated:', {
             currentVideoUrl: $currentVideoUrl,
             videoUrl,
             roomId
         });
-    }
+    });
 
-    let audioTrackSet = false;
-    let audioSrc;
-    $: audioTrack = participant?.tracks?.audio;
-    $: {
+    let audioTrackSet = $state(false);
+    let audioSrc = $state();
+    let audioTrack = $derived(participant?.tracks?.audio);
+    run(() => {
         if (screenAudioTrack?.state === 'playable' && !audioTrackSet) {
             audioSrc = new MediaStream([screenAudioTrack.track]);
             audioTrackSet = true;
@@ -55,35 +71,35 @@
             audioSrc = new MediaStream([audioTrack.persistentTrack]);
             audioTrackSet = true;
         }
-    }
+    });
 
     // Separate audio source for screen audio
-    let screenAudioSrc;
-    $: {
+    let screenAudioSrc = $state();
+    run(() => {
         if (screenAudioTrack?.state === 'playable') {
             screenAudioSrc = new MediaStream([screenAudioTrack.track]);
         } else {
             screenAudioSrc = null;
         }
-    }
+    });
 
-    let screenVideoSrc;
-    $: {
+    let screenVideoSrc = $state();
+    run(() => {
         if (screen && screenTrack?.state === 'playable') {
             screenVideoSrc = new MediaStream([screenTrack.track]);
         } else {
             screenVideoSrc = null;
         }
-    }
+    });
 
     // Reactive statement to constantly check for changes in screen video
-    $: {
+    run(() => {
         if (screen && screenTrack?.state === 'playable') {
             screenVideoSrc = new MediaStream([screenTrack.track]);
         } else {
             screenVideoSrc = null;
         }
-    }
+    });
 
     function srcObject(node, stream) {
         node.srcObject = stream;
@@ -229,18 +245,18 @@
         }
     }
 
-    $: {
+    run(() => {
         if (videoSrc) {
             setupVideo();
         }
-    }
+    });
 
     // New reactive statement to determine if the video should be displayed
-    let shouldDisplayVideo;
-    $: {
+    let shouldDisplayVideo = $state();
+    run(() => {
         shouldDisplayVideo = videoSrc && (!host || (host && $playVideoStore) || participant.isScreenSharing);
         console.log('shouldDisplayVideo', shouldDisplayVideo);
-    }
+    });
 
     onMount(() => {
         callObject.on('track-started', handleTrackStarted);
@@ -291,7 +307,7 @@
         {/if}
     {/if}
 
-    {#if shouldDisplayVideo }
+    {#if shouldDisplayVideo}
         <!-- <video 
             id={`video-${participant?.session_id}`}
             playsInline 

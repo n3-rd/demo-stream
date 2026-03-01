@@ -4,15 +4,29 @@
     import { X } from 'lucide-svelte';
     import Participants from '$lib/call/Participants.svelte';
 
-    export let meetingParticipants: any[];
-    export let isHost: boolean;
-    export let name: string;
-    export let users: any[];
-    export let shareURL: string;
-    export let publishStreamId: string;
-    export let activeSpeakerStreamId: string | null;
-    /** When false, hide "Invite people" (e.g. anonymous users). */
-    export let showInvitePeople = true;
+    
+    interface Props {
+        meetingParticipants: any[];
+        isHost: boolean;
+        name: string;
+        users: any[];
+        shareURL: string;
+        publishStreamId: string;
+        activeSpeakerStreamId: string | null;
+        /** When false, hide "Invite people" (e.g. anonymous users). */
+        showInvitePeople?: boolean;
+    }
+
+    let {
+        meetingParticipants,
+        isHost,
+        name,
+        users,
+        shareURL,
+        publishStreamId,
+        activeSpeakerStreamId,
+        showInvitePeople = true
+    }: Props = $props();
 
     const dispatch = createEventDispatcher();
 </script>

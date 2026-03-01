@@ -12,7 +12,7 @@
 	<div class="permissions-card">
 		<h2>Camera or mic blocked</h2>
 		<p>Update your browser device permissions to join call.</p>
-		<button on:click={tryAgain}>Try again</button>
+		<button onclick={tryAgain}>Try again</button>
 		<a
 			href="https://help.daily.co/en/articles/2528184-unblock-camera-mic-access-on-a-computer"
 			rel="noreferrer noopener"

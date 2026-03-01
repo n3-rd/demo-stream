@@ -15,12 +15,12 @@
     const pb = browser ? new PocketBase(PUBLIC_POCKETBASE_INSTANCE) : null;
 
     // Form state
-    let firstName = '';
-    let lastName = '';
-    let phone = '';
-    let emailAddress = '';
-    let quoteRequest = '';
-    let isSubmitting = false;
+    let firstName = $state('');
+    let lastName = $state('');
+    let phone = $state('');
+    let emailAddress = $state('');
+    let quoteRequest = $state('');
+    let isSubmitting = $state(false);
     
     // Company owner's email for receiving quote requests
     const OWNER_EMAIL = pb.authStore.model?.email;
@@ -236,7 +236,7 @@
         <button
         type="button"
         class="rounded-full p-2 text-white hover:bg-white/10 md:hidden md:hover:bg-gray-200"
-        on:click={handleCancel}
+        onclick={handleCancel}
         aria-label="Close request a quote"
     >
         <X size={18} />
@@ -250,13 +250,14 @@
 
     <form
         class="space-y-4"
-        on:submit={handleSubmitWithEmail}
+        onsubmit={handleSubmitWithEmail}
         use:form
     >
         <div class="flex gap-4">
             <div class="flex-1">
-                <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">First name:</label>
+                <label for="first_name" class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">First name:</label>
                 <input
+                    id="first_name"
                     type="text"
                     placeholder="First Name"
                     name="first_name"
@@ -271,8 +272,9 @@
                 </HintGroup>
             </div>
             <div class="flex-1">
-                <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2 ">Last name:</label>
+                <label for="last_name" class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2 ">Last name:</label>
                 <input
+                    id="last_name"
                     type="text"
                     placeholder="Last Name"
                     name="last_name"
@@ -289,8 +291,9 @@
         </div>
 
         <div>
-            <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Phone:</label>
+            <label for="phone" class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Phone:</label>
             <input
+                id="phone"
                 type="tel"
                 placeholder="Enter your Phone Number"
                 name="phone"
@@ -306,8 +309,9 @@
         </div>
 
         <div>
-            <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Email:</label>
+            <label for="email" class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Email:</label>
             <input
+                id="email"
                 type="email"
                 placeholder="Enter your Email"
                 name="email"
@@ -324,8 +328,9 @@
         </div>
 
         <div>
-            <label class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Write a quote:</label>
+            <label for="description" class="block text-white md:text-gray-700 font-light text-sm font-bold mb-2">Write a quote:</label>
             <textarea
+                id="description"
                 placeholder="Write your quote here..."
                 name="description"
                 bind:value={quoteRequest}
@@ -343,7 +348,7 @@
         <div class="flex flex-col gap-3 mt-4 sm:flex-row sm:space-x-4">
             <button
                 type="button"
-                on:click={handleCancel}
+                onclick={handleCancel}
                 class="w-full sm:flex-1 py-3 md:block hidden bg-gray-200 text-sm text-gray-800 font-semibold rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
                 disabled={isSubmitting}
             >

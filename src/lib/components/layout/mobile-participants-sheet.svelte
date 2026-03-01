@@ -5,16 +5,28 @@
     import { Button } from "$lib/components/ui/button";
     import Share from "$lib/components/room/share.svelte";
 
-    export let participants: any[] = [];
-    export let isHost = false;
-    /** When false, hide "Invite people" (e.g. anonymous users). */
-    export let showInvitePeople = true;
-    export let currentUserName: string | null = null;
-    export let localStreamId: string | null = null;
-    export let shareURL = "";
+    
+    interface Props {
+        participants?: any[];
+        isHost?: boolean;
+        /** When false, hide "Invite people" (e.g. anonymous users). */
+        showInvitePeople?: boolean;
+        currentUserName?: string | null;
+        localStreamId?: string | null;
+        shareURL?: string;
+    }
+
+    let {
+        participants = [],
+        isHost = false,
+        showInvitePeople = true,
+        currentUserName = null,
+        localStreamId = null,
+        shareURL = ""
+    }: Props = $props();
 
     const dispatch = createEventDispatcher();
-    let inviteDialogOpen = false;
+    let inviteDialogOpen = $state(false);
 
     function closeSheet() {
         dispatch("close");
@@ -95,7 +107,7 @@
                 class="rounded-full bg-white/5 p-2 hover:bg-white/10 transition-colors"
                 type="button"
                 aria-label="Close participants"
-                on:click={closeSheet}
+                onclick={closeSheet}
             >
                 <X size={20} />
             </button>

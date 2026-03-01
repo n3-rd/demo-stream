@@ -2,12 +2,23 @@
     import { createEventDispatcher } from "svelte";
     import Chat from "$lib/call/Chat.svelte";
 
-    export let roomId = "";
-    /** Base room name for AI context (viewroom/assistant lookup). */
-    export let roomName: string | null = null;
-    export let chatName: string | null = null;
-    export let userId: string | null = null;
-    export let userRole: 'host' | 'guest' | 'representative' = 'guest';
+    
+    interface Props {
+        roomId?: string;
+        /** Base room name for AI context (viewroom/assistant lookup). */
+        roomName?: string | null;
+        chatName?: string | null;
+        userId?: string | null;
+        userRole?: 'host' | 'guest' | 'representative';
+    }
+
+    let {
+        roomId = "",
+        roomName = null,
+        chatName = null,
+        userId = null,
+        userRole = 'guest'
+    }: Props = $props();
 
     const dispatch = createEventDispatcher();
 

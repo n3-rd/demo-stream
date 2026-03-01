@@ -9,8 +9,8 @@
   import { useForm, HintGroup, Hint, validators, required, email } from 'svelte-use-form';
   import { onMount } from 'svelte';
   
-  export let data;
-  $: ({ locations } = data);
+  let { data } = $props();
+  let { locations } = $derived(data);
   
   const form = useForm();
   
@@ -32,7 +32,7 @@
     return null;
   }
   
-  let formData = {
+  let formData = $state({
     name: '',
     email: '',
     phone: '',
@@ -47,14 +47,14 @@
       saturday: { start: '', end: '' },
       sunday: { start: '', end: '' }
     }
-  };
+  });
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   
-  let selectedLocation = '';
-  let imagePreviewUrl = '';
-  let hasImage = false;
-  let saving = false;
+  let selectedLocation = $state('');
+  let imagePreviewUrl = $state('');
+  let hasImage = $state(false);
+  let saving = $state(false);
 
   function handleLocationChange(e: any) {
     selectedLocation = e?.value || '';
@@ -273,7 +273,7 @@
                   <button 
                     type="button" 
                     class="text-sm text-[#4B77BE] hover:underline"
-                    on:click={() => {
+                    onclick={() => {
                       URL.revokeObjectURL(imagePreviewUrl);
                       imagePreviewUrl = '';
                       hasImage = false;
@@ -298,7 +298,7 @@
               id="avatar"
               name="avatar"
               accept="image/*"
-              on:change={handleFileChange}
+              onchange={handleFileChange}
               class="w-full border border-dashed border-[#9E9E9E] bg-white rounded-[5px] px-3 py-6 text-sm"
               use:validators={[required]}
             />

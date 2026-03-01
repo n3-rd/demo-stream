@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { run } from 'svelte/legacy';
+
   /** @type {import('./$types').PageData} */
   import Sidenav from '$lib/components/layout/sidenav.svelte';
   import { Button } from "$lib/components/ui/button";
@@ -10,30 +12,30 @@
   import { useForm, HintGroup, Hint, validators, required, email } from 'svelte-use-form';
   import { onMount } from 'svelte';
   
-  export let data;
-  $: ({ representative, parsedSchedule, locations } = data);
+  let { data } = $props();
+  let { representative, parsedSchedule, locations } = $derived(data);
   
   const form = useForm();
   
-  let selectedLocation = representative?.location || '';
+  let selectedLocation = $state(representative?.location || '');
   
   // Reactive statement to ensure location is set
-  $: {
+  run(() => {
     if (representative?.location) {
       selectedLocation = representative.location;
     }
-  }
+  });
 
   // Custom location select state
-  let isLocationDropdownOpen = false;
-  let locationSearchTerm = '';
+  let isLocationDropdownOpen = $state(false);
+  let locationSearchTerm = $state('');
 
   // Filtered and sorted locations
-  $: filteredLocations = locations
+  let filteredLocations = $derived(locations
     .filter(loc => 
       loc.name.toLowerCase().includes(locationSearchTerm.toLowerCase())
     )
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name)));
 
   // Function to handle location selection
   function selectLocation(locationId: string) {
@@ -212,8 +214,8 @@
                     type="button"
                     id="location-select-trigger"
                     class="w-full border border-[#9E9E9E] bg-white rounded-[5px] h-[38px] flex items-center justify-between px-3 cursor-pointer"
-                    on:click={() => isLocationDropdownOpen = !isLocationDropdownOpen}
-                    on:keydown={(e) => {
+                    onclick={() => isLocationDropdownOpen = !isLocationDropdownOpen}
+                    onkeydown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         isLocationDropdownOpen = !isLocationDropdownOpen;
                       }
@@ -259,8 +261,8 @@
                               tabindex="0"
                               aria-selected={location.id === selectedLocation}
                               class="px-3 py-2 text-sm hover:bg-[#E0E8F5] cursor-pointer {location.id === selectedLocation ? 'bg-[#E0E8F5] font-semibold' : ''}"
-                              on:click={() => selectLocation(location.id)}
-                              on:keydown={(e) => {
+                              onclick={() => selectLocation(location.id)}
+                              onkeydown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                   selectLocation(location.id);
                                 }
@@ -337,7 +339,7 @@
                 id="avatar"
                 name="avatar"
                 accept="image/*"
-                on:change={handleFileChange}
+                onchange={handleFileChange}
                 class="w-full border border-dashed border-[#9E9E9E] bg-white rounded-[5px] px-3 py-6 text-sm"
               />
             </div>

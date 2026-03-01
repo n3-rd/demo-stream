@@ -2,8 +2,12 @@
     import * as Dialog from "$lib/components/ui/dialog";
     import { Button } from "$lib/components/ui/button";
 
-    export let open = false;
-    export let onSelect: (type: string) => void;
+    interface Props {
+        open?: boolean;
+        onSelect: (type: string) => void;
+    }
+
+    let { open = $bindable(false), onSelect }: Props = $props();
 </script>
 
 <Dialog.Root bind:open>

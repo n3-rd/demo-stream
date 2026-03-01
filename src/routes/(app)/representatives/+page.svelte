@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run, preventDefault } from 'svelte/legacy';
+
 
     import { Button } from "$lib/components/ui/button";
     import { PUBLIC_POCKETBASE_INSTANCE } from "$env/static/public";
@@ -30,28 +32,28 @@
 
     const pb = new PocketBase(PUBLIC_POCKETBASE_INSTANCE);
 
-    export let data;
+    let { data } = $props();
     console.log(data);
-$: ({ representatives = [], locations, rooms = [] } = data || {});
-    $: noRepsAndNoLocations = (!representatives || representatives.length === 0) && (!locations || locations.length === 0);
+let { representatives = [], locations, rooms = [] } = $derived(data || {});
+    let noRepsAndNoLocations = $derived((!representatives || representatives.length === 0) && (!locations || locations.length === 0));
 
-    let showAddDialog = false;
-    let editingRep: any = null;
-    let expandedRep: string | null = null;
-    let selectedLocation: string = '';
+    let showAddDialog = $state(false);
+    let editingRep: any = $state(null);
+    let expandedRep: string | null = $state(null);
+    let selectedLocation: string = $state('');
     const form = useForm();
 
     function toggleExpand(id: string) {
         expandedRep = expandedRep === id ? null : id;
     }
 
-    $: {
+    run(() => {
         if (editingRep) {
             selectedLocation = editingRep.location || '';
         } else {
             selectedLocation = '';
         }
-    }
+    });
 
     // Remove the loadConnectedRooms function as we'll use server-side data
 
@@ -147,8 +149,8 @@ $: ({ representatives = [], locations, rooms = [] } = data || {});
 
                 <!-- Table Body -->
                 {#each representatives as rep}
-                    <!-- svelte-ignore a11y-click-events-have-key-events -->
-                    <!-- svelte-ignore a11y-no-static-element-interactions -->
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
                     <div class="bg-white rounded-lg mb-4"
                  
                     
@@ -196,16 +198,18 @@ $: ({ representatives = [], locations, rooms = [] } = data || {});
                                 </Button>
                         
                                 <AlertDialog>
-                                    <AlertDialogTrigger asChild let:builder>
-                                        <Button 
-                                            builders={[builder]}
-                                            variant="ghost"
-                                            size="sm"
-                                            class="p-0 bg-[#FFEBEE] text-[#D32F2F] py-1 px-3 hover:bg-[#FFCDD2]"
-                                        >
-                                            <Trash2 class="mr-1 h-4 w-4" /> Delete
-                                        </Button>
-                                    </AlertDialogTrigger>
+                                    <AlertDialogTrigger asChild >
+                                        {#snippet children({ builder })}
+                                                                                        <Button 
+                                                builders={[builder]}
+                                                variant="ghost"
+                                                size="sm"
+                                                class="p-0 bg-[#FFEBEE] text-[#D32F2F] py-1 px-3 hover:bg-[#FFCDD2]"
+                                            >
+                                                <Trash2 class="mr-1 h-4 w-4" /> Delete
+                                            </Button>
+                                                                                                                            {/snippet}
+                                                                                </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -325,7 +329,7 @@ $: ({ representatives = [], locations, rooms = [] } = data || {});
         </DialogHeader>
         <form
             method="POST"
-            on:submit|preventDefault={async (e) => {
+            onsubmit={preventDefault(async (e) => {
                 const formData = new FormData(e.target);
                 
                 try {
@@ -355,7 +359,7 @@ $: ({ representatives = [], locations, rooms = [] } = data || {});
                     console.error('Error:', error);
                     toast.error('Failed to save representative');
                 }
-            }}
+            })}
             enctype="multipart/form-data"
             class="space-y-6"
         >

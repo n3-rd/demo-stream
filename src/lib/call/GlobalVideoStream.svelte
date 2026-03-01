@@ -1,5 +1,5 @@
 <script>
-    export let localVideoStream;
+    let { localVideoStream } = $props();
 
     function srcObject(node, stream) {
         node.srcObject = stream;

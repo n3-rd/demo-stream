@@ -1,5 +1,5 @@
 <script lang="ts">
-    export let data;
+    let { data } = $props();
 
     const { roomId, associatedVideo, room, videoThumb, thumbnailUrl } = data;
     console.log('associatedVideo', associatedVideo);

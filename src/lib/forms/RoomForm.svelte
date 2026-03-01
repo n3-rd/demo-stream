@@ -8,7 +8,7 @@
   import { Input } from "$lib/components/ui/input/index.js";
   import { Label } from "$lib/components/ui/label/index.js";
 
-  let dailyUrl = '';
+  let dailyUrl = $state('');
 
   onMount(() => {
     const storedUrl = localStorage?.getItem('DAILY_SVELTE_URL');

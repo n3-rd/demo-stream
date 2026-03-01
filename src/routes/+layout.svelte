@@ -1,7 +1,15 @@
+<!-- @migration task: review uses of `navigating` -->
 <script>import Header from '$lib/header/Header.svelte';
 	import { Toaster, toast } from 'svelte-sonner';
 import '../app.css';
-import { navigating } from '$app/stores';</script>
+import { navigating } from '$app/stores';
+  /**
+   * @typedef {Object} Props
+   * @property {import('svelte').Snippet} [children]
+   */
+
+  /** @type {Props} */
+  let { children } = $props();</script>
 <Toaster />
 
 <!-- <Header></Header> -->
@@ -13,7 +21,7 @@ import { navigating } from '$app/stores';</script>
 {/if}
 
 <main>
-	<slot></slot>
+	{@render children?.()}
 </main>
 
 <style>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { preventDefault } from 'svelte/legacy';
+
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -6,24 +8,24 @@
   import { goto } from '$app/navigation';
   import { Loader2, Mail, Phone, Cloud, Building2 } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { formatToE164, sanitizePhoneInput, isE164 } from '$lib/helpers/phone';
   
-  let step: 'login' | 'verify' = 'login';
-  let loading = false;
-  let roomInfo = null;
-  let companyInfo = null;
-  let roomId = null;
+  let step: 'login' | 'verify' = $state('login');
+  let loading = $state(false);
+  let roomInfo = $state(null);
+  let companyInfo = $state(null);
+  let roomId = $state(null);
   let uid = '';
   
   // Form data
-  let companyName = '';
-  let firstName = '';
-  let lastName = '';
-  let email = '';
-  let mobileNumber = '';
-  let verificationCode = ['', '', '', '', ''];
-  let verificationType = '';
+  let companyName = $state('');
+  let firstName = $state('');
+  let lastName = $state('');
+  let email = $state('');
+  let mobileNumber = $state('');
+  let verificationCode = $state(['', '', '', '', '']);
+  let verificationType = $state('');
   
   // Get room ID from URL params and fetch room info
   onMount(async () => {
@@ -213,7 +215,7 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="min-h-screen bg-gray-50 flex flex-col justify-center pt-12 sm:px-6 lg:px-8">
   <div class="sm:mx-auto sm:w-full sm:max-w-md">
@@ -258,7 +260,7 @@
     <div class="bg-white py-8 px-6 shadow-sm rounded-lg sm:px-10">
       {#if step === 'login'}
         <!-- Login Form -->
-        <form on:submit|preventDefault={handleLogin} class="space-y-6">
+        <form onsubmit={preventDefault(handleLogin)} class="space-y-6">
           <!-- Company Name -->
           <div>
             <Label for="companyName" class="block text-sm font-medium text-gray-700 mb-2">
@@ -382,7 +384,7 @@
 
       {:else}
         <!-- Verification Form -->
-        <form on:submit|preventDefault={handleVerification} class="space-y-6">
+        <form onsubmit={preventDefault(handleVerification)} class="space-y-6">
           <!-- Status Indicator -->
           <div class="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div class="flex items-center justify-center mb-2">
@@ -413,9 +415,9 @@
                   class="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors"
                   maxlength="1"
                   pattern="[0-9]"
-                  on:input={(e) => handleInput(e, i)}
-                  on:keydown={(e) => handleOtpKeydown(e, i)}
-                  on:paste={handlePaste}
+                  oninput={(e) => handleInput(e, i)}
+                  onkeydown={(e) => handleOtpKeydown(e, i)}
+                  onpaste={handlePaste}
                   disabled={loading}
                 />
               {/each}

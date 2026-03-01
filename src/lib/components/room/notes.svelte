@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run, preventDefault } from 'svelte/legacy';
+
     import { SendHorizontal, X } from "lucide-svelte";
     import { Button } from '$lib/components/ui/button/index.js';
     import * as Sheet from "$lib/components/ui/sheet";
@@ -8,21 +10,25 @@
     import HintValidate from '$lib/components/layout/hint-validate.svelte';
     import { toast } from 'svelte-sonner';
 
-    export let visible: boolean = false;
-    let open = false;
-    let title = '';
-    let requirements = '';
-    let steps = '';
-    let keep = '';
-    let formEmail = '';
-    let loading = false;
+    interface Props {
+        visible?: boolean;
+    }
+
+    let { visible = false }: Props = $props();
+    let open = $state(false);
+    let title = $state('');
+    let requirements = $state('');
+    let steps = $state('');
+    let keep = $state('');
+    let formEmail = $state('');
+    let loading = $state(false);
 
     const form = useForm();
 
-    $:{
+    run(() => {
         console.log('Form:', $form.valid);
     
-    }
+    });
 
     function resetForm() {
         title = '';
@@ -102,7 +108,7 @@
             <form
                 use:form
                 class="flex-1 overflow-y-auto px-5 pb-6 pt-4 space-y-4"
-                on:submit|preventDefault={sendEmail}
+                onsubmit={preventDefault(sendEmail)}
             >
                 <div class="rounded-2xl border border-white/10 bg-[#4a4a52] p-4 shadow-sm space-y-2">
                     <label class="text-sm font-semibold" for="title">Title</label>

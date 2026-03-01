@@ -2,8 +2,12 @@
     import { Button } from "$lib/components/ui/button";
 	import { copyTextToClipboard } from "svelte-email/utils";
 
-    export let roomIdentityName: string;
-    export let roomLink: string;
+    interface Props {
+        roomIdentityName: string;
+        roomLink: string;
+    }
+
+    let { roomIdentityName, roomLink }: Props = $props();
 </script>
 <div class="absolute inset-x-0 top-0 py-3 w-full lg:hidden flex items-center justify-between gap-3 px-2">
     <Button

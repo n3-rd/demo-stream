@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import { onMount, onDestroy } from 'svelte';
     import { Button } from '$lib/components/ui/button';
     import { toast } from 'svelte-sonner';
@@ -8,7 +10,7 @@
     import { playVideoStore } from '$lib/stores/playStore.js';
     import { PlayCircle } from 'lucide-svelte';
 
-    export let callObject;
+    let { callObject } = $props();
 
     let videoInput;
     let localVideoStream;
@@ -18,25 +20,27 @@
         mozCaptureStream(): MediaStream;
     }
 
-    let videoEl: HTMLVideoElement | null = null;
+    let videoEl: HTMLVideoElement | null = $state(null);
     let retryCount = 0;
-    $:{
+    run(() => {
         console.log('playVideoStore', $playVideoStore);
         if($playVideoStore && videoEl){
             videoEl.play();
         }
-    }
+    });
 
     // Remove the snapshot and use a reactive statement instead
-    $: videoUrl = $currentVideoUrl;
-    $: if (videoUrl && videoEl) {
-        console.log('Video URL changed:', videoUrl);
-        videoEl.src = videoUrl;
-        videoEl.volume = 0.01;
-        if ($playVideoStore) {
-            videoEl.play().catch(e => console.error('Error playing video:', e));
+    let videoUrl = $derived($currentVideoUrl);
+    run(() => {
+        if (videoUrl && videoEl) {
+            console.log('Video URL changed:', videoUrl);
+            videoEl.src = videoUrl;
+            videoEl.volume = 0.01;
+            if ($playVideoStore) {
+                videoEl.play().catch(e => console.error('Error playing video:', e));
+            }
         }
-    }
+    });
 
     async function fetchVideoBlob(url) {
         const response = await fetch(url);
@@ -149,7 +153,7 @@
         }
     }
 
-    let isPaused = true;
+    let isPaused = $state(true);
 
     function togglePlay() {
         if (videoEl) {
@@ -276,12 +280,12 @@
         callObject.off('participant-joined', handleParticipantJoined);
     });
 
-    $:{
+    run(() => {
         console.log('pickerOpen k', $pickerOpen);
-    }
+    });
 
     // Add this line to control the visibility of the video picker popup
-    let isVideoPickerVisible = false;
+    let isVideoPickerVisible = $state(false);
 
     // Add a function to toggle the video picker visibility
     function toggleVideoPicker() {
@@ -294,9 +298,9 @@
     crossOrigin="anonymous"
     id="local-vid" controls loop class="w-full h-full object-cover z-[30] absolute" volume="0.1"></video>
 
-    {#if isPaused }
+    {#if isPaused}
         <div class="absolute inset-0 flex items-center justify-center z-[31]">
-            <button on:click={togglePlay} class="text-white opacity-80 hover:opacity-100 transition-opacity">
+            <button onclick={togglePlay} class="text-white opacity-80 hover:opacity-100 transition-opacity">
                 <PlayCircle size={80} />
             </button>
         </div>
@@ -306,7 +310,7 @@
         <div class="video-picker-popup absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]">
             <div class="bg-white p-4 rounded-lg shadow-lg w-full max-w-md">
              
-                <input type="file" accept="video/*" on:change={playLocalVideoFile} class="mb-4" />
+                <input type="file" accept="video/*" onchange={playLocalVideoFile} class="mb-4" />
                 <div class="flex justify-between">
                     <Button on:click={toggleVideoPicker}>Cancel</Button>
                     <Button on:click={() => {

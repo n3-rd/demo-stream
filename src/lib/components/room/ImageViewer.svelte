@@ -1,28 +1,30 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import { onMount, createEventDispatcher } from 'svelte';
     import { currentImageUrl, imageZoomLevel } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-svelte';
     import { Button } from '$lib/components/ui/button';
 
-    export let roomName: string;
-    export let isController: boolean;
+    interface Props {
+        roomName: string;
+        isController: boolean;
+    }
+
+    let { roomName, isController }: Props = $props();
 
     const dispatch = createEventDispatcher();
-    let imageContainer: HTMLDivElement;
+    let imageContainer: HTMLDivElement = $state();
     let loading = false;
     let error = '';
-    let currentZoom = 1;
-    let isDragging = false;
+    let currentZoom = $state(1);
+    let isDragging = $state(false);
     let startX = 0;
     let startY = 0;
     let translateX = 0;
     let translateY = 0;
 
-    // Watch for zoom level changes from other users
-    $: if (!isDragging && $imageZoomLevel !== currentZoom) {
-        updateZoom($imageZoomLevel);
-    }
 
     function handleZoomIn() {
         if (!isController) return;
@@ -141,14 +143,22 @@
             }
         };
     });
+    // Watch for zoom level changes from other users
+    run(() => {
+        if (!isDragging && $imageZoomLevel !== currentZoom) {
+            updateZoom($imageZoomLevel);
+        }
+    });
 </script>
 
 <div 
     class="image-viewer-container w-full h-full bg-black relative overflow-hidden"
-    on:mousedown={handleMouseDown}
-    on:mousemove={handleMouseMove}
-    on:mouseup={handleMouseUp}
-    on:mouseleave={handleMouseUp}
+    role="application"
+    aria-label="Image viewer"
+    onmousedown={handleMouseDown}
+    onmousemove={handleMouseMove}
+    onmouseup={handleMouseUp}
+    onmouseleave={handleMouseUp}
 >
     {#if loading}
         <div class="absolute inset-0 flex items-center justify-center text-white">
@@ -166,7 +176,7 @@
         >
             <img 
                 src={$currentImageUrl} 
-                alt="Shared image"
+                alt=""
                 class="max-w-full max-h-full object-contain select-none"
                 draggable="false"
             />

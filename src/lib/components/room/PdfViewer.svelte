@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import { onMount, onDestroy } from 'svelte';
     import { currentPdfUrl, pdfScrollPosition } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
@@ -8,18 +10,22 @@
     import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-svelte';
     import { Button } from '$lib/components/ui/button';
 
-    export let roomName: string;
-    export let isController: boolean;
+    interface Props {
+        roomName: string;
+        isController: boolean;
+    }
 
-    let pdfContainer: HTMLDivElement;
+    let { roomName, isController }: Props = $props();
+
+    let pdfContainer: HTMLDivElement = $state();
     let pdf: any = null;
     let currentPage = 1;
     let numPages = 0;
-    let scale = 1.0;
+    let scale = $state(1.0);
     let lastScrollUpdate = 0;
-    let isScrolling = false;
+    let isScrolling = $state(false);
     let zoomLevels = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
-    let currentZoomIndex = zoomLevels.indexOf(1);
+    let currentZoomIndex = $state(zoomLevels.indexOf(1));
 
     // Initialize PDF.js worker with local worker file
     pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -34,30 +40,6 @@
         }
     }
 
-    // Subscribe to PDF URL changes and zoom sync
-    $: if ($currentPdfUrl) {
-        try {
-            // Ensure the URL is absolute by prepending the base URL if it's a relative path
-            const fullUrl = $currentPdfUrl.startsWith('http') 
-                ? $currentPdfUrl 
-                : `${window.location.origin}${$currentPdfUrl}`;
-            
-            const urlParams = new URLSearchParams(new URL(fullUrl).search);
-            const syncedScale = urlParams.get('scale');
-            
-            if (syncedScale && !isController) {
-                // If there's a scale parameter and we're not the controller, use it
-                updateZoomFromSync(parseFloat(syncedScale));
-            } else {
-                // Otherwise just load the PDF normally
-                loadPdf(fullUrl);
-            }
-        } catch (error) {
-            console.error('Error processing PDF URL:', error);
-            // Fallback to loading the PDF directly if URL parsing fails
-            loadPdf($currentPdfUrl);
-        }
-    }
 
     // Throttled scroll handler to prevent too many updates
     const handleScroll = throttle(() => {
@@ -179,16 +161,6 @@
         }
     }
 
-    // Subscribe to scroll position changes when not controlling
-    $: if (!isController && $pdfScrollPosition !== undefined) {
-        if (pdfContainer && !isScrolling) {
-            isScrolling = true;
-            pdfContainer.scrollTop = $pdfScrollPosition;
-            setTimeout(() => {
-                isScrolling = false;
-            }, 50);
-        }
-    }
 
     onMount(() => {
         if (pdfContainer) {
@@ -199,6 +171,44 @@
     onDestroy(() => {
         if (pdfContainer) {
             pdfContainer.removeEventListener('scroll', handleScroll);
+        }
+    });
+    // Subscribe to PDF URL changes and zoom sync
+    run(() => {
+        if ($currentPdfUrl) {
+            try {
+                // Ensure the URL is absolute by prepending the base URL if it's a relative path
+                const fullUrl = $currentPdfUrl.startsWith('http') 
+                    ? $currentPdfUrl 
+                    : `${window.location.origin}${$currentPdfUrl}`;
+                
+                const urlParams = new URLSearchParams(new URL(fullUrl).search);
+                const syncedScale = urlParams.get('scale');
+                
+                if (syncedScale && !isController) {
+                    // If there's a scale parameter and we're not the controller, use it
+                    updateZoomFromSync(parseFloat(syncedScale));
+                } else {
+                    // Otherwise just load the PDF normally
+                    loadPdf(fullUrl);
+                }
+            } catch (error) {
+                console.error('Error processing PDF URL:', error);
+                // Fallback to loading the PDF directly if URL parsing fails
+                loadPdf($currentPdfUrl);
+            }
+        }
+    });
+    // Subscribe to scroll position changes when not controlling
+    run(() => {
+        if (!isController && $pdfScrollPosition !== undefined) {
+            if (pdfContainer && !isScrolling) {
+                isScrolling = true;
+                pdfContainer.scrollTop = $pdfScrollPosition;
+                setTimeout(() => {
+                    isScrolling = false;
+                }, 50);
+            }
         }
     });
 </script>
@@ -255,12 +265,5 @@
 <style>
     .pdf-container {
         scroll-behavior: smooth;
-    }
-    
-    .pdf-container canvas {
-        display: block;
-        margin: 0 auto;
-        max-width: 100%;
-        height: auto;
     }
 </style> 

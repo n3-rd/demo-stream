@@ -1,6 +1,10 @@
 <script lang="ts">
-    export let activePage: string;
-    let isOpen = false;
+    interface Props {
+        activePage: string;
+    }
+
+    let { activePage }: Props = $props();
+    let isOpen = $state(false);
     const sidebarItems = [
         { name: 'Dashboard', active: activePage === 'dashboard', href: '/' },
         { name: 'Representatives', active: activePage === 'representatives', href: '/representatives' },
@@ -23,7 +27,7 @@
     type="button"
     class="lg:hidden fixed top-4 left-4 z-[10000] p-2.5 rounded-md bg-white shadow-md border border-gray-200 hover:bg-gray-50"
     aria-label={isOpen ? 'Close menu' : 'Open menu'}
-    on:click={() => (isOpen = !isOpen)}
+    onclick={() => (isOpen = !isOpen)}
 >
     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
@@ -36,8 +40,8 @@
         type="button"
         class="lg:hidden fixed inset-0 z-[9998] bg-black/50 transition-opacity"
         aria-label="Close menu"
-        on:click={closeSidebar}
-    />
+        onclick={closeSidebar}
+></button>
 {/if}
 
 <!-- Sidebar: drawer on mobile, static on desktop -->
@@ -54,7 +58,7 @@
                 <a
                     href={item.href}
                     class="block py-2.5 px-4 rounded-md text-gray-600 hover:bg-gray-100 transition duration-150 ease-in-out {item.active ? 'text-primary font-medium bg-primary/10' : ''}"
-                    on:click={closeSidebar}
+                    onclick={closeSidebar}
                 >
                     {item.name}
                 </a>

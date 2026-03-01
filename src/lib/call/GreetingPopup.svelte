@@ -5,10 +5,14 @@
   import Shepherd from 'shepherd.js';
   import 'shepherd.js/dist/css/shepherd.css';
 
-  export let name: string;
-  export let host: boolean;
+  interface Props {
+    name: string;
+    host: boolean;
+  }
 
-  let step = 1;
+  let { name, host }: Props = $props();
+
+  let step = $state(1);
   let tour: any;
 
   const stepIconSelectors: Record<string, string> = {
@@ -137,7 +141,7 @@
     }
   ];
 
-  let isOpen = true;
+  let isOpen = $state(true);
   const dispatch = createEventDispatcher();
 
   function handleOpenChange(open: boolean) {

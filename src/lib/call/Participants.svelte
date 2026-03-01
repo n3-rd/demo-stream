@@ -1,26 +1,38 @@
 <script lang="ts">
-  export let participants: any[];
   import { ShareIcon, MicOff, Mic, UserRoundPlus, AudioLines } from 'lucide-svelte';
   import * as Dialog from "$lib/components/ui/dialog";
   import { Button } from '$lib/components/ui/button';
-  export let shareURL: string;
 import { page } from '$app/stores';
 import Share from '$lib/components/room/share.svelte';
 
-  export let isHost: boolean;
-  export let name: string;
-  export let localStreamId: string = "";
-  export let users: any[] = []; // Provide a default empty array
-  export let activeSpeaker: string | null = null;
-  /** When false, hide "Invite people" (e.g. anonymous users). */
-  export let showInvitePeople = true;
+  
+  interface Props {
+    participants: any[];
+    shareURL: string;
+    isHost: boolean;
+    name: string;
+    localStreamId?: string;
+    users?: any[]; // Provide a default empty array
+    activeSpeaker?: string | null;
+    /** When false, hide "Invite people" (e.g. anonymous users). */
+    showInvitePeople?: boolean;
+  }
+
+  let {
+    participants,
+    shareURL,
+    isHost,
+    name,
+    localStreamId = "",
+    users = [],
+    activeSpeaker = null,
+    showInvitePeople = true
+  }: Props = $props();
   const pageName = $page.url.pathname.split('/').pop().split('-').pop();
   // Create a clean URL without query parameters
   const joinURL = new URL($page.url.href).origin + new URL($page.url.href).pathname;
 
-  $: hostUser = users.length > 0 ? users.find((user) => user.id === pageName) || users[0] : null;
-
-  console.log('participants from participants.svelte', participants);
+  let hostUser = $derived(users.length > 0 ? users.find((user) => user.id === pageName) || users[0] : null);
 
   function formatParticipantName(participant: any) {
     if (typeof participant === 'string') {

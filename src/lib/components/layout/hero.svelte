@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { preventDefault } from 'svelte/legacy';
+
     import { Button } from '$lib/components/ui/button';
     import * as Dialog from '$lib/components/ui/dialog';
     import * as Tabs from "$lib/components/ui/tabs";
@@ -12,11 +14,11 @@
     import { browser } from '$app/environment';
     import { goto } from '$app/navigation';
 
-    let loading = false;
-    let dialogOpen = false;
+    let loading = $state(false);
+    let dialogOpen = $state(false);
 
-    let videoFile: File | null = null;
-    let videoUrl = '';
+    let videoFile: File | null = $state(null);
+    let videoUrl = $state('');
 
     function handleVideoUpload(node: HTMLFormElement) {
         function handleSubmit(event: Event) {
@@ -101,7 +103,7 @@
     <div class="absolute inset-y-0 right-0 justify-end pb-6 pr-6 flex flex-col gap-2">
         <form
             method='POST'
-            on:submit|preventDefault={async (e) => {
+            onsubmit={preventDefault(async (e) => {
                 const formData = new FormData(e.target);
                 
                 try {
@@ -122,7 +124,7 @@
                     console.error('Error:', error);
                     toast.error('Failed to create room');
                 }
-            }}
+            })}
         >
             <Button
                 class="gap-3 rounded-3xl bg-primary px-4 py-6 text-xl font-semibold hover:text-white"

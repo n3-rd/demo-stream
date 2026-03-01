@@ -4,10 +4,16 @@
 
 	type $$Props = CalendarPrimitive.GridRowProps;
 
-	let className: $$Props["class"] = undefined;
-	export { className as class };
+	interface Props {
+		class?: $$Props["class"];
+		children?: import('svelte').Snippet;
+		[key: string]: any
+	}
+
+	let { class: className = undefined, children, ...rest }: Props = $props();
+	
 </script>
 
-<CalendarPrimitive.GridRow class={cn("flex justify-between", className)} {...$$restProps}>
-	<slot />
+<CalendarPrimitive.GridRow class={cn("flex justify-between", className)} {...rest}>
+	{@render children?.()}
 </CalendarPrimitive.GridRow>

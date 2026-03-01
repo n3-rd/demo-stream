@@ -1,15 +1,24 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
 
-    export let scheduledMeetingTime: Date;
-    export let meetingStatus: {
+    interface Props {
+        scheduledMeetingTime: Date;
+        meetingStatus: {
         canJoin: boolean;
         isPast: boolean;
         joinBeforeMinutes: number;
         minutesLeft: number;
     };
-    export let meetingTitle: string = 'Scheduled Meeting';
-    export let meetingDuration: number = 60;
+        meetingTitle?: string;
+        meetingDuration?: number;
+    }
+
+    let {
+        scheduledMeetingTime,
+        meetingStatus,
+        meetingTitle = 'Scheduled Meeting',
+        meetingDuration = 60
+    }: Props = $props();
 
     const dispatch = createEventDispatcher();
 
@@ -114,7 +123,7 @@ END:VCALENDAR`;
 
         <button
             class="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-            on:click={() => { window.location.href = '/'; }}
+            onclick={() => { window.location.href = '/'; }}
         >
             Return to Home
         </button>
@@ -165,7 +174,7 @@ END:VCALENDAR`;
 
             <button
                 class="w-full py-2 mb-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-                on:click={handleAddToCalendar}
+                onclick={handleAddToCalendar}
             >
                 Add to Calendar
             </button>
@@ -173,7 +182,7 @@ END:VCALENDAR`;
 
         <button
             class="w-full py-2 bg-primary text-white rounded-md hover:bg-primary/80"
-            on:click={() => window.location.href = '/'}
+            onclick={() => window.location.href = '/'}
         >
             Return to Home
         </button>

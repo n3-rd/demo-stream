@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { preventDefault } from 'svelte/legacy';
+
     import { Button } from "$lib/components/ui/button";
     import { Input } from "$lib/components/ui/input";
     import { Label } from "$lib/components/ui/label";
@@ -10,8 +12,8 @@
 	import { invalidateAll } from "$app/navigation";
     import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
 
-    export let data;
-    $: locations = data.locations;
+    let { data } = $props();
+    let locations = $derived(data.locations);
 
     type Location = {
         name: string;
@@ -23,7 +25,7 @@
         };
     };
 
-    let currentLocation: Location = {
+    let currentLocation: Location = $state({
         name: '',
         address: '',
         city: '',
@@ -37,11 +39,11 @@
             Sat: '',
             Sun: ''
         }
-    };
+    });
 
-    let showAddLocationDialog = false;
-    let editingLocation: any = null;
-    let addAnother = false;
+    let showAddLocationDialog = $state(false);
+    let editingLocation: any = $state(null);
+    let addAnother = $state(false);
 
     const commonHours = [
         { label: "9-5", value: "9:00 am - 5:00 pm" },
@@ -112,7 +114,7 @@
         addAnother = true;
     }
 
-    let formElement: HTMLFormElement;
+    let formElement: HTMLFormElement = $state();
     
     function submitForm(keepOpen = false) {
         addAnother = keepOpen;
@@ -164,7 +166,7 @@
                             <div class="text-[16px] font-medium text-[#7798D2] flex items-center justify-center">
                                 <button 
                                     class="hover:underline"
-                                    on:click={() => editLocation(location)}
+                                    onclick={() => editLocation(location)}
                                 >
                                     {location.name}
                                 </button>
@@ -178,7 +180,7 @@
                             <div class="flex items-center justify-center">
                                 <form
                                     method="POST"
-                                    on:submit|preventDefault={async (e) => {
+                                    onsubmit={preventDefault(async (e) => {
                                         const formData = new FormData(e.target);
                                         
                                         try {
@@ -199,7 +201,7 @@
                                             console.error('Error:', error);
                                             toast.error('Failed to delete location');
                                         }
-                                    }}
+                                    })}
                                 >
                                     <Button
                                         type="submit"
@@ -232,7 +234,7 @@
         
                     <form 
                         method="POST" 
-                        on:submit|preventDefault={async (e) => {
+                        onsubmit={preventDefault(async (e) => {
                             const formData = new FormData(e.target);
                             
                             try {
@@ -262,7 +264,7 @@
                                 console.error('Error:', error);
                                 toast.error('Failed to save location');
                             }
-                        }}
+                        })}
                         class="space-y-6"
                         bind:this={formElement}
                     >
@@ -344,7 +346,7 @@
                                             {#each commonHours as timeOption}
                                             <button 
                                                     type="button"
-                                                    on:click={() => setHours(day, timeOption.value)}
+                                                    onclick={() => setHours(day, timeOption.value)}
                                                 class="text-[10px] bg-white border border-gray-200 rounded px-1 py-0.5 hover:bg-gray-50"
                                                 >
                                                     {timeOption.label}
@@ -383,7 +385,7 @@
                     {#if editingLocation}
                         <form
                             method="POST"
-                            on:submit|preventDefault={async (e) => {
+                            onsubmit={preventDefault(async (e) => {
                                 const formData = new FormData(e.target);
                                 
                                 try {
@@ -405,7 +407,7 @@
                                     console.error('Error:', error);
                                     toast.error('Failed to delete location');
                                 }
-                            }}
+                            })}
                         >
                             <Button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-medium">
                                 Delete

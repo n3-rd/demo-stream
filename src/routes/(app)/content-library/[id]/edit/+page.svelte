@@ -14,20 +14,20 @@
     import { useForm, HintGroup, Hint, validators, required } from 'svelte-use-form';
     import * as Switch from "$lib/components/ui/switch";
 
-    export let data;
+    let { data } = $props();
     const { user, representatives, content } = data;
     const form = useForm();
 
     let loading = false;
-    let selectedType = content.type;
-    let selectedLibraryType: string = Array.isArray(content.library_type) ? content.library_type[0] : content.library_type;
-    let selectedFile: File | null = null;
-    let thumbnailFile: File | null = null;
-    let isUploading = false;
-    let uploadProgress = 0;
+    let selectedType = $state(content.type);
+    let selectedLibraryType: string = $state(Array.isArray(content.library_type) ? content.library_type[0] : content.library_type);
+    let selectedFile: File | null = $state(null);
+    let thumbnailFile: File | null = $state(null);
+    let isUploading = $state(false);
+    let uploadProgress = $state(0);
     let uploadedChunks: Set<number> = new Set();
-    let thumbnailPreviewUrl: string | null = content.thumbnail ? `/api/files/content_library/${content.id}/${content.thumbnail}` : null;
-    let isContentActive = content.active === undefined ? true : !!content.active;
+    let thumbnailPreviewUrl: string | null = $state(content.thumbnail ? `/api/files/content_library/${content.id}/${content.thumbnail}` : null);
+    let isContentActive = $state(content.active === undefined ? true : !!content.active);
 
     const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
 
@@ -243,7 +243,7 @@
 
             <!-- Main Content -->
             <div class="bg-white rounded-[8px] p-8">
-                <form id="editForm" on:submit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8">
+                <form id="editForm" onsubmit={handleSubmit} use:form enctype="multipart/form-data" class="space-y-8">
                     <!-- Title and id -->
                     <div class="space-y-2 flex justify-between items-center gap-24">
                         <div class="title w-1/2">
@@ -288,7 +288,7 @@
                                             name="content_type" 
                                             value={type.value}
                                             checked={selectedType === type.value}
-                                            on:change={() => handleTypeChange(type.value)}
+                                            onchange={() => handleTypeChange(type.value)}
                                             class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                         />
                                         <div class="w-[15px] h-[15px] rounded-full bg-[#D9D9D9] {selectedType === type.value ? 'ring-2 ring-[#577AB7]' : ''}"></div>
@@ -367,7 +367,7 @@
                                             name="library_type" 
                                             value={type.value}
                                             checked={selectedLibraryType === type.value}
-                                            on:change={() => selectedLibraryType = type.value}
+                                            onchange={() => selectedLibraryType = type.value}
                                             class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                                             required
                                         />
@@ -391,7 +391,7 @@
                                 id="thumbnail" 
                                 name="thumbnail" 
                                 accept="image/*"
-                                on:change={handleThumbnailChange}
+                                onchange={handleThumbnailChange}
                                 required={!content.thumbnail}
                                 class="absolute inset-0 opacity-0 z-10 cursor-pointer"
                             />
@@ -415,7 +415,7 @@
                             <button
                                 type="button"
                                 class="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                                on:click={resetThumbnail}
+                                onclick={resetThumbnail}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />

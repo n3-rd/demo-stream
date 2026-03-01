@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { run } from 'svelte/legacy';
+
     import { Button } from "$lib/components/ui/button";
     import { MessageSquareDashed, UsersRound } from "lucide-svelte";
     import { createEventDispatcher, onMount, onDestroy } from "svelte";
@@ -8,20 +10,37 @@
     import { anonymousUser } from "$lib/stores/anonymousUser";
 
     const dispatch = createEventDispatcher();
-    export let participants: any[];
-    export let isHost: boolean;
-    export let name: string;
-    export let shareURL: string;
-    export let roomId: string = "";
-    export let userId: string | null = null;
-    export let users: any[] = [];
-    export let isChatOpen: boolean = false;
-    export let isParticipantsOpen: boolean = false;
-    export let participantCount: number = 0;
+    interface Props {
+        participants: any[];
+        isHost: boolean;
+        name: string;
+        shareURL: string;
+        roomId?: string;
+        userId?: string | null;
+        users?: any[];
+        isChatOpen?: boolean;
+        isParticipantsOpen?: boolean;
+        participantCount?: number;
+    }
+
+    let {
+        participants,
+        isHost,
+        name,
+        shareURL,
+        roomId = "",
+        userId = null,
+        users = [],
+        isChatOpen = false,
+        isParticipantsOpen = false,
+        participantCount = 0
+    }: Props = $props();
     
-    let unreadCount = 0;
+    let unreadCount = $state(0);
     let lastMessageCount = 0;
     let unsubscribe: () => void;
+    const nameRef = { current: '' };
+    run(() => { nameRef.current = name; });
 
     onMount(() => {
         if (browser && "Notification" in window) {
@@ -32,13 +51,13 @@
             if (messages.length > lastMessageCount) {
                 // New message arrived
                 const newMessages = messages.slice(lastMessageCount);
-                
+
                 // If chat is closed, increment unread count
                 if (!isChatOpen) {
                     const incomingMessages = newMessages.filter(msg => {
-                        return !isCurrentUserMessage(msg.name, name || $anonymousUser, msg.senderId, userId);
+                        return !isCurrentUserMessage(msg.name, nameRef.current || $anonymousUser, msg.senderId, userId);
                     });
-                    
+
                     if (incomingMessages.length > 0) {
                         unreadCount += incomingMessages.length;
                         
@@ -58,9 +77,11 @@
         });
     });
 
-    $: if (isChatOpen) {
-        unreadCount = 0;
-    }
+    run(() => {
+        if (isChatOpen) {
+            unreadCount = 0;
+        }
+    });
 
     onDestroy(() => {
         if (unsubscribe) unsubscribe();
@@ -69,8 +90,6 @@
     function togglePanel(id: string) {
         dispatch("togglePanel", { id });
     }
-
-    console.log("name from right-bar.svelte", name);
 </script>
 
 <div class="flex flex-col gap-3 h-full justify-end">

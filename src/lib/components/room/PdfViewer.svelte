@@ -2,7 +2,7 @@
     import { run } from 'svelte/legacy';
 
     import { onMount, onDestroy } from 'svelte';
-    import { currentPdfUrl, pdfScrollPosition } from '$lib/callStores';
+    import { currentPdfUrl, pdfScrollPosition, pdfZoomLevel } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import * as pdfjs from 'pdfjs-dist';
     import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js?url';
@@ -19,36 +19,29 @@
 
     let pdfContainer: HTMLDivElement = $state();
     let pdf: any = null;
-    let currentPage = 1;
     let numPages = 0;
     let scale = $state(1.0);
     let lastScrollUpdate = 0;
     let isScrolling = $state(false);
-    let zoomLevels = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
-    let currentZoomIndex = $state(zoomLevels.indexOf(1));
+    let lastRenderedScale = 0;
+    const ZOOM_STEP = 0.25;
+    const ZOOM_MIN = 0.25;
+    const ZOOM_MAX = 5;
+
+    // Pinch-to-zoom state
+    let lastPinchDist = 0;
+    let isTouching = false;
 
     // Initialize PDF.js worker with local worker file
     pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-    // Function to update zoom from sync message
-    function updateZoomFromSync(newScale: number) {
-        const newIndex = zoomLevels.indexOf(newScale);
-        if (newIndex !== -1) {
-            currentZoomIndex = newIndex;
-            scale = newScale;
-            reloadPdf();
-        }
-    }
-
-
     // Throttled scroll handler to prevent too many updates
     const handleScroll = throttle(() => {
         if (!isController || !pdfContainer) return;
-        
+
         const scrollPosition = pdfContainer.scrollTop;
         pdfScrollPosition.set(scrollPosition);
-        
-        // Send scroll position to other participants
+
         sendMessage(
             roomName,
             Date.now(),
@@ -63,54 +56,85 @@
         );
     }, 100);
 
-    function handleZoom(direction: 'in' | 'out') {
-        if (!isController) return;
-        
-        if (direction === 'in' && currentZoomIndex < zoomLevels.length - 1) {
-            currentZoomIndex++;
-        } else if (direction === 'out' && currentZoomIndex > 0) {
-            currentZoomIndex--;
-        }
-        
-        scale = zoomLevels[currentZoomIndex];
-        
-        // Broadcast zoom change
+    function broadcastZoom(newScale: number) {
         sendMessage(
             roomName,
             Date.now(),
             JSON.stringify({
                 eventType: 'pdf_zoom_sync',
                 messageBody: JSON.stringify({
-                    scale,
+                    scale: newScale,
                     timestamp: Date.now()
                 })
             }),
             roomName
         );
-        
+    }
+
+    function applyZoom(newScale: number) {
+        scale = newScale;
+        pdfZoomLevel.set(newScale);
         reloadPdf();
+    }
+
+    function handleZoom(direction: 'in' | 'out') {
+        if (!isController) return;
+        const newScale = direction === 'in'
+            ? Math.min(scale + ZOOM_STEP, ZOOM_MAX)
+            : Math.max(scale - ZOOM_STEP, ZOOM_MIN);
+        applyZoom(newScale);
+        broadcastZoom(newScale);
     }
 
     function resetZoom() {
         if (!isController) return;
-        currentZoomIndex = zoomLevels.indexOf(1);
-        scale = 1.0;
-        
-        // Broadcast zoom reset
-        sendMessage(
-            roomName,
-            Date.now(),
-            JSON.stringify({
-                eventType: 'pdf_zoom_sync',
-                messageBody: JSON.stringify({
-                    scale,
-                    timestamp: Date.now()
-                })
-            }),
-            roomName
-        );
-        
+        applyZoom(1.0);
+        broadcastZoom(1.0);
+    }
+
+    function handleWheel(event: WheelEvent) {
+        if (!isController) return;
+        event.preventDefault();
+        const delta = event.deltaY * -0.005;
+        const newScale = Math.min(Math.max(scale + delta, ZOOM_MIN), ZOOM_MAX);
+        applyZoom(newScale);
+        broadcastZoom(newScale);
+    }
+
+    function getTouchDist(touches: TouchList): number {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.hypot(dx, dy);
+    }
+
+    function handleTouchStart(event: TouchEvent) {
+        if (!isController || event.touches.length !== 2) return;
+        event.preventDefault();
+        isTouching = true;
+        lastPinchDist = getTouchDist(event.touches);
+    }
+
+    function handleTouchMove(event: TouchEvent) {
+        if (!isController || !isTouching || event.touches.length !== 2) return;
+        event.preventDefault();
+        const dist = getTouchDist(event.touches);
+        if (lastPinchDist > 0) {
+            const ratio = dist / lastPinchDist;
+            const newScale = Math.min(Math.max(scale * ratio, ZOOM_MIN), ZOOM_MAX);
+            scale = newScale;
+            // Defer heavy re-render until touch ends
+            pdfZoomLevel.set(newScale);
+        }
+        lastPinchDist = dist;
+    }
+
+    function handleTouchEnd(event: TouchEvent) {
+        if (!isController || !isTouching) return;
+        isTouching = false;
+        lastPinchDist = 0;
+        // Re-render at final scale
         reloadPdf();
+        broadcastZoom(scale);
     }
 
     async function reloadPdf() {
@@ -121,19 +145,20 @@
 
     async function loadPdf(url: string) {
         try {
-            const loadingTask = pdfjs.getDocument(url);
+            // Strip any legacy ?scale= query param we may have previously appended
+            const cleanUrl = url.split('?')[0];
+            const loadingTask = pdfjs.getDocument(cleanUrl);
             pdf = await loadingTask.promise;
             numPages = pdf.numPages;
-            
-            // Clear existing pages
+
             if (pdfContainer) {
                 pdfContainer.innerHTML = '';
             }
-            
-            // Render all pages
+
             for (let pageNum = 1; pageNum <= numPages; pageNum++) {
                 await renderPage(pageNum);
             }
+            lastRenderedScale = scale;
         } catch (error) {
             console.error('Error loading PDF:', error);
         }
@@ -143,71 +168,62 @@
         try {
             const page = await pdf.getPage(pageNumber);
             const viewport = page.getViewport({ scale });
-            
+
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
             canvas.height = viewport.height;
             canvas.width = viewport.width;
-            
-            const renderContext = {
-                canvasContext: context,
-                viewport: viewport
-            };
-            
-            await page.render(renderContext).promise;
+
+            await page.render({ canvasContext: context, viewport }).promise;
             pdfContainer?.appendChild(canvas);
         } catch (error) {
             console.error(`Error rendering page ${pageNumber}:`, error);
         }
     }
 
-
     onMount(() => {
         if (pdfContainer) {
             pdfContainer.addEventListener('scroll', handleScroll);
+            pdfContainer.addEventListener('wheel', handleWheel as EventListener, { passive: false });
+            pdfContainer.addEventListener('touchstart', handleTouchStart as EventListener, { passive: false });
+            pdfContainer.addEventListener('touchmove', handleTouchMove as EventListener, { passive: false });
+            pdfContainer.addEventListener('touchend', handleTouchEnd as EventListener, { passive: false });
         }
     });
 
     onDestroy(() => {
         if (pdfContainer) {
             pdfContainer.removeEventListener('scroll', handleScroll);
+            pdfContainer.removeEventListener('wheel', handleWheel as EventListener);
+            pdfContainer.removeEventListener('touchstart', handleTouchStart as EventListener);
+            pdfContainer.removeEventListener('touchmove', handleTouchMove as EventListener);
+            pdfContainer.removeEventListener('touchend', handleTouchEnd as EventListener);
         }
     });
-    // Subscribe to PDF URL changes and zoom sync
+
+    // Load PDF when URL changes
     run(() => {
         if ($currentPdfUrl) {
-            try {
-                // Ensure the URL is absolute by prepending the base URL if it's a relative path
-                const fullUrl = $currentPdfUrl.startsWith('http') 
-                    ? $currentPdfUrl 
-                    : `${window.location.origin}${$currentPdfUrl}`;
-                
-                const urlParams = new URLSearchParams(new URL(fullUrl).search);
-                const syncedScale = urlParams.get('scale');
-                
-                if (syncedScale && !isController) {
-                    // If there's a scale parameter and we're not the controller, use it
-                    updateZoomFromSync(parseFloat(syncedScale));
-                } else {
-                    // Otherwise just load the PDF normally
-                    loadPdf(fullUrl);
-                }
-            } catch (error) {
-                console.error('Error processing PDF URL:', error);
-                // Fallback to loading the PDF directly if URL parsing fails
-                loadPdf($currentPdfUrl);
-            }
+            const cleanUrl = $currentPdfUrl.split('?')[0];
+            loadPdf(cleanUrl);
         }
     });
-    // Subscribe to scroll position changes when not controlling
+
+    // Apply zoom from store when not the controller (e.g. synced from remote)
+    run(() => {
+        if (!isController && $pdfZoomLevel !== scale) {
+            scale = $pdfZoomLevel;
+            reloadPdf();
+        }
+    });
+
+    // Sync scroll position for non-controllers
     run(() => {
         if (!isController && $pdfScrollPosition !== undefined) {
             if (pdfContainer && !isScrolling) {
                 isScrolling = true;
                 pdfContainer.scrollTop = $pdfScrollPosition;
-                setTimeout(() => {
-                    isScrolling = false;
-                }, 50);
+                setTimeout(() => { isScrolling = false; }, 50);
             }
         }
     });
@@ -216,30 +232,30 @@
 <div class="flex flex-col h-full">
     {#if isController}
         <div class="flex items-center justify-center gap-2 p-2 bg-gray-100 border-b">
-            <Button 
-                variant="outline" 
+            <Button
+                variant="outline"
                 size="icon"
                 on:click={() => handleZoom('out')}
-                disabled={currentZoomIndex === 0}
+                disabled={scale <= ZOOM_MIN}
             >
                 <ZoomOut class="h-4 w-4" />
             </Button>
-            
+
             <span class="min-w-[4rem] text-center">
                 {Math.round(scale * 100)}%
             </span>
-            
-            <Button 
-                variant="outline" 
+
+            <Button
+                variant="outline"
                 size="icon"
                 on:click={() => handleZoom('in')}
-                disabled={currentZoomIndex === zoomLevels.length - 1}
+                disabled={scale >= ZOOM_MAX}
             >
                 <ZoomIn class="h-4 w-4" />
             </Button>
-            
-            <Button 
-                variant="outline" 
+
+            <Button
+                variant="outline"
                 size="icon"
                 on:click={resetZoom}
                 disabled={scale === 1}
@@ -247,9 +263,13 @@
                 <RotateCcw class="h-4 w-4" />
             </Button>
         </div>
+    {:else}
+        <div class="flex items-center justify-center gap-2 p-2 bg-gray-50 border-b text-sm text-gray-500">
+            Zoom controlled by presenter · {Math.round(scale * 100)}%
+        </div>
     {/if}
-    
-    <div 
+
+    <div
         class="pdf-container flex-1 w-full overflow-y-auto bg-white"
         bind:this={pdfContainer}
         style="pointer-events: {isController ? 'auto' : 'none'}"
@@ -266,4 +286,4 @@
     .pdf-container {
         scroll-behavior: smooth;
     }
-</style> 
+</style>

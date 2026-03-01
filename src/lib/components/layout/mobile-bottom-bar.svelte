@@ -431,7 +431,7 @@
                     chatName={chatName}
                     userId={chatUserId}
                     {userRole}
-                    on:close={closeSheets}
+                    onclose={closeSheets}
                 />
             {/await}
         </Sheet.Content>

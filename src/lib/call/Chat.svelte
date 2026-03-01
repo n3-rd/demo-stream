@@ -1,7 +1,6 @@
 <script lang="ts">
     import { preventDefault } from 'svelte/legacy';
 
-    import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
     import { chatMessages } from '$lib/stores/chatMessages';
@@ -20,6 +19,7 @@
         variant?: 'default' | 'mobile';
         showClose?: boolean;
         userRole?: 'host' | 'guest' | 'representative';
+        onclose?: () => void;
     }
 
     let {
@@ -29,28 +29,15 @@
         roomName = null,
         variant = 'default',
         showClose = false,
-        userRole = 'guest'
+        userRole = 'guest',
+        onclose
     }: Props = $props();
-
-    const dispatch = createEventDispatcher();
 
     let newText = $state('');
     let chatIsOpen = false;
-    let messages = $state([]);
+    let messages = $derived($chatMessages);
     let activeTab = $state('chat'); // 'chat' or 'ai'
     let aiLoading = $state(false);
-
-    // Poll chatMessages store every second
-    let interval;
-    onMount(() => {
-        interval = setInterval(() => {
-            messages = $chatMessages;
-        }, 1000);
-    });
-
-    onDestroy(() => {
-        clearInterval(interval);
-    });
 
 
     const sendNewMessage = () => {
@@ -119,6 +106,10 @@
     };
 
     const toggleChat = () => (chatIsOpen = !chatIsOpen);
+
+    function handleClose() {
+        onclose?.();
+    }
     
     function formatDisplayName(nameOrId: string): string {
         if (!nameOrId) return 'Unknown';
@@ -144,10 +135,6 @@
         }
         const index = Math.abs(hash) % avatarPalette.length;
         return avatarPalette[index];
-    }
-
-    function handleClose() {
-        dispatch('close');
     }
 </script>
 

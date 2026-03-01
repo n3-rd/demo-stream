@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { createEventDispatcher } from "svelte";
     import Chat from "$lib/call/Chat.svelte";
 
     
@@ -10,6 +9,7 @@
         chatName?: string | null;
         userId?: string | null;
         userRole?: 'host' | 'guest' | 'representative';
+        onclose?: () => void;
     }
 
     let {
@@ -17,14 +17,9 @@
         roomName = null,
         chatName = null,
         userId = null,
-        userRole = 'guest'
+        userRole = 'guest',
+        onclose
     }: Props = $props();
-
-    const dispatch = createEventDispatcher();
-
-    function handleClose() {
-        dispatch("close");
-    }
 </script>
 
 <div class="rounded-t-2xl overflow-hidden bg-white">
@@ -36,7 +31,7 @@
         {userRole}
         variant="mobile"
         showClose
-        on:close={handleClose}
+        onclose={onclose}
     />
 </div>
 

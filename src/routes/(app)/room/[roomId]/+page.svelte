@@ -142,6 +142,11 @@ let scheduledMeetingTime = $state(null);
 let participantsPanelOpen = $state(false);
 let chatPanelOpen = $state(false);
 
+// Host-left countdown state
+let hostLeft = $state(false);
+let hostLeftCountdown = $state(30);
+let hostLeftTimer: ReturnType<typeof setInterval> | null = null;
+
 // Add with the other state variables
 let selfIncludedParticipantCount = $state(1); // Start with at least 1 (yourself)
 
@@ -1037,6 +1042,11 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 console.error('Error handling active_speaker:', error);
                             }
                             break;
+                        case 'host_leaving':
+                            if (!isHost) {
+                                startHostLeftCountdown();
+                            }
+                            break;
                     }
                 } catch (parseError) {
                     console.error("Error parsing message body:", parseError);
@@ -1365,6 +1375,21 @@ function publishStream(streamId, sanitizedName, sanitizedRoomName, isRep) {
 
 function leaveRoom() {
     allParticipants = {};
+    if (isHost) {
+        try {
+            const hostLeavingMsg = {
+                eventType: 'host_leaving'
+            };
+            sendMessage(
+                crypto.randomUUID(),
+                Date.now(),
+                JSON.stringify(hostLeavingMsg),
+                roomName
+            );
+        } catch (e) {
+            console.warn('Could not send host_leaving message:', e);
+        }
+    }
     webRTCAdaptor.stop(roomName);
     isPlaying = false;
     window.location.href = "/";
@@ -2023,6 +2048,20 @@ function handleChatMessage(messageBody) {
     });
 }
 
+function startHostLeftCountdown() {
+    if (hostLeft) return; // already started
+    hostLeft = true;
+    hostLeftCountdown = 30;
+    hostLeftTimer = setInterval(() => {
+        hostLeftCountdown -= 1;
+        if (hostLeftCountdown <= 0) {
+            clearInterval(hostLeftTimer!);
+            hostLeftTimer = null;
+            window.location.href = '/';
+        }
+    }, 1000);
+}
+
 function handlePanelToggle(event) {
     const { id } = event.detail;
     togglePanel(id);
@@ -2429,6 +2468,10 @@ onDestroy(() => {
         cleanupPermissionListeners = null;
     }
     stopSpeakerDetection();
+    if (hostLeftTimer) {
+        clearInterval(hostLeftTimer);
+        hostLeftTimer = null;
+    }
 });
 
 // Track the currently selected video
@@ -2986,6 +3029,23 @@ run(() => {
       <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         <div class="relative z-50">
           <NameInputModal on:nameSubmitted={handleNameSubmitted} roomName={room?.title} />
+        </div>
+      </div>
+    {/if}
+
+    <!-- Host-left countdown overlay -->
+    {#if hostLeft}
+      <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-white text-gray-900 rounded-2xl shadow-xl p-8 flex flex-col items-center gap-4 max-w-sm w-full mx-4">
+          <div class="text-4xl font-bold text-red-600">{hostLeftCountdown}</div>
+          <p class="text-lg font-semibold text-center">The host has left the room</p>
+          <p class="text-sm text-gray-500 text-center">This room will close in {hostLeftCountdown} second{hostLeftCountdown !== 1 ? 's' : ''}.</p>
+          <button
+            class="mt-2 px-6 py-2 bg-gray-900 text-white rounded-full hover:bg-gray-700 transition-colors"
+            onclick={() => { if (hostLeftTimer) { clearInterval(hostLeftTimer); hostLeftTimer = null; } window.location.href = '/'; }}
+          >
+            Leave now
+          </button>
         </div>
       </div>
     {/if}

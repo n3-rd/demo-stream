@@ -353,11 +353,11 @@ onMount(() => {
         return;
       }
       
-      // Extract schedule data (handle all possible formats)
+      // Extract schedule data — only treat as scheduled when data.scheduled === true
       if (data.scheduledRoom && data.scheduledRoom.schedule_time) {
         isScheduledMeeting = true;
         scheduledMeetingTime = new Date(data.scheduledRoom.schedule_time);
-      } else if (data.schedule_time) {
+      } else if (data.scheduled && data.schedule_time) {
         isScheduledMeeting = true;
         scheduledMeetingTime = new Date(data.schedule_time);
       } else if (data.scheduledTime) {

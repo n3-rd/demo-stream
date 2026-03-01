@@ -81,13 +81,11 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
         }
 
         // Handle scheduled meetings
+        const joinBeforeMinutes = 5; // minutes before scheduled time to allow joining
         if (roomRecord.scheduled && roomRecord.scheduleTime) {
             const scheduleTime = new Date(roomRecord.scheduleTime);
             const currentTime = new Date();
             const timeDiffMinutes = (scheduleTime.getTime() - currentTime.getTime()) / (1000 * 60);
-
-            // In Drizzle, the table likely doesn't have join_before_minutes yet, default to 5
-            const joinBeforeMinutes = 5;
 
             if (timeDiffMinutes > joinBeforeMinutes) {
                 return {
@@ -168,6 +166,7 @@ export const load: PageServerLoad = async ({ locals, params, url, cookies }) => 
             representative: roomRecord.representative,
             scheduled: roomRecord.scheduled,
             schedule_time: roomRecord.scheduleTime,
+            join_before_minutes: roomRecord.scheduled ? joinBeforeMinutes : undefined,
             customer_name: roomRecord.customerName,
             customer_email: roomRecord.customerEmail,
             customer_phone: roomRecord.customerPhone,

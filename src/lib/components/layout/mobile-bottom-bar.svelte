@@ -1,7 +1,7 @@
 <script lang="ts">
     import { run } from 'svelte/legacy';
 
-    import { fly, fade } from 'svelte/transition';
+    import { fade } from 'svelte/transition';
     import { Button } from "$lib/components/ui/button";
     import { UsersRound, ShareIcon, AlertTriangle, Mic, MicOff, CameraIcon, CameraOffIcon } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
@@ -428,27 +428,30 @@
             onmousedown={closeSheets}
             ontouchstart={closeSheets}
         ></div>
-        <div
-            role="dialog"
-            aria-modal="true"
-            class="fixed inset-x-0 bottom-0 z-50 bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden shadow-lg"
-            transition:fly={{ y: 300, duration: 300 }}
-            onmousedown={(e) => e.stopPropagation()}
-            ontouchstart={(e) => e.stopPropagation()}
-            onkeydown={(e) => { if (e.key === 'Escape') closeSheets(); }}
-        >
-            {#await MobileChatSheet then MobileChatSheet}
-                <MobileChatSheet.default
-                    roomId={roomId || roomName}
-                    roomName={baseRoomName}
-                    chatName={chatName}
-                    userId={chatUserId}
-                    {userRole}
-                    onclose={closeSheets}
-                />
-            {/await}
-        </div>
     {/if}
+    <!-- Keep Chat always mounted (like desktop ChatPanel) so it receives store updates in real-time -->
+    <div
+        role="dialog"
+        aria-modal="true"
+        inert={!chatSheetOpen}
+        class="fixed inset-x-0 bottom-0 z-50 bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden shadow-lg transition-transform duration-300 ease-in-out"
+        class:translate-y-full={!chatSheetOpen}
+        class:translate-y-0={chatSheetOpen}
+        onmousedown={(e) => e.stopPropagation()}
+        ontouchstart={(e) => e.stopPropagation()}
+        onkeydown={(e) => { if (e.key === 'Escape') closeSheets(); }}
+    >
+        {#await MobileChatSheet then MobileChatSheet}
+            <MobileChatSheet.default
+                roomId={roomId || roomName}
+                roomName={baseRoomName}
+                chatName={chatName}
+                userId={chatUserId}
+                {userRole}
+                onclose={closeSheets}
+            />
+        {/await}
+    </div>
     <Sheet.Root bind:open={participantsSheetOpen}>
         <Sheet.Content
             side="bottom"

@@ -429,10 +429,14 @@
             ontouchstart={closeSheets}
         ></div>
     {/if}
-    <!-- Keep Chat always mounted (like desktop ChatPanel) so it receives store updates in real-time -->
+    <!-- Keep Chat always mounted (like desktop ChatPanel) so it receives store updates in real-time.
+         role/aria-modal are only applied when the panel is open: on Android WebView (and iOS WKWebView)
+         an always-present aria-modal="true" causes the browser to enforce focus-trapping for the hidden
+         dialog, blocking touch interactions on elements outside it (e.g. the "three dots" menu trigger)
+         after the first DOM mutation triggered by an incoming chat message. -->
     <div
-        role="dialog"
-        aria-modal="true"
+        role={chatSheetOpen ? "dialog" : undefined}
+        aria-modal={chatSheetOpen ? "true" : undefined}
         inert={!chatSheetOpen}
         class="fixed inset-x-0 bottom-0 z-50 bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden shadow-lg transition-transform duration-300 ease-in-out"
         class:translate-y-full={!chatSheetOpen}

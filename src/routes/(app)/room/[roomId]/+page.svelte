@@ -956,9 +956,10 @@ function handleWebRTCCallback(info: string, obj: any) {
                         }
                         case 'chat_message':
                             // Defer DOM update out of the WebRTC data_received callback.
-                            // On iOS WKWebView, a synchronous chatMessages.update() here triggers
-                            // Svelte reactivity → DOM mutations (scroll, re-render) that block
-                            // subsequent data_received events (video_sync, media_source_change).
+                            // On iOS WKWebView and Android WebView, a synchronous
+                            // chatMessages.update() here triggers Svelte reactivity →
+                            // DOM mutations (scroll, re-render) that can block subsequent
+                            // data_received events (video_sync, media_source_change).
                             setTimeout(() => handleChatMessage(messageBody), 0);
                             break;
                         case 'video_mute_sync':

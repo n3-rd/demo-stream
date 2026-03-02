@@ -37,6 +37,10 @@
     let activeTab = $state('chat'); // 'chat' or 'ai'
     let aiLoading = $state(false);
     let messagesContainer = $state<HTMLElement | null>(null);
+    // Input element refs — used to re-focus after send on iOS to prevent keyboard-dismissal
+    // from disrupting the WebRTC data channel (iOS pauses the data channel during viewport resize).
+    let mobileChatInputRef = $state<HTMLInputElement | null>(null);
+    let mobileAiInputRef = $state<HTMLInputElement | null>(null);
 
     $effect(() => {
         // Accessing `messages` here registers it as a dependency so this effect
@@ -73,6 +77,10 @@
             chatMessages.update(messages => [...messages, newMessage]);
             console.log(newMessage);
             newText = '';
+            // Re-focus the input so the iOS virtual keyboard stays visible.
+            // Without this, tapping Send causes keyboard dismissal → viewport resize,
+            // which disrupts the WebRTC data channel on real iOS devices.
+            mobileChatInputRef?.focus();
         } else {
             const userMessage = {
                 role: 'user',
@@ -90,7 +98,7 @@
             }]);
 
             newText = '';
-
+            mobileAiInputRef?.focus();
             aiLoading = true;
             fetch('/api/ai/chat', {
                 method: 'POST',
@@ -207,6 +215,7 @@
         <div class="border-t border-[#d6dce1] px-5 py-4">
             <div class="flex items-center gap-3 rounded-2xl bg-[#f3f5f7] px-4 py-3">
                 <input
+                    bind:this={mobileChatInputRef}
                     type="text"
                     placeholder="Type a message"
                     bind:value={newText}
@@ -268,6 +277,7 @@
         <div class="border-t border-[#d6dce1] px-5 py-4">
             <div class="flex items-center gap-3 rounded-2xl bg-[#f3f5f7] px-4 py-3">
                 <input
+                    bind:this={mobileAiInputRef}
                     type="text"
                     placeholder="Type a message"
                     bind:value={newText}

@@ -48,7 +48,15 @@
         // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         messages;
         if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // Defer the forced-layout read (scrollHeight) to the next animation frame so it
+            // does not block the JavaScript main thread during Svelte's synchronous effect
+            // cycle. On Android WebView (and iOS WKWebView) a synchronous layout reflow here
+            // can stall subsequent WebRTC data-channel event processing.
+            const el = messagesContainer;
+            const raf = requestAnimationFrame(() => {
+                el.scrollTop = el.scrollHeight;
+            });
+            return () => cancelAnimationFrame(raf);
         }
     });
 
@@ -77,9 +85,9 @@
             chatMessages.update(messages => [...messages, newMessage]);
             console.log(newMessage);
             newText = '';
-            // Re-focus the input so the iOS virtual keyboard stays visible.
+            // Re-focus the input so the virtual keyboard stays visible on iOS and Android.
             // Without this, tapping Send causes keyboard dismissal → viewport resize,
-            // which disrupts the WebRTC data channel on real iOS devices.
+            // which disrupts the WebRTC data channel on iOS WKWebView and Android WebView.
             mobileChatInputRef?.focus();
         } else {
             const userMessage = {

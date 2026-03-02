@@ -43,7 +43,7 @@
     run(() => { nameRef.current = name; });
 
     onMount(() => {
-        if (browser && "Notification" in window) {
+        if (browser && typeof Notification !== "undefined") {
             Notification.requestPermission();
         }
 
@@ -61,8 +61,8 @@
                     if (incomingMessages.length > 0) {
                         unreadCount += incomingMessages.length;
                         
-                        // Browser notification
-                        if (browser && Notification.permission === "granted") {
+                        // Browser notification (Notification not available on many mobile browsers)
+                        if (browser && typeof Notification !== "undefined" && Notification.permission === "granted") {
                             incomingMessages.forEach(msg => {
                                 new Notification(`New message from ${msg.name}`, {
                                     body: msg.text,

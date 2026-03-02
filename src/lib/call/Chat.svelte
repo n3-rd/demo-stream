@@ -122,7 +122,6 @@
 
     function handleEnterKey(e: KeyboardEvent) {
         if (e.key === 'Enter') {
-            e.preventDefault();
             sendNewMessage();
         }
     }

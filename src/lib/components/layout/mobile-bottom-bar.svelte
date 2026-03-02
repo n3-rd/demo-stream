@@ -13,10 +13,10 @@
     import InviteRepresentative from "../room/invite-representative.svelte";
     import ScheduleMeeting from "../room/schedule-meeting.svelte";
     import CreateQuote from "../room/create-quote.svelte";
-    const MobileChatSheet = import('$lib/components/layout/mobile-chat-sheet.svelte');
     const MobileParticipantsSheet = import("$lib/components/layout/mobile-participants-sheet.svelte");
     const MobileQuoteSheet = import("$lib/components/layout/mobile-quote-sheet.svelte");
     const MobileNotesSheet = import("$lib/components/layout/mobile-notes-sheet.svelte");
+    import Chat from '$lib/call/Chat.svelte';
 	import Separator from "../ui/separator/separator.svelte";
 
 
@@ -441,16 +441,18 @@
         ontouchstart={(e) => e.stopPropagation()}
         onkeydown={(e) => { if (e.key === 'Escape') closeSheets(); }}
     >
-        {#await MobileChatSheet then MobileChatSheet}
-            <MobileChatSheet.default
+        <div class="rounded-t-2xl overflow-hidden bg-white">
+            <Chat
                 roomId={roomId || roomName}
                 roomName={baseRoomName}
-                chatName={chatName}
+                name={chatName}
                 userId={chatUserId}
                 {userRole}
+                variant="mobile"
+                showClose
                 onclose={closeSheets}
             />
-        {/await}
+        </div>
     </div>
     <Sheet.Root bind:open={participantsSheetOpen}>
         <Sheet.Content

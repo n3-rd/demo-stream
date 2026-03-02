@@ -960,12 +960,18 @@ function handleWebRTCCallback(info: string, obj: any) {
                             // chatMessages.update() here triggers Svelte reactivity →
                             // DOM mutations (scroll, re-render) that can block subsequent
                             // data_received events (video_sync, media_source_change).
-                            // Use requestAnimationFrame so mobile Chrome processes the update
-                            // in a separate frame and doesn't drop or batch subsequent messages.
-                            const chatPayload = messageBody;
-                            requestAnimationFrame(() => {
+                            // Use setTimeout(0) instead of requestAnimationFrame so the
+                            // update runs in the regular task queue, fully outside the
+                            // rendering pipeline.  rAF runs *inside* the frame and DOM
+                            // mutations there still stall mobile Chrome's data-channel
+                            // delivery; setTimeout(0) avoids that entirely.
+                            const chatPayload = {
+                                ...messageBody,
+                                timestamp: messageBody.timestamp || data.messageDate || Date.now()
+                            };
+                            setTimeout(() => {
                                 handleChatMessage(chatPayload);
-                            });
+                            }, 0);
                             break;
                         case 'video_mute_sync':
                             try {
@@ -2044,10 +2050,12 @@ function handleChatMessage(messageBody) {
     const isCurrentUser = isCurrentUserMessage(messageBody.name, name || $anonymousUser, messageBody.senderId, publishStreamId);
 
     chatMessages.update(messages => {
-        // Check if message already exists
+        // Check if message already exists (use timestamp for more precise dedup
+        // so that identical text sent at different times is not dropped)
         const isDuplicate = messages.some(msg => 
             msg.name === messageBody.name && 
-            msg.text === messageBody.text
+            msg.text === messageBody.text &&
+            msg.timestamp === messageBody.timestamp
         );
 
         // Only add the message if it's not a duplicate and not from current user

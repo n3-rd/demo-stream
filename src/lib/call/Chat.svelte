@@ -122,7 +122,6 @@
 
     function handleEnterKey(e: KeyboardEvent) {
         if (e.key === 'Enter') {
-            e.preventDefault();
             sendNewMessage();
         }
     }
@@ -212,7 +211,7 @@
                     placeholder="Type a message"
                     bind:value={newText}
                     onkeydown={handleEnterKey}
-                    class="flex-1 bg-transparent text-sm text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
+                    class="flex-1 bg-transparent text-[16px] text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
                 />
                 <button
                     type="button"
@@ -273,7 +272,7 @@
                     placeholder="Type a message"
                     bind:value={newText}
                     onkeydown={handleEnterKey}
-                    class="flex-1 bg-transparent text-sm text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
+                    class="flex-1 bg-transparent text-[16px] text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
                 />
                 <button
                     type="button"

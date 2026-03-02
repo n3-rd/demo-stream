@@ -1,6 +1,4 @@
 <script lang="ts">
-    import { preventDefault } from 'svelte/legacy';
-
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
     import { chatMessages } from '$lib/stores/chatMessages';
@@ -38,6 +36,21 @@
     let messages = $derived($chatMessages);
     let activeTab = $state('chat'); // 'chat' or 'ai'
     let aiLoading = $state(false);
+    let messagesContainer = $state<HTMLElement | null>(null);
+    // Input element refs — used to re-focus after send on iOS to prevent keyboard-dismissal
+    // from disrupting the WebRTC data channel (iOS pauses the data channel during viewport resize).
+    let mobileChatInputRef = $state<HTMLInputElement | null>(null);
+    let mobileAiInputRef = $state<HTMLInputElement | null>(null);
+
+    $effect(() => {
+        // Accessing `messages` here registers it as a dependency so this effect
+        // re-runs every time the message list changes, keeping the scroll at the bottom.
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        messages;
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    });
 
 
     const sendNewMessage = () => {
@@ -64,6 +77,10 @@
             chatMessages.update(messages => [...messages, newMessage]);
             console.log(newMessage);
             newText = '';
+            // Re-focus the input so the iOS virtual keyboard stays visible.
+            // Without this, tapping Send causes keyboard dismissal → viewport resize,
+            // which disrupts the WebRTC data channel on real iOS devices.
+            mobileChatInputRef?.focus();
         } else {
             const userMessage = {
                 role: 'user',
@@ -81,7 +98,7 @@
             }]);
 
             newText = '';
-
+            mobileAiInputRef?.focus();
             aiLoading = true;
             fetch('/api/ai/chat', {
                 method: 'POST',
@@ -109,6 +126,12 @@
 
     function handleClose() {
         onclose?.();
+    }
+
+    function handleEnterKey(e: KeyboardEvent) {
+        if (e.key === 'Enter') {
+            sendNewMessage();
+        }
     }
     
     function formatDisplayName(nameOrId: string): string {
@@ -158,7 +181,7 @@
             {/if}
         </div>
         {#if activeTab === 'chat'}
-        <div class="flex-1 min-h-0 overflow-y-auto px-5 py-6 space-y-6 max-h-[40vh]">
+        <div bind:this={messagesContainer} class="flex-1 min-h-0 overflow-y-auto px-5 py-6 space-y-6 max-h-[40vh]">
             {#if messages.length === 0}
                 <div class="flex h-full items-center justify-center text-sm text-[#8a9aa5]">
                     No messages yet
@@ -189,26 +212,26 @@
                 {/each}
             {/if}
         </div>
-        <form
-            class="border-t border-[#d6dce1] px-5 py-4"
-            onsubmit={preventDefault(sendNewMessage)}
-        >
+        <div class="border-t border-[#d6dce1] px-5 py-4">
             <div class="flex items-center gap-3 rounded-2xl bg-[#f3f5f7] px-4 py-3">
                 <input
+                    bind:this={mobileChatInputRef}
                     type="text"
                     placeholder="Type a message"
                     bind:value={newText}
-                    class="flex-1 bg-transparent text-sm text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
+                    onkeydown={handleEnterKey}
+                    class="flex-1 bg-transparent text-[16px] text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
                 />
                 <button
-                    type="submit"
+                    type="button"
                     class="flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#6d7c86] hover:text-[#3b4a56] disabled:opacity-40"
                     disabled={!newText.trim()}
+                    onclick={sendNewMessage}
                 >
                     <img src={send} alt="Send message" class="h-4 w-4" />
                 </button>
             </div>
-        </form>
+        </div>
         {:else}
         <!-- AI Chatbot -->
         <div class="flex-1 min-h-0 overflow-y-auto px-5 py-6 space-y-6 max-h-[40vh]">
@@ -251,26 +274,26 @@
                 </div>
             {/if}
         </div>
-        <form
-            class="border-t border-[#d6dce1] px-5 py-4"
-            onsubmit={preventDefault(sendNewMessage)}
-        >
+        <div class="border-t border-[#d6dce1] px-5 py-4">
             <div class="flex items-center gap-3 rounded-2xl bg-[#f3f5f7] px-4 py-3">
                 <input
+                    bind:this={mobileAiInputRef}
                     type="text"
                     placeholder="Type a message"
                     bind:value={newText}
-                    class="flex-1 bg-transparent text-sm text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
+                    onkeydown={handleEnterKey}
+                    class="flex-1 bg-transparent text-[16px] text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
                 />
                 <button
-                    type="submit"
+                    type="button"
                     class="flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#6d7c86] hover:text-[#3b4a56] disabled:opacity-40"
                     disabled={!newText.trim() || aiLoading}
+                    onclick={sendNewMessage}
                 >
                     <img src={send} alt="Send message" class="h-4 w-4" />
                 </button>
             </div>
-        </form>
+        </div>
         {/if}
     </div>
 {:else}

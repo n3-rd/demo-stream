@@ -2,12 +2,10 @@
     import { run } from 'svelte/legacy';
 
     import { fade } from 'svelte/transition';
-    import { Button } from "$lib/components/ui/button";
-    import { UsersRound, ShareIcon, AlertTriangle, Mic, MicOff, CameraIcon, CameraOffIcon } from "lucide-svelte";
+    import { fly } from 'svelte/transition';
+    import { AlertTriangle, Mic, MicOff, CameraIcon, CameraOffIcon } from "lucide-svelte";
     import { createEventDispatcher } from "svelte";
     import type { ComponentType } from "svelte";
-    import * as Sheet from "$lib/components/ui/sheet";
-    import * as Dialog from "$lib/components/ui/dialog";
     import Share from "../room/share.svelte";
     import MediaSelector from "$lib/components/room/MediaSelector.svelte";
     import InviteRepresentative from "../room/invite-representative.svelte";
@@ -17,7 +15,6 @@
     const MobileQuoteSheet = import("$lib/components/layout/mobile-quote-sheet.svelte");
     const MobileNotesSheet = import("$lib/components/layout/mobile-notes-sheet.svelte");
     import Chat from '$lib/call/Chat.svelte';
-	import Separator from "../ui/separator/separator.svelte";
 
 
     
@@ -357,6 +354,8 @@
     let participantsSheetOpen = $state(false);
     let quoteSheetOpen = $state(false);
     let notesSheetOpen = false;
+    /** Which dialog content is open from the more sheet (share | inviteRepresentative). */
+    let openDialogContent = $state<SheetDialogContent | null>(null);
 
     function openSheet(sheet: "content" | "chat" | "participants" | "quote" | "notes") {
         contentSheetOpen = sheet === "content";
@@ -374,6 +373,7 @@
         quoteSheetOpen = false;
         notesSheetOpen = false;
         mobileSheetOpen = false;
+        openDialogContent = null;
     }
 
     function handleMediaSelect(event: CustomEvent) {
@@ -390,25 +390,35 @@
 </script>
 
 <div class="px-4 flex justify-center items-center">
-    <Sheet.Root bind:open={contentSheetOpen}>
-        <Sheet.Trigger>
-            <Button
-
-                class="fixed z-50 right-8 bottom-28 rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black lg:hidden"
-            >
-                Show content
-            </Button>
-        </Sheet.Trigger>
-        <Sheet.Content
-            side="bottom"
-            class="bg-bgdefault text-white rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto lg:hidden [&>button]:hidden"
+    <!-- Content sheet (Show content) -->
+    <button
+        type="button"
+        class="fixed z-50 right-8 bottom-28 rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black lg:hidden"
+        onclick={() => (contentSheetOpen = true)}
+    >
+        Show content
+    </button>
+    {#if contentSheetOpen}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-[60] bg-black/50 lg:hidden"
+            transition:fade={{ duration: 150 }}
+            role="presentation"
+            onmousedown={closeSheets}
+            ontouchstart={closeSheets}
+        ></div>
+        <div
+            class="fixed inset-x-0 bottom-0 z-[61] bg-bgdefault text-white rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto lg:hidden"
+            transition:fly={{ y: '100%', duration: 300 }}
         >
-        <div class="flex w-full justify-between items-center">
-            <h2 class="text-white text-lg font-semibold">Content list</h2>
-            <Button class="rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black"
-            on:click={closeSheets}
-            >Hide content</Button>
-        </div>
+            <div class="flex w-full justify-between items-center">
+                <h2 class="text-white text-lg font-semibold">Content list</h2>
+                <button
+                    type="button"
+                    class="rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black px-4 py-2 text-sm font-medium"
+                    onclick={closeSheets}
+                >Hide content</button>
+            </div>
             <MediaSelector
                 {isHost}
                 {isRepresentative}
@@ -418,8 +428,8 @@
                 repContentItems={repContentItems}
                 on:videoSelect={handleMediaSelect}
             />
-        </Sheet.Content>
-    </Sheet.Root>
+        </div>
+    {/if}
     {#if chatSheetOpen}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -458,10 +468,18 @@
             />
         </div>
     </div>
-    <Sheet.Root bind:open={participantsSheetOpen}>
-        <Sheet.Content
-            side="bottom"
-            class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
+    {#if participantsSheetOpen}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-[60] bg-black/50 lg:hidden"
+            transition:fade={{ duration: 150 }}
+            role="presentation"
+            onmousedown={closeSheets}
+            ontouchstart={closeSheets}
+        ></div>
+        <div
+            class="fixed inset-x-0 bottom-0 z-[61] bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden"
+            transition:fly={{ y: '100%', duration: 300 }}
         >
             {#await MobileParticipantsSheet then MobileParticipantsSheet}
                 <MobileParticipantsSheet.default
@@ -474,18 +492,26 @@
                     on:close={closeSheets}
                 />
             {/await}
-        </Sheet.Content>
-    </Sheet.Root>
-    <Sheet.Root bind:open={quoteSheetOpen}>
-        <Sheet.Content
-            side="bottom"
-            class="bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden [&>button]:hidden"
+        </div>
+    {/if}
+    {#if quoteSheetOpen}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-[60] bg-black/50 lg:hidden"
+            transition:fade={{ duration: 150 }}
+            role="presentation"
+            onmousedown={closeSheets}
+            ontouchstart={closeSheets}
+        ></div>
+        <div
+            class="fixed inset-x-0 bottom-0 z-[61] bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden"
+            transition:fly={{ y: '100%', duration: 300 }}
         >
             {#await MobileQuoteSheet then MobileQuoteSheet}
                 <MobileQuoteSheet.default on:close={closeSheets} />
             {/await}
-        </Sheet.Content>
-    </Sheet.Root>
+        </div>
+    {/if}
     <!-- <Sheet.Root bind:open={notesSheetOpen}>
         <Sheet.Content
             side="bottom"
@@ -554,145 +580,146 @@
 
             <!-- Secondary controls -->
             <div class="flex items-center">
-                <Sheet.Root bind:open={mobileSheetOpen}>
-                    <Sheet.Trigger
-                        aria-label="Open more controls"
-                        class="flex justify-center items-center rounded-full bg-[#707172] h-14 w-14 hover:bg-white hover:text-black"
-                    >
-                        <img src="/icons/new-icons/more.png" alt="More options" class="icon" />
-                    </Sheet.Trigger>
-                    <Sheet.Content side="bottom" class="bg-bgdefault p-6 text-white rounded-t-2xl [&>button]:hidden">
-                        <div class="grid grid-cols-3 gap-y-4">
-                            {#each visibleSheetEntries as entry (entry.key)}
-                                <div class="flex flex-col gap-2">
-                                    {#if entry.type === "panel"}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            class="w-full"
-                                            on:click={() => {
-                                                handleSheetAction(entry);
-                                                mobileSheetOpen = false;
-                                            }}
-                                        >
-                                            {#if entry.icon.type === "image"}
-                                                <img
-                                                    src={entry.icon.src}
-                                                    alt={entry.icon.alt}
-                                                    class={getImageClasses(entry.icon)}
-                                                />
-                                            {:else if entry.icon.type === "component"}
-                                                <entry.icon.component {...entry.icon.props} />
-                                            {/if}
-                                        </Button>
-                                        <div class="text-center text-xs">{entry.label}</div>
-                                    {:else if entry.type === "dialog"}
-                                        {#if 'bindOpen' in entry && entry.bindOpen === "scheduleOpen"}
-                                            <Dialog.Root bind:open={scheduleOpen}>
-                                                <Dialog.Trigger class="flex flex-col gap-2 items-center">
-                                                    <Button variant="ghost" size="icon" class="w-full">
-                                                        {#if entry.icon.type === "image"}
-                                                            <img
-                                                                src={entry.icon.src}
-                                                                alt={entry.icon.alt}
-                                                                class={getImageClasses(entry.icon)}
-                                                            />
-                                                        {:else if entry.icon.type === "component"}
-                                                            <entry.icon.component {...entry.icon.props} />
-                                                        {/if}
-                                                    </Button>
-                                                    <div class="text-center text-xs">{entry.label}</div>
-                                                </Dialog.Trigger>
-                                                <Dialog.Content class={entry.contentClass}>
-                                                    {#if entry.content === "share"}
-                                                        <Share shareURL={joinURL} representative={false} />
-                                                    {:else if entry.content === "inviteRepresentative"}
-                                                        <InviteRepresentative
-                                                            shareURL={joinURL}
-                                                            representatives={videoRepresentatives}
-                                                        />
-                                                    {:else if entry.content === "schedule"}
-                                                        <div class="w-full bg-transparent">
-                                                            <ScheduleMeeting
-                                                                userId={userId || ""}
-                                                                availableRepresentatives={videoRepresentatives}
-                                                                roomData={room}
-                                                                on:close={() => dispatch("closeSchedule")}
-                                                            />
-                                                        </div>
-                                                    {:else if entry.content === "createQuote"}
-                                                        <CreateQuote on:close={closeSheets} />
-                                                    {/if}
-                                                </Dialog.Content>
-                                            </Dialog.Root>
-                                        {:else}
-                                            <Dialog.Root>
-                                                <Dialog.Trigger class="flex flex-col gap-2 items-center">
-                                                    <Button variant="ghost" size="icon" class="w-full">
-                                                        {#if entry.icon.type === "image"}
-                                                            <img
-                                                                src={entry.icon.src}
-                                                                alt={entry.icon.alt}
-                                                                class={getImageClasses(entry.icon)}
-                                                            />
-                                                        {:else if entry.icon.type === "component"}
-                                                            <entry.icon.component {...entry.icon.props} />
-                                                        {/if}
-                                                    </Button>
-                                                    <div class="text-center text-xs">{entry.label}</div>
-                                                </Dialog.Trigger>
-                                                <Dialog.Content class={entry.contentClass}>
-                                                    {#if entry.content === "share"}
-                                                        <Share shareURL={joinURL} representative={false} />
-                                                    {:else if entry.content === "inviteRepresentative"}
-                                                        <InviteRepresentative
-                                                            shareURL={joinURL}
-                                                            representatives={videoRepresentatives}
-                                                        />
-                                                    {:else if entry.content === "schedule"}
-                                                        <div class="w-full bg-transparent">
-                                                            <ScheduleMeeting
-                                                                userId={userId || ""}
-                                                                availableRepresentatives={videoRepresentatives}
-                                                                roomData={room}
-                                                                on:close={() => dispatch("closeSchedule")}
-                                                            />
-                                                        </div>
-                                                    {:else if entry.content === "createQuote"}
-                                                        <CreateQuote />
-                                                    {/if}
-                                                </Dialog.Content>
-                                            </Dialog.Root>
-                                        {/if}
-                                    {:else if entry.type === "component"}
-                                        <Button variant="ghost" size="icon" class="w-full">
-                                            <entry.component />
-                                        </Button>
-                                        <div class="text-center text-xs">{entry.label}</div>
-                                    {/if}
-                                </div>
-                            {/each}
-                        </div>
-                    </Sheet.Content>
-                </Sheet.Root>
+                <button
+                    type="button"
+                    aria-label="Open more controls"
+                    class="flex justify-center items-center rounded-full bg-[#707172] h-14 w-14 hover:bg-white hover:text-black"
+                    onclick={() => (mobileSheetOpen = true)}
+                >
+                    <img src="/icons/new-icons/more.png" alt="More options" class="icon" />
+                </button>
             </div>
-    
-            <Separator orientation="vertical" class="h-full" />
+
+            <!-- Vertical divider -->
+            <div class="bg-border shrink-0 min-h-full w-[1px] h-full" aria-hidden="true"></div>
+
             <!-- Right side controls -->
             <div class="flex gap-3">
-                <Button
-                    variant="destructive"
-                    size="sm"
-                    class="flex justify-center items-center rounded-full h-14 w-14 hover:bg-red-700"
+                <button
+                    type="button"
+                    class="flex justify-center items-center rounded-full h-14 w-14 bg-destructive text-destructive-foreground hover:bg-red-700"
                     aria-label={destructiveControl.label}
                     title={destructiveControl.label}
-                    on:click={() => dispatch("leaveRoom")}
+                    onclick={() => dispatch("leaveRoom")}
                 >
                     <img src={destructiveControl.icon} alt={destructiveControl.label} class="icon h-14 w-14" />
-                </Button>
+                </button>
             </div>
         </div>
-    </div> 
+    </div>
+
+    <!-- More sheet (bottom) -->
+    {#if mobileSheetOpen}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-[60] bg-black/50 lg:hidden"
+            transition:fade={{ duration: 150 }}
+            role="presentation"
+            onmousedown={() => (mobileSheetOpen = false)}
+            ontouchstart={() => (mobileSheetOpen = false)}
+        ></div>
+        <div
+            class="fixed inset-x-0 bottom-0 z-[61] bg-bgdefault p-6 text-white rounded-t-2xl lg:hidden"
+            transition:fly={{ y: '100%', duration: 300 }}
+        >
+            <div class="grid grid-cols-3 gap-y-4">
+                {#each visibleSheetEntries as entry (entry.key)}
+                    <div class="flex flex-col gap-2">
+                        {#if entry.type === "panel"}
+                            <button
+                                type="button"
+                                class="inline-flex items-center justify-center h-10 w-10 w-full rounded-md hover:bg-accent hover:text-accent-foreground text-white"
+                                onclick={() => {
+                                    handleSheetAction(entry);
+                                    mobileSheetOpen = false;
+                                }}
+                            >
+                                {#if entry.icon.type === "image"}
+                                    <img
+                                        src={entry.icon.src}
+                                        alt={entry.icon.alt}
+                                        class={getImageClasses(entry.icon)}
+                                    />
+                                {:else if entry.icon.type === "component"}
+                                    <svelte:component this={entry.icon.component} {...entry.icon.props ?? {}} />
+                                {/if}
+                            </button>
+                            <div class="text-center text-xs">{entry.label}</div>
+                        {:else if entry.type === "dialog"}
+                            <button
+                                type="button"
+                                class="flex flex-col gap-2 items-center w-full"
+                                onclick={() => {
+                                    mobileSheetOpen = false;
+                                    openDialogContent = entry.content;
+                                }}
+                            >
+                                <span class="inline-flex items-center justify-center h-10 w-10 w-full rounded-md hover:bg-accent hover:text-accent-foreground text-white">
+                                    {#if entry.icon.type === "image"}
+                                        <img
+                                            src={entry.icon.src}
+                                            alt={entry.icon.alt}
+                                            class={getImageClasses(entry.icon)}
+                                        />
+                                    {:else if entry.icon.type === "component"}
+                                        <svelte:component this={entry.icon.component} {...entry.icon.props ?? {}} />
+                                    {/if}
+                                </span>
+                                <div class="text-center text-xs">{entry.label}</div>
+                            </button>
+                        {:else if entry.type === "component"}
+                            <button
+                                type="button"
+                                class="inline-flex items-center justify-center h-10 w-10 w-full rounded-md hover:bg-accent hover:text-accent-foreground text-white"
+                            >
+                                <svelte:component this={entry.component} />
+                            </button>
+                            <div class="text-center text-xs">{entry.label}</div>
+                        {/if}
+                    </div>
+                {/each}
+            </div>
+        </div>
+    {/if}
+
+    <!-- Dialog overlay for Share / Invite Representative (from more sheet) -->
+    {#if openDialogContent}
+        {@const dialogEntry = visibleSheetEntries.find((e) => e.type === 'dialog' && e.content === openDialogContent)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-[70] bg-[#2f2f2fe6]/90"
+            transition:fade={{ duration: 150 }}
+            role="presentation"
+            onmousedown={() => (openDialogContent = null)}
+            ontouchstart={() => (openDialogContent = null)}
+        ></div>
+        <div
+            class="fixed left-1/2 top-1/2 z-[71] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 {dialogEntry?.type === 'dialog' ? dialogEntry.contentClass : 'p-4 rounded-lg shadow-lg'} p-6 sm:rounded-lg"
+            transition:fly={{ y: 10, duration: 200 }}
+            onmousedown={(e) => e.stopPropagation()}
+            ontouchstart={(e) => e.stopPropagation()}
+        >
+            {#if openDialogContent === "share"}
+                <Share shareURL={joinURL} representative={false} />
+            {:else if openDialogContent === "inviteRepresentative"}
+                <InviteRepresentative
+                    shareURL={joinURL}
+                    representatives={videoRepresentatives}
+                />
+            {:else if openDialogContent === "schedule"}
+                <div class="w-full bg-transparent">
+                    <ScheduleMeeting
+                        userId={userId || ""}
+                        availableRepresentatives={videoRepresentatives}
+                        roomData={room}
+                        on:close={() => { dispatch("closeSchedule"); openDialogContent = null; }}
+                    />
+                </div>
+            {:else if openDialogContent === "createQuote"}
+                <CreateQuote on:close={() => (openDialogContent = null)} />
+            {/if}
+        </div>
+    {/if} 
 </div>
 
 <style>
@@ -717,10 +744,6 @@
     .primary-toggle-btn.primary-toggle-muted,
     .primary-toggle-btn.primary-toggle-off {
         background-color: #dc2626 !important;
-    }
-    :global(button[data-melt-dialog-close]),
-    :global(button[data-melt-sheet-close]) {
-        display: none!important;
     }
 
     .mobile-permission-badge {

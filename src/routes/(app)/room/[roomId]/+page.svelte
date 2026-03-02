@@ -960,7 +960,12 @@ function handleWebRTCCallback(info: string, obj: any) {
                             // chatMessages.update() here triggers Svelte reactivity →
                             // DOM mutations (scroll, re-render) that can block subsequent
                             // data_received events (video_sync, media_source_change).
-                            setTimeout(() => handleChatMessage(messageBody), 0);
+                            // Use requestAnimationFrame so mobile Chrome processes the update
+                            // in a separate frame and doesn't drop or batch subsequent messages.
+                            const chatPayload = messageBody;
+                            requestAnimationFrame(() => {
+                                handleChatMessage(chatPayload);
+                            });
                             break;
                         case 'video_mute_sync':
                             try {

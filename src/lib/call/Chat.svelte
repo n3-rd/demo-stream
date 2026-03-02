@@ -48,15 +48,14 @@
         // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         messages;
         if (messagesContainer) {
-            // Defer the forced-layout read (scrollHeight) to the next animation frame so it
-            // does not block the JavaScript main thread during Svelte's synchronous effect
-            // cycle. On Android WebView (and iOS WKWebView) a synchronous layout reflow here
-            // can stall subsequent WebRTC data-channel event processing.
             const el = messagesContainer;
-            const raf = requestAnimationFrame(() => {
-                el.scrollTop = el.scrollHeight;
+            // Double rAF: first lets Svelte flush DOM, second runs after layout so scrollHeight is correct.
+            // Don't cancel this RAF in cleanup — on mobile Chrome that can prevent scroll after subsequent messages.
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    el.scrollTop = el.scrollHeight;
+                });
             });
-            return () => cancelAnimationFrame(raf);
         }
     });
 
@@ -189,7 +188,7 @@
             {/if}
         </div>
         {#if activeTab === 'chat'}
-        <div bind:this={messagesContainer} class="flex-1 min-h-0 overflow-y-auto px-5 py-6 space-y-6 max-h-[40vh]">
+        <div bind:this={messagesContainer} class="mobile-chat-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-5 py-6 space-y-6 max-h-[40vh]">
             {#if messages.length === 0}
                 <div class="flex h-full items-center justify-center text-sm text-[#8a9aa5]">
                     No messages yet
@@ -242,7 +241,7 @@
         </div>
         {:else}
         <!-- AI Chatbot -->
-        <div class="flex-1 min-h-0 overflow-y-auto px-5 py-6 space-y-6 max-h-[40vh]">
+        <div class="mobile-chat-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-5 py-6 space-y-6 max-h-[40vh]">
             {#each $aiMessages as message, index (message.timestamp ?? `${message.name}-${index}`)}
                 <div class="flex gap-4">
                     <div
@@ -459,6 +458,12 @@
 {/if}
 
 <style>
+    .mobile-chat-scroll {
+        -webkit-overflow-scrolling: touch;
+        overflow-y: scroll;
+        overscroll-behavior-y: contain;
+        touch-action: pan-y;
+    }
     .ai-typing-dot {
         width: 6px;
         height: 6px;

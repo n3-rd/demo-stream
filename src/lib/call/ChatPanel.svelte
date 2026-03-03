@@ -23,7 +23,7 @@
         publishStreamId,
         userRole,
         baseRoomName,
-        open = false
+        open = true
     }: Props = $props();
 
     const dispatch = createEventDispatcher();

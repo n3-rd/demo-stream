@@ -782,15 +782,20 @@ function handleWebRTCCallback(info: string, obj: any) {
                             // Set the appropriate media URL
                             switch (mediaType) {
                                 case 'video':
-                                    currentVideoUrl.set(mediaUpdateData.fileUrl || mediaUpdateData.videoUrl || '');
+                                    // `fileUrl` is the canonical field from selectVideo();
+                                    // `videoUrl` is a legacy alias from sendVideoUpdate().
+                                    {
+                                    const videoSrc = mediaUpdateData.fileUrl || mediaUpdateData.videoUrl || '';
+                                    currentVideoUrl.set(videoSrc);
                                     playVideoStore.set(mediaUpdateData.shouldPlay || false);
-                                    if (videoPlayer && (mediaUpdateData.fileUrl || mediaUpdateData.videoUrl)) {
-                                        videoPlayer.src = mediaUpdateData.fileUrl || mediaUpdateData.videoUrl;
+                                    if (videoPlayer && videoSrc) {
+                                        videoPlayer.src = videoSrc;
                                         if (mediaUpdateData.shouldPlay) {
                                             videoPlayer.play().catch(e => console.warn('Autoplay blocked:', e));
                                         } else {
                                             videoPlayer.pause();
                                         }
+                                    }
                                     }
                                     break;
                                 case 'pdf':

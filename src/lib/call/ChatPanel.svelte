@@ -10,6 +10,11 @@
         publishStreamId: string;
         userRole: 'host' | 'guest' | 'representative';
         baseRoomName: string;
+        /** Whether the panel is currently visible.  When false the Chat component
+         *  is unmounted so it doesn't trigger DOM mutations (transition:slide, etc.)
+         *  for every incoming message — on mobile this would stall the WebRTC data
+         *  channel and break media sync.  Messages are preserved in the global store. */
+        open?: boolean;
     }
 
     let {
@@ -17,7 +22,8 @@
         name,
         publishStreamId,
         userRole,
-        baseRoomName
+        baseRoomName,
+        open = true
     }: Props = $props();
 
     const dispatch = createEventDispatcher();
@@ -36,7 +42,9 @@
             </Button>
         </div>
         <div class="h-full">
+            {#if open}
             <Chat roomId={roomId} {name} userId={publishStreamId} {userRole} roomName={baseRoomName} />
+            {/if}
         </div>
     </div>
 </div>

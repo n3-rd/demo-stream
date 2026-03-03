@@ -1,6 +1,7 @@
 <script lang="ts">
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
+    import { tick } from 'svelte';
     import { chatMessages } from '$lib/stores/chatMessages';
     import { aiMessages } from '$lib/stores/aiMessages';
     import send from './assets/send.svg';
@@ -48,13 +49,15 @@
         // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         messages;
         if (messagesContainer) {
-            const el = messagesContainer;
-            // Double rAF: first lets Svelte flush DOM, second runs after layout so scrollHeight is correct.
-            // Don't cancel this RAF in cleanup — on mobile Chrome that can prevent scroll after subsequent messages.
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    el.scrollTop = el.scrollHeight;
-                });
+            // Wait for Svelte to flush DOM updates, then scroll.
+            // tick() resolves after pending state changes are applied to the DOM,
+            // which is more reliable on mobile Chrome than the double-rAF pattern
+            // (rAF callbacks can be throttled or batched on mobile browsers,
+            // causing the scroll to be skipped after subsequent messages).
+            tick().then(() => {
+                if (messagesContainer) {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
             });
         }
     });
@@ -69,7 +72,8 @@
                 name: local,
                 senderId: userId,
                 text: newText,
-                eventType: 'chat_message'
+                eventType: 'chat_message',
+                timestamp: Date.now()
             };
 
             // Send message using the sendMessage helper

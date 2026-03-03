@@ -639,11 +639,18 @@ function handleWebRTCCallback(info: string, obj: any) {
                         }
                         
                         // Handle media state response
+                        // Defer store updates to a separate task so the data-channel
+                        // callback returns immediately.  Setting 10+ Svelte stores
+                        // synchronously triggers heavy DOM mutations (viewer tear-down /
+                        // mount) that block the main thread on mobile Chrome, stalling
+                        // the data channel and dropping subsequent one-shot messages
+                        // (e.g. sync_source_change).
                         if (messageBody.eventType === 'media_state_response') {
-                                // Skip if we're the controller — we sent this response and already have the correct state
                                 const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
                                 if (!isController) {
-                                    const state = JSON.parse(messageBody.messageBody);
+                                    const statePayload = messageBody.messageBody;
+                                    setTimeout(() => {
+                                    const state = JSON.parse(statePayload);
                                 
                                     // Check which media URLs are actually changing to avoid unnecessary reloads
                                     const videoUrlChanging = (state.videoUrl || '') !== $currentVideoUrl;
@@ -744,15 +751,27 @@ function handleWebRTCCallback(info: string, obj: any) {
                                         isRepLive = state.isLive;
                                         liveCameraMode = state.cameraMode || null;
                                     }
+                                    }, 0);
                                 }
                         }
                         
                         // Handle media URL updates
+                        // Defer store updates to a separate task so the
+                        // data-channel callback returns immediately.  Clearing
+                        // and setting 5+ Svelte stores synchronously triggers
+                        // heavy DOM mutations (viewer tear-down/mount) that
+                        // block the main thread on mobile Chrome, stalling the
+                        // data channel and dropping the subsequent one-shot
+                        // sync_source_change message.
                         if (messageBody.eventType.endsWith('_url_update') && messageBody.messageBody) {
-                            const mediaUpdateData = JSON.parse(messageBody.messageBody);
+                            const mediaUpdatePayload = messageBody.messageBody;
+                            const mediaEvtType = messageBody.eventType;
+                            setTimeout(() => {
+                            try {
+                            const mediaUpdateData = JSON.parse(mediaUpdatePayload);
                             
                             // Determine media type from event type
-                            const mediaType = messageBody.eventType.replace('_url_update', '');
+                            const mediaType = mediaEvtType.replace('_url_update', '');
                             
                             // Clear all media stores first
                             currentVideoUrl.set('');
@@ -763,16 +782,32 @@ function handleWebRTCCallback(info: string, obj: any) {
                             // Set the appropriate media URL
                             switch (mediaType) {
                                 case 'video':
-                                    currentVideoUrl.set(mediaUpdateData.fileUrl);
+                                    currentVideoUrl.set(mediaUpdateData.fileUrl || mediaUpdateData.videoUrl || '');
                                     playVideoStore.set(mediaUpdateData.shouldPlay || false);
+                                    if (videoPlayer && (mediaUpdateData.fileUrl || mediaUpdateData.videoUrl)) {
+                                        videoPlayer.src = mediaUpdateData.fileUrl || mediaUpdateData.videoUrl;
+                                        if (mediaUpdateData.shouldPlay) {
+                                            videoPlayer.play().catch(e => console.warn('Autoplay blocked:', e));
+                                        } else {
+                                            videoPlayer.pause();
+                                        }
+                                    }
                                     break;
                                 case 'pdf':
                                     currentPdfUrl.set(mediaUpdateData.fileUrl);
+                                    if (mediaUpdateData.initialScale) {
+                                        pdfScrollPosition.set(mediaUpdateData.initialScale);
+                                    }
                                     break;
                                 case 'docx':
                                     currentDocxUrl.set(mediaUpdateData.fileUrl);
+                                    playVideoStore.set(false);
+                                    if (videoPlayer) videoPlayer.pause();
                                     break;
                                 case 'image':
+                                    imageZoomLevel.set(1);
+                                    imagePanX.set(0);
+                                    imagePanY.set(0);
                                     currentImageUrl.set(mediaUpdateData.fileUrl);
                                     break;
                             }
@@ -783,119 +818,37 @@ function handleWebRTCCallback(info: string, obj: any) {
                             } else if (mediaUpdateData.fromRepresentative) {
                                 syncSource = 'representative';
                             }
-                        }
-                        
-                        // Handle video URL updates
-                        if (messageBody.eventType === 'video_url_update' && messageBody.messageBody) {
-                            const videoUpdateData = JSON.parse(messageBody.messageBody);
-                            
-                            if (videoUpdateData.videoUrl) {
-                                currentVideoUrl.set(videoUpdateData.videoUrl);
-                                currentPdfUrl.set(''); // Clear PDF when video is shown
-                                // Update play intent based on controller
-                                const shouldPlay = videoUpdateData.shouldPlay === true;
-                                playVideoStore.set(shouldPlay);
-                                if (videoPlayer) {
-                                    videoPlayer.src = videoUpdateData.videoUrl;
-                                    if (shouldPlay) {
-                                        videoPlayer.play().catch(e => console.warn('Autoplay blocked. Waiting for user interaction to play.', e));
-                                    } else {
-                                        videoPlayer.pause();
-                                    }
-                                }
-                            }
-                        } 
-                        // Handle PDF URL updates
-                        else if (messageBody.eventType === 'pdf_url_update' && messageBody.messageBody) {
-                            try {
-                                const pdfUpdateData = JSON.parse(messageBody.messageBody);
-                                
-                                // Clear all media stores first
-                                currentVideoUrl.set('');
-                                currentPdfUrl.set('');
-                                currentDocxUrl.set('');
-                                currentImageUrl.set('');
-                                
-                                // Set the PDF URL
-                                currentPdfUrl.set(pdfUpdateData.fileUrl);
-                                
-                                // Update sync source if needed
-                                if (pdfUpdateData.fromHost) {
-                                    syncSource = 'host';
-                                } else if (pdfUpdateData.fromRepresentative) {
-                                    syncSource = 'representative';
-                                }
-                                
-                                // Optional: handle initial scale and page if provided
-                                if (pdfUpdateData.initialScale) {
-                                    // You might want to set this in a PDF-specific store or pass to the PDF viewer
-                                    pdfScrollPosition.set(pdfUpdateData.initialScale);
-                                }
                             } catch (error) {
-                                console.error('Error handling PDF update:', error);
+                                console.error('Error handling media URL update:', error);
                             }
-                        } 
-                        // Handle PDF scroll sync
+                            }, 0);
+                        }
+                        // Scroll / zoom sync messages are lightweight (single
+                        // store update) so they stay synchronous.
                         else if (messageBody.eventType === 'pdf_scroll_sync' && messageBody.messageBody) {
                             const scrollData = JSON.parse(messageBody.messageBody);
                             if (scrollData.scrollPosition !== undefined) {
                                 pdfScrollPosition.set(scrollData.scrollPosition);
                             }
                         } 
-                        // Handle PDF zoom sync
                         else if (messageBody.eventType === 'pdf_zoom_sync' && messageBody.messageBody) {
                             const zoomData = JSON.parse(messageBody.messageBody);
                             if (zoomData.scale !== undefined) {
                                 pdfZoomLevel.set(zoomData.scale);
                             }
                         }
-                        // Handle DOCX zoom sync
                         else if (messageBody.eventType === 'docx_zoom_sync' && messageBody.messageBody) {
                             const zoomData = JSON.parse(messageBody.messageBody);
                             if (zoomData.scale !== undefined) {
                                 docxZoomLevel.set(zoomData.scale);
                             }
                         }
-                        // Handle DOCX URL updates
-                        else if (messageBody.eventType === 'docx_url_update' && messageBody.messageBody) {
-                            const docxUpdateData = JSON.parse(messageBody.messageBody);
-                            
-                            if (docxUpdateData.fileUrl) {
-                                // Clear all media types first
-                                currentVideoUrl.set('');
-                                currentPdfUrl.set('');
-                                // Then set the new DOCX URL
-                                currentDocxUrl.set(docxUpdateData.fileUrl);
-                                // Pause any playing video for document focus
-                                playVideoStore.set(false);
-                                if (videoPlayer) videoPlayer.pause();
-                            }
-                        } 
-                        // Handle DOCX scroll sync
                         else if (messageBody.eventType === 'docx_scroll_sync' && messageBody.messageBody) {
                             const scrollData = JSON.parse(messageBody.messageBody);
                             if (scrollData.scrollPosition !== undefined) {
                                 docxScrollPosition.set(scrollData.scrollPosition);
                             }
                         }
-                        // Handle image URL updates
-                        else if (messageBody.eventType === 'image_url_update' && messageBody.messageBody) {
-                            const imageUpdateData = JSON.parse(messageBody.messageBody);
-                            
-                            if (imageUpdateData.fileUrl) {
-                                // Clear all media types first
-                                currentVideoUrl.set('');
-                                currentPdfUrl.set('');
-                                currentDocxUrl.set('');
-                                // Reset image transform for new image
-                                imageZoomLevel.set(1);
-                                imagePanX.set(0);
-                                imagePanY.set(0);
-                                // Then set the new image URL
-                                currentImageUrl.set(imageUpdateData.fileUrl);
-                            }
-                        } 
-                        // Handle image zoom sync
                         else if (messageBody.eventType === 'image_zoom_sync' && messageBody.messageBody) {
                             const zoomData = JSON.parse(messageBody.messageBody);
                             if (zoomData.zoomLevel !== undefined) {

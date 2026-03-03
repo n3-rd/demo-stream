@@ -44,7 +44,11 @@
 
     onMount(() => {
         if (browser && typeof Notification !== "undefined") {
-            Notification.requestPermission();
+            try {
+                Notification.requestPermission();
+            } catch {
+                // Notification API may throw on mobile WebViews (Capacitor/WKWebView)
+            }
         }
 
         unsubscribe = chatMessages.subscribe(messages => {
@@ -63,12 +67,20 @@
                         
                         // Browser notification (Notification not available on many mobile browsers)
                         if (browser && typeof Notification !== "undefined" && Notification.permission === "granted") {
-                            incomingMessages.forEach(msg => {
-                                new Notification(`New message from ${msg.name}`, {
-                                    body: msg.text,
-                                    icon: "/favicon.png"
+                            try {
+                                incomingMessages.forEach(msg => {
+                                    new Notification(`New message from ${msg.name}`, {
+                                        body: msg.text,
+                                        icon: "/favicon.png"
+                                    });
                                 });
-                            });
+                            } catch {
+                                // Notification constructor may throw on mobile WebViews
+                                // even when permission === "granted" (e.g. Android WebView
+                                // stubs the API but doesn't implement it).  Swallow the
+                                // error so the store subscriber completes and
+                                // lastMessageCount stays in sync.
+                            }
                         }
                     }
                 }

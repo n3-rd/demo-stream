@@ -61,14 +61,14 @@
 
     <!-- <Notes scale={1.3} color="#fff" /> -->
 
-    <Button
+    <!-- <Button
     variant="ghost"
     size="icon"
     class="w-full hover:bg-red-700"
     id="virtual-assistant"
     >
       <img src="/icons/icon-question.svg" alt="virtual-assistant" class="w-7 h-7"/>
-    </Button>
+    </Button>  -->
     {#if showInviteRepresentative}
     <Dialog.Root bind:open={representativeDialogOpen}>
         <Dialog.Trigger>

@@ -954,17 +954,15 @@ function handleWebRTCCallback(info: string, obj: any) {
                             }
                             break;
                         }
-                        case 'chat_message':
+                        case 'chat_message': {
                             // Defer DOM update out of the WebRTC data_received callback.
                             // On iOS WKWebView and Android WebView, a synchronous
                             // chatMessages.update() here triggers Svelte reactivity →
                             // DOM mutations (scroll, re-render) that can block subsequent
                             // data_received events (video_sync, media_source_change).
-                            // Use setTimeout(0) instead of requestAnimationFrame so the
-                            // update runs in the regular task queue, fully outside the
-                            // rendering pipeline.  rAF runs *inside* the frame and DOM
-                            // mutations there still stall mobile Chrome's data-channel
-                            // delivery; setTimeout(0) avoids that entirely.
+                            // setTimeout(0) moves the store update to a separate task so
+                            // the data-channel callback returns immediately and the
+                            // browser can continue delivering queued messages.
                             const chatPayload = {
                                 ...messageBody,
                                 timestamp: messageBody.timestamp || data.messageDate || Date.now()
@@ -973,6 +971,7 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 handleChatMessage(chatPayload);
                             }, 0);
                             break;
+                        }
                         case 'video_mute_sync':
                             try {
                                 // Parse the inner messageBody for video mute sync
@@ -2928,6 +2927,7 @@ run(() => {
                         {publishStreamId}
                         {userRole}
                         {baseRoomName}
+                        open={chatPanelOpen}
                         on:togglePanel={handlePanelToggle}
                     />
 

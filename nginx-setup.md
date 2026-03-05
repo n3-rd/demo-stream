@@ -80,3 +80,4 @@ sudo ufw allow 443/tcp
 - Check nginx error logs: `sudo tail -f /var/log/nginx/error.log`
 - Check nginx access logs: `sudo tail -f /var/log/nginx/access.log`
 - Verify your app is listening: `netstat -tlnp | grep 3001` or `ss -tlnp | grep 3001`
+- **504 Gateway Timeout / localhost not working**: On many VPS setups, `localhost` resolves to the IPv6 loopback (`::1`) rather than `127.0.0.1`. Since the Node.js app listens on `0.0.0.0` (IPv4 only), nginx cannot reach it via `localhost`. The config now uses `127.0.0.1:3001` to force IPv4. If you still have issues, verify with: `curl -v http://127.0.0.1:3001/` and `curl -v http://localhost:3001/`

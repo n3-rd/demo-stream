@@ -194,15 +194,28 @@ async function sendEmailVerificationCode(email: string, code: string, loginName:
     tags: ["viewroom", "verification", "email"]
   };
   
-  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'accept': 'application/json',
-      'api-key': BREVO_API_KEY,
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify(emailData)
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+  let response: Response;
+  try {
+    response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(emailData),
+      signal: controller.signal
+    });
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error('Failed to send verification email: request timed out');
+    }
+    throw new Error('Failed to send verification email');
+  } finally {
+    clearTimeout(timeoutId);
+  }
   
   if (!response.ok) {
     const errorData = await response.text();

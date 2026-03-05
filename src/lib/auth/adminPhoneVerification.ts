@@ -3,6 +3,7 @@ import { telnyxSMS } from '$lib/services/telnyx';
 import crypto from 'crypto';
 import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
+import { brevoFetch } from '$lib/services/email';
 
 export interface AdminPhoneVerificationRequest {
   phone: string;
@@ -108,15 +109,7 @@ export async function sendAdminPhoneVerification(
       tags: ['registration', 'verification', 'email']
     };
 
-    const emailResp = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'api-key': BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify(emailPayload)
-    });
+    const emailResp = await brevoFetch(emailPayload);
 
     if (!emailResp.ok) {
       // If email failed, delete the verification record
@@ -218,15 +211,7 @@ export async function sendAdminEmailVerification(
       tags: ['registration', 'verification', 'email']
     };
 
-    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'api-key': BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify(emailPayload)
-    });
+    const resp = await brevoFetch(emailPayload);
 
     if (!resp.ok) {
       const text = await resp.text();

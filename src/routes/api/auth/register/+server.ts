@@ -2,8 +2,9 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { telnyxSMS } from '$lib/services/telnyx';
 import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
+import { brevoFetch } from '$lib/services/email';
 
-export const POST: RequestHandler = async ({ request, locals, fetch }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
     const formData = await request.formData();
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
@@ -70,11 +71,7 @@ export const POST: RequestHandler = async ({ request, locals, fetch }) => {
         `,
                         tags: ['registration', 'verification']
                     };
-                    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
-                        method: 'POST',
-                        headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
-                        body: JSON.stringify(emailPayload)
-                    });
+                    const resp = await brevoFetch(emailPayload);
                     emailSent = resp.ok;
                     if (!resp.ok) {
                         const t = await resp.text();

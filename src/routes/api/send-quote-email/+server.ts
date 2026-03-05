@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
+import { brevoFetch } from '$lib/services/email';
 
 
 // Get environment variables - fix the import error
@@ -21,7 +22,7 @@ interface QuoteEmailData {
 }
 
 // Update the locals type to include pb
-export const POST = (async ({ request, fetch, locals }) => {
+export const POST = (async ({ request, locals }) => {
   try {
     // Get company information from auth store (if available)
     // @ts-ignore - Add type ignore for locals.pb until you can define a proper type
@@ -114,14 +115,7 @@ export const POST = (async ({ request, fetch, locals }) => {
     }
 
     // Send the email via Brevo API
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': BREVO_API_KEY
-      },
-      body: JSON.stringify(emailData)
-    });
+    const response = await brevoFetch(emailData);
 
     // Check for API response
     if (!response.ok) {

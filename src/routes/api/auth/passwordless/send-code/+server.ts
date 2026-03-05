@@ -3,8 +3,9 @@ import { pb } from '$lib/pocketbase';
 import { telnyxSMS } from '$lib/services/telnyx';
 import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
+import { brevoFetch } from '$lib/services/email';
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
+export const POST: RequestHandler = async ({ request }) => {
   try {
     const { email, phone } = await request.json();
     if (!email || !phone) return json({ success: false, message: 'Email and phone are required' }, { status: 400 });
@@ -65,11 +66,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
         `,
         tags: ['passwordless', 'verification']
       };
-      const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
-        body: JSON.stringify(emailPayload)
-      });
+      const resp = await brevoFetch(emailPayload);
       emailSent = resp.ok;
       if (!resp.ok) {
         const t = await resp.text();

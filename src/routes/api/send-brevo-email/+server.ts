@@ -1,6 +1,7 @@
 import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
 import type { RequestHandler } from '@sveltejs/kit';
+import { brevoFetch } from '$lib/services/email';
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
@@ -33,15 +34,7 @@ export const POST: RequestHandler = async ({ request }) => {
     
     console.log('Sending email via Brevo API:', JSON.stringify(brevoData, null, 2));
     
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': BREVO_API_KEY, 
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify(brevoData)
-    });
+    const response = await brevoFetch(brevoData);
     
     const responseText = await response.text();
     let responseData;

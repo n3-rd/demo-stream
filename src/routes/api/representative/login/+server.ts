@@ -4,8 +4,9 @@ import { pb } from '$lib/pocketbase';
 import { telnyxSMS } from '$lib/services/telnyx';
 import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
+import { brevoFetch } from '$lib/services/email';
 
-export const POST: RequestHandler = async ({ request, fetch }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const data = await request.json();
 		const { email, phone } = data || {};
@@ -94,11 +95,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 				tags: ['representative', 'verification']
 			};
 			console.log('Email Payload:', JSON.stringify(emailPayload, null, 2));
-			const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
-				method: 'POST',
-				headers: { accept: 'application/json', 'api-key': BREVO_API_KEY, 'content-type': 'application/json' },
-				body: JSON.stringify(emailPayload)
-			});
+			const resp = await brevoFetch(emailPayload);
 			console.log('Email Response Status:', resp.status);
 			const respText = await resp.text();
 			console.log('Email Response Body:', respText);

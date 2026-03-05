@@ -2,6 +2,7 @@ import { pb } from '$lib/pocketbase';
 import { BREVO_API_KEY } from '$env/static/private';
 import { PUBLIC_SMTP_FROM } from '$env/static/public';
 import crypto from 'crypto';
+import { brevoFetch } from '$lib/services/email';
 
 export interface ViewroomLoginRequest {
   first_name: string;
@@ -194,27 +195,12 @@ async function sendEmailVerificationCode(email: string, code: string, loginName:
     tags: ["viewroom", "verification", "email"]
   };
   
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
   let response: Response;
   try {
-    response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify(emailData),
-      signal: controller.signal
-    });
+    response = await brevoFetch(emailData);
   } catch (err: any) {
-    if (err.name === 'AbortError') {
-      throw new Error('Failed to send verification email: request timed out');
-    }
-    throw new Error('Failed to send verification email');
-  } finally {
-    clearTimeout(timeoutId);
+    const msg = err.message?.includes('timed out after') ? 'Failed to send verification email: request timed out' : 'Failed to send verification email';
+    throw new Error(msg);
   }
   
   if (!response.ok) {

@@ -15,7 +15,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push --config=drizzle.config.ts",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
 		"db:push-fix": "node scripts/fix-rep-device-tokens-pk.cjs"
 	},
 	"devDependencies": {

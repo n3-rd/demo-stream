@@ -16,6 +16,7 @@
 		"db:push": "drizzle-kit push --config=drizzle.config.ts",
 		"test": "vitest run",
 		"test:watch": "vitest"
+		"db:push-fix": "node scripts/fix-rep-device-tokens-pk.cjs"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "next",

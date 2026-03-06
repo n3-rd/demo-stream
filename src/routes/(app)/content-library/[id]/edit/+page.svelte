@@ -28,7 +28,8 @@
     let thumbnailPreviewUrl: string | null = $state(content.thumbnail ? `/api/files/content_library/${content.id}/${content.thumbnail}` : null);
     let isContentActive = $state(content.active === undefined ? true : !!content.active);
 
-    const CHUNK_SIZE = 512 * 1024; // 500KB chunks (reduced from 1MB for Vercel)
+    // Stay under adapter-node default 512KB so multipart boundary/fields don't push over
+    const CHUNK_SIZE = 500 * 1024;
 
     const contentTypes = [
         { value: 'video', label: 'Video' },

@@ -1,9 +1,8 @@
 // vite.config.js
 import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
 
-
-/** @type {import('vite').UserConfig} */
-const config = {
+export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		watch: {
@@ -11,7 +10,8 @@ const config = {
 		  interval: 300, // Adjust polling interval (milliseconds)
 		}
 	  },
-
-};
-
-export default config;
+	test: {
+		include: ['src/**/*.{test,spec}.{js,ts}'],
+		environment: 'node'
+	}
+});

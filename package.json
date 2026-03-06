@@ -14,6 +14,8 @@
 		"db:generate": "drizzle-kit generate --dialect=postgresql --out=drizzle --schema=src/lib/db/schema.ts",
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push --config=drizzle.config.ts",
+		"test": "vitest run",
+		"test:watch": "vitest"
 		"db:push-fix": "node scripts/fix-rep-device-tokens-pk.cjs"
 	},
 	"devDependencies": {
@@ -37,7 +39,8 @@
 		"prettier-plugin-tailwindcss": "^0.6.8",
 		"svelte": "^5.0.0",
 		"tailwindcss": "^3.4.13",
-		"vite": "^5.4.9"
+		"vite": "^5.4.9",
+		"vitest": "^4.0.18"
 	},
 	"type": "module",
 	"dependencies": {

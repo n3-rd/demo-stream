@@ -8,7 +8,8 @@ module.exports = {
 			env: {
 				NODE_ENV: 'production',
 				PORT: 3001,
-				HOST: '0.0.0.0'
+				HOST: '0.0.0.0',
+				BODY_SIZE_LIMIT: 'Infinity'
 			},
 			error_file: './logs/pm2-error.log',
 			out_file: './logs/pm2-out.log',

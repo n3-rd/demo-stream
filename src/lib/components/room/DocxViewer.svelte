@@ -179,8 +179,21 @@
             error = '';
             console.log('Starting DOCX load from URL:', url);
             
+            // Proxy cross-origin DOCX (e.g. CDN) to avoid CORS
+            let fetchUrl = url;
+            if (typeof window !== 'undefined') {
+                try {
+                    const u = new URL(url);
+                    if (u.origin !== window.location.origin) {
+                        fetchUrl = `/api/proxy-pdf?url=${encodeURIComponent(url)}`;
+                    }
+                } catch {
+                    // keep fetchUrl as url
+                }
+            }
+            
             // Fetch the docx file
-            const response = await fetch(url);
+            const response = await fetch(fetchUrl);
             if (!response.ok) {
                 throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
             }

@@ -94,6 +94,8 @@
 
     function handleWheel(event: WheelEvent) {
         if (!isController) return;
+        // Only zoom on ctrl+wheel / meta+wheel (pinch-zoom style); let normal wheel scroll the PDF
+        if (!event.ctrlKey && !event.metaKey) return;
         event.preventDefault();
         const delta = event.deltaY * -0.005;
         const newScale = Math.min(Math.max(scale + delta, ZOOM_MIN), ZOOM_MAX);
@@ -158,7 +160,19 @@
         try {
             // Strip any legacy ?scale= query param we may have previously appended
             const cleanUrl = url.split('?')[0];
-            const loadingTask = pdfjs.getDocument(cleanUrl);
+            // Proxy cross-origin PDFs (e.g. CDN) to avoid CORS
+            let fetchUrl = cleanUrl;
+            if (typeof window !== 'undefined') {
+                try {
+                    const u = new URL(cleanUrl);
+                    if (u.origin !== window.location.origin) {
+                        fetchUrl = `/api/proxy-pdf?url=${encodeURIComponent(cleanUrl)}`;
+                    }
+                } catch {
+                    // keep fetchUrl as cleanUrl
+                }
+            }
+            const loadingTask = pdfjs.getDocument(fetchUrl);
             pdf = await loadingTask.promise;
             numPages = pdf.numPages;
 

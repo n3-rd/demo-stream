@@ -295,7 +295,7 @@
     {/if}
 
     <div
-        class="pdf-container flex-1 w-full overflow-y-auto bg-white"
+        class="pdf-container flex-1 w-full overflow-y-auto overflow-x-auto bg-white"
         bind:this={pdfContainer}
         style="pointer-events: {isController ? 'auto' : 'none'}"
     >
@@ -316,5 +316,13 @@
     .pdf-container.is-reloading {
         opacity: 0.7;
         transition: opacity 0.15s ease;
+    }
+
+    /* Keep each page canvas centred and prevent it from overflowing the viewport on mobile */
+    .pdf-container :global(canvas) {
+        display: block;
+        margin: 0 auto 4px;
+        max-width: 100%;
+        height: auto;
     }
 </style>

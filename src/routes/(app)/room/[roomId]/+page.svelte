@@ -958,26 +958,31 @@ function handleWebRTCCallback(info: string, obj: any) {
                                 
                                 if (!isCurrentController && videoPlayer) {
                                     
-                                    
-                                    // Improved sync strategy with network-latency compensation:
-                                    // - Compute target time by accounting for message round-trip latency
-                                    // - Hard seek only if desync >= 3s
-                                    // - For 0.3s <= desync < 3s, drift via temporary playbackRate nudge
                                     const latencySeconds = syncData.sendTimestamp
                                         ? (Date.now() - syncData.sendTimestamp) / 1000
                                         : 0;
-                                    const targetTime = (syncData.currentTime ?? 0) + (syncData.isPlaying ? latencySeconds : 0);
-                                    const timeDiffSigned = targetTime - (videoPlayer.currentTime ?? 0);
-                                    const timeDiff = Math.abs(timeDiffSigned);
-                                    if (timeDiff >= 3.0) {
-                                        videoPlayer.currentTime = targetTime;
-                                    } else if (timeDiff >= 0.3) {
-                                        const originalRate = videoPlayer.playbackRate || 1.0;
-                                        const nudgeRate = timeDiffSigned > 0 ? Math.min(1.25, originalRate + 0.05) : Math.max(0.75, originalRate - 0.05);
-                                        videoPlayer.playbackRate = nudgeRate;
-                                        setTimeout(() => {
-                                            videoPlayer.playbackRate = 1.0;
-                                        }, 2000);
+
+                                    if (!syncData.isPlaying) {
+                                        // When host pauses, always seek to the exact pause position
+                                        videoPlayer.currentTime = syncData.currentTime ?? 0;
+                                    } else {
+                                        // Improved sync strategy with network-latency compensation:
+                                        // - Compute target time by accounting for message round-trip latency
+                                        // - Hard seek only if desync >= 3s
+                                        // - For 0.3s <= desync < 3s, drift via temporary playbackRate nudge
+                                        const targetTime = (syncData.currentTime ?? 0) + latencySeconds;
+                                        const timeDiffSigned = targetTime - (videoPlayer.currentTime ?? 0);
+                                        const timeDiff = Math.abs(timeDiffSigned);
+                                        if (timeDiff >= 3.0) {
+                                            videoPlayer.currentTime = targetTime;
+                                        } else if (timeDiff >= 0.3) {
+                                            const originalRate = videoPlayer.playbackRate || 1.0;
+                                            const nudgeRate = timeDiffSigned > 0 ? Math.min(1.25, originalRate + 0.05) : Math.max(0.75, originalRate - 0.05);
+                                            videoPlayer.playbackRate = nudgeRate;
+                                            setTimeout(() => {
+                                                videoPlayer.playbackRate = 1.0;
+                                            }, 2000);
+                                        }
                                     }
 
                                     // Update the playVideoStore to match the sync state

@@ -141,6 +141,7 @@ let scheduledMeetingTime = $state(null);
 // Add near the top with other state variables
 let participantsPanelOpen = $state(false);
 let chatPanelOpen = $state(false);
+let mobileChatOpen = $state(false);
 
 // Host-left countdown state
 let hostLeft = $state(false);
@@ -317,22 +318,6 @@ onMount(() => {
             }
         }
     });
-    
-    // Ensure panels are closed initially
-    setTimeout(() => {
-        const chatPanel = document.getElementById("chatPanel");
-        const participantsPanel = document.getElementById("participantsPanel");
-        
-        if (chatPanel) {
-            chatPanel.style.transform = "translateX(100%)";
-            chatPanel.style.width = "0px";
-        }
-        
-        if (participantsPanel) {
-            participantsPanel.style.transform = "translateX(100%)";
-            participantsPanel.style.width = "0px";
-        }
-    }, 100);
     
 });
 
@@ -1725,36 +1710,12 @@ const handleScheduleClose = () => {
 
 // Modified togglePanel function to fix panel behavior 
 function togglePanel(id) {
-    const chatPanel = document.getElementById("chatPanel");
-    const participantsPanel = document.getElementById("participantsPanel");
-    const isMobile = window.innerWidth < 1024;
-    
-    if (!chatPanel || !participantsPanel) return;
-    
     if (id === "chatPanel") {
-        // Toggle chat panel
         chatPanelOpen = !chatPanelOpen;
         participantsPanelOpen = false;
-        
-        // Update UI for chat panel
-        chatPanel.style.transform = chatPanelOpen ? "translateX(0%)" : "translateX(100%)";
-        chatPanel.style.width = chatPanelOpen ? (isMobile ? "100vw" : "30rem") : "0px";
-        
-        // Close participants panel
-        participantsPanel.style.transform = "translateX(100%)";
-        participantsPanel.style.width = "0px";
     } else {
-        // Toggle participants panel
         participantsPanelOpen = !participantsPanelOpen;
         chatPanelOpen = false;
-        
-        // Update UI for participants panel
-        participantsPanel.style.transform = participantsPanelOpen ? "translateX(0%)" : "translateX(100%)";
-        participantsPanel.style.width = participantsPanelOpen ? (isMobile ? "100vw" : "30rem") : "0px";
-        
-        // Close chat panel
-        chatPanel.style.transform = "translateX(100%)";
-        chatPanel.style.width = "0px";
     }
 }
 
@@ -2717,8 +2678,12 @@ run(() => {
                 </div>
                 
                 <!-- Main content area -->
-                <div class="flex-grow h-[70vh] md:h-full bg-bgdefault relative flex px-2">
-                    <div class="video-container bg-red h-full w-full relative">
+                <div class="flex-grow md:h-full bg-bgdefault relative flex px-2 transition-all duration-300 pb-[6vh] md:pb-0"
+                    class:h-[70vh]={!mobileChatOpen}
+                    class:h-[60vh]={mobileChatOpen}
+                    style:bottom={mobileChatOpen ? '9vh' : '0'}
+                >
+                    <div class="video-container bg-red h-full flex-1 min-w-0 relative">
                         <!-- Rep stream: full-screen when GO LIVE (data channel), else back+front when dual streams -->
                         <div
                             id="back-camera-container"
@@ -2899,6 +2864,7 @@ run(() => {
                         showInvitePeople={(isHost || isRepresentative) && (isAuthenticated || isAnonymousHost)}
                         {publishStreamId}
                         {activeSpeakerStreamId}
+                        open={participantsPanelOpen}
                         on:togglePanel={handlePanelToggle}
                     />
                 </div>
@@ -2923,6 +2889,7 @@ run(() => {
 
             <!-- Mobile Bottom Bar -->
             <MobileBottomBar
+                bind:mobileChatOpen
                 roomIdentityName={room?.title || 'Meeting Room'}
                 videoRepresentatives={representatives}
                 scheduleOpen={scheduleOpen}
@@ -3029,7 +2996,6 @@ run(() => {
 
 <style>
 .video-container {
-    width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
@@ -3186,14 +3152,6 @@ run(() => {
 }
 .dual-camera-content-wrap.hidden {
     display: none;
-}
-
-@media (max-width: 1024px) {
-    :global(#chatPanel), :global(#participantsPanel) {
-        height: 100vh !important;
-        top: 0;
-        right: 0;
-    }
 }
 </style>
 

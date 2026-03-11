@@ -15,6 +15,7 @@
         activeSpeakerStreamId: string | null;
         /** When false, hide "Invite people" (e.g. anonymous users). */
         showInvitePeople?: boolean;
+        open?: boolean;
     }
 
     let {
@@ -25,18 +26,21 @@
         shareURL,
         publishStreamId,
         activeSpeakerStreamId,
-        showInvitePeople = true
+        showInvitePeople = true,
+        open = false
     }: Props = $props();
 
     const dispatch = createEventDispatcher();
 </script>
 
 <div
-    class="w-0 lg:w-0 z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto bg-[#666669] h-full overflow-y-auto flex flex-col transition-all duration-300 ease-in-out"
+    class="z-[99] md:z-auto fixed lg:relative inset-0 lg:inset-auto h-full flex flex-col transition-all duration-300 ease-in-out overflow-hidden"
+    class:w-0={!open}
+    class:lg:w-[22rem]={open}
+    class:w-screen={open}
     id="participantsPanel"
-    style="transform: translateX(100%)"
 >
-    <div class="flex items-center h-full w-full p-4 border-b bg-[#9d9ca0] flex-col gap-3">
+    <div class="flex items-center h-full w-[22rem] max-w-full p-4 border-b bg-[#202124] flex-col gap-3">
         <div class="flex items-center justify-between w-full bg-[#47484b] px-4 py-2 md:hidden">
             <div class="text-white text-lg font-semibold">Participants</div>
             <Button variant="ghost" size="icon" on:click={() => dispatch('togglePanel', { id: 'participantsPanel' })}>

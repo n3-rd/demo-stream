@@ -173,8 +173,8 @@
 </script>
 
 {#if variant === 'mobile'}
-    <div class="flex h-full flex-col bg-white text-[#3b4a56] rounded-t-2xl">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-[#d6dce1] text-xs">
+    <div class="flex flex-col bg-white text-[#3b4a56] rounded-t-2xl h-full max-h-full overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-[#d6dce1] text-xs">
             <div class="flex gap-2">
                 <button class="px-2 py-1" onclick={() => activeTab = 'chat'} class:bg-black={activeTab === 'chat'} class:text-white={activeTab === 'chat'} class:text-black={activeTab !== 'chat'}>Chat with others</button>
                 {#if userRole !== 'representative'}
@@ -192,7 +192,7 @@
             {/if}
         </div>
         {#if activeTab === 'chat'}
-        <div bind:this={messagesContainer} class="mobile-chat-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-5 py-6 space-y-6 max-h-[40vh]">
+        <div bind:this={messagesContainer} class="mobile-chat-scroll overflow-y-auto overflow-x-hidden px-5 py-3 space-y-4" style="flex: 1 1 0; min-height: 0;">
             {#if messages.length === 0}
                 <div class="flex h-full items-center justify-center text-sm text-[#8a9aa5]">
                     No messages yet
@@ -223,19 +223,19 @@
                 {/each}
             {/if}
         </div>
-        <div class="border-t border-[#d6dce1] px-5 py-4">
-            <div class="flex items-center gap-3 rounded-2xl bg-[#f3f5f7] px-4 py-3">
+        <div class="border-t border-[#d6dce1] px-4 py-2">
+            <div class="flex items-center gap-2 rounded-2xl bg-[#f3f5f7] px-3 py-2">
                 <input
                     bind:this={mobileChatInputRef}
                     type="text"
                     placeholder="Type a message"
                     bind:value={newText}
                     onkeydown={handleEnterKey}
-                    class="flex-1 bg-transparent text-[16px] text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
+                    class="flex-1 bg-transparent text-[14px] text-[#3b4a56] placeholder-[#9ba7b0] focus:outline-none"
                 />
                 <button
                     type="button"
-                    class="flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#6d7c86] hover:text-[#3b4a56] disabled:opacity-40"
+                    class="flex h-8 w-8 items-center justify-center rounded-full text-neutral disabled:opacity-40"
                     disabled={!newText.trim()}
                     onclick={sendNewMessage}
                 >
@@ -245,7 +245,7 @@
         </div>
         {:else}
         <!-- AI Chatbot -->
-        <div class="mobile-chat-scroll flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-5 py-6 space-y-6 max-h-[40vh]">
+        <div class="mobile-chat-scroll overflow-y-auto overflow-x-hidden px-5 py-3 space-y-4" style="flex: 1 1 0; min-height: 0;">
             {#each $aiMessages as message, index (message.timestamp ?? `${message.name}-${index}`)}
                 <div class="flex gap-4">
                     <div
@@ -467,6 +467,19 @@
         overflow-y: scroll;
         overscroll-behavior-y: contain;
         touch-action: pan-y;
+        /* Visible scrollbar on mobile */
+        scrollbar-width: thin;
+        scrollbar-color: #c4c4c4 transparent;
+    }
+    .mobile-chat-scroll::-webkit-scrollbar {
+        width: 5px;
+    }
+    .mobile-chat-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .mobile-chat-scroll::-webkit-scrollbar-thumb {
+        background-color: #c4c4c4;
+        border-radius: 10px;
     }
     .ai-typing-dot {
         width: 6px;

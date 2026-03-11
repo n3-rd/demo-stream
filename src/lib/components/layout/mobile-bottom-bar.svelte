@@ -15,13 +15,12 @@
     const MobileQuoteSheet = import("$lib/components/layout/mobile-quote-sheet.svelte");
     const MobileNotesSheet = import("$lib/components/layout/mobile-notes-sheet.svelte");
     import Chat from '$lib/call/Chat.svelte';
+    import { chatMessages } from '$lib/stores/chatMessages';
+    import { isCurrentUserMessage } from '$lib/utils/chat';
+    import { anonymousUser } from '$lib/stores/anonymousUser';
+    import { onMount, onDestroy } from 'svelte';
+    import { browser } from '$app/environment';
 
-
-    
-    
-    
-    
-    
     interface Props {
         mobileSheetOpen?: boolean;
         roomIdentityName: string;
@@ -52,6 +51,8 @@
         micPermission?: string;
         /** 'granted' | 'denied' | 'prompt' | 'unknown' */
         cameraPermission?: string;
+        /** Bindable: whether the mobile chat sheet is currently open */
+        mobileChatOpen?: boolean;
     }
 
     let {
@@ -78,7 +79,8 @@
         repContentItems = [],
         participants = [],
         micPermission = 'unknown',
-        cameraPermission = 'unknown'
+        cameraPermission = 'unknown',
+        mobileChatOpen = $bindable(false)
     }: Props = $props();
     let userRole: 'host' | 'guest' | 'representative' = $state('guest');
     run(() => {
@@ -293,7 +295,7 @@
 
         if (control.type === "panel") {
             if (control.panelId === "chatPanel") {
-                openSheet("chat");
+                if (chatSheetOpen) { closeSheets(); } else { openSheet("chat"); }
                 return;
             }
             if (control.panelId === "participantsPanel") {
@@ -352,6 +354,9 @@
     let contentSheetOpen = $state(false);
     let chatSheetOpen = $state(false);
     let participantsSheetOpen = $state(false);
+
+    // Sync chatSheetOpen to the bindable mobileChatOpen prop
+    $effect(() => { mobileChatOpen = chatSheetOpen; });
     let quoteSheetOpen = $state(false);
     let notesSheetOpen = false;
     /** Which dialog content is open from the more sheet (share | inviteRepresentative). */
@@ -387,10 +392,39 @@
         dispatch("sendNotes", event.detail);
         closeSheets();
     }
+
+    // ── Unread chat indicator (mirrors desktop right-bar logic) ──
+    let unreadCount = $state(0);
+    let lastMessageCount = 0;
+    let unsubscribeChat: (() => void) | undefined;
+    const chatNameRef = { current: '' };
+    run(() => { chatNameRef.current = chatName || ''; });
+
+    onMount(() => {
+        if (!browser) return;
+        unsubscribeChat = chatMessages.subscribe(messages => {
+            if (messages.length > lastMessageCount) {
+                const newMessages = messages.slice(lastMessageCount);
+                if (!chatSheetOpen) {
+                    const incoming = newMessages.filter(msg =>
+                        !isCurrentUserMessage(msg.name, chatNameRef.current || $anonymousUser, msg.senderId, chatUserId)
+                    );
+                    if (incoming.length > 0) unreadCount += incoming.length;
+                }
+            }
+            lastMessageCount = messages.length;
+        });
+    });
+
+    // Clear unread when chat opens
+    $effect(() => { if (chatSheetOpen) unreadCount = 0; });
+
+    onDestroy(() => { unsubscribeChat?.(); });
 </script>
 
 <div class="px-4 flex justify-center items-center">
-    <!-- Content sheet (Show content) -->
+    <!-- Content sheet (Show content) — only for hosts/reps -->
+    {#if isHost || isRepresentative}
     <button
         type="button"
         class="fixed z-50 right-8 bottom-28 rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black lg:hidden"
@@ -398,6 +432,7 @@
     >
         Show content
     </button>
+    {/if}
     {#if contentSheetOpen}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -430,15 +465,6 @@
             />
         </div>
     {/if}
-    {#if chatSheetOpen}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-            class="fixed inset-0 z-50 bg-black/50 lg:hidden"
-            transition:fade={{ duration: 150 }}
-            onmousedown={closeSheets}
-            ontouchstart={closeSheets}
-        ></div>
-    {/if}
     <!-- Only mount Chat when the sheet is open.  Messages are stored in the global
          chatMessages store (updated by the page-level handleChatMessage), so nothing
          is lost while the component is unmounted.  Previously the Chat was always
@@ -448,13 +474,12 @@
     {#if chatSheetOpen}
     <div
         role="dialog"
-        aria-modal="true"
-        class="fixed inset-x-0 bottom-0 z-50 bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden shadow-lg"
+        class="fixed inset-x-0 z-50 bg-transparent text-white p-0 lg:hidden shadow-lg mobile-chat-panel"
         onmousedown={(e) => e.stopPropagation()}
         ontouchstart={(e) => e.stopPropagation()}
         onkeydown={(e) => { if (e.key === 'Escape') closeSheets(); }}
     >
-        <div class="rounded-t-2xl overflow-hidden bg-white">
+        <div class="bg-white rounded-t-xl h-full flex flex-col overflow-hidden">
             <Chat
                 roomId={roomId || roomName}
                 roomName={baseRoomName}
@@ -524,6 +549,7 @@
     </Sheet.Root> -->
     <div
         class="lg:hidden fixed left-0 right-0 bg-[#5C5C5C] p-4 w-[94%] mx-auto rounded-2xl mobile-bottom-bar"
+        class:chat-open={chatSheetOpen}
         class:is-sharing={isScreenSharing}
         data-room={roomIdentityName}
     >
@@ -569,6 +595,11 @@
                                 <img src={control.icon} alt={getAltText(control)} class="icon h-11 w-11 primary-toggle-icon" />
                             {/if}
                         </button>
+                        {#if control.key === 'chat' && unreadCount > 0}
+                            <span class="mobile-chat-badge">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        {/if}
                         {#if permBlocked}
                             <span class="mobile-permission-badge" title="Permission denied">
                                 <AlertTriangle size={10} color="#fff" />
@@ -764,6 +795,41 @@
     .mobile-bottom-bar {
         bottom: 1rem;
         bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+        transition: bottom 0.25s ease;
     }
-    
+
+    /* Shift controls bar up when chat is open */
+    .mobile-bottom-bar.chat-open {
+        bottom: calc(16rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Chat panel sits above safe-area, below the controls bar */
+    :global(.mobile-chat-panel) {
+        bottom: 0;
+        height: 15rem;
+    }
+
+    .mobile-chat-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        background-color: #dc2626;
+        border-radius: 9999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #fff;
+        pointer-events: none;
+        animation: pulse-badge 2s infinite;
+    }
+
+    @keyframes pulse-badge {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+    }
 </style>

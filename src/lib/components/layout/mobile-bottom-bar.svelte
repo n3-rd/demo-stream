@@ -53,6 +53,8 @@
         cameraPermission?: string;
         /** Bindable: whether the mobile chat sheet is currently open */
         mobileChatOpen?: boolean;
+        /** Whether the app is in fullscreen mode (raises sheet z-indexes above fullscreen overlay) */
+        isFullscreen?: boolean;
     }
 
     let {
@@ -80,7 +82,8 @@
         participants = [],
         micPermission = 'unknown',
         cameraPermission = 'unknown',
-        mobileChatOpen = $bindable(false)
+        mobileChatOpen = $bindable(false),
+        isFullscreen = false
     }: Props = $props();
     let userRole: 'host' | 'guest' | 'representative' = $state('guest');
     run(() => {
@@ -355,8 +358,9 @@
     let chatSheetOpen = $state(false);
     let participantsSheetOpen = $state(false);
 
-    // Sync chatSheetOpen to the bindable mobileChatOpen prop
+    // Sync chatSheetOpen ↔ mobileChatOpen (bindable) bidirectionally
     $effect(() => { mobileChatOpen = chatSheetOpen; });
+    $effect(() => { if (mobileChatOpen !== chatSheetOpen) chatSheetOpen = mobileChatOpen; });
     let quoteSheetOpen = $state(false);
     let notesSheetOpen = false;
     /** Which dialog content is open from the more sheet (share | inviteRepresentative). */
@@ -424,10 +428,10 @@
 
 <div class="px-4 flex justify-center items-center">
     <!-- Content sheet (Show content) — only for hosts/reps -->
-    {#if isHost || isRepresentative}
+    {#if (isHost || isRepresentative) && !isFullscreen}
     <button
         type="button"
-        class="fixed z-50 right-8 bottom-28 rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black lg:hidden"
+        class="fixed right-8 bottom-28 rounded bg-bgdefault-light text-white shadow-lg hover:bg-white hover:text-black lg:hidden {isFullscreen ? 'z-[220]' : 'z-50'}"
         onclick={() => (contentSheetOpen = true)}
     >
         Show content
@@ -436,14 +440,14 @@
     {#if contentSheetOpen}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-            class="fixed inset-0 z-[60] bg-black/50 lg:hidden"
+            class="fixed inset-0 bg-black/50 lg:hidden {isFullscreen ? 'z-[220]' : 'z-[60]'}"
             transition:fade={{ duration: 150 }}
             role="presentation"
             onmousedown={closeSheets}
             ontouchstart={closeSheets}
         ></div>
         <div
-            class="fixed inset-x-0 bottom-0 z-[61] bg-bgdefault text-white rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto lg:hidden"
+            class="fixed inset-x-0 bottom-0 bg-bgdefault text-white rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto lg:hidden {isFullscreen ? 'z-[221]' : 'z-[61]'}"
             transition:fly={{ y: '100%', duration: 300 }}
         >
             <div class="flex w-full justify-between items-center">
@@ -474,7 +478,7 @@
     {#if chatSheetOpen}
     <div
         role="dialog"
-        class="fixed inset-x-0 z-50 bg-transparent text-white p-0 lg:hidden shadow-lg mobile-chat-panel"
+        class="fixed inset-x-0 bg-transparent text-white p-0 lg:hidden shadow-lg mobile-chat-panel {isFullscreen ? 'z-[220]' : 'z-50'}"
         onmousedown={(e) => e.stopPropagation()}
         ontouchstart={(e) => e.stopPropagation()}
         onkeydown={(e) => { if (e.key === 'Escape') closeSheets(); }}
@@ -496,14 +500,14 @@
     {#if participantsSheetOpen}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-            class="fixed inset-0 z-[60] bg-black/50 lg:hidden"
+            class="fixed inset-0 bg-black/50 lg:hidden {isFullscreen ? 'z-[220]' : 'z-[60]'}"
             transition:fade={{ duration: 150 }}
             role="presentation"
             onmousedown={closeSheets}
             ontouchstart={closeSheets}
         ></div>
         <div
-            class="fixed inset-x-0 bottom-0 z-[61] bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden"
+            class="fixed inset-x-0 bottom-0 bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden {isFullscreen ? 'z-[221]' : 'z-[61]'}"
             transition:fly={{ y: '100%', duration: 300 }}
         >
             {#await MobileParticipantsSheet then MobileParticipantsSheet}
@@ -522,14 +526,14 @@
     {#if quoteSheetOpen}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-            class="fixed inset-0 z-[60] bg-black/50 lg:hidden"
+            class="fixed inset-0 bg-black/50 lg:hidden {isFullscreen ? 'z-[220]' : 'z-[60]'}"
             transition:fade={{ duration: 150 }}
             role="presentation"
             onmousedown={closeSheets}
             ontouchstart={closeSheets}
         ></div>
         <div
-            class="fixed inset-x-0 bottom-0 z-[61] bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden"
+            class="fixed inset-x-0 bottom-0 bg-transparent text-white rounded-t-2xl p-0 max-h-[85vh] overflow-hidden lg:hidden {isFullscreen ? 'z-[221]' : 'z-[61]'}"
             transition:fly={{ y: '100%', duration: 300 }}
         >
             {#await MobileQuoteSheet then MobileQuoteSheet}
@@ -643,14 +647,14 @@
     {#if mobileSheetOpen}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-            class="fixed inset-0 z-[60] bg-black/50 lg:hidden"
+            class="fixed inset-0 bg-black/50 lg:hidden {isFullscreen ? 'z-[220]' : 'z-[60]'}"
             transition:fade={{ duration: 150 }}
             role="presentation"
             onmousedown={() => (mobileSheetOpen = false)}
             ontouchstart={() => (mobileSheetOpen = false)}
         ></div>
         <div
-            class="fixed inset-x-0 bottom-0 z-[61] bg-bgdefault p-6 text-white rounded-t-2xl lg:hidden"
+            class="fixed inset-x-0 bottom-0 bg-bgdefault p-6 text-white rounded-t-2xl lg:hidden {isFullscreen ? 'z-[221]' : 'z-[61]'}"
             transition:fly={{ y: '100%', duration: 300 }}
         >
             <div class="grid grid-cols-3 gap-y-4">
@@ -718,14 +722,14 @@
         {@const dialogEntry = visibleSheetEntries.find((e) => e.type === 'dialog' && e.content === openDialogContent)}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-            class="fixed inset-0 z-[70] bg-[#2f2f2fe6]/90"
+            class="fixed inset-0 bg-[#2f2f2fe6]/90 {isFullscreen ? 'z-[230]' : 'z-[70]'}"
             transition:fade={{ duration: 150 }}
             role="presentation"
             onmousedown={() => (openDialogContent = null)}
             ontouchstart={() => (openDialogContent = null)}
         ></div>
         <div
-            class="fixed left-1/2 top-1/2 z-[71] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 {dialogEntry?.type === 'dialog' ? dialogEntry.contentClass : 'p-4 rounded-lg shadow-lg'} p-6 sm:rounded-lg"
+            class="fixed left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 {isFullscreen ? 'z-[231]' : 'z-[71]'} {dialogEntry?.type === 'dialog' ? dialogEntry.contentClass : 'p-4 rounded-lg shadow-lg'} p-6 sm:rounded-lg"
             transition:fly={{ y: 10, duration: 200 }}
             onmousedown={(e) => e.stopPropagation()}
             ontouchstart={(e) => e.stopPropagation()}

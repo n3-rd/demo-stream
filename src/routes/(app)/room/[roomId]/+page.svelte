@@ -149,6 +149,7 @@ let scheduledMeetingTime = $state(null);
 let participantsPanelOpen = $state(false);
 let chatPanelOpen = $state(false);
 let mobileChatOpen = $state(false);
+let mobileSheetOpen = $state(false);
 let isFullscreen = $state(false);
 let fullscreenChatOpen = $state(false);
 let fsContentPickerOpen = $state(false);
@@ -3002,6 +3003,8 @@ run(() => {
             <!-- Mobile Bottom Bar -->
             <MobileBottomBar
                 bind:mobileChatOpen
+                bind:mobileSheetOpen
+                {isFullscreen}
                 roomIdentityName={room?.title || 'Meeting Room'}
                 videoRepresentatives={representatives}
                 scheduleOpen={scheduleOpen}
@@ -3244,17 +3247,31 @@ run(() => {
 
                 <!-- Chat toggle -->
                 <button
-                    class="flex items-center justify-center h-12 w-12 rounded-full transition-colors {fullscreenChatOpen ? 'fs-ctrl-btn-active' : 'fs-ctrl-btn'}"
+                    class="hidden lg:flex items-center justify-center h-12 w-12 rounded-full transition-colors {fullscreenChatOpen ? 'fs-ctrl-btn-active' : 'fs-ctrl-btn'}"
                     title={fullscreenChatOpen ? 'Close chat' : 'Open chat'}
                     onclick={toggleFullscreenChat}
+                >
+                    <MessageSquare color="#fff" size={22} />
+                </button>
+                <button
+                    class="flex lg:hidden items-center justify-center h-12 w-12 rounded-full transition-colors {mobileChatOpen ? 'fs-ctrl-btn-active' : 'fs-ctrl-btn'}"
+                    title={mobileChatOpen ? 'Close chat' : 'Open chat'}
+                    onclick={() => { mobileChatOpen = !mobileChatOpen; }}
                 >
                     <MessageSquare color="#fff" size={22} />
                 </button>
 
                 <!-- More -->
                 <button
-                    class="flex items-center justify-center h-12 w-12 rounded-full fs-ctrl-btn transition-colors"
+                    class="hidden lg:flex items-center justify-center h-12 w-12 rounded-full fs-ctrl-btn transition-colors"
                     title="More options"
+                >
+                    <MoreVertical color="#fff" size={22} />
+                </button>
+                <button
+                    class="flex lg:hidden items-center justify-center h-12 w-12 rounded-full fs-ctrl-btn transition-colors"
+                    title="More options"
+                    onclick={() => { mobileSheetOpen = !mobileSheetOpen; }}
                 >
                     <MoreVertical color="#fff" size={22} />
                 </button>

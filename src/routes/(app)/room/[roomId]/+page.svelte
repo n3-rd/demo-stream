@@ -19,6 +19,8 @@ import {
 import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import LeftBar from '$lib/components/layout/left-bar.svelte';
 	import RightBar from '$lib/components/layout/right-bar.svelte';
+	import { Maximize, Minimize, ArrowLeft, Mic, MicOff, CameraIcon, CameraOffIcon, Phone, MessageSquare, MoreVertical, X as XIcon, Play as PlayIcon, Pause as PauseIcon } from 'lucide-svelte';
+	import Chat from '$lib/call/Chat.svelte';
 	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition, pdfZoomLevel, currentDocxUrl, docxScrollPosition, docxZoomLevel, currentImageUrl, imageZoomLevel, imagePanX, imagePanY } from '$lib/callStores';
     import { sendMessage } from '$lib/helpers/sendMessage';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
@@ -91,7 +93,12 @@ let currentVideoTime = 0;
 let isVideoMuted = $state(false);
 let userRole: 'host' | 'guest' | 'representative' = $state('guest');
 let hasVideoPlayed = $state(false);
+let mobileVideoTime = $state(0);
+let mobileVideoDuration = $state(0);
 let joinerVideoReady = $state(false);
+let fsVideoTime = $state(0);
+let fsVideoDuration = $state(0);
+let isSeeking = $state(false);
 
 // Live mode from data channel (rep GO LIVE = composited stream full-screen)
 let isRepLive = $state(false);
@@ -142,6 +149,9 @@ let scheduledMeetingTime = $state(null);
 let participantsPanelOpen = $state(false);
 let chatPanelOpen = $state(false);
 let mobileChatOpen = $state(false);
+let isFullscreen = $state(false);
+let fullscreenChatOpen = $state(false);
+let fsContentPickerOpen = $state(false);
 
 // Host-left countdown state
 let hostLeft = $state(false);
@@ -686,7 +696,10 @@ function handleWebRTCCallback(info: string, obj: any) {
                                         } else if (videoPlayer) {
                                             // Same URL — just sync time and play state without reloading
                                             const timeDiff = Math.abs((state.currentTime || 0) - (videoPlayer.currentTime || 0));
-                                            if (timeDiff >= 2.0) {
+                                            if (!state.isPlaying) {
+                                                // On pause: always seek to exact frame
+                                                videoPlayer.currentTime = state.currentTime || 0;
+                                            } else if (timeDiff >= 2.0) {
                                                 videoPlayer.currentTime = state.currentTime || 0;
                                             }
                                             if (state.isPlaying && videoPlayer.paused) {
@@ -954,7 +967,10 @@ function handleWebRTCCallback(info: string, obj: any) {
                                     const targetTime = (syncData.currentTime ?? 0) + (syncData.isPlaying ? latencySeconds : 0);
                                     const timeDiffSigned = targetTime - (videoPlayer.currentTime ?? 0);
                                     const timeDiff = Math.abs(timeDiffSigned);
-                                    if (timeDiff >= 3.0) {
+                                    if (!syncData.isPlaying) {
+                                        // On pause: always seek to exact frame
+                                        videoPlayer.currentTime = syncData.currentTime ?? 0;
+                                    } else if (timeDiff >= 3.0) {
                                         videoPlayer.currentTime = targetTime;
                                     } else if (timeDiff >= 0.3) {
                                         const originalRate = videoPlayer.playbackRate || 1.0;
@@ -1708,6 +1724,29 @@ const handleScheduleClose = () => {
     scheduleOpen = false;
 };
 
+function toggleFullscreen() {
+    isFullscreen = !isFullscreen;
+    if (!isFullscreen) {
+        fullscreenChatOpen = false;
+        fsContentPickerOpen = false;
+    }
+}
+
+function handleKeydown(e) {
+    if (e.key === 'Escape' && isFullscreen) {
+        if (fsContentPickerOpen) {
+            fsContentPickerOpen = false;
+        } else {
+            isFullscreen = false;
+            fullscreenChatOpen = false;
+        }
+    }
+}
+
+function toggleFullscreenChat() {
+    fullscreenChatOpen = !fullscreenChatOpen;
+}
+
 // Modified togglePanel function to fix panel behavior 
 function togglePanel(id) {
     if (id === "chatPanel") {
@@ -2412,6 +2451,7 @@ onDestroy(() => {
 
 // Track the currently selected video
 let selectedVideo = $state(null);
+let allContentItems = $derived([...(room?.expand?.host_content || []), ...(room?.expand?.representative_content || [])].filter(c => c.thumbnail));
 
 // Room data
 let roomName = $derived(uniqueSessionId ? `${baseRoomName}-${uniqueSessionId}` : baseRoomName);
@@ -2640,6 +2680,8 @@ run(() => {
 </script>
 
 
+<svelte:window onkeydown={handleKeydown} />
+
 {#if isScheduledMeeting && !meetingStatus.canJoin}
     <ScheduledMeetingOverlay
         {scheduledMeetingTime}
@@ -2683,7 +2725,9 @@ run(() => {
                     class:h-[60vh]={mobileChatOpen}
                     style:bottom={mobileChatOpen ? '9vh' : '0'}
                 >
-                    <div class="video-container bg-red h-full flex-1 min-w-0 relative">
+                    <div class="video-container bg-red h-full flex-1 min-w-0 relative"
+                        style={isFullscreen ? `position:fixed;top:0;left:0;bottom:0;right:${fullscreenChatOpen ? '22rem' : '0'};z-index:190;background:black;` : ''}
+                    >
                         <!-- Rep stream: full-screen when GO LIVE (data channel), else back+front when dual streams -->
                         <div
                             id="back-camera-container"
@@ -2750,6 +2794,7 @@ run(() => {
                             selfName={repSelfName}
                             on:representativesUpdate={handleRepresentativesUpdate}
                         />
+                        {#if !isFullscreen}
                         <SyncSourceControls
                             {syncSource}
                             {isRepLive}
@@ -2758,6 +2803,18 @@ run(() => {
                             on:syncSourceChange={(e) => updateSyncSource(e.detail.source)}
                             on:toggleDevLiveMode={toggleDevLiveMode}
                         />
+                        {/if}
+
+                        <!-- Fullscreen toggle button -->
+                        {#if !isFullscreen}
+                        <button
+                            class="absolute bottom-14 right-3 z-30 flex items-center justify-center h-9 w-9 rounded-lg bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm transition-colors"
+                            title="Enter fullscreen"
+                            onclick={toggleFullscreen}
+                        >
+                            <Maximize size={18} />
+                        </button>
+                        {/if}
                         
                         <!-- Main content (hidden when rep is LIVE or dual-camera back is showing) -->
                         <div class="dual-camera-content-wrap" class:hidden={isRepLive || representativeStreams.isLive}>
@@ -2784,12 +2841,13 @@ run(() => {
                             {/if}
                                 <video
                                     class="w-full h-full object-contain absolute inset-0"
-                                    controls={true}
+                                    controls={false}
                                     src={$currentVideoUrl}
                                     bind:this={videoPlayer}
                                     onplay={handleVideoStateChange}
                                     onpause={handleVideoStateChange}
                                     onseeking={handleVideoStateChange}
+                                    ontimeupdate={(e) => { fsVideoTime = e.currentTarget.currentTime; fsVideoDuration = e.currentTarget.duration || 0; }}
                                     muted={isVideoMuted}
                                     loop
                                     preload="metadata"
@@ -2809,9 +2867,14 @@ run(() => {
                                         preload="metadata"
                                         crossorigin="anonymous"
                                         onplaying={() => joinerVideoReady = true}
+                                        ontimeupdate={(e) => { mobileVideoTime = e.currentTarget.currentTime; mobileVideoDuration = e.currentTarget.duration || 0; fsVideoTime = e.currentTarget.currentTime; fsVideoDuration = e.currentTarget.duration || 0; }}
                                     >
                                         Your browser does not support the video element.
                                     </video>
+                                    <!-- Mobile timestamp overlay -->
+                                    <div class="absolute bottom-3 left-3 z-20 text-white text-xs font-medium drop-shadow-lg bg-black/40 rounded px-2 py-0.5 lg:hidden">
+                                        {Math.floor(mobileVideoTime / 60)}:{String(Math.floor(mobileVideoTime % 60)).padStart(2, '0')} / {Math.floor(mobileVideoDuration / 60)}:{String(Math.floor(mobileVideoDuration % 60)).padStart(2, '0')}
+                                    </div>
                                     {#if !joinerVideoReady}
                                         <div class="absolute inset-0 bg-black flex items-center justify-center z-30">
                                             <Loading />
@@ -2840,6 +2903,55 @@ run(() => {
                             </div>
                         {/if}
                         </div>
+
+                        <!-- Custom player bar (normal mode, controller only) -->
+                        {#if !isFullscreen && $currentVideoUrl && ((syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative))}
+                        <div class="absolute bottom-0 left-0 right-0 z-30 flex items-center gap-3 px-4 py-2 bg-gradient-to-t from-black/70 to-transparent">
+                            <button
+                                class="flex items-center justify-center h-7 w-7 text-white hover:text-white/80 transition-colors shrink-0"
+                                onclick={() => { if (videoPlayer?.paused) videoPlayer.play(); else videoPlayer?.pause(); }}
+                            >
+                                {#if $playVideoStore}
+                                    <PauseIcon size={16} fill="currentColor" />
+                                {:else}
+                                    <PlayIcon size={16} fill="currentColor" />
+                                {/if}
+                            </button>
+                            <span class="text-white text-[11px] font-medium tabular-nums shrink-0">
+                                {Math.floor(fsVideoTime / 60)}:{String(Math.floor(fsVideoTime % 60)).padStart(2, '0')} / {Math.floor(fsVideoDuration / 60)}:{String(Math.floor(fsVideoDuration % 60)).padStart(2, '0')}
+                            </span>
+                            <div
+                                class="relative flex-1 h-1 bg-white/20 rounded-full cursor-pointer group"
+                                role="slider"
+                                tabindex="0"
+                                aria-valuemin={0}
+                                aria-valuemax={fsVideoDuration}
+                                aria-valuenow={fsVideoTime}
+                                onpointerdown={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                                    if (videoPlayer) { videoPlayer.currentTime = pct * fsVideoDuration; fsVideoTime = videoPlayer.currentTime; }
+                                    isSeeking = true;
+                                    const onMove = (ev) => {
+                                        const p = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+                                        if (videoPlayer) { videoPlayer.currentTime = p * fsVideoDuration; fsVideoTime = videoPlayer.currentTime; }
+                                    };
+                                    const onUp = () => { isSeeking = false; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+                                    window.addEventListener('pointermove', onMove);
+                                    window.addEventListener('pointerup', onUp);
+                                }}
+                            >
+                                <div
+                                    class="absolute inset-y-0 left-0 bg-white rounded-full transition-[width] {isSeeking ? '' : 'duration-150'}"
+                                    style="width: {fsVideoDuration > 0 ? (fsVideoTime / fsVideoDuration) * 100 : 0}%"
+                                ></div>
+                                <div
+                                    class="absolute top-1/2 -translate-y-1/2 h-3 w-3 bg-white rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style="left: {fsVideoDuration > 0 ? (fsVideoTime / fsVideoDuration) * 100 : 0}%; transform: translate(-50%, -50%)"
+                                ></div>
+                            </div>
+                        </div>
+                        {/if}
                       
                     </div>
 
@@ -2966,6 +3078,261 @@ run(() => {
             </div>
         </div>
     </div>
+
+    <!-- Fullscreen chrome overlay (controls only, video stays in video-container) -->
+    {#if isFullscreen}
+    <div class="fixed inset-0 z-[200] flex flex-col pointer-events-none">
+        <!-- Top bar: title + room code -->
+        <div class="pointer-events-auto absolute top-0 left-0 z-10 flex items-center justify-between px-5 pt-4 pb-8 bg-gradient-to-b from-black/70 to-transparent" style="right: {fullscreenChatOpen ? '22rem' : '0'}">
+            <button
+                class="flex items-center gap-2 text-white hover:text-white/80 transition-colors"
+                onclick={toggleFullscreen}
+            >
+                <ArrowLeft size={22} />
+                <span class="text-lg font-bold drop-shadow-lg">{room?.title || 'Meeting Room'}</span>
+            </button>
+
+        </div>
+
+        <!-- Middle area: floating buttons + chat sidebar -->
+        <div class="flex-1 flex min-h-0 flex-row">
+            <!-- Video area spacer with floating buttons -->
+            <div class="flex-1 relative">
+                <!-- Chat toggle (just above progress bar, float right) -->
+                <button
+                    class="pointer-events-auto absolute bottom-16 right-4 z-20 hidden lg:flex items-center justify-center h-9 w-9 rounded-lg transition-colors backdrop-blur-sm {fullscreenChatOpen ? 'bg-white/25' : 'bg-black/50 hover:bg-black/70'} text-white"
+                    title={fullscreenChatOpen ? 'Close chat' : 'Open chat'}
+                    onclick={toggleFullscreenChat}
+                >
+                    {#if fullscreenChatOpen}
+                        <XIcon size={18} />
+                    {:else}
+                        <MessageSquare size={18} />
+                    {/if}
+                </button>
+
+                <!-- Fullscreen exit button -->
+                <button
+                    class="pointer-events-auto absolute top-4 right-4 z-20 flex items-center justify-center h-9 w-9 rounded-lg bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm transition-colors"
+                    title="Exit fullscreen"
+                    onclick={toggleFullscreen}
+                >
+                    <Minimize size={18} />
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Fullscreen chat sidebar (fixed full-height) -->
+        {#if fullscreenChatOpen}
+        <div class="pointer-events-auto fixed top-0 right-0 bottom-0 w-[22rem] flex flex-col bg-[#202124] border-l border-white/10 z-[210]">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                <span class="text-white text-sm font-semibold">Chat</span>
+                <button
+                    class="text-white/60 hover:text-white transition-colors"
+                    onclick={toggleFullscreenChat}
+                >
+                    <XIcon size={18} />
+                </button>
+            </div>
+            <div class="flex-1 min-h-0">
+                <Chat roomId={roomName} {name} userId={publishStreamId} {userRole} roomName={baseRoomName} />
+            </div>
+        </div>
+        {/if}
+
+        <!-- Seek bar + bottom bar -->
+        <div class="pointer-events-auto flex flex-col bg-gradient-to-t from-black/80 to-transparent" style="margin-right: {fullscreenChatOpen ? '22rem' : '0'}">
+            <!-- Custom seek bar -->
+            {#if $currentVideoUrl}
+            {@const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative)}
+            <div class="flex items-center gap-3 px-6 pt-3 pb-1">
+                <!-- Play/Pause (controller only, hidden on mobile for joiners) -->
+                {#if isController}
+                <button
+                    class="flex items-center justify-center h-8 w-8 text-white hover:text-white/80 transition-colors shrink-0"
+                    onclick={() => { if (videoPlayer?.paused) videoPlayer.play(); else videoPlayer?.pause(); }}
+                >
+                    {#if $playVideoStore}
+                        <PauseIcon size={20} fill="currentColor" />
+                    {:else}
+                        <PlayIcon size={20} fill="currentColor" />
+                    {/if}
+                </button>
+                {/if}
+                <!-- Timestamp -->
+                <span class="text-white text-xs font-medium tabular-nums shrink-0 min-w-[5.5rem]">
+                    {Math.floor(fsVideoTime / 60)}:{String(Math.floor(fsVideoTime % 60)).padStart(2, '0')} / {Math.floor(fsVideoDuration / 60)}:{String(Math.floor(fsVideoDuration % 60)).padStart(2, '0')}
+                </span>
+                <!-- Seek bar (controller only, hidden on mobile for joiners) -->
+                {#if isController}
+                <div
+                    class="relative flex-1 h-1 bg-white/20 rounded-full cursor-pointer group"
+                    role="slider"
+                    tabindex="0"
+                    aria-valuemin={0}
+                    aria-valuemax={fsVideoDuration}
+                    aria-valuenow={fsVideoTime}
+                    onpointerdown={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                        if (videoPlayer) { videoPlayer.currentTime = pct * fsVideoDuration; fsVideoTime = videoPlayer.currentTime; }
+                        isSeeking = true;
+                        const onMove = (ev) => {
+                            const p = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+                            if (videoPlayer) { videoPlayer.currentTime = p * fsVideoDuration; fsVideoTime = videoPlayer.currentTime; }
+                        };
+                        const onUp = () => { isSeeking = false; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+                        window.addEventListener('pointermove', onMove);
+                        window.addEventListener('pointerup', onUp);
+                    }}
+                >
+                    <!-- Progress fill -->
+                    <div
+                        class="absolute inset-y-0 left-0 bg-white rounded-full transition-[width] {isSeeking ? '' : 'duration-150'}"
+                        style="width: {fsVideoDuration > 0 ? (fsVideoTime / fsVideoDuration) * 100 : 0}%"
+                    ></div>
+                    <!-- Thumb -->
+                    <div
+                        class="absolute top-1/2 -translate-y-1/2 h-3 w-3 bg-white rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity"
+                        style="left: {fsVideoDuration > 0 ? (fsVideoTime / fsVideoDuration) * 100 : 0}%; transform: translate(-50%, -50%)"
+                    ></div>
+                </div>
+                {/if}
+            </div>
+            {/if}
+            <!-- Controls row -->
+            <div class="flex items-center justify-between px-6 py-4">
+            <!-- Left: controls -->
+            <div class="flex items-center gap-3">
+                <!-- Mic -->
+                <button
+                    class="flex items-center justify-center h-12 w-12 rounded-full transition-colors {isMicMuted ? 'bg-red-600' : 'fs-ctrl-btn'}"
+                    title={isMicMuted ? 'Unmute microphone' : 'Mute microphone'}
+                    onclick={() => toggleMicrophone()}
+                >
+                    {#if isMicMuted}
+                        <MicOff color="#fff" size={22} />
+                    {:else}
+                        <Mic color="#fff" size={22} />
+                    {/if}
+                </button>
+
+                <!-- Camera (only for reps) -->
+                {#if isRepresentative}
+                <button
+                    class="flex items-center justify-center h-12 w-12 rounded-full transition-colors {isCameraOff ? 'bg-red-600' : 'fs-ctrl-btn'}"
+                    title={isCameraOff ? 'Turn camera on' : 'Turn camera off'}
+                    onclick={() => toggleCamera()}
+                >
+                    {#if isCameraOff}
+                        <CameraOffIcon color="#fff" size={22} />
+                    {:else}
+                        <CameraIcon color="#fff" size={22} />
+                    {/if}
+                </button>
+                {/if}
+
+                <!-- Leave call -->
+                <button
+                    class="flex items-center justify-center h-12 w-12 rounded-full bg-red-600 hover:bg-red-700 transition-colors"
+                    title="Leave call"
+                    onclick={() => leaveRoom()}
+                >
+                    <Phone color="#fff" size={22} class="rotate-[135deg]" />
+                </button>
+
+                <!-- Chat toggle -->
+                <button
+                    class="flex items-center justify-center h-12 w-12 rounded-full transition-colors {fullscreenChatOpen ? 'fs-ctrl-btn-active' : 'fs-ctrl-btn'}"
+                    title={fullscreenChatOpen ? 'Close chat' : 'Open chat'}
+                    onclick={toggleFullscreenChat}
+                >
+                    <MessageSquare color="#fff" size={22} />
+                </button>
+
+                <!-- More -->
+                <button
+                    class="flex items-center justify-center h-12 w-12 rounded-full fs-ctrl-btn transition-colors"
+                    title="More options"
+                >
+                    <MoreVertical color="#fff" size={22} />
+                </button>
+            </div>
+
+            <!-- Right: content picker with stack effect -->
+            {#if (isHost || isRepresentative) && (room?.expand?.host_content?.length || room?.expand?.representative_content?.length)}
+            <div class="relative flex items-center">
+                <!-- Expanded content picker popover -->
+                {#if fsContentPickerOpen}
+                <div class="absolute bottom-full right-0 mb-3 w-72 max-h-80 overflow-y-auto rounded-xl bg-[#202124] border border-white/10 shadow-2xl p-3">
+                    {#if room?.expand?.host_content?.length}
+                    <div class="text-[10px] uppercase tracking-wider text-white/40 font-semibold mb-2 px-1">Host Content</div>
+                    <div class="grid grid-cols-3 gap-2 mb-3">
+                        {#each room.expand.host_content as item}
+                        <button
+                            class="rounded-lg overflow-hidden border-2 border-white/20 hover:border-white/60 transition-all cursor-pointer aspect-video"
+                            onclick={() => { handleVideoSelect({ detail: item }); fsContentPickerOpen = false; }}
+                        >
+                            <img
+                                src={`/api/files/${item.collectionId || item.collection || 'content_library'}/${item.id}/${item.thumbnail}`}
+                                alt={item.title || 'Content'}
+                                class="w-full h-full object-cover"
+                            />
+                        </button>
+                        {/each}
+                    </div>
+                    {/if}
+                    {#if room?.expand?.representative_content?.length}
+                    <div class="text-[10px] uppercase tracking-wider text-white/40 font-semibold mb-2 px-1">Rep Content</div>
+                    <div class="grid grid-cols-3 gap-2">
+                        {#each room.expand.representative_content as item}
+                        <button
+                            class="rounded-lg overflow-hidden border-2 border-white/20 hover:border-white/60 transition-all cursor-pointer aspect-video"
+                            onclick={() => { handleVideoSelect({ detail: item }); fsContentPickerOpen = false; }}
+                        >
+                            <img
+                                src={`/api/files/${item.collectionId || item.collection || 'content_library'}/${item.id}/${item.thumbnail}`}
+                                alt={item.title || 'Content'}
+                                class="w-full h-full object-cover"
+                            />
+                        </button>
+                        {/each}
+                    </div>
+                    {/if}
+                </div>
+                {/if}
+                <!-- Stacked thumbnails (click to toggle picker) -->
+                <button
+                    class="relative h-16 w-24 shrink-0"
+                    onclick={() => { fsContentPickerOpen = !fsContentPickerOpen; }}
+                >
+                    {#each allContentItems.slice(0, 3) as item, i}
+                        <div
+                            class="absolute rounded-lg overflow-hidden border-2 border-white/30 transition-all"
+                            style="width: 5.5rem; height: 3.5rem; top: {i * -4}px; right: {i * 4}px; z-index: {3 - i}; opacity: {1 - i * 0.2}; transform: scale({1 - i * 0.04});"
+                        >
+                            <img
+                                src={`/api/files/${item.collectionId || item.collection || 'content_library'}/${item.id}/${item.thumbnail}`}
+                                alt={item.title || 'Content'}
+                                class="w-full h-full object-cover"
+                            />
+                        </div>
+                    {/each}
+                    {#if allContentItems.length === 0 && selectedVideo?.thumbnail}
+                        <img
+                            src={`/api/files/${selectedVideo.collectionId || selectedVideo.collection || 'content_library'}/${selectedVideo.id}/${selectedVideo.thumbnail}`}
+                            alt={selectedVideo.title}
+                            class="h-14 w-[5.5rem] object-cover rounded-lg border-2 border-white/30"
+                        />
+                    {/if}
+                </button>
+            </div>
+            {/if}
+            </div>
+        </div>
+    </div>
+    {/if}
 
     <!-- Modal overlay for name input -->
     {#if !isAuthenticated && (!$anonymousUser || $anonymousUser === '') && !data?.representativeName && !isRepresentative}
@@ -3152,6 +3519,20 @@ run(() => {
 }
 .dual-camera-content-wrap.hidden {
     display: none;
+}
+
+/* Fullscreen control buttons */
+.fs-ctrl-btn {
+    background: rgba(255, 255, 255, 0.15);
+}
+.fs-ctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+.fs-ctrl-btn-active {
+    background: rgba(255, 255, 255, 0.25);
+}
+.fs-ctrl-btn-active:hover {
+    background: rgba(255, 255, 255, 0.35);
 }
 </style>
 

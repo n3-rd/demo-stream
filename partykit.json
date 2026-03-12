@@ -1,0 +1,6 @@
+{
+  "name": "demo-stream-sync",
+  "$schema": "https://www.partykit.io/schema.json",
+  "main": "party/index.ts",
+  "compatibilityDate": "2024-01-01"
+}

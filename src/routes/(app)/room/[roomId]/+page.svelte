@@ -22,7 +22,7 @@ import BottomBar from '$lib/components/layout/bottom-bar.svelte';
 	import { Maximize, Minimize, ArrowLeft, Mic, MicOff, CameraIcon, CameraOffIcon, Phone, MessageSquare, MoreVertical, X as XIcon, Play as PlayIcon, Pause as PauseIcon } from 'lucide-svelte';
 	import Chat from '$lib/call/Chat.svelte';
 	import { currentVideoUrl, currentPdfUrl, pdfScrollPosition, pdfZoomLevel, currentDocxUrl, docxScrollPosition, docxZoomLevel, currentImageUrl, imageZoomLevel, imagePanX, imagePanY } from '$lib/callStores';
-    import { sendMessage } from '$lib/helpers/sendMessage';
+    import { initSync, send as syncSend, onMessage as onSyncMessage, closeSync, registerWebRTCSend, receiveWebRTCMessage } from '$lib/sync/syncChannel';
     import { getStreamInfo } from '$lib/helpers/getStreamInfo';
 	import { anonymousUser } from '$lib/stores/anonymousUser.js';
 	import NameInputModal from '$lib/components/name-input-modal.svelte';
@@ -253,8 +253,16 @@ onMount(() => {
         const urlObj = new URL(window.location.href);
         shareURL = urlObj.toString();
     }
-    
-  
+
+    // Initialise the PartyKit sync channel once we know the room identity.
+    // roomName is derived from uniqueSessionId so it is now stable.
+    const syncRoomId = uniqueSessionId ? `${baseRoomName}-${uniqueSessionId}` : baseRoomName;
+    initSync(syncRoomId);
+
+    // Register a single handler for all incoming sync messages (from both
+    // PartyKit and the WebRTC data channel fallback).
+    onSyncMessage(handleSyncMessage);
+
     const params = new URLSearchParams(window.location.search);
     const repId = params.get('repid');
     
@@ -569,20 +577,14 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
         case "data_channel_opened":
             isDataChannelOpen = true;
+
+            // Register the WebRTC data channel as fallback transport (Priority 1).
+            registerWebRTCSend(roomName, (sid, data) => webRTCAdaptor.sendData(sid, data));
             
             // If we're not the current controller, request the current media state
             if (!((syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative))) {
-                const mediaStateRequest = {
-                    streamId: roomName,
-                    eventType: 'media_state_request'
-                };
                 try {
-                    sendMessage(
-                        mediaStateRequest.streamId,
-                        Date.now(),
-                        JSON.stringify(mediaStateRequest),
-                        roomName
-                    );
+                    syncSend({ type: 'media_state_request', streamId: roomName });
                 } catch (error) {
                     console.error('Error requesting media state:', error);
                 }
@@ -593,443 +595,9 @@ function handleWebRTCCallback(info: string, obj: any) {
             break;
         case "data_received":
             try {
-                const data = JSON.parse(obj.data);
-                
-                let messageBody;
-                try {
-                    if (data.messageBody) {
-                        messageBody = JSON.parse(data.messageBody);
-                        
-                        // Handle media state request
-                        if (messageBody.eventType === 'media_state_request') {
-                            const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
-                            if (isController) {
-                                const currentState = {
-                                    eventType: 'media_state_response',
-                                    messageBody: JSON.stringify({
-                                        videoUrl: $currentVideoUrl,
-                                        pdfUrl: $currentPdfUrl,
-                                        docxUrl: $currentDocxUrl,
-                                        imageUrl: $currentImageUrl,
-                                        imageZoomLevel: $imageZoomLevel,
-                                        imagePanX: $imagePanX,
-                                        imagePanY: $imagePanY,
-                                        pdfScrollPosition: $pdfScrollPosition,
-                                        pdfZoomLevel: $pdfZoomLevel,
-                                        docxScrollPosition: $docxScrollPosition,
-                                        docxZoomLevel: $docxZoomLevel,
-                                        isPlaying: $playVideoStore,
-                                        currentTime: videoPlayer?.currentTime || 0,
-                                        syncSource,
-                                        isLive: isRepLive,
-                                        ...(liveCameraMode && { cameraMode: liveCameraMode })
-                                    })
-                                };
-                                sendMessage(
-                                    roomName,
-                                    Date.now(),
-                                    JSON.stringify(currentState),
-                                    roomName
-                                );
-                            }
-                        }
-                        
-                        // Handle media state response
-                        // Defer store updates to a separate task so the data-channel
-                        // callback returns immediately.  Setting 10+ Svelte stores
-                        // synchronously triggers heavy DOM mutations (viewer tear-down /
-                        // mount) that block the main thread on mobile Chrome, stalling
-                        // the data channel and dropping subsequent one-shot messages
-                        // (e.g. sync_source_change).
-                        if (messageBody.eventType === 'media_state_response') {
-                                const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
-                                if (!isController) {
-                                    const statePayload = messageBody.messageBody;
-                                    setTimeout(() => {
-                                    const state = JSON.parse(statePayload);
-                                
-                                    // Check which media URLs are actually changing to avoid unnecessary reloads
-                                    const videoUrlChanging = (state.videoUrl || '') !== $currentVideoUrl;
-                                    const pdfUrlChanging = (state.pdfUrl || '') !== $currentPdfUrl;
-                                    const docxUrlChanging = (state.docxUrl || '') !== $currentDocxUrl;
-                                    const imageUrlChanging = (state.imageUrl || '') !== $currentImageUrl;
-                                    const anyMediaChanging = videoUrlChanging || pdfUrlChanging || docxUrlChanging || imageUrlChanging;
-
-                                    // Only clear and reload media if something actually changed
-                                    if (anyMediaChanging) {
-                                        currentVideoUrl.set('');
-                                        currentPdfUrl.set('');
-                                        currentDocxUrl.set('');
-                                        currentImageUrl.set('');
-                                    }
-                                
-                                    // Update video state
-                                    if (state.videoUrl) {
-                                        if (videoUrlChanging) {
-                                            currentVideoUrl.set(state.videoUrl);
-                                            if (videoPlayer) {
-                                                videoPlayer.src = state.videoUrl;
-                                            
-                                                // Handle play state differently based on capabilities
-                                                if (inDataChannelOnlyMode) {
-                                                    if (state.isPlaying) {
-                                                        videoPlayer.play().catch(e => {
-                                                            console.warn('Auto-play blocked in data-channel-only mode:', e);
-                                                            const playOnClick = () => {
-                                                                videoPlayer.play().catch(err => console.error('Play on click failed:', err));
-                                                                document.removeEventListener('click', playOnClick);
-                                                            };
-                                                            document.addEventListener('click', playOnClick, { once: true });
-                                                        });
-                                                    } else {
-                                                        videoPlayer.pause();
-                                                    }
-                                                } else {
-                                                    if (state.isPlaying) {
-                                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                                    } else {
-                                                        videoPlayer.pause();
-                                                    }
-                                                }
-                                            
-                                                videoPlayer.currentTime = state.currentTime || 0;
-                                            }
-                                        } else if (videoPlayer) {
-                                            // Same URL — just sync time and play state without reloading
-                                            const timeDiff = Math.abs((state.currentTime || 0) - (videoPlayer.currentTime || 0));
-                                            if (!state.isPlaying) {
-                                                // On pause: always seek to exact frame
-                                                videoPlayer.currentTime = state.currentTime || 0;
-                                            } else if (timeDiff >= 2.0) {
-                                                videoPlayer.currentTime = state.currentTime || 0;
-                                            }
-                                            if (state.isPlaying && videoPlayer.paused) {
-                                                videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                            } else if (!state.isPlaying && !videoPlayer.paused) {
-                                                videoPlayer.pause();
-                                            }
-                                        }
-                                    }
-                                
-                                    // Update PDF state
-                                    if (state.pdfUrl) {
-                                        currentPdfUrl.set(state.pdfUrl);
-                                        pdfScrollPosition.set(state.pdfScrollPosition || 0);
-                                    }
-                            
-                                    // Update DOCX state
-                                    if (state.docxUrl) {
-                                        currentDocxUrl.set(state.docxUrl);
-                                        docxScrollPosition.set(state.docxScrollPosition || 0);
-                                        docxZoomLevel.set(state.docxZoomLevel || 1);
-                                    }
-                            
-                                    // Update image state
-                                    if (state.imageUrl) {
-                                        currentImageUrl.set(state.imageUrl);
-                                        imageZoomLevel.set(state.imageZoomLevel || 1);
-                                        imagePanX.set(state.imagePanX || 0);
-                                        imagePanY.set(state.imagePanY || 0);
-                                    }
-
-                                    // Update PDF zoom
-                                    if (state.pdfZoomLevel !== undefined) {
-                                        pdfZoomLevel.set(state.pdfZoomLevel || 1);
-                                    }
-                            
-                                    // Update sync source
-                                    if (state.syncSource) {
-                                        syncSource = state.syncSource;
-                                    }
-                            
-                                    // Update play state
-                                    playVideoStore.set(state.isPlaying || false);
-
-                                    // Live mode (for late joiners)
-                                    if (state.isLive !== undefined) {
-                                        isRepLive = state.isLive;
-                                        liveCameraMode = state.cameraMode || null;
-                                    }
-                                    }, 0);
-                                }
-                        }
-                        
-                        // Handle media URL updates
-                        // Defer store updates to a separate task so the
-                        // data-channel callback returns immediately.  Clearing
-                        // and setting 5+ Svelte stores synchronously triggers
-                        // heavy DOM mutations (viewer tear-down/mount) that
-                        // block the main thread on mobile Chrome, stalling the
-                        // data channel and dropping the subsequent one-shot
-                        // sync_source_change message.
-                        if (messageBody.eventType.endsWith('_url_update') && messageBody.messageBody) {
-                            const mediaUpdatePayload = messageBody.messageBody;
-                            const mediaEvtType = messageBody.eventType;
-                            setTimeout(() => {
-                            try {
-                            const mediaUpdateData = JSON.parse(mediaUpdatePayload);
-                            
-                            // Determine media type from event type
-                            const mediaType = mediaEvtType.replace('_url_update', '');
-                            
-                            // Clear all media stores first
-                            currentVideoUrl.set('');
-                            currentPdfUrl.set('');
-                            currentDocxUrl.set('');
-                            currentImageUrl.set('');
-                            
-                            // Set the appropriate media URL
-                            switch (mediaType) {
-                                case 'video':
-                                    // `fileUrl` is the canonical field from selectVideo();
-                                    // `videoUrl` is a legacy alias from sendVideoUpdate().
-                                    {
-                                    const videoSrc = mediaUpdateData.fileUrl || mediaUpdateData.videoUrl || '';
-                                    currentVideoUrl.set(videoSrc);
-                                    playVideoStore.set(mediaUpdateData.shouldPlay || false);
-                                    if (videoPlayer && videoSrc) {
-                                        videoPlayer.src = videoSrc;
-                                        if (mediaUpdateData.shouldPlay) {
-                                            videoPlayer.play().catch(e => console.warn('Autoplay blocked:', e));
-                                        } else {
-                                            videoPlayer.pause();
-                                        }
-                                    }
-                                    }
-                                    break;
-                                case 'pdf':
-                                    currentPdfUrl.set(mediaUpdateData.fileUrl);
-                                    if (mediaUpdateData.initialScale) {
-                                        pdfScrollPosition.set(mediaUpdateData.initialScale);
-                                    }
-                                    break;
-                                case 'docx':
-                                    currentDocxUrl.set(mediaUpdateData.fileUrl);
-                                    playVideoStore.set(false);
-                                    if (videoPlayer) videoPlayer.pause();
-                                    break;
-                                case 'image':
-                                    imageZoomLevel.set(1);
-                                    imagePanX.set(0);
-                                    imagePanY.set(0);
-                                    currentImageUrl.set(mediaUpdateData.fileUrl);
-                                    break;
-                            }
-                            
-                            // Update sync source if needed
-                            if (mediaUpdateData.fromHost) {
-                                syncSource = 'host';
-                            } else if (mediaUpdateData.fromRepresentative) {
-                                syncSource = 'representative';
-                            }
-                            } catch (error) {
-                                console.error('Error handling media URL update:', error);
-                            }
-                            }, 0);
-                        }
-                        // Scroll / zoom sync messages are lightweight (single
-                        // store update) so they stay synchronous.
-                        else if (messageBody.eventType === 'pdf_scroll_sync' && messageBody.messageBody) {
-                            const scrollData = JSON.parse(messageBody.messageBody);
-                            if (scrollData.scrollPosition !== undefined) {
-                                pdfScrollPosition.set(scrollData.scrollPosition);
-                            }
-                        } 
-                        else if (messageBody.eventType === 'pdf_zoom_sync' && messageBody.messageBody) {
-                            const zoomData = JSON.parse(messageBody.messageBody);
-                            if (zoomData.scale !== undefined) {
-                                pdfZoomLevel.set(zoomData.scale);
-                            }
-                        }
-                        else if (messageBody.eventType === 'docx_zoom_sync' && messageBody.messageBody) {
-                            const zoomData = JSON.parse(messageBody.messageBody);
-                            if (zoomData.scale !== undefined) {
-                                docxZoomLevel.set(zoomData.scale);
-                            }
-                        }
-                        else if (messageBody.eventType === 'docx_scroll_sync' && messageBody.messageBody) {
-                            const scrollData = JSON.parse(messageBody.messageBody);
-                            if (scrollData.scrollPosition !== undefined) {
-                                docxScrollPosition.set(scrollData.scrollPosition);
-                            }
-                        }
-                        else if (messageBody.eventType === 'image_zoom_sync' && messageBody.messageBody) {
-                            const zoomData = JSON.parse(messageBody.messageBody);
-                            if (zoomData.zoomLevel !== undefined) {
-                                imageZoomLevel.set(zoomData.zoomLevel);
-                            }
-                            if (zoomData.translateX !== undefined) {
-                                imagePanX.set(zoomData.translateX);
-                            }
-                            if (zoomData.translateY !== undefined) {
-                                imagePanY.set(zoomData.translateY);
-                            }
-                        }
-                        // Handle camera state updates
-                        else if (messageBody.eventType === 'camera_state_update' && messageBody.messageBody) {
-                            try {
-                                const cameraStateData = JSON.parse(messageBody.messageBody);
-                                
-                                // Only apply if we're not the controller
-                                const isCurrentController = (syncSource === 'host' && isHost) || 
-                                                           (syncSource === 'representative' && isRepresentative);
-                                
-                                // if (!isCurrentController) {
-                                //     isCameraOff = cameraStateData.isCameraOff;
-                                    
-                                //     // Clear video player source if camera is off
-                                //     if (videoPlayer) {
-                                //         if (isCameraOff) {
-                                //             videoPlayer.srcObject = null;
-                                //             videoPlayer.src = '';
-                                //         } else {
-                                //             // Attempt to restore video stream
-                                //             if (webRTCAdaptor && webRTCAdaptor.localStream) {
-                                //                 videoPlayer.srcObject = webRTCAdaptor.localStream;
-                                //                 videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                //             }
-                                //         }
-                                //     }
-                                // }
-                            } catch (error) {
-                                console.error('Error handling camera state update:', error);
-                            }
-                        }
-                    }
-                    
-                    
-                    // Handle other message types
-                    switch (messageBody?.eventType) {
-                        case 'live_mode_change': {
-                            try {
-                                const payload = JSON.parse(messageBody.messageBody);
-                                isRepLive = !!payload.isLive;
-                                liveCameraMode = payload.cameraMode || null;
-                                console.log(`[LiveMode] isLive=${isRepLive}, cameraMode=${liveCameraMode}`);
-                            } catch (e) {
-                                console.error('Error parsing live_mode_change:', e);
-                            }
-                            break;
-                        }
-                        case 'chat_message': {
-                            // Defer DOM update out of the WebRTC data_received callback.
-                            // On iOS WKWebView and Android WebView, a synchronous
-                            // chatMessages.update() here triggers Svelte reactivity →
-                            // DOM mutations (scroll, re-render) that can block subsequent
-                            // data_received events (video_sync, media_source_change).
-                            // setTimeout(0) moves the store update to a separate task so
-                            // the data-channel callback returns immediately and the
-                            // browser can continue delivering queued messages.
-                            const chatPayload = {
-                                ...messageBody,
-                                timestamp: messageBody.timestamp || data.messageDate || Date.now()
-                            };
-                            setTimeout(() => {
-                                handleChatMessage(chatPayload);
-                            }, 0);
-                            break;
-                        }
-                        case 'video_mute_sync':
-                            try {
-                                // Parse the inner messageBody for video mute sync
-                                const muteData = JSON.parse(messageBody.messageBody);
-                                
-                                // Only apply if we're not the controller
-                                const isCurrentController = (syncSource === 'host' && isHost) || 
-                                                               (syncSource === 'representative' && isRepresentative);
-                                
-                                if (!isCurrentController && videoPlayer) {
-                                    isVideoMuted = muteData.isMuted;
-                                    videoPlayer.muted = isVideoMuted;
-                                }
-                            } catch (error) {
-                                console.error('Error handling video mute sync:', error);
-                            }
-                            break;
-                        case 'video_sync':
-                            try {
-                                // Parse the inner messageBody for video sync
-                                const syncData = JSON.parse(messageBody.messageBody);
-                                
-                                // Accept sync if we're not the current controller
-                                const isCurrentController = (syncSource === 'host' && isHost) || 
-                                                                  (syncSource === 'representative' && isRepresentative);
-                                
-                                if (!isCurrentController && videoPlayer) {
-                                    
-                                    
-                                    // Improved sync strategy with network-latency compensation:
-                                    // - Compute target time by accounting for message round-trip latency
-                                    // - Hard seek only if desync >= 3s
-                                    // - For 0.3s <= desync < 3s, drift via temporary playbackRate nudge
-                                    const latencySeconds = syncData.sendTimestamp
-                                        ? (Date.now() - syncData.sendTimestamp) / 1000
-                                        : 0;
-                                    const targetTime = (syncData.currentTime ?? 0) + (syncData.isPlaying ? latencySeconds : 0);
-                                    const timeDiffSigned = targetTime - (videoPlayer.currentTime ?? 0);
-                                    const timeDiff = Math.abs(timeDiffSigned);
-                                    if (!syncData.isPlaying) {
-                                        // On pause: always seek to exact frame
-                                        videoPlayer.currentTime = syncData.currentTime ?? 0;
-                                    } else if (timeDiff >= 3.0) {
-                                        videoPlayer.currentTime = targetTime;
-                                    } else if (timeDiff >= 0.3) {
-                                        const originalRate = videoPlayer.playbackRate || 1.0;
-                                        const nudgeRate = timeDiffSigned > 0 ? Math.min(1.25, originalRate + 0.05) : Math.max(0.75, originalRate - 0.05);
-                                        videoPlayer.playbackRate = nudgeRate;
-                                        setTimeout(() => {
-                                            videoPlayer.playbackRate = 1.0;
-                                        }, 2000);
-                                    }
-
-                                    // Update the playVideoStore to match the sync state
-                                    playVideoStore.set(syncData.isPlaying);
-                                    
-                                    // Sync play/pause state
-                                    if (syncData.isPlaying && videoPlayer.paused) {
-                                        videoPlayer.play().catch(e => console.error('Error playing video:', e));
-                                    } else if (!syncData.isPlaying && !videoPlayer.paused) {
-                                        videoPlayer.pause();
-                                    }
-                                }
-                            } catch (error) {
-                                console.error('Error handling video sync:', error);
-                            }
-                            break;
-                        case 'sync_source_change':
-                            try {
-                                const innerMessageBody = JSON.parse(messageBody.messageBody);
-                                
-                                
-                                // Update sync source if message is from host
-                                if (innerMessageBody.fromHost) {
-                                    syncSource = innerMessageBody.syncSource;
-                                }
-                            } catch (error) {
-                                console.error('Error handling sync source change:', error);
-                            }
-                            break;
-                        case 'active_speaker':
-                            try {
-                                const speakerData = JSON.parse(messageBody.messageBody);
-                                activeSpeakerStreamId = speakerData.streamId ?? null;
-                            } catch (error) {
-                                console.error('Error handling active_speaker:', error);
-                            }
-                            break;
-                        case 'host_leaving':
-                            if (!isHost) {
-                                startHostLeftCountdown();
-                            }
-                            break;
-                    }
-                } catch (parseError) {
-                    console.error("Error parsing message body:", parseError);
-                    console.error("Raw message body:", data.messageBody);
-                }
+                receiveWebRTCMessage(obj.data);
             } catch (e) {
-                console.error("Error parsing data message:", e);
-                console.error("Raw message data:", obj.data);
+                console.error("Error dispatching data message:", e);
             }
             break;
         case "data_sent":
@@ -1352,15 +920,7 @@ function leaveRoom() {
     allParticipants = {};
     if (isHost) {
         try {
-            const hostLeavingMsg = {
-                eventType: 'host_leaving'
-            };
-            sendMessage(
-                crypto.randomUUID(),
-                Date.now(),
-                JSON.stringify(hostLeavingMsg),
-                roomName
-            );
+            syncSend({ type: 'host_leaving' });
         } catch (e) {
             console.warn('Could not send host_leaving message:', e);
         }
@@ -1570,22 +1130,13 @@ function turnOffCamera() {
 
     // Broadcast camera off state
     if (webRTCAdaptor && isDataChannelOpen) {
-        const cameraStateUpdate = {
-            eventType: 'camera_state_update',
-            messageBody: JSON.stringify({
+        try {
+            syncSend({
+                type: 'camera_state_update',
                 isCameraOff: true,
                 fromHost: isHost,
-                fromRepresentative: isRepresentative
-            })
-        };
-        
-        try {
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(cameraStateUpdate),
-                roomName
-            );
+                fromRepresentative: isRepresentative,
+            });
         } catch (error) {
             console.error('Error sending camera state update:', error);
         }
@@ -1621,21 +1172,12 @@ function updateSyncSource(newSource: 'host' | 'representative') {
     
     // Broadcast the sync source change
     if (webRTCAdaptor && isDataChannelOpen) {
-        const syncSourceUpdate = {
-            eventType: 'sync_source_change',
-            messageBody: JSON.stringify({
-                syncSource: newSource,
-                fromHost: true
-            })
-        };
-        
         try {
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(syncSourceUpdate),
-                roomName
-            );
+            syncSend({
+                type: 'sync_source_change',
+                syncSource: newSource,
+                fromHost: true,
+            });
         } catch (error) {
             console.error('Error sending sync source update:', error);
         }
@@ -1650,15 +1192,7 @@ function toggleDevLiveMode() {
 
 	if (webRTCAdaptor && isDataChannelOpen) {
 		try {
-			sendMessage(
-				roomName,
-				Date.now(),
-				JSON.stringify({
-					eventType: 'live_mode_change',
-					messageBody: JSON.stringify({ isLive: goingLive, cameraMode: 'dual' })
-				}),
-				roomName
-			);
+			syncSend({ type: 'live_mode_change', isLive: goingLive, cameraMode: 'dual' });
 		} catch (e) {
 			console.error('[DEV] Error sending simulated live_mode_change:', e);
 		}
@@ -1695,25 +1229,15 @@ function handleVideoStateChange() {
             // Try to play locally if blocked earlier
             videoPlayer.play().catch(() => {/* ignore */});
         }
-        const videoState = {
-            eventType: 'video_sync',
-            messageBody: JSON.stringify({
+        try {
+            syncSend({
+                type: 'video_sync',
                 currentTime: videoPlayer.currentTime,
                 isPlaying: isPlaying,
-                sendTimestamp: Date.now(),
                 syncSource,
                 fromHost: isHost,
-                fromRepresentative: isRepresentative
-            })
-        };
-        
-        try {
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(videoState),
-                roomName
-            );
+                fromRepresentative: isRepresentative,
+            });
         } catch (error) {
             console.error('Error sending video sync:', error);
         }
@@ -1997,6 +1521,261 @@ function handleNameSubmitted(event) {
     initializeWebRTC();
 }
 
+/**
+ * Unified handler for all incoming sync messages.
+ * Called for messages received via PartyKit (primary) and WebRTC data channel (fallback).
+ * All messages use the flat single-level JSON format (Priority 2).
+ */
+function handleSyncMessage(msg: import('$lib/sync/syncChannel').SyncMessage) {
+    try {
+        switch (msg.type) {
+            case 'media_state_request': {
+                // Respond only if we are the current controller
+                const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
+                if (isController) {
+                    syncSend({
+                        type: 'media_state_response',
+                        videoUrl: $currentVideoUrl,
+                        pdfUrl: $currentPdfUrl,
+                        docxUrl: $currentDocxUrl,
+                        imageUrl: $currentImageUrl,
+                        imageZoomLevel: $imageZoomLevel,
+                        imagePanX: $imagePanX,
+                        imagePanY: $imagePanY,
+                        pdfScrollPosition: $pdfScrollPosition,
+                        pdfZoomLevel: $pdfZoomLevel,
+                        docxScrollPosition: $docxScrollPosition,
+                        docxZoomLevel: $docxZoomLevel,
+                        isPlaying: $playVideoStore,
+                        currentTime: videoPlayer?.currentTime || 0,
+                        syncSource,
+                        isLive: isRepLive,
+                        ...(liveCameraMode && { cameraMode: liveCameraMode }),
+                    });
+                }
+                break;
+            }
+            case 'media_state_response': {
+                const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
+                if (!isController) {
+                    // Defer heavy store updates to a separate task to keep the data-channel
+                    // callback non-blocking on mobile Chrome.
+                    setTimeout(() => {
+                        const videoUrlChanging = (msg.videoUrl as string || '') !== $currentVideoUrl;
+                        const pdfUrlChanging = (msg.pdfUrl as string || '') !== $currentPdfUrl;
+                        const docxUrlChanging = (msg.docxUrl as string || '') !== $currentDocxUrl;
+                        const imageUrlChanging = (msg.imageUrl as string || '') !== $currentImageUrl;
+                        const anyMediaChanging = videoUrlChanging || pdfUrlChanging || docxUrlChanging || imageUrlChanging;
+
+                        if (anyMediaChanging) {
+                            currentVideoUrl.set('');
+                            currentPdfUrl.set('');
+                            currentDocxUrl.set('');
+                            currentImageUrl.set('');
+                        }
+
+                        if (msg.videoUrl && videoUrlChanging) {
+                            currentVideoUrl.set(msg.videoUrl as string);
+                            if (videoPlayer) {
+                                videoPlayer.src = msg.videoUrl as string;
+                                if (msg.isPlaying) {
+                                    videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                                } else {
+                                    videoPlayer.pause();
+                                }
+                                videoPlayer.currentTime = (msg.currentTime as number) || 0;
+                            }
+                        } else if (msg.videoUrl && videoPlayer) {
+                            const timeDiff = Math.abs(((msg.currentTime as number) || 0) - (videoPlayer.currentTime || 0));
+                            if (!msg.isPlaying) {
+                                videoPlayer.pause();
+                                videoPlayer.currentTime = (msg.currentTime as number) || 0;
+                            } else if (timeDiff > 2) {
+                                videoPlayer.currentTime = (msg.currentTime as number) || 0;
+                            }
+                        }
+
+                        if (msg.pdfUrl && pdfUrlChanging) currentPdfUrl.set(msg.pdfUrl as string);
+                        if (msg.docxUrl && docxUrlChanging) currentDocxUrl.set(msg.docxUrl as string);
+                        if (msg.imageUrl && imageUrlChanging) {
+                            imageZoomLevel.set((msg.imageZoomLevel as number) || 1);
+                            imagePanX.set((msg.imagePanX as number) || 0);
+                            imagePanY.set((msg.imagePanY as number) || 0);
+                            currentImageUrl.set(msg.imageUrl as string);
+                        }
+
+                        if (msg.pdfScrollPosition !== undefined) pdfScrollPosition.set(msg.pdfScrollPosition as number);
+                        if (msg.pdfZoomLevel !== undefined) pdfZoomLevel.set(msg.pdfZoomLevel as number);
+                        if (msg.docxScrollPosition !== undefined) docxScrollPosition.set(msg.docxScrollPosition as number);
+                        if (msg.docxZoomLevel !== undefined) docxZoomLevel.set(msg.docxZoomLevel as number);
+                        if (msg.syncSource) syncSource = msg.syncSource as string;
+                        if (msg.isLive !== undefined) isRepLive = msg.isLive as boolean;
+                        if (msg.cameraMode !== undefined) liveCameraMode = msg.cameraMode as string | null;
+                    }, 0);
+                }
+                break;
+            }
+            default:
+                break;
+        }
+
+        // URL update messages (video_url_update, pdf_url_update, etc.)
+        if (typeof msg.type === 'string' && msg.type.endsWith('_url_update')) {
+            const mediaType = msg.type.replace('_url_update', '');
+            setTimeout(() => {
+                try {
+                    // fileUrl is canonical; videoUrl is legacy alias from sendVideoUpdate()
+                    const fileUrl = (msg.fileUrl || msg.videoUrl || '') as string;
+
+                    currentVideoUrl.set('');
+                    currentPdfUrl.set('');
+                    currentDocxUrl.set('');
+                    currentImageUrl.set('');
+
+                    switch (mediaType) {
+                        case 'video':
+                            currentVideoUrl.set(fileUrl);
+                            playVideoStore.set((msg.shouldPlay as boolean) || false);
+                            if (videoPlayer && fileUrl) {
+                                videoPlayer.src = fileUrl;
+                                if (msg.shouldPlay) {
+                                    videoPlayer.play().catch(e => console.warn('Autoplay blocked:', e));
+                                } else {
+                                    videoPlayer.pause();
+                                }
+                            }
+                            break;
+                        case 'pdf':
+                            currentPdfUrl.set(fileUrl);
+                            break;
+                        case 'docx':
+                            currentDocxUrl.set(fileUrl);
+                            playVideoStore.set(false);
+                            if (videoPlayer) videoPlayer.pause();
+                            break;
+                        case 'image':
+                            imageZoomLevel.set(1);
+                            imagePanX.set(0);
+                            imagePanY.set(0);
+                            currentImageUrl.set(fileUrl);
+                            break;
+                    }
+
+                    if (msg.fromHost) syncSource = 'host';
+                    else if (msg.fromRepresentative) syncSource = 'representative';
+                } catch (err) {
+                    console.error('Error handling media URL update:', err);
+                }
+            }, 0);
+            return;
+        }
+
+        // Lightweight scroll/zoom sync messages (synchronous — single store update)
+        if (msg.type === 'pdf_scroll_sync' && msg.scrollPosition !== undefined) {
+            pdfScrollPosition.set(msg.scrollPosition as number);
+            return;
+        }
+        if (msg.type === 'pdf_zoom_sync' && msg.scale !== undefined) {
+            pdfZoomLevel.set(msg.scale as number);
+            return;
+        }
+        if (msg.type === 'docx_zoom_sync' && msg.scale !== undefined) {
+            docxZoomLevel.set(msg.scale as number);
+            return;
+        }
+        if (msg.type === 'docx_scroll_sync' && msg.scrollPosition !== undefined) {
+            docxScrollPosition.set(msg.scrollPosition as number);
+            return;
+        }
+        if (msg.type === 'image_zoom_sync') {
+            if (msg.zoomLevel !== undefined) imageZoomLevel.set(msg.zoomLevel as number);
+            if (msg.translateX !== undefined) imagePanX.set(msg.translateX as number);
+            if (msg.translateY !== undefined) imagePanY.set(msg.translateY as number);
+            return;
+        }
+
+        if (msg.type === 'live_mode_change') {
+            isRepLive = !!(msg.isLive);
+            liveCameraMode = (msg.cameraMode as string | null) || null;
+            return;
+        }
+
+        if (msg.type === 'chat_message') {
+            const chatPayload = {
+                name: msg.name as string,
+                senderId: msg.senderId as string,
+                text: msg.text as string,
+                eventType: 'chat_message',
+                timestamp: (msg.timestamp as number) || msg.sendTimestamp || Date.now(),
+            };
+            setTimeout(() => handleChatMessage(chatPayload), 0);
+            return;
+        }
+
+        if (msg.type === 'video_mute_sync') {
+            const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
+            if (!isController && videoPlayer) {
+                isVideoMuted = !!(msg.isMuted);
+                videoPlayer.muted = isVideoMuted;
+            }
+            return;
+        }
+
+        if (msg.type === 'video_sync') {
+            const isController = (syncSource === 'host' && isHost) || (syncSource === 'representative' && isRepresentative);
+            if (!isController && videoPlayer) {
+                const latencySeconds = msg.sendTimestamp
+                    ? (Date.now() - (msg.sendTimestamp as number)) / 1000
+                    : 0;
+                const targetTime = ((msg.currentTime as number) ?? 0) + ((msg.isPlaying as boolean) ? latencySeconds : 0);
+                const timeDiffSigned = targetTime - (videoPlayer.currentTime ?? 0);
+                const timeDiff = Math.abs(timeDiffSigned);
+
+                if (!msg.isPlaying) {
+                    videoPlayer.currentTime = (msg.currentTime as number) ?? 0;
+                } else if (timeDiff >= 3.0) {
+                    videoPlayer.currentTime = targetTime;
+                } else if (timeDiff >= 0.3) {
+                    const originalRate = videoPlayer.playbackRate || 1.0;
+                    const nudgeRate = timeDiffSigned > 0
+                        ? Math.min(1.25, originalRate + 0.05)
+                        : Math.max(0.75, originalRate - 0.05);
+                    videoPlayer.playbackRate = nudgeRate;
+                    setTimeout(() => { videoPlayer.playbackRate = 1.0; }, 2000);
+                }
+
+                playVideoStore.set(!!(msg.isPlaying));
+                if (msg.isPlaying && videoPlayer.paused) {
+                    videoPlayer.play().catch(e => console.error('Error playing video:', e));
+                } else if (!msg.isPlaying && !videoPlayer.paused) {
+                    videoPlayer.pause();
+                }
+            }
+            return;
+        }
+
+        if (msg.type === 'sync_source_change') {
+            if (msg.fromHost) {
+                syncSource = msg.syncSource as string;
+            }
+            return;
+        }
+
+        if (msg.type === 'active_speaker') {
+            activeSpeakerStreamId = (msg.streamId as string | null) ?? null;
+            return;
+        }
+
+        if (msg.type === 'host_leaving') {
+            if (!isHost) startHostLeftCountdown();
+            return;
+        }
+
+    } catch (err) {
+        console.error('[handleSyncMessage] error', err, msg);
+    }
+}
+
 function handleChatMessage(messageBody) {
     if (!messageBody || !messageBody.name || !messageBody.text) {
         console.error("Invalid chat message format:", messageBody);
@@ -2004,7 +1783,6 @@ function handleChatMessage(messageBody) {
     }
 
     // Check if this is a message from the current user
-    // Use publishStreamId as a unique session ID to distinguish between users with same name
     const isCurrentUser = isCurrentUserMessage(messageBody.name, name || $anonymousUser, messageBody.senderId, publishStreamId);
 
     chatMessages.update(messages => {
@@ -2110,44 +1888,24 @@ function handleVideoSelect(event) {
     
     // Always send update if we're the controller
     if (isCurrentController && webRTCAdaptor && isDataChannelOpen) {
-        // Prepare media update message
-        const mediaUpdateMessage = {
-            eventType: `${fileType}_url_update`,
-            messageBody: JSON.stringify({
+        try {
+            // Broadcast media update (flat format)
+            syncSend({
+                type: `${fileType}_url_update`,
                 fileUrl,
                 fromHost: isHost,
                 fromRepresentative: isRepresentative,
                 shouldPlay: fileType === 'video',
-                // Include full item details for comprehensive sync
-                fullItem: selectedVideo
-            })
-        };
-        
-        try {
-            // Broadcast media update
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(mediaUpdateMessage),
-                roomName
-            );
+                fullItem: selectedVideo,
+            });
 
-            // Broadcast sync source if needed
-            const syncSourceUpdate = {
-                eventType: 'sync_source_change',
-                messageBody: JSON.stringify({
-                    syncSource,
-                    fromHost: isHost,
-                    fromRepresentative: isRepresentative
-                })
-            };
-
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(syncSourceUpdate),
-                roomName
-            );
+            // Broadcast sync source
+            syncSend({
+                type: 'sync_source_change',
+                syncSource,
+                fromHost: isHost,
+                fromRepresentative: isRepresentative,
+            });
         } catch (error) {
             console.error('Error sending media update:', error);
         }
@@ -2218,23 +1976,14 @@ function handleNewParticipant(participant) {
 // Helper function to send video updates
 function sendVideoUpdate(videoUrl) {
     if (webRTCAdaptor && isDataChannelOpen) {
-        const videoUrlUpdate = {
-            eventType: 'video_url_update',
-            messageBody: JSON.stringify({
+        try {
+            syncSend({
+                type: 'video_url_update',
                 videoUrl,
                 fromHost: true,
                 fromRepresentative: false,
-                shouldPlay: false // Explicitly set to not play
-            })
-        };
-        
-        try {
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(videoUrlUpdate),
-                roomName
-            );
+                shouldPlay: false,
+            });
         } catch (error) {
             console.error('Error sending video URL update:', error);
         }
@@ -2251,22 +2000,13 @@ function toggleVideoMute() {
                                   (syncSource === 'representative' && isRepresentative);
         
         if (isCurrentController && webRTCAdaptor && isDataChannelOpen) {
-            const muteState = {
-                eventType: 'video_mute_sync',
-                messageBody: JSON.stringify({
+            try {
+                syncSend({
+                    type: 'video_mute_sync',
                     isMuted: isVideoMuted,
                     fromHost: isHost,
-                    fromRepresentative: isRepresentative
-                })
-            };
-            
-            try {
-                sendMessage(
-                    roomName,
-                    Date.now(),
-                    JSON.stringify(muteState),
-                    roomName
-                );
+                    fromRepresentative: isRepresentative,
+                });
             } catch (error) {
                 console.error('Error sending video mute state:', error);
             }
@@ -2448,6 +2188,7 @@ onDestroy(() => {
         clearInterval(hostLeftTimer);
         hostLeftTimer = null;
     }
+    closeSync();
 });
 
 // Track the currently selected video

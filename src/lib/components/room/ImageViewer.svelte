@@ -3,7 +3,7 @@
 
     import { onMount, createEventDispatcher } from 'svelte';
     import { currentImageUrl, imageZoomLevel, imagePanX, imagePanY } from '$lib/callStores';
-    import { sendMessage } from '$lib/helpers/sendMessage';
+    import { send } from '$lib/sync/syncChannel';
     import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-svelte';
     import { Button } from '$lib/components/ui/button';
 
@@ -82,22 +82,13 @@
         imagePanX.set(translateX);
         imagePanY.set(translateY);
 
-        const zoomSync = {
-            eventType: 'image_zoom_sync',
-            messageBody: JSON.stringify({
+        try {
+            send({
+                type: 'image_zoom_sync',
                 zoomLevel: zoom,
                 translateX,
-                translateY
-            })
-        };
-
-        try {
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(zoomSync),
-                roomName
-            );
+                translateY,
+            });
         } catch (error) {
             console.error('Error sending image zoom sync:', error);
         }

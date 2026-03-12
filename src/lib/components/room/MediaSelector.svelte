@@ -3,7 +3,7 @@
 
     import { createEventDispatcher, onMount } from 'svelte';
     import { currentVideoUrl, currentPdfUrl, currentDocxUrl, currentImageUrl } from '$lib/callStores';
-    import { sendMessage } from '$lib/helpers/sendMessage';
+    import { send } from '$lib/sync/syncChannel';
     import { normalizeContent } from '$lib/utils/content';
 
     interface Props {
@@ -101,10 +101,8 @@
             console.error('Room name is not available for broadcasting media update');
             return;
         }
-        const message = { eventType, messageBody: JSON.stringify(messageData) };
         try {
-            const targetRoom = roomName || room.id;
-            sendMessage(targetRoom, Date.now(), JSON.stringify(message), targetRoom);
+            send({ type: eventType, ...messageData });
         } catch (error) {
             console.error('Error broadcasting media update:', error);
         }

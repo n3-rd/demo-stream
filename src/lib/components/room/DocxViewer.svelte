@@ -4,7 +4,7 @@
     import { onMount, createEventDispatcher, tick } from 'svelte';
     import * as mammoth from 'mammoth';
     import { currentDocxUrl, docxScrollPosition, docxZoomLevel } from '$lib/callStores';
-    import { sendMessage } from '$lib/helpers/sendMessage';
+    import { send } from '$lib/sync/syncChannel';
     import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-svelte';
     import { Button } from '$lib/components/ui/button';
 
@@ -69,15 +69,10 @@
 
     function broadcastZoom(newScale: number) {
         try {
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify({
-                    eventType: 'docx_zoom_sync',
-                    messageBody: JSON.stringify({ scale: newScale })
-                }),
-                roomName
-            );
+            send({
+                type: 'docx_zoom_sync',
+                scale: newScale,
+            });
         } catch (err) {
             console.error('Error broadcasting docx zoom:', err);
         }
@@ -134,21 +129,11 @@
         const scrollPosition = docxContainer.scrollTop;
         docxScrollPosition.set(scrollPosition);
         
-        // Broadcast scroll position to other users
-        const scrollSync = {
-            eventType: 'docx_scroll_sync',
-            messageBody: JSON.stringify({
-                scrollPosition: scrollPosition
-            })
-        };
-        
         try {
-            sendMessage(
-                roomName,
-                Date.now(),
-                JSON.stringify(scrollSync),
-                roomName
-            );
+            send({
+                type: 'docx_scroll_sync',
+                scrollPosition,
+            });
         } catch (error) {
             console.error('Error sending docx scroll sync:', error);
         }

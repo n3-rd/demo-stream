@@ -1,6 +1,6 @@
 {
-  "name": "demo-stream-sync",
   "$schema": "https://www.partykit.io/schema.json",
+  "name": "svelte-call-object-party",
   "main": "party/index.ts",
-  "compatibilityDate": "2024-01-01"
+  "compatibilityDate": "2026-03-12"
 }

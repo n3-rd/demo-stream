@@ -6,8 +6,11 @@ import type * as Party from 'partykit/server';
  * Responsibilities:
  * - Broadcast all sync messages to every peer in the room (excluding the sender).
  * - Maintain a snapshot of the latest value for each stateful message type so
- *   that late joiners receive the current room state immediately on connect
- *   (eliminating the media_state_request / media_state_response round-trip).
+ *   that late joiners who connect after state has been established receive the
+ *   current room state immediately on connect.  This reduces (but does not fully
+ *   replace) the need for the media_state_request / media_state_response pattern,
+ *   which still fires via the WebRTC data channel for clients that join before
+ *   any controller has published state to PartyKit.
  */
 export default class SyncParty implements Party.Server {
 	/**

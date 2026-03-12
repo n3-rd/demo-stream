@@ -1590,7 +1590,7 @@ function handleSyncMessage(msg: import('$lib/sync/syncChannel').SyncMessage) {
                             if (!msg.isPlaying) {
                                 videoPlayer.pause();
                                 videoPlayer.currentTime = (msg.currentTime as number) || 0;
-                            } else if (timeDiff > 2) {
+                            } else if (timeDiff > 3.0) {
                                 videoPlayer.currentTime = (msg.currentTime as number) || 0;
                             }
                         }

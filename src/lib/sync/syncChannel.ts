@@ -92,7 +92,12 @@ export function initSync(roomId: string): void {
 	// Close any existing socket for a previous room.
 	closeSync();
 
-	const host = getPartyKitHost() || 'localhost:1999';
+	const host = getPartyKitHost();
+	// If no host is configured, skip PartyKit — the WebRTC data channel fallback will be used.
+	if (!host) {
+		console.info('[syncChannel] VITE_PARTYKIT_HOST not set — using WebRTC data channel only.');
+		return;
+	}
 
 	_socket = new PartySocket({ host, room: roomId });
 
@@ -183,6 +188,8 @@ export function receiveWebRTCMessage(raw: string): void {
 		const msg = JSON.parse(raw) as SyncMessage;
 		if (msg.type) {
 			dispatchToHandlers(msg);
+		} else if (import.meta.env.DEV) {
+			console.warn('[syncChannel] Received message without type field:', raw.slice(0, 200));
 		}
 	} catch {
 		// Ignore malformed messages.

@@ -279,6 +279,17 @@ schedule: "9 AM - 5 PM"
 id: "rep_id"
 ```
 
+#### DELETE /api/representatives/me
+**Description:** Representative deletes their own account. Requires `rep_session` cookie.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Your representative account has been deleted successfully"
+}
+```
+
 ### Locations
 
 #### POST /api/locations

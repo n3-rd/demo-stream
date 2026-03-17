@@ -309,11 +309,31 @@ is_active: "true"
 #### DELETE /api/locations/[id]
 **Description:** Delete location
 
+### User (Company) Management
+
+#### DELETE /api/admin/users/[id]
+**Description:** Delete a user (company) and all their associated data (superuser only).
+**Params:**
+- `id`: The UUID of the user/company to delete.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Company and all associated data deleted successfully"
+}
+```
+
 ## HTTPie Examples
 
 ### Login
 ```bash
 http POST localhost:3001/api/auth/login email=user@example.com password=password123
+```
+
+### Delete User (Company)
+```bash
+http DELETE localhost:3001/api/admin/users/COMPANY_UUID_HERE
 ```
 
 ### Create Room

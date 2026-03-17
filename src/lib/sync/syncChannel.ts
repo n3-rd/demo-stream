@@ -28,13 +28,15 @@
 import PartySocket from 'partysocket';
 import { browser } from '$app/environment';
 
+import { env } from '$env/dynamic/public';
+
 // PUBLIC_PARTYKIT_HOST is optional — if not set, the WebSocket will fall back to
 // the WebRTC data channel.  We import lazily via a function to avoid a build-time
 // error when the env var is absent.
 function getPartyKitHost(): string {
 	try {
 		// @ts-ignore — may not be defined at build time
-		return import.meta.env.VITE_PARTYKIT_HOST || import.meta.env.PUBLIC_PARTYKIT_HOST || '';
+		return import.meta.env.VITE_PARTYKIT_HOST || env.PUBLIC_PARTYKIT_HOST || '';
 	} catch {
 		return '';
 	}

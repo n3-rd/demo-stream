@@ -279,8 +279,38 @@ schedule: "9 AM - 5 PM"
 id: "rep_id"
 ```
 
+#### POST /api/representative/delete/request
+**Description:** Request a 5-digit verification code to delete the representative's own account. Code is sent via SMS and Email.
+
+**Body:**
+```json
+{
+  "email": "rep@example.com",
+  "phone": "+1234567890"
+}
+```
+*Note: `email` and `phone` are optional if a valid `rep_session` cookie is provided.*
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Verification code sent.",
+  "verification_type": "both"
+}
+```
+
 #### DELETE /api/representatives/me
-**Description:** Representative deletes their own account. Requires `rep_session` cookie.
+**Description:** Representative confirms and completes their own account deletion.
+
+**Body:**
+```json
+{
+  "email": "rep@example.com",
+  "code": "12345"
+}
+```
+*Note: `email` is optional if a valid `rep_session` cookie is provided.*
 
 **Response:**
 ```json

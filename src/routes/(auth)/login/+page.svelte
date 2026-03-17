@@ -138,6 +138,14 @@
 				Don't have a company account?
 				<a href="/register" class="underline">Register now</a>
 			</div>
+
+			<div class="mt-8 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[10px] text-gray-400">
+				<a href="/privacy" class="hover:underline">Privacy Policy</a>
+				<span>&bull;</span>
+				<a href="/delete-account" class="hover:underline">Delete Account</a>
+				<span>&bull;</span>
+				<a href="/delete-representative" class="hover:underline text-red-400 font-medium">Delete Representative Account</a>
+			</div>
 		</div>
 	</div>
 </div>

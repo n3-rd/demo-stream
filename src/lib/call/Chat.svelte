@@ -6,7 +6,7 @@
     import { aiMessages } from '$lib/stores/aiMessages';
     import send from './assets/send.svg';
     import { SendHorizontal, X } from 'lucide-svelte';
-    import { sendMessage } from '$lib/helpers/sendMessage';
+    import { send as syncSend } from '$lib/sync/syncChannel';
 	import { anonymousUser } from '$lib/stores/anonymousUser';
     import { isCurrentUserMessage, extractAndNormalizeName, getInitials } from '$lib/utils/chat';
     
@@ -76,13 +76,14 @@
                 timestamp: Date.now()
             };
 
-            // Send message using the sendMessage helper
-            sendMessage(
-                crypto.randomUUID(), // unique message ID
-                Date.now(), // current timestamp
-                JSON.stringify(newMessage),
-                roomId // room ID from the call object
-            );
+            // Send via the unified sync channel (PartyKit primary, WebRTC fallback)
+            syncSend({
+                type: 'chat_message',
+                name: newMessage.name,
+                senderId: newMessage.senderId,
+                text: newMessage.text,
+                timestamp: newMessage.timestamp,
+            });
 
             // Update local messages store
             chatMessages.update(messages => [...messages, newMessage]);

@@ -3,7 +3,7 @@
 
     import { onMount, onDestroy } from 'svelte';
     import { currentPdfUrl, pdfScrollPosition, pdfZoomLevel } from '$lib/callStores';
-    import { sendMessage } from '$lib/helpers/sendMessage';
+    import { send } from '$lib/sync/syncChannel';
     import * as pdfjs from 'pdfjs-dist';
     import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js?url';
     import { throttle } from 'lodash-es';
@@ -42,33 +42,17 @@
         const scrollPosition = pdfContainer.scrollTop;
         pdfScrollPosition.set(scrollPosition);
 
-        sendMessage(
-            roomName,
-            Date.now(),
-            JSON.stringify({
-                eventType: 'pdf_scroll_sync',
-                messageBody: JSON.stringify({
-                    scrollPosition,
-                    timestamp: Date.now()
-                })
-            }),
-            roomName
-        );
+        send({
+            type: 'pdf_scroll_sync',
+            scrollPosition,
+        });
     }, 100);
 
     function broadcastZoom(newScale: number) {
-        sendMessage(
-            roomName,
-            Date.now(),
-            JSON.stringify({
-                eventType: 'pdf_zoom_sync',
-                messageBody: JSON.stringify({
-                    scale: newScale,
-                    timestamp: Date.now()
-                })
-            }),
-            roomName
-        );
+        send({
+            type: 'pdf_zoom_sync',
+            scale: newScale,
+        });
     }
 
     function applyZoom(newScale: number) {

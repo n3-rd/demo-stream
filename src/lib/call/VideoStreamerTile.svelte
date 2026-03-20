@@ -236,11 +236,6 @@
         pickerOpen.set(!get(pickerOpen));
     }
 
-    function handleParticipantJoined(event) {
-        console.log('Participant joined:', event.participant);
-        shareVideo();
-    }
-
     onMount(async () => {
         if (videoInput) {
             videoInput.addEventListener('change', playLocalVideoFile, false);
@@ -271,13 +266,10 @@
             });
         }
 
-        // Add event listener for participant joined
-        callObject.on('participant-joined', handleParticipantJoined);
+        // Add event listener for participant joined - removed to prevent stream restart
     });
 
     onDestroy(() => {
-        // Remove event listener when component is destroyed
-        callObject.off('participant-joined', handleParticipantJoined);
     });
 
     run(() => {
